@@ -1,0 +1,103 @@
+import { useState, FormEvent } from 'react'
+import { supabase } from '@/lib/supabase'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Modal } from '@/components/ui/Modal'
+import { ColorPicker } from '@/components/ui/ColorPicker'
+import type { Group } from '@/types'
+
+interface GroupFormProps {
+  eventId: string
+  group?: Group
+  isOpen: boolean
+  onClose: () => void
+  onSaved: (group: Group) => void
+}
+
+export function GroupForm({ eventId, group, isOpen, onClose, onSaved }: GroupFormProps) {
+  const [name, setName] = useState(group?.name ?? '')
+  const [color, setColor] = useState(group?.color ?? '#6366f1')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const isEdit = !!group
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError('')
+
+    if (!name.trim()) {
+      setError('Group name is required.')
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      if (isEdit) {
+        const { data, error: updateError } = await supabase
+          .from('groups')
+          .update({ name: name.trim(), color })
+          .eq('id', group.id)
+          .select()
+          .single()
+
+        if (updateError) throw updateError
+        onSaved(data as Group)
+      } else {
+        const { data, error: insertError } = await supabase
+          .from('groups')
+          .insert({ event_id: eventId, name: name.trim(), color })
+          .select()
+          .single()
+
+        if (insertError) {
+          if (insertError.code === '23505') {
+            throw new Error('A group with this name already exists.')
+          }
+          throw insertError
+        }
+        onSaved(data as Group)
+      }
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'Edit Group' : 'Create Group'}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        )}
+
+        <Input
+          id="group-name"
+          label="Group Name"
+          placeholder="Team Alpha"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoFocus
+        />
+
+        <ColorPicker
+          label="Color"
+          value={color}
+          onChange={setColor}
+        />
+
+        <div className="flex gap-3 pt-2">
+          <Button type="submit" loading={saving}>
+            {isEdit ? 'Save Changes' : 'Create Group'}
+          </Button>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}

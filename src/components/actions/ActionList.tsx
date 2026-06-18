@@ -1,0 +1,119 @@
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '@/lib/supabase'
+import { Button } from '@/components/ui/Button'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { ActionForm } from './ActionForm'
+import { ActionRow } from './ActionRow'
+import type { Action } from '@/types'
+
+interface ActionListProps {
+  eventId: string
+  onCountChange: (count: number) => void
+}
+
+export function ActionList({ eventId, onCountChange }: ActionListProps) {
+  const [actions, setActions] = useState<Action[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingAction, setEditingAction] = useState<Action | null>(null)
+
+  const fetchActions = useCallback(async () => {
+    const { data, error: fetchError } = await supabase
+      .from('actions')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: true })
+
+    if (fetchError) {
+      setError(fetchError.message)
+      return
+    }
+
+    const result = (data ?? []) as Action[]
+    setActions(result)
+    onCountChange(result.length)
+    setLoading(false)
+  }, [eventId, onCountChange])
+
+  useEffect(() => { fetchActions() }, [fetchActions])
+
+  function handleEdit(action: Action) {
+    setEditingAction(action)
+    setFormOpen(true)
+  }
+
+  function handleCreate() {
+    setEditingAction(null)
+    setFormOpen(true)
+  }
+
+  function handleFormClose() {
+    setFormOpen(false)
+    setEditingAction(null)
+  }
+
+  async function handleToggleActive(action: Action) {
+    const { error: updateError } = await supabase
+      .from('actions')
+      .update({ is_active: !action.is_active })
+      .eq('id', action.id)
+
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
+
+    fetchActions()
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-900">Actions</h2>
+        <Button size="sm" onClick={handleCreate}>Add Action</Button>
+      </div>
+
+      {error && (
+        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+      )}
+
+      {actions.length === 0 ? (
+        <EmptyState
+          title="No actions yet"
+          description="Create actions to define scoring rules for your event."
+          action={<Button size="sm" onClick={handleCreate}>Add Action</Button>}
+        />
+      ) : (
+        <div className="space-y-2">
+          {actions.map((action) => (
+            <ActionRow
+              key={action.id}
+              action={action}
+              onEdit={() => handleEdit(action)}
+              onToggleActive={() => handleToggleActive(action)}
+            />
+          ))}
+        </div>
+      )}
+
+      {formOpen && (
+        <ActionForm
+          eventId={eventId}
+          action={editingAction ?? undefined}
+          isOpen={formOpen}
+          onClose={handleFormClose}
+          onSaved={() => { handleFormClose(); fetchActions() }}
+        />
+      )}
+    </div>
+  )
+}
