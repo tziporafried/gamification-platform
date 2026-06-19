@@ -133,7 +133,7 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
             ref={participantInputRef}
             id="participant-code"
             label="Participant Code"
-            placeholder="e.g. STU001"
+            placeholder="e.g. P-1001"
             value={participantCode}
             onChange={(e) => setParticipantCode(e.target.value)}
             autoFocus
@@ -141,7 +141,7 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
           <Input
             id="action-code"
             label="Action Code"
-            placeholder="e.g. QUIZ_COMPLETE"
+            placeholder="e.g. A-1001"
             value={actionCode}
             onChange={(e) => setActionCode(e.target.value)}
           />

@@ -14,12 +14,11 @@ export function ParticipantRow({ participant, onEdit, onDelete, onManageGroups }
     <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white p-4">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
+          <span className="shrink-0 rounded bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700">
+            {participant.external_id}
+          </span>
           <p className="font-medium text-gray-900 truncate">{participant.name}</p>
-          <span className="shrink-0 text-xs text-gray-400">{participant.external_id}</span>
         </div>
-        {participant.email && (
-          <p className="mt-0.5 text-sm text-gray-500 truncate">{participant.email}</p>
-        )}
         {participant.groups.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {participant.groups.map((g) => (

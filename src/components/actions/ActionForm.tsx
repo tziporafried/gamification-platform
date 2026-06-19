@@ -14,7 +14,6 @@ interface ActionFormProps {
 }
 
 export function ActionForm({ eventId, action, isOpen, onClose, onSaved }: ActionFormProps) {
-  const [code, setCode] = useState(action?.code ?? '')
   const [name, setName] = useState(action?.name ?? '')
   const [points, setPoints] = useState(action?.points?.toString() ?? '')
   const [description, setDescription] = useState(action?.description ?? '')
@@ -28,10 +27,6 @@ export function ActionForm({ eventId, action, isOpen, onClose, onSaved }: Action
     e.preventDefault()
     setError('')
 
-    if (!code.trim()) {
-      setError('Code is required.')
-      return
-    }
     if (!name.trim()) {
       setError('Name is required.')
       return
@@ -49,7 +44,6 @@ export function ActionForm({ eventId, action, isOpen, onClose, onSaved }: Action
         const { error: updateError } = await supabase
           .from('actions')
           .update({
-            code: code.trim(),
             name: name.trim(),
             points: pointsNum,
             description: description.trim() || null,
@@ -57,29 +51,18 @@ export function ActionForm({ eventId, action, isOpen, onClose, onSaved }: Action
           })
           .eq('id', action.id)
 
-        if (updateError) {
-          if (updateError.code === '23505') {
-            throw new Error('An action with this code already exists.')
-          }
-          throw updateError
-        }
+        if (updateError) throw updateError
       } else {
         const { error: insertError } = await supabase
           .from('actions')
           .insert({
             event_id: eventId,
-            code: code.trim(),
             name: name.trim(),
             points: pointsNum,
             description: description.trim() || null,
           })
 
-        if (insertError) {
-          if (insertError.code === '23505') {
-            throw new Error('An action with this code already exists.')
-          }
-          throw insertError
-        }
+        if (insertError) throw insertError
       }
       onSaved()
     } catch (err) {
@@ -96,14 +79,14 @@ export function ActionForm({ eventId, action, isOpen, onClose, onSaved }: Action
           <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
         )}
 
-        <Input
-          id="action-code"
-          label="Code"
-          placeholder="QUIZ_COMPLETE"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          autoFocus
-        />
+        {isEdit && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Action Code</label>
+            <p className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm font-mono text-gray-700">
+              {action.code}
+            </p>
+          </div>
+        )}
 
         <Input
           id="action-name"
@@ -111,6 +94,7 @@ export function ActionForm({ eventId, action, isOpen, onClose, onSaved }: Action
           placeholder="Complete a Quiz"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          autoFocus
         />
 
         <Input
