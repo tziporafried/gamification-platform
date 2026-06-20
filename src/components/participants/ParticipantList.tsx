@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ParticipantForm } from './ParticipantForm'
 import { ParticipantRow } from './ParticipantRow'
+import { CsvImportParticipantsModal } from './CsvImportParticipantsModal'
 import { GroupAssignment } from '@/components/groups/GroupAssignment'
 import type { ParticipantWithGroups, Participant, Group } from '@/types'
 
@@ -27,6 +28,7 @@ export function ParticipantList({ eventId, onCountChange }: ParticipantListProps
   const [deletingParticipant, setDeletingParticipant] = useState<ParticipantWithGroups | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [assigningParticipant, setAssigningParticipant] = useState<ParticipantWithGroups | null>(null)
+  const [csvImportOpen, setCsvImportOpen] = useState(false)
 
   const fetchParticipants = useCallback(async () => {
     const { data, error: fetchError } = await supabase
@@ -101,7 +103,10 @@ export function ParticipantList({ eventId, onCountChange }: ParticipantListProps
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900">Participants</h2>
-        <Button size="sm" onClick={handleCreate}>Add Participant</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setCsvImportOpen(true)}>Import CSV</Button>
+          <Button size="sm" onClick={handleCreate}>Add Participant</Button>
+        </div>
       </div>
 
       {error && (
@@ -156,6 +161,15 @@ export function ParticipantList({ eventId, onCountChange }: ParticipantListProps
           </Button>
         </div>
       </Modal>
+
+      {csvImportOpen && (
+        <CsvImportParticipantsModal
+          eventId={eventId}
+          isOpen={csvImportOpen}
+          onClose={() => setCsvImportOpen(false)}
+          onImported={fetchParticipants}
+        />
+      )}
 
       {assigningParticipant && (
         <GroupAssignment

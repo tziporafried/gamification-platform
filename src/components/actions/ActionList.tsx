@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ActionForm } from './ActionForm'
 import { ActionRow } from './ActionRow'
+import { CsvImportActionsModal } from './CsvImportActionsModal'
 import type { Action } from '@/types'
 
 interface ActionListProps {
@@ -17,6 +18,7 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
   const [error, setError] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editingAction, setEditingAction] = useState<Action | null>(null)
+  const [csvImportOpen, setCsvImportOpen] = useState(false)
 
   const fetchActions = useCallback(async () => {
     const { data, error: fetchError } = await supabase
@@ -79,7 +81,10 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900">Actions</h2>
-        <Button size="sm" onClick={handleCreate}>Add Action</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setCsvImportOpen(true)}>Import CSV</Button>
+          <Button size="sm" onClick={handleCreate}>Add Action</Button>
+        </div>
       </div>
 
       {error && (
@@ -112,6 +117,15 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
           isOpen={formOpen}
           onClose={handleFormClose}
           onSaved={() => { handleFormClose(); fetchActions() }}
+        />
+      )}
+
+      {csvImportOpen && (
+        <CsvImportActionsModal
+          eventId={eventId}
+          isOpen={csvImportOpen}
+          onClose={() => setCsvImportOpen(false)}
+          onImported={fetchActions}
         />
       )}
     </div>
