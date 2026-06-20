@@ -1,4 +1,5 @@
 import { Zap, Minus } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
 import type { PointTransactionWithDetails } from '@/types'
 
@@ -7,11 +8,11 @@ interface TransactionRowProps {
 }
 
 export function TransactionRow({ transaction }: TransactionRowProps) {
-  const time = new Date(transaction.created_at).toLocaleString()
+  const relativeTime = formatDistanceToNow(new Date(transaction.created_at), { addSuffix: true })
   const isPositive = transaction.points >= 0
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-card">
+    <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-card transition-all duration-200 hover:shadow-card-hover">
       <div
         className={cn(
           'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
@@ -28,7 +29,7 @@ export function TransactionRow({ transaction }: TransactionRowProps) {
         <p className="truncate text-xs text-gray-500">
           {transaction.action.name}
           <span className="mx-1.5 text-gray-300">&middot;</span>
-          {time}
+          <span className="text-gray-400">{relativeTime}</span>
         </p>
       </div>
       <span

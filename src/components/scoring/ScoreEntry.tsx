@@ -1,16 +1,36 @@
 import { useState, useEffect, useCallback, useRef, FormEvent } from 'react'
-import { Target } from 'lucide-react'
+import { Target, Zap } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { PointsFlyUp } from '@/components/ui/PointsFlyUp'
+import { Toast } from '@/components/ui/Toast'
 import { TransactionRow } from './TransactionRow'
+import { ParticipantPreview } from './ParticipantPreview'
 import { CelebrationModal } from './CelebrationModal'
-import type { PointTransactionWithDetails, NewlyAwardedReward } from '@/types'
+import type { PointTransactionWithDetails, NewlyAwardedReward, Group } from '@/types'
 
 interface ScoreEntryProps {
   eventId: string
+}
+
+interface ParticipantPreviewData {
+  id: string
+  name: string
+  externalId: string
+  totalPoints: number
+  rank: number | null
+  groups: Group[]
+  nextReward: { name: string; required_points: number } | null
+}
+
+interface ActionPreviewData {
+  id: string
+  name: string
+  code: string
+  points: number
 }
 
 export function ScoreEntry({ eventId }: ScoreEntryProps) {
@@ -18,13 +38,19 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
   const [participantCode, setParticipantCode] = useState('')
   const [actionCode, setActionCode] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [transactions, setTransactions] = useState<PointTransactionWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [celebrationRewards, setCelebrationRewards] = useState<NewlyAwardedReward[]>([])
   const [celebratingParticipantName, setCelebratingParticipantName] = useState('')
   const participantInputRef = useRef<HTMLInputElement>(null)
+
+  const [participantPreview, setParticipantPreview] = useState<ParticipantPreviewData | null>(null)
+  const [actionPreview, setActionPreview] = useState<ActionPreviewData | null>(null)
+  const [participantLoading, setParticipantLoading] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
+
+  const [flyUpPoints, setFlyUpPoints] = useState<number | null>(null)
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
 
   const fetchTransactions = useCallback(async () => {
     const { data, error: fetchError } = await supabase
@@ -44,17 +70,145 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
 
   useEffect(() => { fetchTransactions() }, [fetchTransactions])
 
+  const participantDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const actionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (participantDebounceRef.current) clearTimeout(participantDebounceRef.current)
+
+    const code = participantCode.trim()
+    if (!code) {
+      setParticipantPreview(null)
+      return
+    }
+
+    participantDebounceRef.current = setTimeout(async () => {
+      setParticipantLoading(true)
+      try {
+        const { data: participant } = await supabase
+          .from('participants')
+          .select('id, name, external_id, participant_groups(group_id, groups(*))')
+          .eq('event_id', eventId)
+          .eq('external_id', code)
+          .maybeSingle()
+
+        if (!participant) {
+          setParticipantPreview(null)
+          setParticipantLoading(false)
+          return
+        }
+
+        const groups: Group[] = ((participant.participant_groups as unknown as { group_id: string; groups: Group }[]) ?? [])
+          .map((pg) => pg.groups)
+
+        const [pointsResult, leaderboardResult, rewardResult] = await Promise.all([
+          supabase
+            .from('point_transactions')
+            .select('points')
+            .eq('participant_id', participant.id),
+          supabase.rpc('get_participant_leaderboard'),
+          supabase
+            .from('rewards')
+            .select('name, required_points')
+            .eq('event_id', eventId)
+            .eq('is_active', true)
+            .order('required_points', { ascending: true }),
+        ])
+
+        const totalPoints = (pointsResult.data ?? []).reduce((sum, t) => sum + t.points, 0)
+
+        let rank: number | null = null
+        if (leaderboardResult.data) {
+          const sorted = leaderboardResult.data as { participant_id: string; total_points: number }[]
+          const idx = sorted.findIndex((e) => e.participant_id === participant.id)
+          if (idx >= 0) {
+            let r = 1
+            for (let i = 0; i < idx; i++) {
+              if (sorted[i].total_points > sorted[idx].total_points) r = i + 2
+            }
+            rank = r
+          }
+        }
+
+        let nextReward: { name: string; required_points: number } | null = null
+        if (rewardResult.data) {
+          const allRewards = rewardResult.data as { name: string; required_points: number }[]
+          const unearnedAbove = allRewards.find((r) => r.required_points > totalPoints)
+          if (unearnedAbove) {
+            nextReward = unearnedAbove
+          }
+        }
+
+        setParticipantPreview({
+          id: participant.id,
+          name: participant.name,
+          externalId: participant.external_id,
+          totalPoints,
+          rank,
+          groups,
+          nextReward,
+        })
+      } catch {
+        setParticipantPreview(null)
+      }
+      setParticipantLoading(false)
+    }, 500)
+
+    return () => {
+      if (participantDebounceRef.current) clearTimeout(participantDebounceRef.current)
+    }
+  }, [participantCode, eventId])
+
+  useEffect(() => {
+    if (actionDebounceRef.current) clearTimeout(actionDebounceRef.current)
+
+    const code = actionCode.trim()
+    if (!code) {
+      setActionPreview(null)
+      return
+    }
+
+    actionDebounceRef.current = setTimeout(async () => {
+      setActionLoading(true)
+      try {
+        const { data: action } = await supabase
+          .from('actions')
+          .select('id, name, code, points, is_active')
+          .eq('event_id', eventId)
+          .eq('code', code)
+          .maybeSingle()
+
+        if (action && action.is_active) {
+          setActionPreview({
+            id: action.id,
+            name: action.name,
+            code: action.code,
+            points: action.points,
+          })
+        } else {
+          setActionPreview(null)
+        }
+      } catch {
+        setActionPreview(null)
+      }
+      setActionLoading(false)
+    }, 400)
+
+    return () => {
+      if (actionDebounceRef.current) clearTimeout(actionDebounceRef.current)
+    }
+  }, [actionCode, eventId])
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    setError('')
-    setSuccess('')
+    setToast(null)
 
     if (!participantCode.trim()) {
-      setError('Participant code is required.')
+      setToast({ message: 'Participant code is required.', variant: 'error' })
       return
     }
     if (!actionCode.trim()) {
-      setError('Action code is required.')
+      setToast({ message: 'Action code is required.', variant: 'error' })
       return
     }
 
@@ -70,7 +224,7 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
 
       if (pError) throw pError
       if (!participant) {
-        setError(`Participant "${participantCode.trim()}" not found.`)
+        setToast({ message: `Participant "${participantCode.trim()}" not found.`, variant: 'error' })
         setSubmitting(false)
         return
       }
@@ -84,13 +238,13 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
 
       if (aError) throw aError
       if (!action) {
-        setError(`Action "${actionCode.trim()}" not found.`)
+        setToast({ message: `Action "${actionCode.trim()}" not found.`, variant: 'error' })
         setSubmitting(false)
         return
       }
 
       if (!action.is_active) {
-        setError(`Action "${action.code}" is inactive.`)
+        setToast({ message: `Action "${action.code}" is inactive.`, variant: 'error' })
         setSubmitting(false)
         return
       }
@@ -108,37 +262,45 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
       if (insertError) throw insertError
 
       try {
-        console.log('[Rewards Debug] Checking rewards for participant:', participant.id, participant.name)
         const { data: newRewards, error: rewardError } = await supabase
           .rpc('check_and_award_rewards', { p_participant_id: participant.id })
 
-        console.log('[Rewards Debug] RPC response:', { data: newRewards, error: rewardError })
-
-        if (rewardError) {
-          console.warn('[Rewards Debug] RPC error:', rewardError.message, rewardError)
-        } else if (newRewards && newRewards.length > 0) {
-          console.log('[Rewards Debug] New rewards to celebrate:', newRewards)
+        if (!rewardError && newRewards && newRewards.length > 0) {
           setCelebratingParticipantName(participant.name)
           setCelebrationRewards(newRewards as NewlyAwardedReward[])
-        } else {
-          console.log('[Rewards Debug] No new rewards. Data:', newRewards)
         }
-      } catch (rewardErr) {
-        console.warn('[Rewards Debug] Caught exception:', rewardErr)
+      } catch {
+        // Reward check failed silently
       }
 
+      setFlyUpPoints(action.points)
+
       const sign = action.points >= 0 ? '+' : ''
-      setSuccess(`Awarded ${sign}${action.points} points to ${participant.name} for ${action.name}`)
+      setToast({
+        message: `${sign}${action.points} pts to ${participant.name} for ${action.name}`,
+        variant: 'success',
+      })
+
       setParticipantCode('')
       setActionCode('')
+      setParticipantPreview(null)
+      setActionPreview(null)
       fetchTransactions()
       participantInputRef.current?.focus()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
+      setToast({
+        message: err instanceof Error ? err.message : 'Something went wrong.',
+        variant: 'error',
+      })
     } finally {
       setSubmitting(false)
     }
   }
+
+  const bothValid = participantPreview && actionPreview
+  const submitLabel = bothValid
+    ? `Submit Score (${actionPreview.points >= 0 ? '+' : ''}${actionPreview.points} pts)`
+    : 'Submit Score'
 
   return (
     <div>
@@ -149,39 +311,84 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
         <h2 className="text-lg font-bold text-gray-900">Score Entry</h2>
       </div>
 
-      <form onSubmit={handleSubmit} className="mb-6 space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-card">
-        {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
-        )}
-        {success && (
-          <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">{success}</div>
-        )}
+      <div className="relative mb-6 rounded-xl border border-gray-200 bg-white shadow-card overflow-hidden">
+        <div className="h-1 w-full gradient-brand" />
+        <form onSubmit={handleSubmit} className="space-y-4 p-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Input
+                ref={participantInputRef}
+                id="participant-code"
+                label="Participant Code"
+                placeholder="e.g. P-1001"
+                value={participantCode}
+                onChange={(e) => setParticipantCode(e.target.value)}
+                autoFocus
+              />
+              {participantLoading && (
+                <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+                  Looking up...
+                </div>
+              )}
+              {participantPreview && !participantLoading && (
+                <ParticipantPreview
+                  name={participantPreview.name}
+                  externalId={participantPreview.externalId}
+                  totalPoints={participantPreview.totalPoints}
+                  rank={participantPreview.rank}
+                  groups={participantPreview.groups}
+                  nextReward={participantPreview.nextReward}
+                />
+              )}
+            </div>
+            <div>
+              <Input
+                id="action-code"
+                label="Action Code"
+                placeholder="e.g. A-1001"
+                value={actionCode}
+                onChange={(e) => setActionCode(e.target.value)}
+              />
+              {actionLoading && (
+                <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+                  Looking up...
+                </div>
+              )}
+              {actionPreview && !actionLoading && (
+                <div className="mt-2 animate-slide-up rounded-lg border border-emerald-100 bg-emerald-50/40 p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap size={14} className="text-emerald-500" />
+                      <span className="text-sm font-medium text-gray-900">{actionPreview.name}</span>
+                    </div>
+                    <span className={`text-sm font-bold ${actionPreview.points >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {actionPreview.points >= 0 ? '+' : ''}{actionPreview.points} pts
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            ref={participantInputRef}
-            id="participant-code"
-            label="Participant Code"
-            placeholder="e.g. P-1001"
-            value={participantCode}
-            onChange={(e) => setParticipantCode(e.target.value)}
-            autoFocus
-          />
-          <Input
-            id="action-code"
-            label="Action Code"
-            placeholder="e.g. A-1001"
-            value={actionCode}
-            onChange={(e) => setActionCode(e.target.value)}
-          />
-        </div>
+          <div className="relative">
+            <Button
+              type="submit"
+              variant={bothValid ? 'gradient' : 'primary'}
+              loading={submitting}
+              className={bothValid ? 'w-full sm:w-auto' : ''}
+            >
+              {submitLabel}
+            </Button>
+            <PointsFlyUp points={flyUpPoints} onDone={() => setFlyUpPoints(null)} />
+          </div>
+        </form>
+      </div>
 
-        <Button type="submit" loading={submitting}>
-          Submit Score
-        </Button>
-      </form>
-
-      <h3 className="mb-3 text-sm font-semibold text-gray-900">Recent Transactions</h3>
+      <div className="mb-3 flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-gray-900">Recent Transactions</h3>
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-8">
@@ -198,6 +405,15 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
             <TransactionRow key={tx.id} transaction={tx} />
           ))}
         </div>
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          autoDismissMs={toast.variant === 'success' ? 3000 : undefined}
+          onDismiss={() => setToast(null)}
+        />
       )}
 
       {celebrationRewards.length > 0 && (

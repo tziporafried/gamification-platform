@@ -62,6 +62,27 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        'float-up': {
+          '0%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+          '50%': { opacity: '1', transform: 'translateY(-40px) scale(1.1)' },
+          '100%': { opacity: '0', transform: 'translateY(-80px) scale(0.9)' },
+        },
+        'toast-enter': {
+          '0%': { opacity: '0', transform: 'translateY(16px) scale(0.95)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        'toast-exit': {
+          '0%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+          '100%': { opacity: '0', transform: 'translateY(16px) scale(0.95)' },
+        },
+        'progress-fill': {
+          '0%': { width: '0%' },
+        },
+        'shake': {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '15%, 45%, 75%': { transform: 'translateX(-4px)' },
+          '30%, 60%, 90%': { transform: 'translateX(4px)' },
+        },
       },
       animation: {
         'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
@@ -72,6 +93,10 @@ export default {
         'shimmer': 'shimmer 2s linear infinite',
         'pop-in': 'pop-in 0.3s ease-out forwards',
         'slide-up': 'slide-up 0.3s ease-out forwards',
+        'float-up': 'float-up 1s ease-out forwards',
+        'toast-enter': 'toast-enter 0.3s ease-out forwards',
+        'toast-exit': 'toast-exit 0.2s ease-in forwards',
+        'shake': 'shake 0.5s ease-in-out',
       },
     },
   },
