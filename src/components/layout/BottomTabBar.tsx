@@ -1,0 +1,127 @@
+import { useState } from 'react'
+import { Home, BarChart3, Target, Users, MoreHorizontal } from 'lucide-react'
+import { MoreDrawer } from './MoreDrawer'
+import { cn } from '@/lib/utils'
+import type { DashboardTab } from '@/types'
+
+interface BottomTabBarProps {
+  activeTab: DashboardTab
+  onTabChange: (tab: DashboardTab) => void
+  userName: string
+  userEmail: string
+  onSignOut: () => void
+}
+
+const TABS: { key: DashboardTab; label: string; icon: typeof Home }[] = [
+  { key: 'home', label: 'Home', icon: Home },
+  { key: 'leaderboard', label: 'Board', icon: BarChart3 },
+  { key: 'score', label: 'Score', icon: Target },
+  { key: 'participants', label: 'People', icon: Users },
+]
+
+const MORE_TABS: DashboardTab[] = ['actions', 'rewards', 'groups', 'event']
+
+export function BottomTabBar({
+  activeTab,
+  onTabChange,
+  userName,
+  userEmail,
+  onSignOut,
+}: BottomTabBarProps) {
+  const [moreOpen, setMoreOpen] = useState(false)
+
+  const isMoreActive = MORE_TABS.includes(activeTab)
+
+  return (
+    <>
+      <div
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/95 backdrop-blur-sm md:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        <nav className="flex h-16 items-end justify-around px-2">
+          {TABS.map(({ key, label, icon: Icon }) => {
+            const isActive = activeTab === key
+            const isScore = key === 'score'
+
+            if (isScore) {
+              return (
+                <button
+                  key={key}
+                  onClick={() => onTabChange(key)}
+                  className="flex flex-col items-center gap-0.5 -mt-3"
+                >
+                  <div
+                    className={cn(
+                      'flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-transform active:scale-95',
+                      isActive ? 'gradient-brand' : 'gradient-brand opacity-85',
+                    )}
+                  >
+                    <Icon size={22} className="text-white" />
+                  </div>
+                  <span className={cn(
+                    'text-[10px] font-semibold',
+                    isActive ? 'text-brand-600' : 'text-gray-500',
+                  )}>
+                    {label}
+                  </span>
+                </button>
+              )
+            }
+
+            return (
+              <button
+                key={key}
+                onClick={() => onTabChange(key)}
+                className="flex flex-col items-center gap-0.5 py-2"
+              >
+                <Icon
+                  size={22}
+                  className={cn(
+                    'transition-colors',
+                    isActive ? 'text-brand-600' : 'text-gray-400',
+                  )}
+                />
+                <span className={cn(
+                  'text-[10px] font-medium',
+                  isActive ? 'text-brand-600' : 'text-gray-500',
+                )}>
+                  {label}
+                </span>
+              </button>
+            )
+          })}
+
+          {/* More button */}
+          <button
+            onClick={() => setMoreOpen(true)}
+            className="flex flex-col items-center gap-0.5 py-2"
+          >
+            <MoreHorizontal
+              size={22}
+              className={cn(
+                'transition-colors',
+                isMoreActive ? 'text-brand-600' : 'text-gray-400',
+              )}
+            />
+            <span className={cn(
+              'text-[10px] font-medium',
+              isMoreActive ? 'text-brand-600' : 'text-gray-500',
+            )}>
+              More
+            </span>
+          </button>
+        </nav>
+      </div>
+
+      <MoreDrawer
+        isOpen={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        userName={userName}
+        userEmail={userEmail}
+        onSignOut={onSignOut}
+      />
+    </>
+  )
+}
