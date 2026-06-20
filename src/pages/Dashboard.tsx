@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
+import { LogOut } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
+import { AvatarCircle } from '@/components/ui/AvatarCircle'
 import { EventForm } from '@/components/dashboard/EventForm'
 import { EventSection } from '@/components/dashboard/EventSection'
 import { DashboardTabs } from '@/components/dashboard/DashboardTabs'
@@ -55,27 +57,45 @@ export function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+      <div className="flex h-screen items-center justify-center bg-surface">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
       </div>
     )
   }
 
+  const userEmail = user?.email || ''
+  const userName = userEmail.split('@')[0] || 'User'
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-          <h1 className="text-lg font-semibold text-gray-900">Dashboard</h1>
+    <div className="min-h-screen bg-surface">
+      <header className="border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-gray-500 sm:inline">{user?.email}</span>
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              Log Out
+            {event?.logo_url ? (
+              <img src={event.logo_url} alt="" className="h-8 w-8 rounded-lg object-cover" />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-brand text-sm font-bold text-white">
+                G
+              </div>
+            )}
+            <h1 className="text-lg font-bold text-gray-900">
+              {event?.name || 'Dashboard'}
+            </h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="hidden items-center gap-2 sm:flex">
+              <AvatarCircle name={userName} size="sm" />
+              <span className="text-sm text-gray-500">{userEmail}</span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={signOut} className="gap-1.5">
+              <LogOut size={14} />
+              <span className="hidden sm:inline">Log Out</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-8">
+      <main className="mx-auto max-w-5xl px-4 py-8">
         {!event ? (
           <EventForm onSaved={(e) => setEvent(e)} />
         ) : (

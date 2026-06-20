@@ -24,7 +24,7 @@ export function LeaderboardPodium({ entries, themeColor }: LeaderboardPodiumProp
     <div className="mb-6">
       {/* Desktop: 2nd | 1st (elevated) | 3rd */}
       <div className="hidden sm:grid sm:grid-cols-3 sm:items-end sm:gap-4">
-        <div className="pt-6">
+        <div className="pt-8">
           {second && (
             <PodiumPlace
               rank={2}
@@ -50,7 +50,7 @@ export function LeaderboardPodium({ entries, themeColor }: LeaderboardPodiumProp
             />
           )}
         </div>
-        <div className="pt-6">
+        <div className="pt-8">
           {third && (
             <PodiumPlace
               rank={3}

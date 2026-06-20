@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Trophy } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useSound } from '@/hooks/useSound'
 import { LeaderboardToggle, type LeaderboardView } from './LeaderboardToggle'
@@ -64,7 +65,7 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
       </div>
     )
   }
@@ -135,7 +136,15 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Leaderboards</h2>
+        <div className="flex items-center gap-2">
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-lg"
+            style={{ backgroundColor: themeColor + '14' }}
+          >
+            <Trophy size={18} style={{ color: themeColor }} />
+          </div>
+          <h2 className="text-lg font-bold text-gray-900">Leaderboard</h2>
+        </div>
         <div className="flex items-center gap-2">
           <SoundToggle
             muted={muted}

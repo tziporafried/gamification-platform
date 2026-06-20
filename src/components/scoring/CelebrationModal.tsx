@@ -112,7 +112,7 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
         <div className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">
           You earned
         </div>
-        <p className="mb-1 text-xl font-bold text-indigo-600">
+        <p className="mb-1 text-xl font-bold text-brand-600">
           {reward.out_reward_name}
         </p>
         {reward.out_reward_description && (
@@ -120,7 +120,7 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
         )}
         {!reward.out_reward_description && <div className="mb-4" />}
 
-        <span className="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
+        <span className="inline-flex items-center rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-700">
           {reward.out_required_points} points required
         </span>
 

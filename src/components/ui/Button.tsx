@@ -2,17 +2,18 @@ import { ButtonHTMLAttributes, forwardRef } from 'react'
 import { cn } from '@/lib/utils'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'gradient'
   size?: 'sm' | 'md' | 'lg'
   loading?: boolean
 }
 
 const variants = {
-  primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500',
+  primary: 'bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-500',
   secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500',
-  outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-indigo-500',
+  outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-brand-500',
   ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-500',
   danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+  gradient: 'gradient-brand text-white hover:opacity-90 focus:ring-brand-500 shadow-sm',
 }
 
 const sizes = {
@@ -26,9 +27,10 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       className={cn(
-        'inline-flex items-center justify-center font-medium rounded-lg transition-colors',
+        'inline-flex items-center justify-center font-medium rounded-lg transition-all',
         'focus:outline-none focus:ring-2 focus:ring-offset-2',
         'disabled:opacity-50 disabled:cursor-not-allowed',
+        'active:scale-[0.97]',
         variants[variant],
         sizes[size],
         className,

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, FormEvent } from 'react'
+import { Target } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
@@ -141,9 +142,14 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold text-gray-900">Score Entry</h2>
+      <div className="mb-4 flex items-center gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50">
+          <Target size={18} className="text-brand-600" />
+        </div>
+        <h2 className="text-lg font-bold text-gray-900">Score Entry</h2>
+      </div>
 
-      <form onSubmit={handleSubmit} className="mb-6 space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <form onSubmit={handleSubmit} className="mb-6 space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-card">
         {error && (
           <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
         )}
@@ -179,7 +185,7 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
 
       {loading ? (
         <div className="flex justify-center py-8">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
         </div>
       ) : transactions.length === 0 ? (
         <EmptyState

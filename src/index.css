@@ -1,3 +1,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  .gradient-brand {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  }
+  .gradient-success {
+    background: linear-gradient(135deg, #059669 0%, #34d399 100%);
+  }
+  .gradient-gold {
+    background: linear-gradient(135deg, #d97706 0%, #fbbf24 100%);
+  }
+  .gradient-silver {
+    background: linear-gradient(135deg, #6b7280 0%, #d1d5db 100%);
+  }
+  .gradient-bronze {
+    background: linear-gradient(135deg, #92400e 0%, #d97706 100%);
+  }
+}

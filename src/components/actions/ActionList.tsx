@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -72,7 +73,7 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
       </div>
     )
   }
@@ -80,7 +81,12 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Actions</h2>
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50">
+            <Zap size={18} className="text-brand-600" />
+          </div>
+          <h2 className="text-lg font-bold text-gray-900">Actions</h2>
+        </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setCsvImportOpen(true)}>Import CSV</Button>
           <Button size="sm" onClick={handleCreate}>Add Action</Button>

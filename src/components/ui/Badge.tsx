@@ -1,17 +1,48 @@
+import { type ReactNode } from 'react'
+import { cn } from '@/lib/utils'
+
 interface BadgeProps {
   label: string
   color: string
+  variant?: 'subtle' | 'solid' | 'outline'
+  size?: 'sm' | 'md'
+  icon?: ReactNode
 }
 
-export function Badge({ label, color }: BadgeProps) {
+export function Badge({ label, color, variant = 'subtle', size = 'sm', icon }: BadgeProps) {
+  const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-sm'
+
+  const variantStyles: Record<string, { bg: string; textColor: string; border?: string }> = {
+    subtle: {
+      bg: color + '18',
+      textColor: color,
+    },
+    solid: {
+      bg: color,
+      textColor: '#ffffff',
+    },
+    outline: {
+      bg: 'transparent',
+      textColor: color,
+      border: color,
+    },
+  }
+
+  const style = variantStyles[variant]
+
   return (
     <span
-      className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full font-medium',
+        sizeClasses,
+      )}
       style={{
-        backgroundColor: color + '20',
-        color: color,
+        backgroundColor: style.bg,
+        color: style.textColor,
+        ...(style.border ? { border: `1px solid ${style.border}` } : {}),
       }}
     >
+      {icon && <span className="shrink-0">{icon}</span>}
       {label}
     </span>
   )

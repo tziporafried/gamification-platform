@@ -1,3 +1,4 @@
+import { Zap, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PointTransactionWithDetails } from '@/types'
 
@@ -7,30 +8,38 @@ interface TransactionRowProps {
 
 export function TransactionRow({ transaction }: TransactionRowProps) {
   const time = new Date(transaction.created_at).toLocaleString()
+  const isPositive = transaction.points >= 0
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
-      <div className="min-w-0">
+    <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-card">
+      <div
+        className={cn(
+          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+          isPositive ? 'bg-emerald-50 text-emerald-500' : 'bg-red-50 text-red-500',
+        )}
+      >
+        {isPositive ? <Zap size={16} /> : <Minus size={16} />}
+      </div>
+      <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-gray-900">
           {transaction.participant.name}
-          <span className="ml-1 text-xs text-gray-500">({transaction.participant.external_id})</span>
+          <span className="ml-1.5 font-mono text-xs text-gray-400">{transaction.participant.external_id}</span>
         </p>
         <p className="truncate text-xs text-gray-500">
           {transaction.action.name}
-          <span className="ml-1 font-mono">({transaction.action.code})</span>
-          <span className="mx-1">&middot;</span>
+          <span className="mx-1.5 text-gray-300">&middot;</span>
           {time}
         </p>
       </div>
       <span
         className={cn(
-          'shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
-          transaction.points >= 0
-            ? 'bg-green-100 text-green-700'
-            : 'bg-red-100 text-red-700',
+          'shrink-0 inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-bold',
+          isPositive
+            ? 'bg-emerald-50 text-emerald-600'
+            : 'bg-red-50 text-red-600',
         )}
       >
-        {transaction.points >= 0 ? '+' : ''}{transaction.points}
+        {isPositive ? '+' : ''}{transaction.points}
       </span>
     </div>
   )

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { Settings, Users, Layers, Zap, Trophy, Target, BarChart3 } from 'lucide-react'
 import type { DashboardTab } from '@/types'
 
 interface DashboardTabsProps {
@@ -10,14 +11,14 @@ interface DashboardTabsProps {
   rewardCount: number
 }
 
-const TABS: { key: DashboardTab; label: string }[] = [
-  { key: 'event', label: 'Event' },
-  { key: 'participants', label: 'Participants' },
-  { key: 'groups', label: 'Groups' },
-  { key: 'actions', label: 'Actions' },
-  { key: 'rewards', label: 'Rewards' },
-  { key: 'score', label: 'Score' },
-  { key: 'leaderboard', label: 'Leaderboards' },
+const TABS: { key: DashboardTab; label: string; icon: typeof Settings }[] = [
+  { key: 'event', label: 'Event', icon: Settings },
+  { key: 'participants', label: 'Participants', icon: Users },
+  { key: 'groups', label: 'Groups', icon: Layers },
+  { key: 'actions', label: 'Actions', icon: Zap },
+  { key: 'rewards', label: 'Rewards', icon: Trophy },
+  { key: 'score', label: 'Score', icon: Target },
+  { key: 'leaderboard', label: 'Leaderboard', icon: BarChart3 },
 ]
 
 export function DashboardTabs({ activeTab, onTabChange, participantCount, groupCount, actionCount, rewardCount }: DashboardTabsProps) {
@@ -31,27 +32,29 @@ export function DashboardTabs({ activeTab, onTabChange, participantCount, groupC
 
   return (
     <div className="mb-6 border-b border-gray-200">
-      <nav className="-mb-px flex gap-6 overflow-x-auto" aria-label="Tabs">
-        {TABS.map(({ key, label }) => {
+      <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label="Tabs">
+        {TABS.map(({ key, label, icon: Icon }) => {
           const count = getCount(key)
+          const isActive = activeTab === key
           return (
             <button
               key={key}
               onClick={() => onTabChange(key)}
               className={cn(
-                'whitespace-nowrap border-b-2 pb-3 text-sm font-medium transition-colors',
-                activeTab === key
-                  ? 'border-indigo-600 text-indigo-600'
+                'flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 pb-3 pt-1 text-sm font-medium transition-colors',
+                isActive
+                  ? 'border-brand-600 text-brand-600'
                   : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
               )}
             >
-              {label}
+              <Icon size={15} className={isActive ? 'text-brand-500' : 'text-gray-400'} />
+              <span className="hidden sm:inline">{label}</span>
               {count !== null && (
                 <span
                   className={cn(
-                    'ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                    activeTab === key
-                      ? 'bg-indigo-100 text-indigo-600'
+                    'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+                    isActive
+                      ? 'bg-brand-100 text-brand-600'
                       : 'bg-gray-100 text-gray-600',
                   )}
                 >

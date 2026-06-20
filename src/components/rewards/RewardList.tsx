@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { RewardForm } from './RewardForm'
@@ -82,7 +83,7 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
       </div>
     )
   }
@@ -90,7 +91,12 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Rewards</h2>
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50">
+            <Trophy size={18} className="text-brand-600" />
+          </div>
+          <h2 className="text-lg font-bold text-gray-900">Rewards</h2>
+        </div>
         <Button size="sm" onClick={handleCreate}>Add Reward</Button>
       </div>
 
