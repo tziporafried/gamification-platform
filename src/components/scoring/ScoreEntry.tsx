@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef, FormEvent } from 'react'
 import { Target, Zap } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -10,6 +9,7 @@ import { Toast } from '@/components/ui/Toast'
 import { TransactionRow } from './TransactionRow'
 import { ParticipantPreview } from './ParticipantPreview'
 import { CelebrationModal } from './CelebrationModal'
+import { useScoreSubmit } from '@/hooks/useScoreSubmit'
 import type { PointTransactionWithDetails, NewlyAwardedReward, Group } from '@/types'
 
 interface ScoreEntryProps {
@@ -34,10 +34,8 @@ interface ActionPreviewData {
 }
 
 export function ScoreEntry({ eventId }: ScoreEntryProps) {
-  const { user } = useAuth()
   const [participantCode, setParticipantCode] = useState('')
   const [actionCode, setActionCode] = useState('')
-  const [submitting, setSubmitting] = useState(false)
   const [transactions, setTransactions] = useState<PointTransactionWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [celebrationRewards, setCelebrationRewards] = useState<NewlyAwardedReward[]>([])
@@ -51,6 +49,14 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
 
   const [flyUpPoints, setFlyUpPoints] = useState<number | null>(null)
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
+
+  const { submit, submitting, lastError } = useScoreSubmit(eventId)
+
+  useEffect(() => {
+    if (lastError) {
+      setToast({ message: lastError, variant: 'error' })
+    }
+  }, [lastError])
 
   const fetchTransactions = useCallback(async () => {
     const { data, error: fetchError } = await supabase
@@ -203,98 +209,28 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
     e.preventDefault()
     setToast(null)
 
-    if (!participantCode.trim()) {
-      setToast({ message: 'Participant code is required.', variant: 'error' })
-      return
+    const result = await submit(participantCode, actionCode)
+    if (!result) return
+
+    if (result.celebrationRewards.length > 0) {
+      setCelebratingParticipantName(result.participantName)
+      setCelebrationRewards(result.celebrationRewards)
     }
-    if (!actionCode.trim()) {
-      setToast({ message: 'Action code is required.', variant: 'error' })
-      return
-    }
 
-    setSubmitting(true)
+    setFlyUpPoints(result.points)
 
-    try {
-      const { data: participant, error: pError } = await supabase
-        .from('participants')
-        .select('id, name')
-        .eq('event_id', eventId)
-        .eq('external_id', participantCode.trim())
-        .maybeSingle()
+    const sign = result.points >= 0 ? '+' : ''
+    setToast({
+      message: `${sign}${result.points} pts to ${result.participantName} for ${result.actionName}`,
+      variant: 'success',
+    })
 
-      if (pError) throw pError
-      if (!participant) {
-        setToast({ message: `Participant "${participantCode.trim()}" not found.`, variant: 'error' })
-        setSubmitting(false)
-        return
-      }
-
-      const { data: action, error: aError } = await supabase
-        .from('actions')
-        .select('id, name, code, points, is_active')
-        .eq('event_id', eventId)
-        .eq('code', actionCode.trim())
-        .maybeSingle()
-
-      if (aError) throw aError
-      if (!action) {
-        setToast({ message: `Action "${actionCode.trim()}" not found.`, variant: 'error' })
-        setSubmitting(false)
-        return
-      }
-
-      if (!action.is_active) {
-        setToast({ message: `Action "${action.code}" is inactive.`, variant: 'error' })
-        setSubmitting(false)
-        return
-      }
-
-      const { error: insertError } = await supabase
-        .from('point_transactions')
-        .insert({
-          event_id: eventId,
-          participant_id: participant.id,
-          action_id: action.id,
-          points: action.points,
-          created_by: user!.id,
-        })
-
-      if (insertError) throw insertError
-
-      try {
-        const { data: newRewards, error: rewardError } = await supabase
-          .rpc('check_and_award_rewards', { p_participant_id: participant.id })
-
-        if (!rewardError && newRewards && newRewards.length > 0) {
-          setCelebratingParticipantName(participant.name)
-          setCelebrationRewards(newRewards as NewlyAwardedReward[])
-        }
-      } catch {
-        // Reward check failed silently
-      }
-
-      setFlyUpPoints(action.points)
-
-      const sign = action.points >= 0 ? '+' : ''
-      setToast({
-        message: `${sign}${action.points} pts to ${participant.name} for ${action.name}`,
-        variant: 'success',
-      })
-
-      setParticipantCode('')
-      setActionCode('')
-      setParticipantPreview(null)
-      setActionPreview(null)
-      fetchTransactions()
-      participantInputRef.current?.focus()
-    } catch (err) {
-      setToast({
-        message: err instanceof Error ? err.message : 'Something went wrong.',
-        variant: 'error',
-      })
-    } finally {
-      setSubmitting(false)
-    }
+    setParticipantCode('')
+    setActionCode('')
+    setParticipantPreview(null)
+    setActionPreview(null)
+    fetchTransactions()
+    participantInputRef.current?.focus()
   }
 
   const bothValid = participantPreview && actionPreview

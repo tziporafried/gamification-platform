@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { Settings, Users, Layers, Zap, Trophy, Target, BarChart3 } from 'lucide-react'
+import { Home, Settings, Users, Layers, Zap, Trophy, Target, BarChart3 } from 'lucide-react'
 import type { DashboardTab } from '@/types'
 
 interface DashboardTabsProps {
@@ -12,6 +12,7 @@ interface DashboardTabsProps {
 }
 
 const TABS: { key: DashboardTab; label: string; icon: typeof Settings }[] = [
+  { key: 'home', label: 'Home', icon: Home },
   { key: 'event', label: 'Event', icon: Settings },
   { key: 'participants', label: 'Participants', icon: Users },
   { key: 'groups', label: 'Groups', icon: Layers },

@@ -117,4 +117,4 @@ export interface NewlyAwardedReward {
   out_total_points: number;
 }
 
-export type DashboardTab = 'event' | 'participants' | 'groups' | 'actions' | 'rewards' | 'score' | 'leaderboard';
+export type DashboardTab = 'home' | 'event' | 'participants' | 'groups' | 'actions' | 'rewards' | 'score' | 'leaderboard';

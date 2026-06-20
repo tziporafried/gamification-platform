@@ -7,6 +7,7 @@ import { AvatarCircle } from '@/components/ui/AvatarCircle'
 import { EventForm } from '@/components/dashboard/EventForm'
 import { EventSection } from '@/components/dashboard/EventSection'
 import { DashboardTabs } from '@/components/dashboard/DashboardTabs'
+import { DashboardHome } from '@/components/dashboard/DashboardHome'
 import { ParticipantList } from '@/components/participants/ParticipantList'
 import { GroupList } from '@/components/groups/GroupList'
 import { ActionList } from '@/components/actions/ActionList'
@@ -19,7 +20,7 @@ export function Dashboard() {
   const { user, signOut } = useAuth()
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<DashboardTab>('event')
+  const [activeTab, setActiveTab] = useState<DashboardTab>('home')
   const [participantCount, setParticipantCount] = useState(0)
   const [groupCount, setGroupCount] = useState(0)
   const [actionCount, setActionCount] = useState(0)
@@ -109,6 +110,13 @@ export function Dashboard() {
               rewardCount={rewardCount}
             />
 
+            {activeTab === 'home' && (
+              <DashboardHome
+                eventId={event.id}
+                themeColor={event.theme_color}
+                onTabChange={setActiveTab}
+              />
+            )}
             {activeTab === 'event' && (
               <EventSection event={event} onEventUpdated={setEvent} />
             )}
