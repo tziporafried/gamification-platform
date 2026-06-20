@@ -85,4 +85,36 @@ export interface GroupLeaderboardEntry {
   total_points: number;
 }
 
-export type DashboardTab = 'event' | 'participants' | 'groups' | 'actions' | 'score' | 'leaderboard';
+export interface Reward {
+  id: string;
+  event_id: string;
+  name: string;
+  description: string | null;
+  required_points: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RewardWithGroups extends Reward {
+  groups: Group[];
+}
+
+export interface ParticipantReward {
+  id: string;
+  event_id: string;
+  participant_id: string;
+  reward_id: string;
+  score_at_award: number;
+  awarded_at: string;
+}
+
+export interface NewlyAwardedReward {
+  out_reward_id: string;
+  out_reward_name: string;
+  out_reward_description: string | null;
+  out_required_points: number;
+  out_total_points: number;
+}
+
+export type DashboardTab = 'event' | 'participants' | 'groups' | 'actions' | 'rewards' | 'score' | 'leaderboard';

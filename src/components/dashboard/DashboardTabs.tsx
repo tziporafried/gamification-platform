@@ -7,6 +7,7 @@ interface DashboardTabsProps {
   participantCount: number
   groupCount: number
   actionCount: number
+  rewardCount: number
 }
 
 const TABS: { key: DashboardTab; label: string }[] = [
@@ -14,15 +15,17 @@ const TABS: { key: DashboardTab; label: string }[] = [
   { key: 'participants', label: 'Participants' },
   { key: 'groups', label: 'Groups' },
   { key: 'actions', label: 'Actions' },
+  { key: 'rewards', label: 'Rewards' },
   { key: 'score', label: 'Score' },
   { key: 'leaderboard', label: 'Leaderboards' },
 ]
 
-export function DashboardTabs({ activeTab, onTabChange, participantCount, groupCount, actionCount }: DashboardTabsProps) {
+export function DashboardTabs({ activeTab, onTabChange, participantCount, groupCount, actionCount, rewardCount }: DashboardTabsProps) {
   function getCount(key: DashboardTab): number | null {
     if (key === 'participants') return participantCount
     if (key === 'groups') return groupCount
     if (key === 'actions') return actionCount
+    if (key === 'rewards') return rewardCount
     return null
   }
 

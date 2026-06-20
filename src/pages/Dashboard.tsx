@@ -8,6 +8,7 @@ import { DashboardTabs } from '@/components/dashboard/DashboardTabs'
 import { ParticipantList } from '@/components/participants/ParticipantList'
 import { GroupList } from '@/components/groups/GroupList'
 import { ActionList } from '@/components/actions/ActionList'
+import { RewardList } from '@/components/rewards/RewardList'
 import { ScoreEntry } from '@/components/scoring/ScoreEntry'
 import { LeaderboardSection } from '@/components/leaderboard/LeaderboardSection'
 import type { Event, DashboardTab } from '@/types'
@@ -20,6 +21,7 @@ export function Dashboard() {
   const [participantCount, setParticipantCount] = useState(0)
   const [groupCount, setGroupCount] = useState(0)
   const [actionCount, setActionCount] = useState(0)
+  const [rewardCount, setRewardCount] = useState(0)
 
   useEffect(() => {
     async function fetchEvent() {
@@ -45,6 +47,10 @@ export function Dashboard() {
 
   const handleActionCount = useCallback((count: number) => {
     setActionCount(count)
+  }, [])
+
+  const handleRewardCount = useCallback((count: number) => {
+    setRewardCount(count)
   }, [])
 
   if (loading) {
@@ -80,6 +86,7 @@ export function Dashboard() {
               participantCount={participantCount}
               groupCount={groupCount}
               actionCount={actionCount}
+              rewardCount={rewardCount}
             />
 
             {activeTab === 'event' && (
@@ -93,6 +100,9 @@ export function Dashboard() {
             )}
             {activeTab === 'actions' && (
               <ActionList eventId={event.id} onCountChange={handleActionCount} />
+            )}
+            {activeTab === 'rewards' && (
+              <RewardList eventId={event.id} onCountChange={handleRewardCount} />
             )}
             {activeTab === 'score' && (
               <ScoreEntry eventId={event.id} />

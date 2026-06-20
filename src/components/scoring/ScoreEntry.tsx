@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TransactionRow } from './TransactionRow'
-import type { PointTransactionWithDetails } from '@/types'
+import { CelebrationModal } from './CelebrationModal'
+import type { PointTransactionWithDetails, NewlyAwardedReward } from '@/types'
 
 interface ScoreEntryProps {
   eventId: string
@@ -20,6 +21,8 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
   const [success, setSuccess] = useState('')
   const [transactions, setTransactions] = useState<PointTransactionWithDetails[]>([])
   const [loading, setLoading] = useState(true)
+  const [celebrationRewards, setCelebrationRewards] = useState<NewlyAwardedReward[]>([])
+  const [celebratingParticipantName, setCelebratingParticipantName] = useState('')
   const participantInputRef = useRef<HTMLInputElement>(null)
 
   const fetchTransactions = useCallback(async () => {
@@ -103,6 +106,26 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
 
       if (insertError) throw insertError
 
+      try {
+        console.log('[Rewards Debug] Checking rewards for participant:', participant.id, participant.name)
+        const { data: newRewards, error: rewardError } = await supabase
+          .rpc('check_and_award_rewards', { p_participant_id: participant.id })
+
+        console.log('[Rewards Debug] RPC response:', { data: newRewards, error: rewardError })
+
+        if (rewardError) {
+          console.warn('[Rewards Debug] RPC error:', rewardError.message, rewardError)
+        } else if (newRewards && newRewards.length > 0) {
+          console.log('[Rewards Debug] New rewards to celebrate:', newRewards)
+          setCelebratingParticipantName(participant.name)
+          setCelebrationRewards(newRewards as NewlyAwardedReward[])
+        } else {
+          console.log('[Rewards Debug] No new rewards. Data:', newRewards)
+        }
+      } catch (rewardErr) {
+        console.warn('[Rewards Debug] Caught exception:', rewardErr)
+      }
+
       const sign = action.points >= 0 ? '+' : ''
       setSuccess(`Awarded ${sign}${action.points} points to ${participant.name} for ${action.name}`)
       setParticipantCode('')
@@ -169,6 +192,14 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
             <TransactionRow key={tx.id} transaction={tx} />
           ))}
         </div>
+      )}
+
+      {celebrationRewards.length > 0 && (
+        <CelebrationModal
+          rewards={celebrationRewards}
+          participantName={celebratingParticipantName}
+          onComplete={() => setCelebrationRewards([])}
+        />
       )}
     </div>
   )
