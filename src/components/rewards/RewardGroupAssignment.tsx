@@ -1,0 +1,120 @@
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '@/lib/supabase'
+import { Modal } from '@/components/ui/Modal'
+import type { Group } from '@/types'
+
+interface RewardGroupAssignmentProps {
+  eventId: string
+  rewardId: string
+  rewardName: string
+  isOpen: boolean
+  onClose: () => void
+  onChanged: () => void
+}
+
+export function RewardGroupAssignment({ eventId, rewardId, rewardName, isOpen, onClose, onChanged }: RewardGroupAssignmentProps) {
+  const [groups, setGroups] = useState<Group[]>([])
+  const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(true)
+  const [toggling, setToggling] = useState<string | null>(null)
+
+  const fetchData = useCallback(async () => {
+    const [groupsRes, assignmentsRes] = await Promise.all([
+      supabase
+        .from('groups')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('name'),
+      supabase
+        .from('reward_groups')
+        .select('group_id')
+        .eq('reward_id', rewardId),
+    ])
+
+    setGroups(groupsRes.data ?? [])
+    setAssignedIds(new Set((assignmentsRes.data ?? []).map((a) => a.group_id)))
+    setLoading(false)
+  }, [eventId, rewardId])
+
+  useEffect(() => {
+    if (isOpen) {
+      setLoading(true)
+      fetchData()
+    }
+  }, [isOpen, fetchData])
+
+  async function toggle(groupId: string) {
+    const isAssigned = assignedIds.has(groupId)
+    setToggling(groupId)
+
+    const next = new Set(assignedIds)
+    if (isAssigned) {
+      next.delete(groupId)
+    } else {
+      next.add(groupId)
+    }
+    setAssignedIds(next)
+
+    const { error } = isAssigned
+      ? await supabase
+          .from('reward_groups')
+          .delete()
+          .eq('reward_id', rewardId)
+          .eq('group_id', groupId)
+      : await supabase
+          .from('reward_groups')
+          .insert({ reward_id: rewardId, group_id: groupId })
+
+    if (error) {
+      if (isAssigned) {
+        next.add(groupId)
+      } else {
+        next.delete(groupId)
+      }
+      setAssignedIds(new Set(next))
+    } else {
+      onChanged()
+    }
+
+    setToggling(null)
+  }
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={`Groups for ${rewardName}`}>
+      <p className="mb-3 text-xs text-gray-500">
+        Leave empty to make this reward available to all participants.
+      </p>
+      {loading ? (
+        <div className="flex justify-center py-6">
+          <div className="h-6 w-6 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        </div>
+      ) : groups.length === 0 ? (
+        <p className="py-4 text-center text-sm text-gray-500">
+          No groups created yet. This reward will be available to all participants.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {groups.map((group) => (
+            <label
+              key={group.id}
+              className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 p-3 transition-colors hover:bg-gray-50"
+            >
+              <input
+                type="checkbox"
+                checked={assignedIds.has(group.id)}
+                onChange={() => toggle(group.id)}
+                disabled={toggling === group.id}
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <div
+                className="h-4 w-4 rounded-full"
+                style={{ backgroundColor: group.color }}
+              />
+              <span className="text-sm font-medium text-gray-900">{group.name}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </Modal>
+  )
+}
