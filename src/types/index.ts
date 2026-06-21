@@ -89,6 +89,10 @@ export interface Action {
   updated_at: string;
 }
 
+export interface ActionWithGroups extends Action {
+  groups: Group[];
+}
+
 export interface PointTransaction {
   id: string;
   event_id: string;

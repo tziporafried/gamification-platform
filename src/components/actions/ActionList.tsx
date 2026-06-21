@@ -5,35 +5,64 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { ActionForm } from './ActionForm'
 import { ActionRow } from './ActionRow'
 import { InlineAddAction } from './InlineAddAction'
-import type { Action } from '@/types'
+import type { Action, ActionWithGroups, Group } from '@/types'
 
 interface ActionListProps {
   eventId: string
   onCountChange: (count: number) => void
 }
 
+interface ActionGroupJoin {
+  group_id: string
+  groups: Group
+}
+
 export function ActionList({ eventId, onCountChange }: ActionListProps) {
-  const [actions, setActions] = useState<Action[]>([])
+  const [actions, setActions] = useState<ActionWithGroups[]>([])
+  const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editingAction, setEditingAction] = useState<Action | null>(null)
 
   const fetchActions = useCallback(async () => {
-    const { data, error: fetchError } = await supabase
-      .from('actions')
-      .select('*')
-      .eq('event_id', eventId)
-      .order('created_at', { ascending: true })
+    const [actionsRes, groupsRes] = await Promise.all([
+      supabase
+        .from('actions')
+        .select('*, action_groups(group_id, groups(*))')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('groups')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true }),
+    ])
 
-    if (fetchError) {
-      setError(fetchError.message)
-      return
+    // Fallback: if action_groups table doesn't exist yet, fetch without join
+    let actionsData = actionsRes.data
+    if (actionsRes.error) {
+      const fallback = await supabase
+        .from('actions')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true })
+      actionsData = fallback.data
+      if (fallback.error) {
+        setError(fallback.error.message)
+        setLoading(false)
+        return
+      }
     }
 
-    const result = (data ?? []) as Action[]
-    setActions(result)
-    onCountChange(result.length)
+    const mapped: ActionWithGroups[] = (actionsData ?? []).map((a) => ({
+      ...a,
+      groups: ((a.action_groups as unknown as ActionGroupJoin[]) ?? []).map((ag) => ag.groups),
+    }))
+
+    setActions(mapped)
+    setGroups((groupsRes.data as Group[]) ?? [])
+    onCountChange(mapped.length)
     setLoading(false)
   }, [eventId, onCountChange])
 
@@ -50,16 +79,7 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
   }
 
   async function handleToggleActive(action: Action) {
-    const { error: updateError } = await supabase
-      .from('actions')
-      .update({ is_active: !action.is_active })
-      .eq('id', action.id)
-
-    if (updateError) {
-      setError(updateError.message)
-      return
-    }
-
+    await supabase.from('actions').update({ is_active: !action.is_active }).eq('id', action.id)
     fetchActions()
   }
 
@@ -100,6 +120,7 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
             <ActionRow
               key={action.id}
               action={action}
+              groups={groups}
               onEdit={() => handleEdit(action)}
               onToggleActive={() => handleToggleActive(action)}
               onDeleted={fetchActions}
