@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Zap, Trophy, Layers, Settings, LogOut, X } from 'lucide-react'
+import { Zap, Trophy, Layers, Settings, LogOut, X, QrCode } from 'lucide-react'
 import { AvatarCircle } from '@/components/ui/AvatarCircle'
 import { cn } from '@/lib/utils'
 import type { DashboardTab } from '@/types'
@@ -19,6 +19,7 @@ const DRAWER_ITEMS: { key: DashboardTab; label: string; icon: typeof Settings }[
   { key: 'actions', label: 'משימות', icon: Zap },
   { key: 'rewards', label: 'פרסים', icon: Trophy },
   { key: 'groups', label: 'קבוצות', icon: Layers },
+  { key: 'qr-cards', label: 'כרטיסי QR', icon: QrCode },
   { key: 'event', label: 'הגדרות אירוע', icon: Settings },
 ]
 

@@ -7,11 +7,13 @@ import { Toast } from '@/components/ui/Toast'
 import { TransactionRow } from './TransactionRow'
 import { ParticipantPreview } from './ParticipantPreview'
 import { CelebrationModal } from './CelebrationModal'
+import { QrScanner } from './QrScanner'
 import { useScoreSubmit } from '@/hooks/useScoreSubmit'
-import type { PointTransactionWithDetails, NewlyAwardedReward, Group } from '@/types'
+import type { PointTransactionWithDetails, NewlyAwardedReward, Group, QrScoringMode } from '@/types'
 
 interface ScoreEntryProps {
   eventId: string
+  qrScoringMode: QrScoringMode
 }
 
 interface ParticipantPreviewData {
@@ -31,7 +33,7 @@ interface ActionPreviewData {
   points: number
 }
 
-export function ScoreEntry({ eventId }: ScoreEntryProps) {
+export function ScoreEntry({ eventId, qrScoringMode }: ScoreEntryProps) {
   const [participantCode, setParticipantCode] = useState('')
   const [actionCode, setActionCode] = useState('')
   const [transactions, setTransactions] = useState<PointTransactionWithDetails[]>([])
@@ -231,6 +233,11 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
     participantInputRef.current?.focus()
   }
 
+  const handleQrScan = useCallback((data: { participantCode?: string; actionCode?: string }) => {
+    if (data.participantCode) setParticipantCode(data.participantCode)
+    if (data.actionCode) setActionCode(data.actionCode)
+  }, [])
+
   const bothValid = participantPreview && actionPreview
   const submitLabel = bothValid
     ? `הענקת ${actionPreview.points >= 0 ? '+' : ''}${actionPreview.points} נק׳`
@@ -252,6 +259,9 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
 
           <div className="mb-6 rounded-2xl border border-game-border bg-game-card overflow-hidden">
             <form onSubmit={handleSubmit} className="space-y-4 p-5">
+              <div className="flex justify-end">
+                <QrScanner mode={qrScoringMode} onScan={handleQrScan} />
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">שחקן</label>

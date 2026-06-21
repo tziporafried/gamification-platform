@@ -19,7 +19,7 @@ const TABS: { key: DashboardTab; label: string; icon: typeof Home }[] = [
   { key: 'participants', label: 'משתתפים', icon: Users },
 ]
 
-const MORE_TABS: DashboardTab[] = ['actions', 'rewards', 'groups', 'event']
+const MORE_TABS: DashboardTab[] = ['actions', 'rewards', 'groups', 'qr-cards', 'event']
 
 export function BottomTabBar({
   activeTab,

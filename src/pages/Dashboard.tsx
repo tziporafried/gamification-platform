@@ -11,6 +11,7 @@ import { ActionList } from '@/components/actions/ActionList'
 import { RewardList } from '@/components/rewards/RewardList'
 import { ScoreEntry } from '@/components/scoring/ScoreEntry'
 import { LeaderboardSection } from '@/components/leaderboard/LeaderboardSection'
+import { QrCardGenerator } from '@/components/qr-cards/QrCardGenerator'
 import type { Event, DashboardTab } from '@/types'
 
 export function Dashboard() {
@@ -89,7 +90,10 @@ export function Dashboard() {
         <RewardList eventId={event.id} onCountChange={noop} />
       )}
       {activeTab === 'score' && (
-        <ScoreEntry eventId={event.id} />
+        <ScoreEntry eventId={event.id} qrScoringMode={event.qr_scoring_mode} />
+      )}
+      {activeTab === 'qr-cards' && (
+        <QrCardGenerator eventId={event.id} qrScoringMode={event.qr_scoring_mode} />
       )}
       {activeTab === 'leaderboard' && (
         <LeaderboardSection eventId={event.id} themeColor={event.theme_color} />

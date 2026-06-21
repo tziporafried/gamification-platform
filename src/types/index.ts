@@ -1,4 +1,5 @@
 export type EventStatus = 'draft' | 'active' | 'finished' | 'archived';
+export type QrScoringMode = 'combined' | 'separate';
 
 export interface Event {
   id: string;
@@ -8,6 +9,7 @@ export interface Event {
   logo_url: string | null;
   theme_color: string;
   status: EventStatus;
+  qr_scoring_mode: QrScoringMode;
   created_at: string;
   updated_at: string;
 }
@@ -117,4 +119,4 @@ export interface NewlyAwardedReward {
   out_total_points: number;
 }
 
-export type DashboardTab = 'home' | 'event' | 'participants' | 'groups' | 'actions' | 'rewards' | 'score' | 'leaderboard';
+export type DashboardTab = 'home' | 'event' | 'participants' | 'groups' | 'actions' | 'rewards' | 'score' | 'leaderboard' | 'qr-cards';

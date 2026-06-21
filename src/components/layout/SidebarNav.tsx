@@ -1,4 +1,4 @@
-import { Home, BarChart3, Target, Users, Zap, Trophy, Layers, Settings, LogOut } from 'lucide-react'
+import { Home, BarChart3, Target, Users, Zap, Trophy, Layers, Settings, LogOut, QrCode } from 'lucide-react'
 import { AvatarCircle } from '@/components/ui/AvatarCircle'
 import { cn } from '@/lib/utils'
 import type { DashboardTab } from '@/types'
@@ -21,6 +21,7 @@ const NAV_ITEMS: { key: DashboardTab; label: string; icon: typeof Home }[] = [
   { key: 'actions', label: 'משימות', icon: Zap },
   { key: 'rewards', label: 'פרסים', icon: Trophy },
   { key: 'groups', label: 'קבוצות', icon: Layers },
+  { key: 'qr-cards', label: 'כרטיסי QR', icon: QrCode },
   { key: 'event', label: 'הגדרות', icon: Settings },
 ]
 

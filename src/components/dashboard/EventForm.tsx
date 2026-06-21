@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 import { ColorPicker } from '@/components/ui/ColorPicker'
-import type { Event, EventStatus } from '@/types'
+import type { Event, EventStatus, QrScoringMode } from '@/types'
 
 const STATUS_LABELS: Record<EventStatus, string> = {
   draft: 'טיוטה',
@@ -30,6 +30,7 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
   const [slugManual, setSlugManual] = useState(!!event)
   const [themeColor, setThemeColor] = useState(event?.theme_color ?? '#6366f1')
   const [status, setStatus] = useState<EventStatus>(event?.status ?? 'draft')
+  const [qrScoringMode, setQrScoringMode] = useState<QrScoringMode>(event?.qr_scoring_mode ?? 'combined')
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(event?.logo_url ?? null)
   const [error, setError] = useState('')
@@ -101,6 +102,7 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
             slug: slug.trim(),
             theme_color: themeColor,
             status,
+            qr_scoring_mode: qrScoringMode,
             logo_url: logoUrl,
           })
           .eq('id', event.id)
@@ -118,6 +120,7 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
             slug: slug.trim(),
             theme_color: themeColor,
             status,
+            qr_scoring_mode: qrScoringMode,
             logo_url: logoUrl,
           })
           .select()
@@ -221,6 +224,44 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
+          </div>
+        )}
+
+        {isEdit && (
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              מצב ניקוד באמצעות QR
+            </label>
+            <div className="space-y-2">
+              <label className="flex items-start gap-3 rounded-xl border border-game-border p-3 cursor-pointer hover:bg-white/5 transition-colors">
+                <input
+                  type="radio"
+                  name="qr_scoring_mode"
+                  value="combined"
+                  checked={qrScoringMode === 'combined'}
+                  onChange={() => setQrScoringMode('combined')}
+                  className="mt-0.5 text-brand-500 focus:ring-brand-500"
+                />
+                <div>
+                  <span className="text-sm font-medium text-white">קוד QR משולב</span>
+                  <p className="text-xs text-gray-500 mt-0.5">סריקה אחת ממלאת גם משתתף וגם משימה.</p>
+                </div>
+              </label>
+              <label className="flex items-start gap-3 rounded-xl border border-game-border p-3 cursor-pointer hover:bg-white/5 transition-colors">
+                <input
+                  type="radio"
+                  name="qr_scoring_mode"
+                  value="separate"
+                  checked={qrScoringMode === 'separate'}
+                  onChange={() => setQrScoringMode('separate')}
+                  className="mt-0.5 text-brand-500 focus:ring-brand-500"
+                />
+                <div>
+                  <span className="text-sm font-medium text-white">שני קודי QR</span>
+                  <p className="text-xs text-gray-500 mt-0.5">סריקה של משתתף וסריקה של משימה בנפרד.</p>
+                </div>
+              </label>
+            </div>
           </div>
         )}
 
