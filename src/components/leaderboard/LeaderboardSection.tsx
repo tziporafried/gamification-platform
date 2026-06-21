@@ -4,8 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useSound } from '@/hooks/useSound'
 import { LeaderboardToggle, type LeaderboardView } from './LeaderboardToggle'
 import { SoundToggle } from './SoundToggle'
-import { LeaderboardPodium } from './LeaderboardPodium'
-import { LeaderboardTable } from './LeaderboardTable'
+import { WinnersReveal } from './WinnersReveal'
 import { LeaderboardEmptyState } from './LeaderboardEmptyState'
 import type { ParticipantLeaderboardEntry, GroupLeaderboardEntry } from '@/types'
 
@@ -32,7 +31,7 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
   const [groupData, setGroupData] = useState<GroupLeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const { play, muted, toggleMute } = useSound()
+  const { play, playApplause, muted, toggleMute } = useSound()
 
   const fetchLeaderboards = useCallback(async () => {
     setError('')
@@ -85,29 +84,10 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
     activeView === 'participants' ? rankedParticipants : rankedGroups
   const isEmpty = currentEntries.length === 0
 
-  const podiumEntries = currentEntries
+  const top3Entries = currentEntries
     .filter((e) => e.rank <= 3)
     .map((e) => ({
       rank: e.rank as 1 | 2 | 3,
-      name:
-        activeView === 'participants'
-          ? (e as (typeof rankedParticipants)[number]).participant_name
-          : (e as (typeof rankedGroups)[number]).group_name,
-      detail:
-        activeView === 'participants'
-          ? (e as (typeof rankedParticipants)[number]).external_id
-          : undefined,
-      color:
-        activeView === 'groups'
-          ? (e as (typeof rankedGroups)[number]).group_color
-          : undefined,
-      total_points: e.total_points,
-    }))
-
-  const tableEntries = currentEntries
-    .filter((e) => e.rank > 3)
-    .map((e) => ({
-      rank: e.rank,
       name:
         activeView === 'participants'
           ? (e as (typeof rankedParticipants)[number]).participant_name
@@ -135,7 +115,7 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
 
   return (
     <div className="-mx-4 -mt-6 md:-mt-8">
-      <div className="bg-game-radial px-4 pt-6 pb-2 md:pt-8">
+      <div className="bg-game-radial px-4 pt-6 pb-2 md:pt-8 min-h-[70vh]">
         <div className="mx-auto max-w-5xl">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -166,22 +146,17 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
               <LeaderboardEmptyState themeColor={themeColor} message={emptyMessage} />
             </div>
           ) : (
-            <LeaderboardPodium entries={podiumEntries} themeColor={themeColor} />
+            <WinnersReveal
+              key={activeView}
+              entries={top3Entries}
+              themeColor={themeColor}
+              play={play}
+              playApplause={playApplause}
+              muted={muted}
+            />
           )}
         </div>
       </div>
-
-      {!isEmpty && tableEntries.length > 0 && (
-        <div className="bg-game px-4 pb-6 pt-4">
-          <div className="mx-auto max-w-5xl">
-            <LeaderboardTable entries={tableEntries} themeColor={themeColor} />
-          </div>
-        </div>
-      )}
-
-      {!isEmpty && tableEntries.length === 0 && (
-        <div className="h-4 bg-game" />
-      )}
     </div>
   )
 }
