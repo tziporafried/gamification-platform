@@ -16,7 +16,7 @@ export function ColorPicker({ label, value, onChange, error }: ColorPickerProps)
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+        <label className="block text-sm font-medium text-gray-300 mb-1">{label}</label>
       )}
       <div className="flex items-center gap-3">
         <div className="flex gap-1.5">
@@ -27,7 +27,7 @@ export function ColorPicker({ label, value, onChange, error }: ColorPickerProps)
               onClick={() => onChange(color)}
               className={cn(
                 'w-7 h-7 rounded-full border-2 transition-transform hover:scale-110',
-                value === color ? 'border-gray-900 scale-110' : 'border-transparent',
+                value === color ? 'border-white scale-110' : 'border-transparent',
               )}
               style={{ backgroundColor: color }}
             />
@@ -37,10 +37,10 @@ export function ColorPicker({ label, value, onChange, error }: ColorPickerProps)
           type="color"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-8 w-8 cursor-pointer rounded border border-gray-300"
+          className="h-8 w-8 cursor-pointer rounded border border-game-border bg-game-dark"
         />
       </div>
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-red-400">{error}</p>}
     </div>
   )
 }

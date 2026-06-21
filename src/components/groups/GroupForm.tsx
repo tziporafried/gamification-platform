@@ -71,7 +71,7 @@ export function GroupForm({ eventId, group, isOpen, onClose, onSaved }: GroupFor
     <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'Edit Group' : 'Create Group'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
         )}
 
         <Input

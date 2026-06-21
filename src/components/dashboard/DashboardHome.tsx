@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { Users, Zap, Trophy, ChevronRight, ClipboardList } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { StatCard } from '@/components/ui/StatCard'
-import { Button } from '@/components/ui/Button'
 import { TransactionRow } from '@/components/scoring/TransactionRow'
 import { HomeLeaderboard } from './HomeLeaderboard'
 import { QuickScoreCard } from './QuickScoreCard'
@@ -97,7 +96,6 @@ export function DashboardHome({ eventId, themeColor, onTabChange }: DashboardHom
     }))
     setRecentRewards(rewardEntries)
 
-    // Leaderboard: slice top 10, then fetch group associations
     const allEntries = (leaderboardResult.data ?? []) as ParticipantLeaderboardEntry[]
     const ranked = computeRanks(allEntries)
     const top10 = ranked.slice(0, 10)
@@ -137,85 +135,86 @@ export function DashboardHome({ eventId, themeColor, onTabChange }: DashboardHom
   if (loading) {
     return (
       <div className="flex justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* ① Stat Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <StatCard
-          icon={<Users size={20} />}
-          label="Participants"
-          value={participantCount}
-          iconColor={themeColor}
-        />
-        <StatCard
-          icon={<Zap size={20} />}
-          label="Total Points"
-          value={totalPoints}
-          iconColor="#059669"
-        />
-        <StatCard
-          icon={<Trophy size={20} />}
-          label="Rewards Unlocked"
-          value={rewardsUnlocked}
-          iconColor="#d97706"
-          className="col-span-2 sm:col-span-1"
-        />
-      </div>
-
-      {/* ② Top 10 Leaderboard */}
-      <HomeLeaderboard
-        entries={leaderboard}
-        themeColor={themeColor}
-        onViewFull={() => onTabChange('leaderboard')}
-      />
-
-      {/* ③ Quick Score */}
-      <QuickScoreCard eventId={eventId} onScoreSubmitted={fetchHomeData} />
-
-      {/* ④ Recent Activity */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-card overflow-hidden">
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50">
-              <ClipboardList size={18} className="text-brand-500" />
-            </div>
-            <h3 className="text-base font-bold text-gray-900">Recent Activity</h3>
+    <div className="-mx-4 -mt-6 md:-mt-8">
+      <div className="bg-game-radial px-4 pt-6 pb-6 md:pt-8">
+        <div className="mx-auto max-w-5xl space-y-5">
+          {/* Hero Stats */}
+          <div className="grid grid-cols-3 gap-3">
+            <StatCard
+              icon={<Users size={20} />}
+              label="Players"
+              value={participantCount}
+              gradient="from-brand-500 to-brand-700"
+            />
+            <StatCard
+              icon={<Zap size={20} />}
+              label="Total XP"
+              value={totalPoints}
+              gradient="from-emerald-500 to-emerald-700"
+            />
+            <StatCard
+              icon={<Trophy size={20} />}
+              label="Unlocked"
+              value={rewardsUnlocked}
+              gradient="from-amber-500 to-amber-700"
+            />
           </div>
+
+          {/* Leaderboard */}
+          <HomeLeaderboard
+            entries={leaderboard}
+            themeColor={themeColor}
+            onViewFull={() => onTabChange('leaderboard')}
+          />
+
+          {/* Quick Score */}
+          <QuickScoreCard eventId={eventId} onScoreSubmitted={fetchHomeData} />
+
+          {/* Battle Log */}
+          <div className="rounded-2xl border border-game-border bg-game-card overflow-hidden">
+            <div className="flex items-center justify-between border-b border-game-border px-5 py-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/20">
+                  <ClipboardList size={18} className="text-brand-400" />
+                </div>
+                <h3 className="text-base font-bold text-white">Battle Log</h3>
+              </div>
+            </div>
+
+            {recentTransactions.length === 0 ? (
+              <div className="px-5 py-10 text-center">
+                <p className="text-sm text-gray-500">No activity yet. Award points to see the action here.</p>
+              </div>
+            ) : (
+              <>
+                <div className="p-3 space-y-1.5">
+                  {recentTransactions.map((tx) => (
+                    <TransactionRow key={tx.id} transaction={tx} />
+                  ))}
+                </div>
+                <div className="border-t border-game-border px-5 py-3">
+                  <button
+                    onClick={() => onTabChange('score')}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold text-brand-400 transition-colors hover:bg-brand-600/10 hover:text-brand-300"
+                  >
+                    View All Activity
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Recent Rewards */}
+          <RecentRewards entries={recentRewards} />
         </div>
-
-        {recentTransactions.length === 0 ? (
-          <div className="px-5 py-10 text-center">
-            <p className="text-sm text-gray-500">No activity yet. Submit scores to see them here.</p>
-          </div>
-        ) : (
-          <>
-            <div className="p-3 space-y-2">
-              {recentTransactions.map((tx) => (
-                <TransactionRow key={tx.id} transaction={tx} />
-              ))}
-            </div>
-            <div className="border-t border-gray-100 px-5 py-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onTabChange('score')}
-                className="w-full justify-center gap-1 text-brand-600 hover:text-brand-700 hover:bg-brand-50"
-              >
-                View All Transactions
-                <ChevronRight size={14} />
-              </Button>
-            </div>
-          </>
-        )}
       </div>
-
-      {/* ⑤ Recently Unlocked Rewards */}
-      <RecentRewards entries={recentRewards} />
     </div>
   )
 }

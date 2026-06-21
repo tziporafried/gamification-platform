@@ -9,9 +9,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variants = {
   primary: 'bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-500',
-  secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500',
-  outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-brand-500',
-  ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-500',
+  secondary: 'bg-white/10 text-gray-200 hover:bg-white/15 focus:ring-gray-500',
+  outline: 'border border-game-border text-gray-300 hover:bg-white/5 focus:ring-brand-500',
+  ghost: 'text-gray-400 hover:bg-white/10 hover:text-gray-200 focus:ring-gray-500',
   danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
   gradient: 'gradient-brand text-white hover:opacity-90 focus:ring-brand-500 shadow-sm',
 }
@@ -28,7 +28,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       className={cn(
         'inline-flex items-center justify-center font-medium rounded-lg transition-all',
-        'focus:outline-none focus:ring-2 focus:ring-offset-2',
+        'focus:outline-none focus:ring-2 focus:ring-offset-0',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         'active:scale-[0.97]',
         variants[variant],

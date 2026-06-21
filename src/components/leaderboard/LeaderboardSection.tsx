@@ -65,14 +65,14 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+      <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">
         {error}
       </div>
     )
@@ -134,41 +134,56 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
   }
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-lg"
-            style={{ backgroundColor: themeColor + '14' }}
-          >
-            <Trophy size={18} style={{ color: themeColor }} />
+    <div className="-mx-4 -mt-6 md:-mt-8">
+      {/* Arena header */}
+      <div className="bg-game-radial px-4 pt-6 pb-2 md:pt-8">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
+                <Trophy size={22} className="text-amber-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Arena</h2>
+                <p className="text-xs text-gray-400">Live rankings</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <SoundToggle
+                muted={muted}
+                onToggle={handleSoundToggle}
+                themeColor={themeColor}
+              />
+              <LeaderboardToggle
+                activeView={activeView}
+                onViewChange={setActiveView}
+                themeColor={themeColor}
+              />
+            </div>
           </div>
-          <h2 className="text-lg font-bold text-gray-900">Leaderboard</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <SoundToggle
-            muted={muted}
-            onToggle={handleSoundToggle}
-            themeColor={themeColor}
-          />
-          <LeaderboardToggle
-            activeView={activeView}
-            onViewChange={setActiveView}
-            themeColor={themeColor}
-          />
+
+          {isEmpty ? (
+            <div className="pb-6">
+              <LeaderboardEmptyState themeColor={themeColor} message={emptyMessage} />
+            </div>
+          ) : (
+            <LeaderboardPodium entries={podiumEntries} themeColor={themeColor} />
+          )}
         </div>
       </div>
 
-      {isEmpty ? (
-        <LeaderboardEmptyState
-          themeColor={themeColor}
-          message={emptyMessage}
-        />
-      ) : (
-        <>
-          <LeaderboardPodium entries={podiumEntries} themeColor={themeColor} />
-          <LeaderboardTable entries={tableEntries} themeColor={themeColor} />
-        </>
+      {/* Rankings table */}
+      {!isEmpty && tableEntries.length > 0 && (
+        <div className="bg-game px-4 pb-6 pt-4">
+          <div className="mx-auto max-w-5xl">
+            <LeaderboardTable entries={tableEntries} themeColor={themeColor} />
+          </div>
+        </div>
+      )}
+
+      {/* Pad bottom if no table entries */}
+      {!isEmpty && tableEntries.length === 0 && (
+        <div className="h-4 bg-game" />
       )}
     </div>
   )

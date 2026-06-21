@@ -6,33 +6,32 @@ interface StatCardProps {
   icon: ReactNode
   label: string
   value: number
-  iconColor?: string
+  gradient: string
   className?: string
 }
 
-export function StatCard({ icon, label, value, iconColor, className }: StatCardProps) {
+export function StatCard({ icon, label, value, gradient, className }: StatCardProps) {
   return (
     <div
       className={cn(
-        'rounded-xl border border-gray-200 bg-white p-4 shadow-card transition-shadow hover:shadow-card-hover',
+        'overflow-hidden rounded-2xl border border-game-border bg-game-card p-4 transition-all duration-200 hover:border-brand-700/50',
         className,
       )}
     >
       <div className="flex items-center gap-3">
         <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-          style={{
-            backgroundColor: (iconColor || '#7c3aed') + '14',
-            color: iconColor || '#7c3aed',
-          }}
+          className={cn(
+            'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white',
+            gradient,
+          )}
         >
           {icon}
         </div>
         <div className="min-w-0">
-          <p className="text-xs font-medium text-gray-500">{label}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">{label}</p>
           <AnimatedCounter
             value={value}
-            className="text-xl font-bold text-gray-900"
+            className="text-2xl font-bold text-white"
           />
         </div>
       </div>

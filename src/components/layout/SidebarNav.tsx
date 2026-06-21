@@ -34,9 +34,8 @@ export function SidebarNav({
   onSignOut,
 }: SidebarNavProps) {
   return (
-    <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:z-20 md:w-16 lg:w-60 md:border-r md:border-gray-200 md:bg-white">
-      {/* Logo section */}
-      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-gray-100 px-4">
+    <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:z-20 md:w-16 lg:w-60 md:bg-game-dark md:border-r md:border-game-border">
+      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-game-border px-4">
         {eventLogoUrl ? (
           <img src={eventLogoUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
         ) : (
@@ -44,12 +43,11 @@ export function SidebarNav({
             G
           </div>
         )}
-        <span className="hidden lg:block truncate text-sm font-bold text-gray-900">
+        <span className="hidden lg:block truncate text-sm font-bold text-white">
           {eventName}
         </span>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 py-3">
         <ul className="space-y-1">
           {NAV_ITEMS.map(({ key, label, icon: Icon }) => {
@@ -59,20 +57,20 @@ export function SidebarNav({
                 <button
                   onClick={() => onTabChange(key)}
                   className={cn(
-                    'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                    'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
                     isActive
-                      ? 'bg-brand-50 text-brand-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                      ? 'bg-brand-600/20 text-white'
+                      : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
                   )}
                 >
                   {isActive && (
-                    <div className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-brand-600" />
+                    <div className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full gradient-brand" />
                   )}
                   <Icon
                     size={20}
                     className={cn(
-                      'shrink-0',
-                      isActive ? 'text-brand-600' : 'text-gray-400 group-hover:text-gray-600',
+                      'shrink-0 transition-colors',
+                      isActive ? 'text-brand-400' : 'text-gray-500 group-hover:text-gray-300',
                     )}
                   />
                   <span className="hidden lg:block">{label}</span>
@@ -83,12 +81,11 @@ export function SidebarNav({
         </ul>
       </nav>
 
-      {/* User section */}
-      <div className="shrink-0 border-t border-gray-100 p-3">
+      <div className="shrink-0 border-t border-game-border p-3">
         <div className="hidden lg:flex items-center gap-2.5 rounded-lg px-2 py-2">
           <AvatarCircle name={userName} size="sm" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium text-gray-900">{userName}</p>
+            <p className="truncate text-xs font-medium text-gray-200">{userName}</p>
             <p className="truncate text-[10px] text-gray-500">{userEmail}</p>
           </div>
         </div>
@@ -97,7 +94,7 @@ export function SidebarNav({
         </div>
         <button
           onClick={onSignOut}
-          className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+          className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-white/5 hover:text-gray-300"
         >
           <LogOut size={18} className="shrink-0" />
           <span className="hidden lg:block">Log Out</span>

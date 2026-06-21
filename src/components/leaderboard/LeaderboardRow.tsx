@@ -8,7 +8,7 @@ interface LeaderboardRowProps {
   detail?: string
   color?: string
   totalPoints: number
-  themeColor: string
+  themeColor?: string
   animationDelay: number
 }
 
@@ -18,15 +18,15 @@ export function LeaderboardRow({
   detail,
   color,
   totalPoints,
-  themeColor,
   animationDelay,
 }: LeaderboardRowProps) {
   return (
     <div
       className={cn(
         'opacity-0 animate-fade-in-up',
-        'flex items-center gap-3 rounded-xl bg-white px-4 py-3',
-        'transition-all duration-200 hover:bg-gray-50',
+        'flex items-center gap-3 rounded-xl px-4 py-3',
+        'bg-game-card/50 border border-game-border/50',
+        'transition-all duration-200 hover:bg-game-card hover:border-game-border',
       )}
       style={{ animationDelay: `${animationDelay}s` }}
     >
@@ -35,17 +35,15 @@ export function LeaderboardRow({
       <AvatarCircle name={name} size="sm" ringColor={color} />
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-gray-900">{name}</p>
+        <p className="truncate text-sm font-medium text-gray-200">{name}</p>
         {detail && (
           <p className="truncate text-xs text-gray-500">{detail}</p>
         )}
       </div>
 
-      <span
-        className="shrink-0 text-sm font-bold tabular-nums"
-        style={{ color: themeColor }}
-      >
-        {totalPoints.toLocaleString()} <span className="text-xs font-medium opacity-70">pts</span>
+      <span className="shrink-0 text-sm font-bold tabular-nums text-brand-400">
+        {totalPoints.toLocaleString()}
+        <span className="ml-0.5 text-xs font-medium text-brand-500/50">pts</span>
       </span>
     </div>
   )

@@ -37,7 +37,7 @@ export function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-surface">
+      <div className="flex h-screen items-center justify-center bg-game-dark">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
       </div>
     )
@@ -48,7 +48,7 @@ export function Dashboard() {
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-surface">
+      <div className="min-h-screen bg-game-dark">
         <main className="mx-auto max-w-3xl px-4 py-8">
           <EventForm onSaved={(e) => setEvent(e)} />
         </main>

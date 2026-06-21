@@ -23,22 +23,22 @@ export function ParticipantPreview({
   const primaryGroupColor = groups.length > 0 ? groups[0].color : undefined
 
   return (
-    <div className="mt-2 rounded-lg border border-brand-100 bg-brand-50/40 p-3 animate-slide-up">
+    <div className="mt-2 rounded-xl border border-brand-500/20 bg-brand-500/10 p-3 animate-slide-up">
       <div className="flex items-center gap-3">
         <AvatarCircle name={name} size="md" ringColor={primaryGroupColor} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-semibold text-gray-900">{name}</p>
-            <span className="shrink-0 rounded-md bg-white px-1.5 py-0.5 font-mono text-[11px] text-gray-500">
+            <p className="truncate text-sm font-semibold text-white">{name}</p>
+            <span className="shrink-0 rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[11px] text-gray-400">
               {externalId}
             </span>
           </div>
           <div className="mt-0.5 flex items-center gap-2">
-            <span className="text-xs font-bold text-brand-600">
+            <span className="text-xs font-bold text-brand-400">
               {totalPoints.toLocaleString()} pts
             </span>
             {rank !== null && (
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-500">
                 #{rank} rank
               </span>
             )}

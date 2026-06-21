@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback, useRef, FormEvent } from 'react'
-import { Target, Zap } from 'lucide-react'
+import { Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { EmptyState } from '@/components/ui/EmptyState'
 import { PointsFlyUp } from '@/components/ui/PointsFlyUp'
 import { Toast } from '@/components/ui/Toast'
 import { TransactionRow } from './TransactionRow'
@@ -235,113 +233,122 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
 
   const bothValid = participantPreview && actionPreview
   const submitLabel = bothValid
-    ? `Submit Score (${actionPreview.points >= 0 ? '+' : ''}${actionPreview.points} pts)`
-    : 'Submit Score'
+    ? `AWARD ${actionPreview.points >= 0 ? '+' : ''}${actionPreview.points} PTS`
+    : 'Award Points'
 
   return (
-    <div>
-      <div className="mb-4 flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50">
-          <Target size={18} className="text-brand-600" />
-        </div>
-        <h2 className="text-lg font-bold text-gray-900">Score Entry</h2>
-      </div>
-
-      <div className="relative mb-6 rounded-xl border border-gray-200 bg-white shadow-card overflow-hidden">
-        <div className="h-1 w-full gradient-brand" />
-        <form onSubmit={handleSubmit} className="space-y-4 p-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Input
-                ref={participantInputRef}
-                id="participant-code"
-                label="Participant Code"
-                placeholder="e.g. P-1001"
-                value={participantCode}
-                onChange={(e) => setParticipantCode(e.target.value)}
-                autoFocus
-              />
-              {participantLoading && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
-                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-                  Looking up...
-                </div>
-              )}
-              {participantPreview && !participantLoading && (
-                <ParticipantPreview
-                  name={participantPreview.name}
-                  externalId={participantPreview.externalId}
-                  totalPoints={participantPreview.totalPoints}
-                  rank={participantPreview.rank}
-                  groups={participantPreview.groups}
-                  nextReward={participantPreview.nextReward}
-                />
-              )}
+    <div className="-mx-4 -mt-6 md:-mt-8">
+      <div className="bg-game-radial px-4 pt-6 pb-6 md:pt-8">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20">
+              <Zap size={22} className="text-emerald-400" />
             </div>
             <div>
-              <Input
-                id="action-code"
-                label="Action Code"
-                placeholder="e.g. A-1001"
-                value={actionCode}
-                onChange={(e) => setActionCode(e.target.value)}
-              />
-              {actionLoading && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
-                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-                  Looking up...
-                </div>
-              )}
-              {actionPreview && !actionLoading && (
-                <div className="mt-2 animate-slide-up rounded-lg border border-emerald-100 bg-emerald-50/40 p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Zap size={14} className="text-emerald-500" />
-                      <span className="text-sm font-medium text-gray-900">{actionPreview.name}</span>
+              <h2 className="text-xl font-bold text-white">Award Points</h2>
+              <p className="text-xs text-gray-400">Power up your players</p>
+            </div>
+          </div>
+
+          <div className="mb-6 rounded-2xl border border-game-border bg-game-card overflow-hidden">
+            <form onSubmit={handleSubmit} className="space-y-4 p-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Player</label>
+                  <input
+                    ref={participantInputRef}
+                    id="participant-code"
+                    placeholder="P-1001"
+                    value={participantCode}
+                    onChange={(e) => setParticipantCode(e.target.value)}
+                    autoFocus
+                    className="w-full rounded-xl border border-game-border bg-game-dark px-4 py-3 text-sm font-medium text-white placeholder-gray-500 transition-all focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                  {participantLoading && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+                      Looking up...
                     </div>
-                    <span className={`text-sm font-bold ${actionPreview.points >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {actionPreview.points >= 0 ? '+' : ''}{actionPreview.points} pts
-                    </span>
-                  </div>
+                  )}
+                  {participantPreview && !participantLoading && (
+                    <ParticipantPreview
+                      name={participantPreview.name}
+                      externalId={participantPreview.externalId}
+                      totalPoints={participantPreview.totalPoints}
+                      rank={participantPreview.rank}
+                      groups={participantPreview.groups}
+                      nextReward={participantPreview.nextReward}
+                    />
+                  )}
                 </div>
-              )}
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Action</label>
+                  <input
+                    id="action-code"
+                    placeholder="A-1001"
+                    value={actionCode}
+                    onChange={(e) => setActionCode(e.target.value)}
+                    className="w-full rounded-xl border border-game-border bg-game-dark px-4 py-3 text-sm font-medium text-white placeholder-gray-500 transition-all focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                  {actionLoading && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+                      Looking up...
+                    </div>
+                  )}
+                  {actionPreview && !actionLoading && (
+                    <div className="mt-2 animate-slide-up rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Zap size={14} className="text-emerald-400" />
+                          <span className="text-sm font-medium text-gray-200">{actionPreview.name}</span>
+                        </div>
+                        <span className={`text-sm font-bold ${actionPreview.points >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {actionPreview.points >= 0 ? '+' : ''}{actionPreview.points} pts
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="relative">
+                <Button
+                  type="submit"
+                  variant="gradient"
+                  size="lg"
+                  loading={submitting}
+                  className={bothValid ? 'w-full animate-glow-pulse font-bold tracking-wide' : 'w-full font-bold tracking-wide'}
+                >
+                  <Zap size={16} className="mr-1.5" />
+                  {submitLabel}
+                </Button>
+                <PointsFlyUp points={flyUpPoints} onDone={() => setFlyUpPoints(null)} />
+              </div>
+            </form>
+          </div>
+
+          <div className="mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Recent Activity</h3>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
             </div>
-          </div>
-
-          <div className="relative">
-            <Button
-              type="submit"
-              variant={bothValid ? 'gradient' : 'primary'}
-              loading={submitting}
-              className={bothValid ? 'w-full sm:w-auto' : ''}
-            >
-              {submitLabel}
-            </Button>
-            <PointsFlyUp points={flyUpPoints} onDone={() => setFlyUpPoints(null)} />
-          </div>
-        </form>
-      </div>
-
-      <div className="mb-3 flex items-center gap-2">
-        <h3 className="text-sm font-semibold text-gray-900">Recent Transactions</h3>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-8">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
+          ) : transactions.length === 0 ? (
+            <div className="rounded-2xl border border-game-border bg-game-card/50 px-6 py-12 text-center">
+              <p className="text-sm text-gray-500">No transactions yet. Award points to see activity here.</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {transactions.map((tx) => (
+                <TransactionRow key={tx.id} transaction={tx} />
+              ))}
+            </div>
+          )}
         </div>
-      ) : transactions.length === 0 ? (
-        <EmptyState
-          title="No transactions yet"
-          description="Submit scores above to create point transactions."
-        />
-      ) : (
-        <div className="space-y-2">
-          {transactions.map((tx) => (
-            <TransactionRow key={tx.id} transaction={tx} />
-          ))}
-        </div>
-      )}
+      </div>
 
       {toast && (
         <Toast

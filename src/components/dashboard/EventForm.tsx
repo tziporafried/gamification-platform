@@ -143,13 +143,13 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
 
   return (
     <Card className="p-6">
-      <h2 className="mb-6 text-xl font-semibold text-gray-900">
+      <h2 className="mb-6 text-xl font-semibold text-white">
         {isEdit ? 'Edit Event' : 'Create Your Event'}
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
         )}
 
         <Input
@@ -175,7 +175,7 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
         />
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-300 mb-1">
             Event Logo
           </label>
           <div className="flex items-center gap-4">
@@ -183,7 +183,7 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
               <img
                 src={logoPreview}
                 alt="Logo preview"
-                className="h-16 w-16 rounded-lg object-cover border border-gray-200"
+                className="h-16 w-16 rounded-lg object-cover border border-game-border"
               />
             )}
             <div>
@@ -208,14 +208,14 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
 
         {isEdit && (
           <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="status" className="block text-sm font-medium text-gray-300 mb-1">
               Status
             </label>
             <select
               id="status"
               value={status}
               onChange={(e) => setStatus(e.target.value as EventStatus)}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="block w-full rounded-xl border border-game-border bg-game-dark px-3 py-2 text-sm text-white shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             >
               {Object.entries(STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
@@ -225,7 +225,7 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
         )}
 
         <div className="flex gap-3 pt-2">
-          <Button type="submit" loading={saving}>
+          <Button type="submit" variant="gradient" loading={saving}>
             {isEdit ? 'Save Changes' : 'Create Event'}
           </Button>
           {onCancel && (

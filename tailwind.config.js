@@ -21,12 +21,19 @@ export default {
           950: '#1e1b4b',
         },
         surface: '#F8F7FC',
+        game: {
+          dark: '#0f0b1e',
+          card: '#1a1433',
+          border: '#2d2250',
+        },
       },
       boxShadow: {
         'card': '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
         'card-hover': '0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -2px rgba(0, 0, 0, 0.04)',
         'podium': '0 8px 24px -4px rgba(0, 0, 0, 0.12), 0 4px 8px -4px rgba(0, 0, 0, 0.06)',
         'glow-brand': '0 0 20px rgba(139, 92, 246, 0.25)',
+        'glow-gold': '0 0 24px rgba(251, 191, 36, 0.35)',
+        'glow-emerald': '0 0 20px rgba(52, 211, 153, 0.3)',
       },
       keyframes: {
         'fade-in-up': {
@@ -39,11 +46,15 @@ export default {
         },
         'celebration-bounce': {
           '0%, 100%': { transform: 'scale(1)' },
-          '50%': { transform: 'scale(1.05)' },
+          '50%': { transform: 'scale(1.1)' },
         },
         'glow-pulse': {
-          '0%, 100%': { boxShadow: '0 0 20px rgba(99, 102, 241, 0.3)' },
-          '50%': { boxShadow: '0 0 40px rgba(99, 102, 241, 0.6)' },
+          '0%, 100%': { boxShadow: '0 0 20px rgba(139, 92, 246, 0.3)' },
+          '50%': { boxShadow: '0 0 40px rgba(139, 92, 246, 0.6)' },
+        },
+        'glow-pulse-gold': {
+          '0%, 100%': { boxShadow: '0 0 16px rgba(251, 191, 36, 0.3)' },
+          '50%': { boxShadow: '0 0 32px rgba(251, 191, 36, 0.5)' },
         },
         'confetti-fall': {
           '0%': { transform: 'translateY(-100%) rotate(0deg)', opacity: '1' },
@@ -64,8 +75,8 @@ export default {
         },
         'float-up': {
           '0%': { opacity: '1', transform: 'translateY(0) scale(1)' },
-          '50%': { opacity: '1', transform: 'translateY(-40px) scale(1.1)' },
-          '100%': { opacity: '0', transform: 'translateY(-80px) scale(0.9)' },
+          '30%': { opacity: '1', transform: 'translateY(-30px) scale(1.3)' },
+          '100%': { opacity: '0', transform: 'translateY(-80px) scale(0.8)' },
         },
         'toast-enter': {
           '0%': { opacity: '0', transform: 'translateY(16px) scale(0.95)' },
@@ -75,20 +86,30 @@ export default {
           '0%': { opacity: '1', transform: 'translateY(0) scale(1)' },
           '100%': { opacity: '0', transform: 'translateY(16px) scale(0.95)' },
         },
-        'progress-fill': {
-          '0%': { width: '0%' },
-        },
         'shake': {
           '0%, 100%': { transform: 'translateX(0)' },
           '15%, 45%, 75%': { transform: 'translateX(-4px)' },
           '30%, 60%, 90%': { transform: 'translateX(4px)' },
         },
+        'crown-glow': {
+          '0%, 100%': { filter: 'drop-shadow(0 0 4px rgba(251, 191, 36, 0.4))' },
+          '50%': { filter: 'drop-shadow(0 0 12px rgba(251, 191, 36, 0.8))' },
+        },
+        'border-glow': {
+          '0%, 100%': { borderColor: 'rgba(139, 92, 246, 0.3)' },
+          '50%': { borderColor: 'rgba(139, 92, 246, 0.6)' },
+        },
+        'screen-flash': {
+          '0%': { opacity: '0.7' },
+          '100%': { opacity: '0' },
+        },
       },
       animation: {
         'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
         'scale-in': 'scale-in 0.4s ease-out forwards',
-        'celebration-bounce': 'celebration-bounce 2s ease-in-out infinite',
+        'celebration-bounce': 'celebration-bounce 1.5s ease-in-out infinite',
         'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
+        'glow-pulse-gold': 'glow-pulse-gold 2s ease-in-out infinite',
         'confetti-fall': 'confetti-fall 3s ease-in forwards',
         'shimmer': 'shimmer 2s linear infinite',
         'pop-in': 'pop-in 0.3s ease-out forwards',
@@ -97,6 +118,9 @@ export default {
         'toast-enter': 'toast-enter 0.3s ease-out forwards',
         'toast-exit': 'toast-exit 0.2s ease-in forwards',
         'shake': 'shake 0.5s ease-in-out',
+        'crown-glow': 'crown-glow 2s ease-in-out infinite',
+        'border-glow': 'border-glow 2s ease-in-out infinite',
+        'screen-flash': 'screen-flash 0.3s ease-out forwards',
       },
     },
   },

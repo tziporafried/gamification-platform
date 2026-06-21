@@ -29,24 +29,24 @@ export function Toast({ message, variant, onDismiss, autoDismissMs }: ToastProps
 
   const styles = {
     success: {
-      bg: 'bg-emerald-50 border-emerald-200',
-      text: 'text-emerald-800',
-      icon: <CheckCircle2 size={18} className="text-emerald-500" />,
+      bg: 'bg-emerald-500/15 border-emerald-500/30',
+      text: 'text-emerald-300',
+      icon: <CheckCircle2 size={18} className="text-emerald-400" />,
     },
     error: {
-      bg: 'bg-red-50 border-red-200',
-      text: 'text-red-800',
-      icon: <XCircle size={18} className="text-red-500" />,
+      bg: 'bg-red-500/15 border-red-500/30',
+      text: 'text-red-300',
+      icon: <XCircle size={18} className="text-red-400" />,
     },
   }
 
   const s = styles[variant]
 
   return createPortal(
-    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
+    <div className="fixed bottom-20 md:bottom-6 left-1/2 z-50 -translate-x-1/2">
       <div
         className={cn(
-          'flex items-center gap-2.5 rounded-xl border px-4 py-3 shadow-lg',
+          'flex items-center gap-2.5 rounded-xl border px-4 py-3 shadow-lg backdrop-blur-sm',
           s.bg,
           exiting ? 'animate-toast-exit' : 'animate-toast-enter',
         )}
@@ -55,7 +55,7 @@ export function Toast({ message, variant, onDismiss, autoDismissMs }: ToastProps
         <span className={cn('text-sm font-medium', s.text)}>{message}</span>
         <button
           onClick={handleDismiss}
-          className="ml-1 rounded-md p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+          className="ml-1 rounded-md p-0.5 text-gray-500 hover:text-gray-300 transition-colors"
         >
           <X size={14} />
         </button>

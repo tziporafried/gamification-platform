@@ -1,23 +1,30 @@
 import { Crown, Medal } from 'lucide-react'
 import { AvatarCircle } from '@/components/ui/AvatarCircle'
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
+import { cn } from '@/lib/utils'
 
 const MEDAL_COLORS: Record<number, string> = {
-  1: '#d97706',
-  2: '#6b7280',
-  3: '#c2410c',
+  1: '#fbbf24',
+  2: '#9ca3af',
+  3: '#d97706',
 }
 
-const MEDAL_GRADIENTS: Record<number, string> = {
-  1: 'gradient-gold',
-  2: 'gradient-silver',
-  3: 'gradient-bronze',
-}
-
-const MEDAL_LABELS: Record<number, string> = {
-  1: '1st',
-  2: '2nd',
-  3: '3rd',
+const PODIUM_STYLES: Record<number, { gradient: string; height: string; glow: string }> = {
+  1: {
+    gradient: 'from-amber-500/20 via-yellow-500/10 to-transparent',
+    height: 'pt-6 pb-6',
+    glow: 'glow-border-gold',
+  },
+  2: {
+    gradient: 'from-gray-400/10 via-gray-300/5 to-transparent',
+    height: 'pt-5 pb-5',
+    glow: '',
+  },
+  3: {
+    gradient: 'from-orange-500/10 via-amber-500/5 to-transparent',
+    height: 'pt-5 pb-5',
+    glow: '',
+  },
 }
 
 interface PodiumPlaceProps {
@@ -36,28 +43,33 @@ export function PodiumPlace({
   detail,
   color,
   totalPoints,
-  themeColor,
   animationDelay,
 }: PodiumPlaceProps) {
   const medalColor = MEDAL_COLORS[rank]
+  const style = PODIUM_STYLES[rank]
   const isFirst = rank === 1
 
   return (
     <div
-      className="opacity-0 animate-scale-in flex flex-col items-center rounded-2xl border border-gray-100 bg-white shadow-card transition-all duration-200 hover:shadow-card-hover overflow-hidden"
-      style={{
-        animationDelay: `${animationDelay}s`,
-        boxShadow: isFirst ? `0 8px 32px ${themeColor}20` : undefined,
-      }}
+      className={cn(
+        'opacity-0 animate-scale-in flex flex-col items-center rounded-2xl border border-game-border bg-game-card overflow-hidden transition-all duration-300',
+        style.glow,
+      )}
+      style={{ animationDelay: `${animationDelay}s` }}
     >
-      <div className={`h-1.5 w-full ${MEDAL_GRADIENTS[rank]}`} />
-
-      <div className="flex w-full flex-col items-center px-4 pb-5 pt-5">
+      <div
+        className={cn(
+          'flex w-full flex-col items-center px-4 bg-gradient-to-b',
+          style.gradient,
+          style.height,
+        )}
+      >
         {isFirst && (
           <Crown
-            size={24}
-            className="mb-2 text-amber-500"
-            fill="#f59e0b"
+            size={28}
+            className="mb-2 animate-crown-glow"
+            style={{ color: '#fbbf24' }}
+            fill="#fbbf24"
           />
         )}
 
@@ -68,14 +80,17 @@ export function PodiumPlace({
             ringColor={color || medalColor}
           />
           <div
-            className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
+            className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-lg"
             style={{ backgroundColor: medalColor }}
           >
             {rank}
           </div>
         </div>
 
-        <p className="w-full truncate text-center text-sm font-semibold text-gray-900">
+        <p className={cn(
+          'w-full truncate text-center font-bold',
+          isFirst ? 'text-base text-white' : 'text-sm text-gray-200',
+        )}>
           {name}
         </p>
         {detail && (
@@ -84,24 +99,32 @@ export function PodiumPlace({
           </p>
         )}
 
-        <div className="mt-2 flex items-baseline gap-1">
+        <div className="mt-3 flex items-baseline gap-1">
           <AnimatedCounter
             value={totalPoints}
-            className={`${isFirst ? 'text-2xl' : 'text-xl'} font-bold`}
-            suffix="pts"
+            className={cn(
+              'font-bold',
+              isFirst ? 'text-3xl text-amber-400' : 'text-2xl text-gray-200',
+            )}
             duration={1500}
           />
+          <span className={cn(
+            'text-sm font-medium',
+            isFirst ? 'text-amber-500/60' : 'text-gray-500',
+          )}>
+            pts
+          </span>
         </div>
 
         <span
-          className="mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+          className="mt-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold"
           style={{
-            backgroundColor: medalColor + '18',
+            backgroundColor: medalColor + '20',
             color: medalColor,
           }}
         >
-          {rank <= 2 && <Medal size={10} />}
-          {MEDAL_LABELS[rank]} Place
+          {rank <= 2 && <Medal size={11} />}
+          {rank === 1 ? 'Champion' : rank === 2 ? 'Runner Up' : '3rd Place'}
         </span>
       </div>
     </div>

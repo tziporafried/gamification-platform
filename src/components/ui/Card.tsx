@@ -6,9 +6,9 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const variantStyles = {
-  default: 'rounded-xl border border-gray-200 bg-white shadow-card',
-  elevated: 'rounded-xl border border-gray-200 bg-white shadow-podium',
-  interactive: 'rounded-xl border border-gray-200 bg-white shadow-card transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5',
+  default: 'rounded-xl border border-game-border bg-game-card shadow-card',
+  elevated: 'rounded-xl border border-game-border bg-game-card shadow-podium',
+  interactive: 'rounded-xl border border-game-border bg-game-card shadow-card transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5 hover:border-brand-700/50',
 }
 
 const Card = forwardRef<HTMLDivElement, CardProps>(

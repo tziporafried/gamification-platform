@@ -18,7 +18,7 @@ export function EventDetails({ event, onEdit }: EventDetailsProps) {
               <img
                 src={event.logo_url}
                 alt={event.name}
-                className="h-16 w-16 rounded-xl object-cover border border-gray-200"
+                className="h-16 w-16 rounded-xl object-cover border border-game-border"
               />
             ) : (
               <div
@@ -29,7 +29,7 @@ export function EventDetails({ event, onEdit }: EventDetailsProps) {
               </div>
             )}
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">{event.name}</h2>
+              <h2 className="text-xl font-semibold text-white">{event.name}</h2>
               <p className="text-sm text-gray-500">/{event.slug}</p>
             </div>
           </div>
@@ -55,15 +55,15 @@ export function EventDetails({ event, onEdit }: EventDetailsProps) {
             <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Theme</p>
             <div className="mt-1 flex items-center gap-2">
               <div
-                className="h-5 w-5 rounded-full border border-gray-200"
+                className="h-5 w-5 rounded-full border border-game-border"
                 style={{ backgroundColor: event.theme_color }}
               />
-              <span className="text-sm text-gray-900">{event.theme_color}</span>
+              <span className="text-sm text-gray-300">{event.theme_color}</span>
             </div>
           </div>
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Created</p>
-            <p className="mt-1 text-sm text-gray-900">
+            <p className="mt-1 text-sm text-gray-300">
               {new Date(event.created_at).toLocaleDateString()}
             </p>
           </div>

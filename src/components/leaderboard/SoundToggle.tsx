@@ -4,13 +4,13 @@ interface SoundToggleProps {
   themeColor: string
 }
 
-export function SoundToggle({ muted, onToggle, themeColor }: SoundToggleProps) {
+export function SoundToggle({ muted, onToggle }: SoundToggleProps) {
   return (
     <button
       onClick={onToggle}
       title={muted ? 'Enable sound effects' : 'Mute sound effects'}
-      className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100"
-      style={!muted ? { color: themeColor } : undefined}
+      className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-white/10 hover:text-gray-300"
+      style={!muted ? { color: '#a78bfa' } : undefined}
     >
       {muted ? (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

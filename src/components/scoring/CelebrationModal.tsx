@@ -12,7 +12,7 @@ interface CelebrationModalProps {
   onComplete: () => void
 }
 
-const CONFETTI_COLORS = ['#7c3aed', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4']
+const CONFETTI_COLORS = ['#7c3aed', '#a855f7', '#ec4899', '#f97316', '#fbbf24', '#22c55e', '#06b6d4', '#8b5cf6']
 
 interface ConfettiPiece {
   left: string
@@ -20,6 +20,7 @@ interface ConfettiPiece {
   color: string
   size: number
   rotation: number
+  isCircle: boolean
 }
 
 function generateConfetti(count: number): ConfettiPiece[] {
@@ -27,36 +28,75 @@ function generateConfetti(count: number): ConfettiPiece[] {
     left: `${Math.random() * 100}%`,
     delay: `${Math.random() * 2.5}s`,
     color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
-    size: 6 + Math.random() * 6,
+    size: 5 + Math.random() * 8,
     rotation: Math.random() * 360,
+    isCircle: Math.random() > 0.5,
   }))
 }
 
-function getTierIcon(points: number) {
-  if (points >= 2000) return { Icon: Gem, gradient: 'from-violet-500 to-purple-600', label: 'Diamond Tier' }
-  if (points >= 1000) return { Icon: Trophy, gradient: 'from-amber-500 to-yellow-500', label: 'Gold Tier' }
-  if (points >= 500) return { Icon: Award, gradient: 'from-gray-400 to-gray-500', label: 'Silver Tier' }
-  return { Icon: Star, gradient: 'from-orange-500 to-amber-600', label: 'Bronze Tier' }
+function getTierConfig(points: number) {
+  if (points >= 2000) return {
+    Icon: Gem,
+    gradient: 'gradient-diamond',
+    border: 'border-purple-500/40',
+    glow: '0 0 40px rgba(139, 92, 246, 0.4), 0 0 80px rgba(6, 182, 212, 0.2)',
+    title: 'LEGENDARY UNLOCK!',
+    label: 'Legendary',
+    confettiCount: 80,
+  }
+  if (points >= 1000) return {
+    Icon: Trophy,
+    gradient: 'gradient-gold',
+    border: 'border-amber-500/40',
+    glow: '0 0 40px rgba(251, 191, 36, 0.4)',
+    title: 'ACHIEVEMENT UNLOCKED!',
+    label: 'Gold',
+    confettiCount: 60,
+  }
+  if (points >= 500) return {
+    Icon: Award,
+    gradient: 'gradient-silver',
+    border: 'border-gray-400/40',
+    glow: '0 0 24px rgba(156, 163, 175, 0.3)',
+    title: 'NEW ACHIEVEMENT!',
+    label: 'Silver',
+    confettiCount: 45,
+  }
+  return {
+    Icon: Star,
+    gradient: 'gradient-bronze',
+    border: 'border-orange-500/40',
+    glow: '0 0 24px rgba(217, 119, 6, 0.3)',
+    title: 'NEW REWARD!',
+    label: 'Bronze',
+    confettiCount: 40,
+  }
 }
 
 export function CelebrationModal({ rewards, participantName, onComplete }: CelebrationModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [showFlash, setShowFlash] = useState(true)
+  const [showContent, setShowContent] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const { play } = useCelebrationSound()
 
   const reward = rewards[currentIndex]
   const isLast = currentIndex === rewards.length - 1
-  const isPremium = reward.out_required_points >= 2000
-  const confetti = useMemo(() => generateConfetti(isPremium ? 60 : 40), [isPremium])
-  const tier = getTierIcon(reward.out_required_points)
+  const tier = getTierConfig(reward.out_required_points)
+  const confetti = useMemo(() => generateConfetti(tier.confettiCount), [tier.confettiCount])
 
   useEffect(() => {
     play()
+    setShowFlash(true)
+    setShowContent(false)
+    const flashTimer = setTimeout(() => setShowFlash(false), 300)
+    const contentTimer = setTimeout(() => setShowContent(true), 200)
+    return () => { clearTimeout(flashTimer); clearTimeout(contentTimer) }
   }, [currentIndex, play])
 
   useEffect(() => {
     buttonRef.current?.focus()
-  }, [currentIndex])
+  }, [showContent])
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -85,12 +125,16 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
       className="fixed inset-0 z-50 flex items-center justify-center"
       onKeyDown={handleKeyDown}
     >
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md" />
+
+      {showFlash && (
+        <div className="fixed inset-0 bg-white animate-screen-flash pointer-events-none z-20" />
+      )}
 
       {confetti.map((piece, i) => (
         <div
           key={i}
-          className="pointer-events-none fixed rounded-sm opacity-0 animate-confetti-fall"
+          className="pointer-events-none fixed opacity-0 animate-confetti-fall"
           style={{
             left: piece.left,
             top: 0,
@@ -99,77 +143,92 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
             backgroundColor: piece.color,
             animationDelay: piece.delay,
             transform: `rotate(${piece.rotation}deg)`,
+            borderRadius: piece.isCircle ? '50%' : '2px',
           }}
         />
       ))}
 
-      <div
-        className="relative z-10 w-full max-w-sm mx-4 overflow-hidden rounded-2xl bg-white shadow-2xl"
-        style={{ animation: 'scale-in 0.4s ease-out both, glow-pulse 2s ease-in-out 0.4s infinite' }}
-      >
-        <div className={`h-2 w-full bg-gradient-to-r ${tier.gradient}`} />
+      {showContent && (
+        <div
+          className="relative z-10 w-full max-w-sm mx-4 overflow-hidden rounded-3xl border bg-game-dark animate-scale-in"
+          style={{
+            borderColor: 'rgba(139, 92, 246, 0.3)',
+            boxShadow: tier.glow,
+          }}
+        >
+          <div className="relative">
+            <div
+              className="absolute inset-0 opacity-30"
+              style={{
+                background: `radial-gradient(circle at 50% 0%, ${CONFETTI_COLORS[0]}40 0%, transparent 70%)`,
+              }}
+            />
 
-        <div className="p-8 text-center">
-          <div
-            className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${tier.gradient} text-white animate-celebration-bounce`}
-          >
-            <tier.Icon size={32} />
-          </div>
+            <div className="relative p-8 text-center">
+              <div
+                className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl text-white animate-celebration-bounce ${tier.gradient}`}
+                style={{ boxShadow: tier.glow }}
+              >
+                <tier.Icon size={40} />
+              </div>
 
-          <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
-            {tier.label}
-          </div>
+              <div className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-brand-400">
+                {tier.label}
+              </div>
 
-          <h2 className="mb-2 text-2xl font-bold text-gray-900">
-            Congratulations!
-          </h2>
+              <h2 className="mb-3 text-2xl font-black text-white">
+                {tier.title}
+              </h2>
 
-          <p className="mb-1 text-sm text-gray-600">
-            {participantName} has reached <span className="font-bold text-gray-900">{reward.out_total_points.toLocaleString()}</span> points
-          </p>
+              <p className="mb-1 text-sm text-gray-400">
+                {participantName} reached <span className="font-bold text-white">{reward.out_total_points.toLocaleString()}</span> points
+              </p>
 
-          <div className="my-5 rounded-xl bg-brand-50/60 p-4">
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-brand-400">
-              Reward Unlocked
+              <div className="my-5 rounded-2xl border border-game-border bg-game-card p-4">
+                <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-gray-500">
+                  Reward
+                </div>
+                <p className="text-xl font-black text-white">
+                  {reward.out_reward_name}
+                </p>
+                {reward.out_reward_description && (
+                  <p className="mt-1 text-sm text-gray-500">{reward.out_reward_description}</p>
+                )}
+              </div>
+
+              <XPBar
+                current={reward.out_total_points}
+                target={reward.out_required_points}
+                label={`${reward.out_required_points.toLocaleString()} pts required`}
+                className="mb-5"
+              />
+
+              <Button
+                ref={buttonRef}
+                variant="gradient"
+                size="lg"
+                className="w-full font-bold tracking-wide animate-glow-pulse"
+                onClick={handleContinue}
+              >
+                {isLast ? 'CONTINUE' : `NEXT (${currentIndex + 1}/${rewards.length})`}
+              </Button>
+
+              {rewards.length > 1 && (
+                <div className="mt-4 flex justify-center gap-2">
+                  {rewards.map((_, i) => (
+                    <div
+                      key={i}
+                      className={`h-2 w-2 rounded-full transition-colors ${
+                        i === currentIndex ? 'bg-brand-400' : 'bg-gray-700'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-            <p className="text-lg font-bold text-brand-700">
-              {reward.out_reward_name}
-            </p>
-            {reward.out_reward_description && (
-              <p className="mt-1 text-sm text-gray-500">{reward.out_reward_description}</p>
-            )}
           </div>
-
-          <XPBar
-            current={reward.out_total_points}
-            target={reward.out_required_points}
-            label={`${reward.out_required_points.toLocaleString()} pts required`}
-            className="mb-5"
-          />
-
-          <Button
-            ref={buttonRef}
-            variant="gradient"
-            className="w-full"
-            onClick={handleContinue}
-          >
-            {isLast ? 'Continue' : `Next Reward (${currentIndex + 1}/${rewards.length})`}
-          </Button>
-
-          {rewards.length > 1 && (
-            <div className="mt-3 flex justify-center gap-1.5">
-              {rewards.map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-1.5 w-1.5 rounded-full transition-colors ${
-                    i === currentIndex ? 'bg-brand-500' : 'bg-gray-200'
-                  }`}
-                />
-              ))}
-            </div>
-          )}
         </div>
-      </div>
+      )}
     </div>,
     document.body,
   )

@@ -86,7 +86,7 @@ export function RewardGroupAssignment({ eventId, rewardId, rewardName, isOpen, o
       </p>
       {loading ? (
         <div className="flex justify-center py-6">
-          <div className="h-6 w-6 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+          <div className="h-6 w-6 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
         </div>
       ) : groups.length === 0 ? (
         <p className="py-4 text-center text-sm text-gray-500">
@@ -97,20 +97,20 @@ export function RewardGroupAssignment({ eventId, rewardId, rewardName, isOpen, o
           {groups.map((group) => (
             <label
               key={group.id}
-              className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 p-3 transition-colors hover:bg-gray-50"
+              className="flex cursor-pointer items-center gap-3 rounded-lg border border-game-border p-3 transition-colors hover:bg-white/5"
             >
               <input
                 type="checkbox"
                 checked={assignedIds.has(group.id)}
                 onChange={() => toggle(group.id)}
                 disabled={toggling === group.id}
-                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                className="h-4 w-4 rounded border-game-border bg-game-dark text-brand-600 focus:ring-brand-500"
               />
               <div
                 className="h-4 w-4 rounded-full"
                 style={{ backgroundColor: group.color }}
               />
-              <span className="text-sm font-medium text-gray-900">{group.name}</span>
+              <span className="text-sm font-medium text-gray-200">{group.name}</span>
             </label>
           ))}
         </div>

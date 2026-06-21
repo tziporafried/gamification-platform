@@ -2,7 +2,6 @@ import { Trophy, ChevronRight } from 'lucide-react'
 import { AvatarCircle } from '@/components/ui/AvatarCircle'
 import { RankBadge } from '@/components/ui/RankBadge'
 import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import type { Group } from '@/types'
 
@@ -21,24 +20,15 @@ interface HomeLeaderboardProps {
   onViewFull: () => void
 }
 
-const HIGHLIGHT_BG: Record<number, string> = {
-  1: 'bg-amber-50/60',
-  2: 'bg-gray-50/60',
-  3: 'bg-orange-50/40',
-}
-
-export function HomeLeaderboard({ entries, themeColor, onViewFull }: HomeLeaderboardProps) {
+export function HomeLeaderboard({ entries, onViewFull }: HomeLeaderboardProps) {
   if (entries.length === 0) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white shadow-card">
-        <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4">
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-lg"
-            style={{ backgroundColor: themeColor + '14' }}
-          >
-            <Trophy size={18} style={{ color: themeColor }} />
+      <div className="rounded-2xl border border-game-border bg-game-card overflow-hidden">
+        <div className="flex items-center gap-2 border-b border-game-border px-5 py-4">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/20">
+            <Trophy size={18} className="text-amber-400" />
           </div>
-          <h3 className="text-base font-bold text-gray-900">Leaderboard</h3>
+          <h3 className="text-base font-bold text-white">Leaderboard</h3>
         </div>
         <div className="px-5 py-10 text-center">
           <p className="text-sm text-gray-500">No scores recorded yet. Start awarding points to see rankings.</p>
@@ -48,31 +38,30 @@ export function HomeLeaderboard({ entries, themeColor, onViewFull }: HomeLeaderb
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-card overflow-hidden">
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+    <div className="rounded-2xl border border-game-border bg-game-card overflow-hidden">
+      <div className="flex items-center justify-between border-b border-game-border px-5 py-4">
         <div className="flex items-center gap-2">
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-lg"
-            style={{ backgroundColor: themeColor + '14' }}
-          >
-            <Trophy size={18} style={{ color: themeColor }} />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/20">
+            <Trophy size={18} className="text-amber-400" />
           </div>
-          <h3 className="text-base font-bold text-gray-900">Leaderboard</h3>
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">
+          <h3 className="text-base font-bold text-white">Leaderboard</h3>
+          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-gray-400">
             Top {entries.length}
           </span>
         </div>
       </div>
 
-      <div className="divide-y divide-gray-50">
+      <div className="divide-y divide-game-border/50">
         {entries.map((entry, index) => {
-          const highlightBg = HIGHLIGHT_BG[entry.rank] || ''
+          const isTop3 = entry.rank <= 3
           return (
             <div
               key={entry.participant_id}
               className={cn(
-                'flex items-center gap-3 px-5 py-3 transition-colors hover:bg-gray-50/80',
-                highlightBg,
+                'flex items-center gap-3 px-5 py-3 transition-colors hover:bg-white/5',
+                isTop3 && entry.rank === 1 && 'bg-amber-500/5',
+                isTop3 && entry.rank === 2 && 'bg-gray-400/5',
+                isTop3 && entry.rank === 3 && 'bg-orange-500/5',
                 'opacity-0 animate-fade-in-up',
               )}
               style={{ animationDelay: `${index * 0.04}s` }}
@@ -85,8 +74,8 @@ export function HomeLeaderboard({ entries, themeColor, onViewFull }: HomeLeaderb
               />
               <div className="min-w-0 flex-1">
                 <p className={cn(
-                  'truncate text-sm text-gray-900',
-                  entry.rank <= 3 ? 'font-bold' : 'font-medium',
+                  'truncate text-sm',
+                  isTop3 ? 'font-bold text-white' : 'font-medium text-gray-300',
                 )}>
                   {entry.participant_name}
                 </p>
@@ -101,28 +90,25 @@ export function HomeLeaderboard({ entries, themeColor, onViewFull }: HomeLeaderb
               <span
                 className={cn(
                   'shrink-0 tabular-nums text-sm',
-                  entry.rank <= 3 ? 'font-bold' : 'font-semibold',
+                  isTop3 ? 'font-bold text-amber-400' : 'font-semibold text-brand-400',
                 )}
-                style={{ color: themeColor }}
               >
                 {entry.total_points.toLocaleString()}
-                <span className="ml-0.5 text-xs font-medium opacity-60">pts</span>
+                <span className="ml-0.5 text-xs font-medium opacity-50">pts</span>
               </span>
             </div>
           )
         })}
       </div>
 
-      <div className="border-t border-gray-100 px-5 py-3">
-        <Button
-          variant="ghost"
-          size="sm"
+      <div className="border-t border-game-border px-5 py-3">
+        <button
           onClick={onViewFull}
-          className="w-full justify-center gap-1 text-brand-600 hover:text-brand-700 hover:bg-brand-50"
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold text-brand-400 transition-colors hover:bg-brand-600/10 hover:text-brand-300"
         >
           View Full Leaderboard
           <ChevronRight size={14} />
-        </Button>
+        </button>
       </div>
     </div>
   )

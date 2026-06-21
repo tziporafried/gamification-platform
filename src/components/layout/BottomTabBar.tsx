@@ -35,7 +35,7 @@ export function BottomTabBar({
   return (
     <>
       <div
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/95 backdrop-blur-sm md:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-game-border bg-game-dark/95 backdrop-blur-sm md:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         <nav className="flex h-16 items-end justify-around px-2">
@@ -53,14 +53,14 @@ export function BottomTabBar({
                   <div
                     className={cn(
                       'flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-transform active:scale-95',
-                      isActive ? 'gradient-brand' : 'gradient-brand opacity-85',
+                      isActive ? 'gradient-brand shadow-glow-brand' : 'gradient-brand animate-glow-pulse',
                     )}
                   >
                     <Icon size={22} className="text-white" />
                   </div>
                   <span className={cn(
                     'text-[10px] font-semibold',
-                    isActive ? 'text-brand-600' : 'text-gray-500',
+                    isActive ? 'text-brand-400' : 'text-gray-500',
                   )}>
                     {label}
                   </span>
@@ -74,16 +74,19 @@ export function BottomTabBar({
                 onClick={() => onTabChange(key)}
                 className="flex flex-col items-center gap-0.5 py-2"
               >
+                {isActive && (
+                  <div className="absolute top-0 h-0.5 w-8 rounded-full gradient-brand" />
+                )}
                 <Icon
                   size={22}
                   className={cn(
                     'transition-colors',
-                    isActive ? 'text-brand-600' : 'text-gray-400',
+                    isActive ? 'text-brand-400' : 'text-gray-500',
                   )}
                 />
                 <span className={cn(
                   'text-[10px] font-medium',
-                  isActive ? 'text-brand-600' : 'text-gray-500',
+                  isActive ? 'text-brand-400' : 'text-gray-500',
                 )}>
                   {label}
                 </span>
@@ -91,7 +94,6 @@ export function BottomTabBar({
             )
           })}
 
-          {/* More button */}
           <button
             onClick={() => setMoreOpen(true)}
             className="flex flex-col items-center gap-0.5 py-2"
@@ -100,12 +102,12 @@ export function BottomTabBar({
               size={22}
               className={cn(
                 'transition-colors',
-                isMoreActive ? 'text-brand-600' : 'text-gray-400',
+                isMoreActive ? 'text-brand-400' : 'text-gray-500',
               )}
             />
             <span className={cn(
               'text-[10px] font-medium',
-              isMoreActive ? 'text-brand-600' : 'text-gray-500',
+              isMoreActive ? 'text-brand-400' : 'text-gray-500',
             )}>
               More
             </span>

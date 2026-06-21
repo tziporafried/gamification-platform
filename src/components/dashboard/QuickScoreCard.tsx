@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, FormEvent } from 'react'
 import { Zap } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
 import { PointsFlyUp } from '@/components/ui/PointsFlyUp'
 import { Toast } from '@/components/ui/Toast'
 import { CelebrationModal } from '@/components/scoring/CelebrationModal'
@@ -58,34 +57,32 @@ export function QuickScoreCard({ eventId, onScoreSubmitted }: QuickScoreCardProp
 
   return (
     <>
-      <div className="rounded-xl border border-gray-200 bg-white shadow-card overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
-            <Zap size={18} className="text-emerald-500" />
+      <div className="rounded-2xl border border-game-border bg-game-card overflow-hidden">
+        <div className="flex items-center gap-2 border-b border-game-border px-5 py-4">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/20">
+            <Zap size={18} className="text-emerald-400" />
           </div>
-          <h3 className="text-base font-bold text-gray-900">Quick Score</h3>
+          <h3 className="text-base font-bold text-white">Award Points</h3>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5">
+        <form onSubmit={handleSubmit} className="p-4">
           <div className="flex gap-3">
-            <Input
+            <input
               ref={participantInputRef}
-              id="quick-participant-code"
-              placeholder="P-1001"
+              placeholder="Player code"
               value={participantCode}
               onChange={(e) => setParticipantCode(e.target.value)}
-              className="text-center"
+              className="w-full rounded-xl border border-game-border bg-game-dark px-3 py-2.5 text-center text-sm font-medium text-white placeholder-gray-500 transition-colors focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
-            <Input
-              id="quick-action-code"
-              placeholder="A-1001"
+            <input
+              placeholder="Action code"
               value={actionCode}
               onChange={(e) => setActionCode(e.target.value)}
-              className="text-center"
+              className="w-full rounded-xl border border-game-border bg-game-dark px-3 py-2.5 text-center text-sm font-medium text-white placeholder-gray-500 transition-colors focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
             <div className="relative shrink-0">
-              <Button type="submit" loading={submitting} className="h-full">
-                Submit
+              <Button type="submit" variant="gradient" loading={submitting} className="h-full rounded-xl px-5">
+                <Zap size={16} />
               </Button>
               <PointsFlyUp points={flyUpPoints} onDone={() => setFlyUpPoints(null)} />
             </div>

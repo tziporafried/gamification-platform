@@ -94,16 +94,16 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50">
-            <Layers size={18} className="text-brand-600" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
+            <Layers size={18} className="text-brand-400" />
           </div>
-          <h2 className="text-lg font-bold text-gray-900">Groups</h2>
+          <h2 className="text-lg font-bold text-white">Groups</h2>
         </div>
         <Button size="sm" onClick={handleCreate}>Add Group</Button>
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
       )}
 
       {groups.length === 0 ? (
@@ -140,7 +140,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
         onClose={() => setDeletingGroup(null)}
         title="Delete Group"
       >
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-400">
           Are you sure you want to delete <strong>{deletingGroup?.name}</strong>?
           All participant assignments to this group will also be removed. This action cannot be undone.
         </p>

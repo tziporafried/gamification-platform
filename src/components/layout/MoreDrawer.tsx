@@ -55,31 +55,26 @@ export function MoreDrawer({
 
   return createPortal(
     <div className="fixed inset-0 z-50 md:hidden">
-      {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-fade-in-up"
-        style={{ animationDuration: '0.15s' }}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Drawer */}
-      <div className="fixed inset-x-0 bottom-0 z-10 animate-slide-up rounded-t-2xl bg-white shadow-podium"
+      <div
+        className="fixed inset-x-0 bottom-0 z-10 animate-slide-up rounded-t-2xl bg-game-dark shadow-podium border-t border-game-border"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="h-1 w-10 rounded-full bg-gray-300" />
+          <div className="h-1 w-10 rounded-full bg-gray-600" />
         </div>
 
-        {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          className="absolute right-4 top-4 rounded-lg p-1 text-gray-500 hover:bg-white/10 hover:text-gray-300"
         >
           <X size={18} />
         </button>
 
-        {/* Nav items */}
         <nav className="px-4 pt-2 pb-2">
           <ul className="space-y-0.5">
             {DRAWER_ITEMS.map(({ key, label, icon: Icon }) => {
@@ -91,13 +86,13 @@ export function MoreDrawer({
                     className={cn(
                       'flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-medium transition-colors',
                       isActive
-                        ? 'bg-brand-50 text-brand-700'
-                        : 'text-gray-700 hover:bg-gray-50',
+                        ? 'bg-brand-600/20 text-white'
+                        : 'text-gray-300 hover:bg-white/5',
                     )}
                   >
                     <Icon
                       size={20}
-                      className={isActive ? 'text-brand-600' : 'text-gray-400'}
+                      className={isActive ? 'text-brand-400' : 'text-gray-500'}
                     />
                     {label}
                   </button>
@@ -107,19 +102,18 @@ export function MoreDrawer({
           </ul>
         </nav>
 
-        {/* User section */}
-        <div className="border-t border-gray-100 px-4 py-3">
+        <div className="border-t border-game-border px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <AvatarCircle name={userName} size="sm" />
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-gray-900">{userName}</p>
+                <p className="truncate text-sm font-medium text-gray-200">{userName}</p>
                 <p className="truncate text-xs text-gray-500">{userEmail}</p>
               </div>
             </div>
             <button
               onClick={() => { onSignOut(); onClose() }}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-500 hover:bg-white/5 hover:text-gray-300"
             >
               <LogOut size={16} />
               Log Out

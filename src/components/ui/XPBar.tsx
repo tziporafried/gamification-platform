@@ -14,13 +14,13 @@ export function XPBar({ current, target, label, className }: XPBarProps) {
     <div className={cn('w-full', className)}>
       {label && (
         <div className="mb-1.5 flex items-center justify-between text-xs">
-          <span className="font-medium text-gray-600">{label}</span>
-          <span className="tabular-nums text-gray-400">
+          <span className="font-medium text-gray-400">{label}</span>
+          <span className="tabular-nums text-gray-500">
             {current.toLocaleString()} / {target.toLocaleString()}
           </span>
         </div>
       )}
-      <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+      <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-white/10">
         <div
           className="h-full rounded-full transition-all duration-700 ease-out"
           style={{

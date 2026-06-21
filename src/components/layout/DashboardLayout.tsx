@@ -25,8 +25,7 @@ export function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
   return (
-    <div className="min-h-screen bg-surface">
-      {/* Desktop sidebar */}
+    <div className="min-h-screen bg-game-dark">
       <SidebarNav
         activeTab={activeTab}
         onTabChange={onTabChange}
@@ -37,14 +36,12 @@ export function DashboardLayout({
         onSignOut={onSignOut}
       />
 
-      {/* Main content area */}
       <main className="md:ml-16 lg:ml-60">
         <div className="mx-auto max-w-5xl px-4 py-6 pb-24 md:py-8 md:pb-8">
           {children}
         </div>
       </main>
 
-      {/* Mobile bottom bar */}
       <BottomTabBar
         activeTab={activeTab}
         onTabChange={onTabChange}

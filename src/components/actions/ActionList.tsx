@@ -82,10 +82,10 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50">
-            <Zap size={18} className="text-brand-600" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
+            <Zap size={18} className="text-brand-400" />
           </div>
-          <h2 className="text-lg font-bold text-gray-900">Actions</h2>
+          <h2 className="text-lg font-bold text-white">Actions</h2>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setCsvImportOpen(true)}>Import CSV</Button>
@@ -94,7 +94,7 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
       )}
 
       {actions.length === 0 ? (

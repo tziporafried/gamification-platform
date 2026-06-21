@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Card } from '@/components/ui/Card'
 
 export function Register() {
   const { signUp } = useAuth()
@@ -46,19 +45,19 @@ export function Register() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-sm p-6">
+    <div className="flex min-h-screen items-center justify-center bg-game-dark px-4">
+      <div className="w-full max-w-sm rounded-2xl border border-game-border bg-game-card p-6">
         <div className="mb-6 text-center">
-          <Link to="/" className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold text-white">
+          <Link to="/" className="inline-flex h-10 w-10 items-center justify-center rounded-xl gradient-brand text-lg font-bold text-white">
             G
           </Link>
-          <h1 className="mt-4 text-2xl font-bold text-gray-900">Create an account</h1>
-          <p className="mt-1 text-sm text-gray-600">Get started with your event</p>
+          <h1 className="mt-4 text-2xl font-bold text-white">Create an account</h1>
+          <p className="mt-1 text-sm text-gray-500">Get started with your event</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
           )}
 
           <Input
@@ -91,18 +90,18 @@ export function Register() {
             autoComplete="new-password"
           />
 
-          <Button type="submit" loading={loading} className="w-full">
+          <Button type="submit" variant="gradient" loading={loading} className="w-full">
             Create Account
           </Button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-gray-600">
+        <p className="mt-4 text-center text-sm text-gray-500">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+          <Link to="/login" className="font-medium text-brand-400 hover:text-brand-300">
             Sign in
           </Link>
         </p>
-      </Card>
+      </div>
     </div>
   )
 }

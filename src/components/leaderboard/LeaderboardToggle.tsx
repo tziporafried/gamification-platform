@@ -8,32 +8,30 @@ interface LeaderboardToggleProps {
   themeColor: string
 }
 
-export function LeaderboardToggle({ activeView, onViewChange, themeColor }: LeaderboardToggleProps) {
+export function LeaderboardToggle({ activeView, onViewChange }: LeaderboardToggleProps) {
   return (
-    <div className="inline-flex rounded-lg bg-gray-100 p-1">
+    <div className="inline-flex rounded-lg bg-white/10 p-1">
       <button
         onClick={() => onViewChange('participants')}
         className={cn(
           'rounded-md px-4 py-2 text-sm font-medium transition-colors',
           activeView === 'participants'
-            ? 'bg-white shadow-sm'
-            : 'text-gray-500 hover:text-gray-700',
+            ? 'bg-brand-600 text-white shadow-sm'
+            : 'text-gray-400 hover:text-gray-200',
         )}
-        style={activeView === 'participants' ? { color: themeColor } : undefined}
       >
-        Participants
+        Players
       </button>
       <button
         onClick={() => onViewChange('groups')}
         className={cn(
           'rounded-md px-4 py-2 text-sm font-medium transition-colors',
           activeView === 'groups'
-            ? 'bg-white shadow-sm'
-            : 'text-gray-500 hover:text-gray-700',
+            ? 'bg-brand-600 text-white shadow-sm'
+            : 'text-gray-400 hover:text-gray-200',
         )}
-        style={activeView === 'groups' ? { color: themeColor } : undefined}
       >
-        Groups
+        Teams
       </button>
     </div>
   )

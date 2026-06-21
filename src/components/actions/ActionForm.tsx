@@ -76,13 +76,13 @@ export function ActionForm({ eventId, action, isOpen, onClose, onSaved }: Action
     <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'Edit Action' : 'Create Action'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
         )}
 
         {isEdit && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Action Code</label>
-            <p className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm font-mono text-gray-700">
+            <label className="block text-sm font-medium text-gray-300 mb-1">Action Code</label>
+            <p className="rounded-lg bg-game-dark border border-game-border rounded-xl px-3 py-2 text-sm font-mono text-gray-400">
               {action.code}
             </p>
           </div>
@@ -107,12 +107,12 @@ export function ActionForm({ eventId, action, isOpen, onClose, onSaved }: Action
         />
 
         <div className="w-full">
-          <label htmlFor="action-description" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="action-description" className="block text-sm font-medium text-gray-300 mb-1">
             Description
           </label>
           <textarea
             id="action-description"
-            className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-indigo-500 focus:ring-indigo-500"
+            className="block w-full rounded-xl border border-game-border bg-game-dark px-3 py-2 text-sm text-white placeholder-gray-500 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-brand-500 focus:ring-brand-500/30"
             rows={2}
             placeholder="Optional description"
             value={description}
@@ -126,7 +126,7 @@ export function ActionForm({ eventId, action, isOpen, onClose, onSaved }: Action
               type="checkbox"
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-game-border bg-game-dark text-brand-600 focus:ring-brand-500"
             />
             Active
           </label>

@@ -26,8 +26,8 @@ export function PointsFlyUp({ points, onDone }: PointsFlyUpProps) {
   return (
     <div className="pointer-events-none absolute inset-x-0 -top-2 flex justify-center">
       <span
-        className={`animate-float-up text-2xl font-bold ${
-          isPositive ? 'text-emerald-500' : 'text-red-500'
+        className={`animate-float-up text-3xl font-black drop-shadow-lg ${
+          isPositive ? 'text-emerald-400' : 'text-red-400'
         }`}
       >
         {sign}{points} pts

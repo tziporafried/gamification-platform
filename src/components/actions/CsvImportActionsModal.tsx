@@ -208,13 +208,13 @@ export function CsvImportActionsModal({ eventId, isOpen, onClose, onImported }: 
     <Modal isOpen={isOpen} onClose={handleClose} title="Import Actions from CSV">
       <div className="space-y-4">
         {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
         )}
 
         {!summary ? (
           <>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">CSV File</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">CSV File</label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -223,13 +223,13 @@ export function CsvImportActionsModal({ eventId, isOpen, onClose, onImported }: 
                   setFile(e.target.files?.[0] ?? null)
                   setError('')
                 }}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brand-500/20 file:text-brand-300 hover:file:bg-brand-500/30"
               />
             </div>
 
-            <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+            <div className="rounded-lg bg-game-dark border border-game-border rounded-xl p-3">
               <p className="text-xs font-medium text-gray-700 mb-1">Required columns:</p>
-              <code className="text-xs text-gray-600">action_name, points</code>
+              <code className="text-xs text-gray-400">action_name, points</code>
               <p className="text-xs text-gray-500 mt-2">
                 Points can be positive or negative integers. Duplicate action names will be skipped.
               </p>

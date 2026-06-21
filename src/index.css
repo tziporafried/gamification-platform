@@ -25,4 +25,19 @@
   .gradient-bronze {
     background: linear-gradient(135deg, #92400e 0%, #d97706 100%);
   }
+  .gradient-diamond {
+    background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 50%, #a855f7 100%);
+  }
+  .bg-game {
+    background: linear-gradient(180deg, #0f0b1e 0%, #1a1433 100%);
+  }
+  .bg-game-radial {
+    background: radial-gradient(ellipse at 50% 0%, #2d2250 0%, #1a1433 50%, #0f0b1e 100%);
+  }
+  .glow-border-gold {
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.3), 0 0 16px rgba(251, 191, 36, 0.15);
+  }
+  .glow-border-brand {
+    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.3), 0 0 16px rgba(139, 92, 246, 0.15);
+  }
 }
