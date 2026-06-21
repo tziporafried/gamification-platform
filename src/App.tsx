@@ -8,6 +8,8 @@ import { Register } from '@/pages/Register'
 import { MyEvents } from '@/pages/MyEvents'
 import { EventWizard } from '@/pages/EventWizard'
 import { EventControlCenterPage } from '@/pages/EventControlCenter'
+import { EventScanPage } from '@/pages/EventScan'
+import { EventDisplayPage } from '@/pages/EventDisplay'
 
 export default function App() {
   return (
@@ -23,6 +25,8 @@ export default function App() {
           <Route path="/events/:id" element={<ProtectedRoute><EventWizard /></ProtectedRoute>} />
           <Route path="/events/:id/step/:step" element={<ProtectedRoute><EventWizard /></ProtectedRoute>} />
           <Route path="/events/:id/control" element={<ProtectedRoute><EventControlCenterPage /></ProtectedRoute>} />
+          <Route path="/events/:id/scan" element={<ProtectedRoute><EventScanPage /></ProtectedRoute>} />
+          <Route path="/events/:id/display" element={<ProtectedRoute><EventDisplayPage /></ProtectedRoute>} />
 
           {/* Backward compat */}
           <Route path="/dashboard" element={<Navigate to="/events" replace />} />
