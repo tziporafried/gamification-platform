@@ -1,0 +1,128 @@
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
+import { useEventCounts } from '@/hooks/useEventCounts'
+import { useWizardState } from '@/hooks/useWizardState'
+import { WizardLayout } from '@/components/wizard/WizardLayout'
+import { StepEventDetails } from '@/components/wizard/StepEventDetails'
+import { StepParticipants } from '@/components/wizard/StepParticipants'
+import { StepGroups } from '@/components/wizard/StepGroups'
+import { StepTasks } from '@/components/wizard/StepTasks'
+import { StepReviewGenerate } from '@/components/wizard/StepReviewGenerate'
+import type { Event } from '@/types'
+
+export function EventWizard() {
+  const { id, step } = useParams<{ id: string; step?: string }>()
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [event, setEvent] = useState<Event | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const { counts, loaded: countsLoaded, refresh: refreshCounts } = useEventCounts(id)
+  const {
+    currentStep,
+    wizardState,
+    groupType,
+    setGroupType,
+    goNext,
+    goBack,
+    goToStep,
+  } = useWizardState(event, counts, countsLoaded)
+
+  useEffect(() => {
+    async function fetchEvent() {
+      if (!id) return
+      const { data } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', id)
+        .eq('owner_admin_id', user!.id)
+        .single()
+
+      if (!data) {
+        navigate('/events', { replace: true })
+        return
+      }
+      setEvent(data)
+      setLoading(false)
+    }
+    fetchEvent()
+  }, [id, user, navigate])
+
+  // Sync URL step param with state
+  useEffect(() => {
+    if (step) {
+      const stepNum = parseInt(step, 10)
+      if (stepNum >= 1 && stepNum <= 5 && stepNum !== currentStep) {
+        goToStep(stepNum)
+      }
+    }
+  }, [step])
+
+  if (loading || !event) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-game-dark">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
+      </div>
+    )
+  }
+
+  return (
+    <WizardLayout
+      event={event}
+      currentStep={currentStep}
+      wizardState={wizardState}
+      onStepClick={goToStep}
+    >
+      {currentStep === 1 && (
+        <StepEventDetails
+          event={event}
+          onEventUpdated={setEvent}
+          onNext={goNext}
+        />
+      )}
+
+      {currentStep === 2 && (
+        <StepGroups
+          eventId={event.id}
+          groupType={groupType}
+          counts={counts}
+          onGroupTypeSelect={setGroupType}
+          onCountsRefresh={refreshCounts}
+          onNext={goNext}
+          onBack={goBack}
+        />
+      )}
+
+      {currentStep === 3 && (
+        <StepParticipants
+          eventId={event.id}
+          counts={counts}
+          groupType={groupType}
+          onCountsRefresh={refreshCounts}
+          onNext={goNext}
+          onBack={goBack}
+        />
+      )}
+
+      {currentStep === 4 && (
+        <StepTasks
+          eventId={event.id}
+          counts={counts}
+          onCountsRefresh={refreshCounts}
+          onNext={goNext}
+          onBack={goBack}
+        />
+      )}
+
+      {currentStep === 5 && (
+        <StepReviewGenerate
+          event={event}
+          counts={counts}
+          onBack={goBack}
+        />
+      )}
+    </WizardLayout>
+  )
+}

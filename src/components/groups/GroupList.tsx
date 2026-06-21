@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { GroupForm } from './GroupForm'
 import { GroupCard } from './GroupCard'
+import { InlineAddGroup } from './InlineAddGroup'
 import type { GroupWithCount } from '@/types'
 
 interface GroupListProps {
@@ -51,11 +52,6 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
     setFormOpen(true)
   }
 
-  function handleCreate() {
-    setEditingGroup(null)
-    setFormOpen(true)
-  }
-
   function handleFormClose() {
     setFormOpen(false)
     setEditingGroup(null)
@@ -92,14 +88,13 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
             <Layers size={18} className="text-brand-400" />
           </div>
           <h2 className="text-lg font-bold text-white">קבוצות</h2>
         </div>
-        <Button size="sm" onClick={handleCreate}>הוספת קבוצה</Button>
       </div>
 
       {error && (
@@ -107,21 +102,26 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
       )}
 
       {groups.length === 0 ? (
-        <EmptyState
-          title="אין קבוצות עדיין"
-          description="צרו קבוצות כדי לארגן את המשתתפים שלכם."
-          action={<Button size="sm" onClick={handleCreate}>הוספת קבוצה</Button>}
-        />
+        <div className="space-y-4">
+          <EmptyState
+            title="אין קבוצות עדיין"
+            description="הקלד שם קבוצה למטה ולחץ Enter"
+          />
+          <InlineAddGroup eventId={eventId} onAdded={fetchGroups} />
+        </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {groups.map((group) => (
-            <GroupCard
-              key={group.id}
-              group={group}
-              onEdit={() => handleEdit(group)}
-              onDelete={() => setDeletingGroup(group)}
-            />
-          ))}
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {groups.map((group) => (
+              <GroupCard
+                key={group.id}
+                group={group}
+                onEdit={() => handleEdit(group)}
+                onDelete={() => setDeletingGroup(group)}
+              />
+            ))}
+          </div>
+          <InlineAddGroup eventId={eventId} onAdded={fetchGroups} />
         </div>
       )}
 

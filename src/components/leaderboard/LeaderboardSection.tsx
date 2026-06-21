@@ -92,10 +92,7 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
         activeView === 'participants'
           ? (e as (typeof rankedParticipants)[number]).participant_name
           : (e as (typeof rankedGroups)[number]).group_name,
-      detail:
-        activeView === 'participants'
-          ? (e as (typeof rankedParticipants)[number]).external_id
-          : undefined,
+      detail: undefined,
       color:
         activeView === 'groups'
           ? (e as (typeof rankedGroups)[number]).group_color

@@ -1,41 +1,68 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ActionForm } from './ActionForm'
 import { ActionRow } from './ActionRow'
-import { CsvImportActionsModal } from './CsvImportActionsModal'
-import type { Action } from '@/types'
+import { InlineAddAction } from './InlineAddAction'
+import type { Action, ActionWithGroups, Group } from '@/types'
 
 interface ActionListProps {
   eventId: string
   onCountChange: (count: number) => void
 }
 
+interface ActionGroupJoin {
+  group_id: string
+  groups: Group
+}
+
 export function ActionList({ eventId, onCountChange }: ActionListProps) {
-  const [actions, setActions] = useState<Action[]>([])
+  const [actions, setActions] = useState<ActionWithGroups[]>([])
+  const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editingAction, setEditingAction] = useState<Action | null>(null)
-  const [csvImportOpen, setCsvImportOpen] = useState(false)
 
   const fetchActions = useCallback(async () => {
-    const { data, error: fetchError } = await supabase
-      .from('actions')
-      .select('*')
-      .eq('event_id', eventId)
-      .order('created_at', { ascending: true })
+    const [actionsRes, groupsRes] = await Promise.all([
+      supabase
+        .from('actions')
+        .select('*, action_groups(group_id, groups(*))')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('groups')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true }),
+    ])
 
-    if (fetchError) {
-      setError(fetchError.message)
-      return
+    // Fallback: if action_groups table doesn't exist yet, fetch without join
+    let actionsData = actionsRes.data
+    if (actionsRes.error) {
+      const fallback = await supabase
+        .from('actions')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true })
+      actionsData = fallback.data
+      if (fallback.error) {
+        setError(fallback.error.message)
+        setLoading(false)
+        return
+      }
     }
 
-    const result = (data ?? []) as Action[]
-    setActions(result)
-    onCountChange(result.length)
+    const mapped: ActionWithGroups[] = (actionsData ?? []).map((a) => ({
+      ...a,
+      groups: ((a.action_groups as unknown as ActionGroupJoin[]) ?? []).map((ag) => ag.groups),
+    }))
+
+    setActions(mapped)
+    setGroups((groupsRes.data as Group[]) ?? [])
+    onCountChange(mapped.length)
     setLoading(false)
   }, [eventId, onCountChange])
 
@@ -46,27 +73,13 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
     setFormOpen(true)
   }
 
-  function handleCreate() {
-    setEditingAction(null)
-    setFormOpen(true)
-  }
-
   function handleFormClose() {
     setFormOpen(false)
     setEditingAction(null)
   }
 
   async function handleToggleActive(action: Action) {
-    const { error: updateError } = await supabase
-      .from('actions')
-      .update({ is_active: !action.is_active })
-      .eq('id', action.id)
-
-    if (updateError) {
-      setError(updateError.message)
-      return
-    }
-
+    await supabase.from('actions').update({ is_active: !action.is_active }).eq('id', action.id)
     fetchActions()
   }
 
@@ -80,16 +93,12 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
             <Zap size={18} className="text-brand-400" />
           </div>
           <h2 className="text-lg font-bold text-white">משימות</h2>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setCsvImportOpen(true)}>ייבוא CSV</Button>
-          <Button size="sm" onClick={handleCreate}>הוספת משימה</Button>
         </div>
       </div>
 
@@ -98,21 +107,26 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
       )}
 
       {actions.length === 0 ? (
-        <EmptyState
-          title="אין משימות עדיין"
-          description="צרו משימות כדי להגדיר כללי ניקוד לאירוע שלכם."
-          action={<Button size="sm" onClick={handleCreate}>הוספת משימה</Button>}
-        />
+        <div className="space-y-4">
+          <EmptyState
+            title="אין משימות עדיין"
+            description="הקלד שם משימה למטה ולחץ Enter"
+          />
+          <InlineAddAction eventId={eventId} onAdded={fetchActions} />
+        </div>
       ) : (
         <div className="space-y-2">
           {actions.map((action) => (
             <ActionRow
               key={action.id}
               action={action}
+              groups={groups}
               onEdit={() => handleEdit(action)}
               onToggleActive={() => handleToggleActive(action)}
+              onDeleted={fetchActions}
             />
           ))}
+          <InlineAddAction eventId={eventId} onAdded={fetchActions} />
         </div>
       )}
 
@@ -123,15 +137,6 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
           isOpen={formOpen}
           onClose={handleFormClose}
           onSaved={() => { handleFormClose(); fetchActions() }}
-        />
-      )}
-
-      {csvImportOpen && (
-        <CsvImportActionsModal
-          eventId={eventId}
-          isOpen={csvImportOpen}
-          onClose={() => setCsvImportOpen(false)}
-          onImported={fetchActions}
         />
       )}
     </div>

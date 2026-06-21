@@ -12,7 +12,7 @@ export function AuthRedirect({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (user) return <Navigate to="/dashboard" replace />
+  if (user) return <Navigate to="/events" replace />
 
   return <>{children}</>
 }

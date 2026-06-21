@@ -311,7 +311,6 @@ export function QrCardGenerator({ eventId, qrScoringMode }: QrCardGeneratorProps
                         className="rounded border-gray-600 bg-game-dark text-brand-500 focus:ring-brand-500"
                       />
                       <span>{p.name}</span>
-                      <span className="text-xs text-gray-500">({p.external_id})</span>
                     </label>
                   ))}
                 </div>
@@ -439,9 +438,6 @@ function renderParticipantCards(participants: ParticipantWithGroups[]) {
           <div className="participant-name" style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {participant.name}
           </div>
-          <div className="code-label" style={{ fontSize: '10px', color: '#888', marginBottom: '6px' }}>
-            {participant.external_id}
-          </div>
           <QRCodeSVG
             value={JSON.stringify({ type: 'participant', participantCode: participant.external_id })}
             size={100}
@@ -464,9 +460,6 @@ function renderActionCards(actions: Action[]) {
         >
           <div className="participant-name" style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {action.name}
-          </div>
-          <div className="code-label" style={{ fontSize: '10px', color: '#888', marginBottom: '2px' }}>
-            {action.code}
           </div>
           <div className="points-label" style={{ fontSize: '10px', color: '#2d7d46', marginBottom: '6px', fontWeight: 'bold' }}>
             {action.points >= 0 ? '+' : ''}{action.points} נק׳

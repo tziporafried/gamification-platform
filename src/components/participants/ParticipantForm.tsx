@@ -62,15 +62,6 @@ export function ParticipantForm({ eventId, participant, isOpen, onClose, onSaved
           <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
         )}
 
-        {isEdit && (
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">קוד משתתף</label>
-            <p className="rounded-lg bg-game-dark border border-game-border rounded-xl px-3 py-2 text-sm font-mono text-gray-400">
-              {participant.external_id}
-            </p>
-          </div>
-        )}
-
         <Input
           id="participant-name"
           label="שם"
