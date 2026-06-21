@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ActionForm } from './ActionForm'
 import { ActionRow } from './ActionRow'
-import { CsvImportActionsModal } from './CsvImportActionsModal'
+import { InlineAddAction } from './InlineAddAction'
 import type { Action } from '@/types'
 
 interface ActionListProps {
@@ -19,7 +18,6 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
   const [error, setError] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editingAction, setEditingAction] = useState<Action | null>(null)
-  const [csvImportOpen, setCsvImportOpen] = useState(false)
 
   const fetchActions = useCallback(async () => {
     const { data, error: fetchError } = await supabase
@@ -43,11 +41,6 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
 
   function handleEdit(action: Action) {
     setEditingAction(action)
-    setFormOpen(true)
-  }
-
-  function handleCreate() {
-    setEditingAction(null)
     setFormOpen(true)
   }
 
@@ -80,16 +73,12 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
             <Zap size={18} className="text-brand-400" />
           </div>
           <h2 className="text-lg font-bold text-white">משימות</h2>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setCsvImportOpen(true)}>ייבוא CSV</Button>
-          <Button size="sm" onClick={handleCreate}>הוספת משימה</Button>
         </div>
       </div>
 
@@ -98,11 +87,13 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
       )}
 
       {actions.length === 0 ? (
-        <EmptyState
-          title="אין משימות עדיין"
-          description="צרו משימות כדי להגדיר כללי ניקוד לאירוע שלכם."
-          action={<Button size="sm" onClick={handleCreate}>הוספת משימה</Button>}
-        />
+        <div className="space-y-4">
+          <EmptyState
+            title="אין משימות עדיין"
+            description="הקלד שם משימה למטה ולחץ Enter"
+          />
+          <InlineAddAction eventId={eventId} onAdded={fetchActions} />
+        </div>
       ) : (
         <div className="space-y-2">
           {actions.map((action) => (
@@ -111,8 +102,10 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
               action={action}
               onEdit={() => handleEdit(action)}
               onToggleActive={() => handleToggleActive(action)}
+              onDeleted={fetchActions}
             />
           ))}
+          <InlineAddAction eventId={eventId} onAdded={fetchActions} />
         </div>
       )}
 
@@ -123,15 +116,6 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
           isOpen={formOpen}
           onClose={handleFormClose}
           onSaved={() => { handleFormClose(); fetchActions() }}
-        />
-      )}
-
-      {csvImportOpen && (
-        <CsvImportActionsModal
-          eventId={eventId}
-          isOpen={csvImportOpen}
-          onClose={() => setCsvImportOpen(false)}
-          onImported={fetchActions}
         />
       )}
     </div>

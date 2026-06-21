@@ -1,0 +1,117 @@
+import { useNavigate } from 'react-router-dom'
+import { Play, QrCode, Monitor, Download, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { calculateReadiness, isEventReady } from '@/lib/wizard'
+import { cn } from '@/lib/utils'
+import type { Event, EventCounts } from '@/types'
+
+interface ControlCenterProps {
+  event: Event
+  counts: EventCounts
+}
+
+const ACTIONS = [
+  { id: 'start', label: 'התחל אירוע', icon: Play, color: 'text-emerald-400', route: null },
+  { id: 'scan', label: 'מצב סריקה', icon: QrCode, color: 'text-brand-400', route: 'scan' },
+  { id: 'display', label: 'מסך תצוגה', icon: Monitor, color: 'text-blue-400', route: 'display' },
+  { id: 'export', label: 'ייצוא תוצאות', icon: Download, color: 'text-amber-400', route: 'export' },
+]
+
+export function ControlCenter({ event, counts }: ControlCenterProps) {
+  const navigate = useNavigate()
+  const ready = isEventReady(event, counts)
+  const checks = calculateReadiness(event, counts)
+
+  function handleAction(route: string | null) {
+    if (route) {
+      navigate(`/events/${event.id}/${route}`)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-game-dark">
+      {/* Header */}
+      <header className="border-b border-game-border bg-game-dark/95 backdrop-blur-sm">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/events')}
+              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+            >
+              <ArrowRight size={16} />
+              <span className="hidden sm:inline">האירועים שלי</span>
+            </button>
+            <span className="text-game-border">/</span>
+            <h1 className="text-sm font-bold text-white truncate">{event.name}</h1>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/events/${event.id}/step/1`)}
+          >
+            עריכת הגדרות
+          </Button>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-3xl px-4 py-8 space-y-8">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-bold text-white">מרכז הבקרה</h2>
+          <p className="text-gray-400 text-sm">
+            {ready ? 'האירוע מוכן להתחלה!' : 'השלם את ההכנות כדי להתחיל'}
+          </p>
+        </div>
+
+        {/* Readiness checklist (show when not ready) */}
+        {!ready && (
+          <Card className="p-5 space-y-3">
+            <h3 className="text-sm font-medium text-gray-300">רשימת מוכנות</h3>
+            {checks.map((check) => (
+              <div key={check.id} className="flex items-center gap-3">
+                {check.passed ? (
+                  <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+                ) : (
+                  <AlertCircle size={18} className="text-amber-400 shrink-0" />
+                )}
+                <span className={cn(
+                  'text-sm',
+                  check.passed ? 'text-gray-400' : 'text-gray-200',
+                )}>
+                  {check.label}
+                </span>
+              </div>
+            ))}
+          </Card>
+        )}
+
+        {/* Action cards */}
+        <div className="grid grid-cols-2 gap-4">
+          {ACTIONS.map(({ id, label, icon: Icon, color, route }) => {
+            const disabled = !ready && id === 'start'
+            return (
+              <button
+                key={id}
+                onClick={() => handleAction(route)}
+                disabled={disabled}
+                className="text-right"
+              >
+                <Card
+                  variant="interactive"
+                  className={cn(
+                    'p-6 flex flex-col items-center gap-3 text-center min-h-[140px] justify-center',
+                    disabled && 'opacity-50 cursor-not-allowed',
+                  )}
+                >
+                  <Icon size={32} className={color} />
+                  <span className="text-sm font-medium text-white">{label}</span>
+                </Card>
+              </button>
+            )
+          })}
+        </div>
+      </main>
+    </div>
+  )
+}

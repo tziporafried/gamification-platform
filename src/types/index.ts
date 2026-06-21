@@ -1,6 +1,37 @@
 export type EventStatus = 'draft' | 'active' | 'finished' | 'archived';
 export type QrScoringMode = 'combined' | 'separate';
 
+export type StepStatus = 'not_started' | 'in_progress' | 'completed';
+export type WizardStepId = 'details' | 'groups' | 'participants' | 'tasks' | 'review';
+export type GroupType = 'none' | 'custom';
+
+export interface WizardState {
+  details: StepStatus;
+  groups: StepStatus;
+  participants: StepStatus;
+  tasks: StepStatus;
+  review: StepStatus;
+}
+
+export interface ReadinessCheck {
+  id: string;
+  label: string;
+  passed: boolean;
+  required: boolean;
+}
+
+export interface EventCounts {
+  participants: number;
+  groups: number;
+  tasks: number;
+  transactions: number;
+}
+
+export interface WizardPrefs {
+  lastStep: number;
+  groupType: GroupType | null;
+}
+
 export interface Event {
   id: string;
   owner_admin_id: string;
@@ -120,3 +151,11 @@ export interface NewlyAwardedReward {
 }
 
 export type DashboardTab = 'home' | 'event' | 'participants' | 'groups' | 'actions' | 'rewards' | 'score' | 'leaderboard' | 'qr-cards';
+
+export const WIZARD_STEPS: { id: WizardStepId; label: string; step: number }[] = [
+  { id: 'details', label: 'פרטי האירוע', step: 1 },
+  { id: 'groups', label: 'קבוצות', step: 2 },
+  { id: 'participants', label: 'משתתפים', step: 3 },
+  { id: 'tasks', label: 'משימות', step: 4 },
+  { id: 'review', label: 'סקירה והפקה', step: 5 },
+];

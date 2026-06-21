@@ -79,15 +79,6 @@ export function ActionForm({ eventId, action, isOpen, onClose, onSaved }: Action
           <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
         )}
 
-        {isEdit && (
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">קוד משימה</label>
-            <p className="rounded-lg bg-game-dark border border-game-border rounded-xl px-3 py-2 text-sm font-mono text-gray-400">
-              {action.code}
-            </p>
-          </div>
-        )}
-
         <Input
           id="action-name"
           label="שם"

@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ParticipantForm } from './ParticipantForm'
 import { ParticipantRow } from './ParticipantRow'
+import { InlineAddParticipant } from './InlineAddParticipant'
 import { CsvImportParticipantsModal } from './CsvImportParticipantsModal'
 import { GroupAssignment } from '@/components/groups/GroupAssignment'
 import type { ParticipantWithGroups, Participant, Group } from '@/types'
@@ -55,11 +56,6 @@ export function ParticipantList({ eventId, onCountChange }: ParticipantListProps
   }, [eventId, onCountChange])
 
   useEffect(() => { fetchParticipants() }, [fetchParticipants])
-
-  function handleCreate() {
-    setEditingParticipant(null)
-    setFormOpen(true)
-  }
 
   function handleEdit(participant: ParticipantWithGroups) {
     setEditingParticipant(participant)
@@ -111,7 +107,6 @@ export function ParticipantList({ eventId, onCountChange }: ParticipantListProps
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setCsvImportOpen(true)}>ייבוא CSV</Button>
-          <Button size="sm" onClick={handleCreate}>הוספת משתתף</Button>
         </div>
       </div>
 
@@ -120,11 +115,13 @@ export function ParticipantList({ eventId, onCountChange }: ParticipantListProps
       )}
 
       {participants.length === 0 ? (
-        <EmptyState
-          title="אין משתתפים עדיין"
-          description="הוסיפו משתתפים לאירוע כדי להתחיל."
-          action={<Button size="sm" onClick={handleCreate}>הוספת משתתף</Button>}
-        />
+        <div className="space-y-4">
+          <EmptyState
+            title="אין משתתפים עדיין"
+            description="הקלד שם למטה ולחץ Enter להוספה מהירה"
+          />
+          <InlineAddParticipant eventId={eventId} onAdded={fetchParticipants} />
+        </div>
       ) : (
         <div className="space-y-2">
           {participants.map((p) => (
@@ -136,6 +133,7 @@ export function ParticipantList({ eventId, onCountChange }: ParticipantListProps
               onManageGroups={() => setAssigningParticipant(p)}
             />
           ))}
+          <InlineAddParticipant eventId={eventId} onAdded={fetchParticipants} />
         </div>
       )}
 

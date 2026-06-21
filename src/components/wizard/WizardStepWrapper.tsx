@@ -1,0 +1,68 @@
+import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+
+interface WizardStepWrapperProps {
+  title: string
+  subtitle?: string
+  currentStep: number
+  totalSteps?: number
+  canAdvance?: boolean
+  onNext?: () => void
+  onBack?: () => void
+  nextLabel?: string
+  children: React.ReactNode
+}
+
+export function WizardStepWrapper({
+  title,
+  subtitle,
+  currentStep,
+  totalSteps = 5,
+  canAdvance = true,
+  onNext,
+  onBack,
+  nextLabel,
+  children,
+}: WizardStepWrapperProps) {
+  const isFirst = currentStep === 1
+  const isLast = currentStep === totalSteps
+
+  return (
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Step header */}
+      <div className="space-y-1">
+        <h2 className="text-2xl font-bold text-white">{title}</h2>
+        {subtitle && <p className="text-gray-400 text-sm">{subtitle}</p>}
+      </div>
+
+      {/* Step content */}
+      <div className="min-h-[300px]">
+        {children}
+      </div>
+
+      {/* Navigation buttons */}
+      <div className="flex items-center justify-between border-t border-game-border pt-6">
+        {!isFirst ? (
+          <Button variant="ghost" size="lg" onClick={onBack}>
+            <ArrowRight size={18} className="ml-2" />
+            הקודם
+          </Button>
+        ) : (
+          <div />
+        )}
+
+        {onNext && (
+          <Button
+            variant="gradient"
+            size="lg"
+            onClick={onNext}
+            disabled={!canAdvance}
+          >
+            {nextLabel || (isLast ? 'סיום' : 'הבא')}
+            {!isLast && <ArrowLeft size={18} className="mr-2" />}
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}

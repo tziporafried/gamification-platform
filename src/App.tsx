@@ -5,7 +5,9 @@ import { AuthRedirect } from '@/components/AuthRedirect'
 import { Landing } from '@/pages/Landing'
 import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
-import { Dashboard } from '@/pages/Dashboard'
+import { MyEvents } from '@/pages/MyEvents'
+import { EventWizard } from '@/pages/EventWizard'
+import { EventControlCenterPage } from '@/pages/EventControlCenter'
 
 export default function App() {
   return (
@@ -15,7 +17,15 @@ export default function App() {
           <Route path="/" element={<AuthRedirect><Landing /></AuthRedirect>} />
           <Route path="/login" element={<AuthRedirect><Login /></AuthRedirect>} />
           <Route path="/register" element={<AuthRedirect><Register /></AuthRedirect>} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+
+          {/* Protected: Event management */}
+          <Route path="/events" element={<ProtectedRoute><MyEvents /></ProtectedRoute>} />
+          <Route path="/events/:id" element={<ProtectedRoute><EventWizard /></ProtectedRoute>} />
+          <Route path="/events/:id/step/:step" element={<ProtectedRoute><EventWizard /></ProtectedRoute>} />
+          <Route path="/events/:id/control" element={<ProtectedRoute><EventControlCenterPage /></ProtectedRoute>} />
+
+          {/* Backward compat */}
+          <Route path="/dashboard" element={<Navigate to="/events" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
