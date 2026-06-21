@@ -20,7 +20,7 @@ export function LeaderboardToggle({ activeView, onViewChange }: LeaderboardToggl
             : 'text-gray-400 hover:text-gray-200',
         )}
       >
-        Players
+        שחקנים
       </button>
       <button
         onClick={() => onViewChange('groups')}
@@ -31,7 +31,7 @@ export function LeaderboardToggle({ activeView, onViewChange }: LeaderboardToggl
             : 'text-gray-400 hover:text-gray-200',
         )}
       >
-        Teams
+        קבוצות
       </button>
     </div>
   )

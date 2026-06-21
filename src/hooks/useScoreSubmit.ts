@@ -28,11 +28,11 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
     const aCode = actionCode.trim()
 
     if (!pCode) {
-      setLastError('Participant code is required.')
+      setLastError('קוד משתתף הוא שדה חובה.')
       return null
     }
     if (!aCode) {
-      setLastError('Action code is required.')
+      setLastError('קוד משימה הוא שדה חובה.')
       return null
     }
 
@@ -48,7 +48,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
 
       if (pError) throw pError
       if (!participant) {
-        setLastError(`Participant "${pCode}" not found.`)
+        setLastError(`משתתף "${pCode}" לא נמצא.`)
         setSubmitting(false)
         return null
       }
@@ -62,13 +62,13 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
 
       if (aError) throw aError
       if (!action) {
-        setLastError(`Action "${aCode}" not found.`)
+        setLastError(`משימה "${aCode}" לא נמצאה.`)
         setSubmitting(false)
         return null
       }
 
       if (!action.is_active) {
-        setLastError(`Action "${action.code}" is inactive.`)
+        setLastError(`משימה "${action.code}" אינה פעילה.`)
         setSubmitting(false)
         return null
       }
@@ -105,7 +105,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
         celebrationRewards,
       }
     } catch (err) {
-      setLastError(err instanceof Error ? err.message : 'Something went wrong.')
+      setLastError(err instanceof Error ? err.message : 'משהו השתבש.')
       setSubmitting(false)
       return null
     }

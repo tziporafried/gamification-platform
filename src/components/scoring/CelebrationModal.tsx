@@ -40,8 +40,8 @@ function getTierConfig(points: number) {
     gradient: 'gradient-diamond',
     border: 'border-purple-500/40',
     glow: '0 0 40px rgba(139, 92, 246, 0.4), 0 0 80px rgba(6, 182, 212, 0.2)',
-    title: 'LEGENDARY UNLOCK!',
-    label: 'Legendary',
+    title: '!פתיחה אגדית',
+    label: 'אגדי',
     confettiCount: 80,
   }
   if (points >= 1000) return {
@@ -49,8 +49,8 @@ function getTierConfig(points: number) {
     gradient: 'gradient-gold',
     border: 'border-amber-500/40',
     glow: '0 0 40px rgba(251, 191, 36, 0.4)',
-    title: 'ACHIEVEMENT UNLOCKED!',
-    label: 'Gold',
+    title: '!הישג נפתח',
+    label: 'זהב',
     confettiCount: 60,
   }
   if (points >= 500) return {
@@ -58,8 +58,8 @@ function getTierConfig(points: number) {
     gradient: 'gradient-silver',
     border: 'border-gray-400/40',
     glow: '0 0 24px rgba(156, 163, 175, 0.3)',
-    title: 'NEW ACHIEVEMENT!',
-    label: 'Silver',
+    title: '!הישג חדש',
+    label: 'כסף',
     confettiCount: 45,
   }
   return {
@@ -67,8 +67,8 @@ function getTierConfig(points: number) {
     gradient: 'gradient-bronze',
     border: 'border-orange-500/40',
     glow: '0 0 24px rgba(217, 119, 6, 0.3)',
-    title: 'NEW REWARD!',
-    label: 'Bronze',
+    title: '!פרס חדש',
+    label: 'ארד',
     confettiCount: 40,
   }
 }
@@ -181,12 +181,12 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
               </h2>
 
               <p className="mb-1 text-sm text-gray-400">
-                {participantName} reached <span className="font-bold text-white">{reward.out_total_points.toLocaleString()}</span> points
+                {participantName} הגיע ל-<span className="font-bold text-white">{reward.out_total_points.toLocaleString()}</span> נקודות
               </p>
 
               <div className="my-5 rounded-2xl border border-game-border bg-game-card p-4">
                 <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-gray-500">
-                  Reward
+                  פרס
                 </div>
                 <p className="text-xl font-black text-white">
                   {reward.out_reward_name}
@@ -199,7 +199,7 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
               <XPBar
                 current={reward.out_total_points}
                 target={reward.out_required_points}
-                label={`${reward.out_required_points.toLocaleString()} pts required`}
+                label={`${reward.out_required_points.toLocaleString()} נק׳ נדרשות`}
                 className="mb-5"
               />
 
@@ -210,7 +210,7 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
                 className="w-full font-bold tracking-wide animate-glow-pulse"
                 onClick={handleContinue}
               >
-                {isLast ? 'CONTINUE' : `NEXT (${currentIndex + 1}/${rewards.length})`}
+                {isLast ? 'המשך' : `הבא (${currentIndex + 1}/${rewards.length})`}
               </Button>
 
               {rewards.length > 1 && (

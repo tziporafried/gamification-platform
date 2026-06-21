@@ -97,11 +97,11 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
                 <Trophy size={22} className="text-amber-400" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">Trophy Case</h2>
-                <p className="text-xs text-gray-400">Collectible achievements</p>
+                <h2 className="text-xl font-bold text-white">ארון הפרסים</h2>
+                <p className="text-xs text-gray-400">הישגים לאיסוף</p>
               </div>
             </div>
-            <Button size="sm" variant="gradient" onClick={handleCreate}>Add Reward</Button>
+            <Button size="sm" variant="gradient" onClick={handleCreate}>הוספת פרס</Button>
           </div>
 
           {error && (
@@ -111,10 +111,10 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
           {rewards.length === 0 ? (
             <div className="rounded-2xl border border-game-border bg-game-card/50 px-6 py-12 text-center">
               <Trophy size={32} className="mx-auto mb-3 text-gray-600" />
-              <p className="text-sm font-medium text-gray-400">No rewards yet</p>
-              <p className="mt-1 text-xs text-gray-500">Create achievements for your players to unlock.</p>
+              <p className="text-sm font-medium text-gray-400">אין פרסים עדיין</p>
+              <p className="mt-1 text-xs text-gray-500">צרו הישגים שהשחקנים שלכם יוכלו לפתוח.</p>
               <div className="mt-4">
-                <Button size="sm" variant="gradient" onClick={handleCreate}>Add Reward</Button>
+                <Button size="sm" variant="gradient" onClick={handleCreate}>הוספת פרס</Button>
               </div>
             </div>
           ) : (

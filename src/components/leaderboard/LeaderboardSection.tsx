@@ -44,7 +44,7 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
     ])
 
     if (participantResult.error || groupResult.error) {
-      setError('Leaderboard is being set up. Please try again shortly.')
+      setError('טבלת הדירוג בהכנה. אנא נסו שוב בקרוב.')
       setLoading(false)
       return
     }
@@ -125,7 +125,7 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
 
   const emptyMessage =
     activeView === 'groups'
-      ? 'No groups yet. Create groups in the Groups tab to see the group leaderboard.'
+      ? 'אין קבוצות עדיין. צרו קבוצות בלשונית קבוצות כדי לראות את דירוג הקבוצות.'
       : undefined
 
   function handleSoundToggle() {
@@ -135,7 +135,6 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
 
   return (
     <div className="-mx-4 -mt-6 md:-mt-8">
-      {/* Arena header */}
       <div className="bg-game-radial px-4 pt-6 pb-2 md:pt-8">
         <div className="mx-auto max-w-5xl">
           <div className="mb-6 flex items-center justify-between">
@@ -144,8 +143,8 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
                 <Trophy size={22} className="text-amber-400" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">Arena</h2>
-                <p className="text-xs text-gray-400">Live rankings</p>
+                <h2 className="text-xl font-bold text-white">זירה</h2>
+                <p className="text-xs text-gray-400">דירוגים חיים</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -172,7 +171,6 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
         </div>
       </div>
 
-      {/* Rankings table */}
       {!isEmpty && tableEntries.length > 0 && (
         <div className="bg-game px-4 pb-6 pt-4">
           <div className="mx-auto max-w-5xl">
@@ -181,7 +179,6 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
         </div>
       )}
 
-      {/* Pad bottom if no table entries */}
       {!isEmpty && tableEntries.length === 0 && (
         <div className="h-4 bg-game" />
       )}

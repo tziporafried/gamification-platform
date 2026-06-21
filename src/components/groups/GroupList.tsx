@@ -97,9 +97,9 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
             <Layers size={18} className="text-brand-400" />
           </div>
-          <h2 className="text-lg font-bold text-white">Groups</h2>
+          <h2 className="text-lg font-bold text-white">קבוצות</h2>
         </div>
-        <Button size="sm" onClick={handleCreate}>Add Group</Button>
+        <Button size="sm" onClick={handleCreate}>הוספת קבוצה</Button>
       </div>
 
       {error && (
@@ -108,9 +108,9 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
 
       {groups.length === 0 ? (
         <EmptyState
-          title="No groups yet"
-          description="Create groups to organize your participants."
-          action={<Button size="sm" onClick={handleCreate}>Add Group</Button>}
+          title="אין קבוצות עדיין"
+          description="צרו קבוצות כדי לארגן את המשתתפים שלכם."
+          action={<Button size="sm" onClick={handleCreate}>הוספת קבוצה</Button>}
         />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -138,18 +138,18 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
       <Modal
         isOpen={!!deletingGroup}
         onClose={() => setDeletingGroup(null)}
-        title="Delete Group"
+        title="מחיקת קבוצה"
       >
         <p className="text-sm text-gray-400">
-          Are you sure you want to delete <strong>{deletingGroup?.name}</strong>?
-          All participant assignments to this group will also be removed. This action cannot be undone.
+          האם אתם בטוחים שברצונכם למחוק את <strong>{deletingGroup?.name}</strong>?
+          כל שיוכי המשתתפים לקבוצה זו יוסרו גם כן. לא ניתן לבטל פעולה זו.
         </p>
         <div className="mt-4 flex gap-3">
           <Button variant="danger" loading={deleting} onClick={handleDelete}>
-            Delete
+            מחיקה
           </Button>
           <Button variant="outline" onClick={() => setDeletingGroup(null)}>
-            Cancel
+            ביטול
           </Button>
         </div>
       </Modal>

@@ -16,10 +16,10 @@ interface MoreDrawerProps {
 }
 
 const DRAWER_ITEMS: { key: DashboardTab; label: string; icon: typeof Settings }[] = [
-  { key: 'actions', label: 'Actions', icon: Zap },
-  { key: 'rewards', label: 'Rewards', icon: Trophy },
-  { key: 'groups', label: 'Groups', icon: Layers },
-  { key: 'event', label: 'Event Settings', icon: Settings },
+  { key: 'actions', label: 'משימות', icon: Zap },
+  { key: 'rewards', label: 'פרסים', icon: Trophy },
+  { key: 'groups', label: 'קבוצות', icon: Layers },
+  { key: 'event', label: 'הגדרות אירוע', icon: Settings },
 ]
 
 export function MoreDrawer({
@@ -70,7 +70,7 @@ export function MoreDrawer({
 
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-lg p-1 text-gray-500 hover:bg-white/10 hover:text-gray-300"
+          className="absolute left-4 top-4 rounded-lg p-1 text-gray-500 hover:bg-white/10 hover:text-gray-300"
         >
           <X size={18} />
         </button>
@@ -116,7 +116,7 @@ export function MoreDrawer({
               className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-500 hover:bg-white/5 hover:text-gray-300"
             >
               <LogOut size={16} />
-              Log Out
+              התנתקות
             </button>
           </div>
         </div>

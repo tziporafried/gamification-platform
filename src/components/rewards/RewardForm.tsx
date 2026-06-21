@@ -28,12 +28,12 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved }: Reward
     setError('')
 
     if (!name.trim()) {
-      setError('Name is required.')
+      setError('שם הוא שדה חובה.')
       return
     }
     const pointsNum = parseInt(requiredPoints, 10)
     if (isNaN(pointsNum) || pointsNum <= 0) {
-      setError('Required points must be a positive number.')
+      setError('ניקוד נדרש חייב להיות מספר חיובי.')
       return
     }
 
@@ -53,7 +53,7 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved }: Reward
 
         if (updateError) {
           if (updateError.code === '23505') {
-            throw new Error('A reward with this name already exists.')
+            throw new Error('פרס עם שם זה כבר קיים.')
           }
           throw updateError
         }
@@ -69,21 +69,21 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved }: Reward
 
         if (insertError) {
           if (insertError.code === '23505') {
-            throw new Error('A reward with this name already exists.')
+            throw new Error('פרס עם שם זה כבר קיים.')
           }
           throw insertError
         }
       }
       onSaved()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
+      setError(err instanceof Error ? err.message : 'משהו השתבש.')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'Edit Reward' : 'Create Reward'}>
+    <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'עריכת פרס' : 'יצירת פרס'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
@@ -91,8 +91,8 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved }: Reward
 
         <Input
           id="reward-name"
-          label="Name"
-          placeholder="Bronze Achievement"
+          label="שם"
+          placeholder="הישג ארד"
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoFocus
@@ -100,7 +100,7 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved }: Reward
 
         <Input
           id="reward-points"
-          label="Required Points"
+          label="ניקוד נדרש"
           type="number"
           placeholder="100"
           value={requiredPoints}
@@ -109,13 +109,13 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved }: Reward
 
         <div className="w-full">
           <label htmlFor="reward-description" className="block text-sm font-medium text-gray-300 mb-1">
-            Description
+            תיאור
           </label>
           <textarea
             id="reward-description"
             className="block w-full rounded-xl border border-game-border bg-game-dark px-3 py-2 text-sm text-white placeholder-gray-500 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-brand-500 focus:ring-brand-500/30"
             rows={2}
-            placeholder="Optional description"
+            placeholder="תיאור אופציונלי"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
@@ -129,16 +129,16 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved }: Reward
               onChange={(e) => setIsActive(e.target.checked)}
               className="h-4 w-4 rounded border-game-border bg-game-dark text-brand-600 focus:ring-brand-500"
             />
-            Active
+            פעיל
           </label>
         )}
 
         <div className="flex gap-3 pt-2">
           <Button type="submit" loading={saving}>
-            {isEdit ? 'Save Changes' : 'Create Reward'}
+            {isEdit ? 'שמירת שינויים' : 'יצירת פרס'}
           </Button>
           <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
+            ביטול
           </Button>
         </div>
       </form>

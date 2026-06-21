@@ -45,7 +45,7 @@ export function QuickScoreCard({ eventId, onScoreSubmitted }: QuickScoreCardProp
 
     const sign = result.points >= 0 ? '+' : ''
     setToast({
-      message: `${sign}${result.points} pts to ${result.participantName} for ${result.actionName}`,
+      message: `${sign}${result.points} נק׳ ל${result.participantName} עבור ${result.actionName}`,
       variant: 'success',
     })
 
@@ -62,20 +62,20 @@ export function QuickScoreCard({ eventId, onScoreSubmitted }: QuickScoreCardProp
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/20">
             <Zap size={18} className="text-emerald-400" />
           </div>
-          <h3 className="text-base font-bold text-white">Award Points</h3>
+          <h3 className="text-base font-bold text-white">הענקת ניקוד</h3>
         </div>
 
         <form onSubmit={handleSubmit} className="p-4">
           <div className="flex gap-3">
             <input
               ref={participantInputRef}
-              placeholder="Player code"
+              placeholder="קוד משתתף"
               value={participantCode}
               onChange={(e) => setParticipantCode(e.target.value)}
               className="w-full rounded-xl border border-game-border bg-game-dark px-3 py-2.5 text-center text-sm font-medium text-white placeholder-gray-500 transition-colors focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
             <input
-              placeholder="Action code"
+              placeholder="קוד משימה"
               value={actionCode}
               onChange={(e) => setActionCode(e.target.value)}
               className="w-full rounded-xl border border-game-border bg-game-dark px-3 py-2.5 text-center text-sm font-medium text-white placeholder-gray-500 transition-colors focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"

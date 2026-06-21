@@ -38,9 +38,9 @@ export function ParticipantRow({ participant, onEdit, onDelete, onManageGroups }
       </div>
 
       <div className="flex shrink-0 gap-1">
-        <Button variant="ghost" size="sm" onClick={onManageGroups}>Groups</Button>
-        <Button variant="ghost" size="sm" onClick={onEdit}>Edit</Button>
-        <Button variant="ghost" size="sm" onClick={onDelete} className="text-red-400 hover:bg-red-500/10 hover:text-red-300">Delete</Button>
+        <Button variant="ghost" size="sm" onClick={onManageGroups}>קבוצות</Button>
+        <Button variant="ghost" size="sm" onClick={onEdit}>עריכה</Button>
+        <Button variant="ghost" size="sm" onClick={onDelete} className="text-red-400 hover:bg-red-500/10 hover:text-red-300">מחיקה</Button>
       </div>
     </div>
   )

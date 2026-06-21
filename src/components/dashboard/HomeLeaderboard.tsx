@@ -1,4 +1,4 @@
-import { Trophy, ChevronRight } from 'lucide-react'
+import { Trophy, ChevronLeft } from 'lucide-react'
 import { AvatarCircle } from '@/components/ui/AvatarCircle'
 import { RankBadge } from '@/components/ui/RankBadge'
 import { Badge } from '@/components/ui/Badge'
@@ -28,10 +28,10 @@ export function HomeLeaderboard({ entries, onViewFull }: HomeLeaderboardProps) {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/20">
             <Trophy size={18} className="text-amber-400" />
           </div>
-          <h3 className="text-base font-bold text-white">Leaderboard</h3>
+          <h3 className="text-base font-bold text-white">טבלת דירוג</h3>
         </div>
         <div className="px-5 py-10 text-center">
-          <p className="text-sm text-gray-500">No scores recorded yet. Start awarding points to see rankings.</p>
+          <p className="text-sm text-gray-500">עדיין לא נרשמו ניקודים. התחילו להעניק ניקוד כדי לראות דירוגים.</p>
         </div>
       </div>
     )
@@ -44,9 +44,9 @@ export function HomeLeaderboard({ entries, onViewFull }: HomeLeaderboardProps) {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/20">
             <Trophy size={18} className="text-amber-400" />
           </div>
-          <h3 className="text-base font-bold text-white">Leaderboard</h3>
+          <h3 className="text-base font-bold text-white">טבלת דירוג</h3>
           <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-gray-400">
-            Top {entries.length}
+            טופ {entries.length}
           </span>
         </div>
       </div>
@@ -94,7 +94,7 @@ export function HomeLeaderboard({ entries, onViewFull }: HomeLeaderboardProps) {
                 )}
               >
                 {entry.total_points.toLocaleString()}
-                <span className="ml-0.5 text-xs font-medium opacity-50">pts</span>
+                <span className="mr-0.5 text-xs font-medium opacity-50">נק׳</span>
               </span>
             </div>
           )
@@ -106,8 +106,8 @@ export function HomeLeaderboard({ entries, onViewFull }: HomeLeaderboardProps) {
           onClick={onViewFull}
           className="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold text-brand-400 transition-colors hover:bg-brand-600/10 hover:text-brand-300"
         >
-          View Full Leaderboard
-          <ChevronRight size={14} />
+          צפייה בטבלת הדירוג המלאה
+          <ChevronLeft size={14} />
         </button>
       </div>
     </div>

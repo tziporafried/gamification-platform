@@ -32,14 +32,14 @@ export function GroupCard({ group, onEdit, onDelete }: GroupCardProps) {
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <Users size={12} />
                 <span>
-                  {group.member_count} {group.member_count === 1 ? 'member' : 'members'}
+                  {group.member_count} חברים
                 </span>
               </div>
             </div>
           </div>
           <div className="flex gap-1">
-            <Button variant="ghost" size="sm" onClick={onEdit}>Edit</Button>
-            <Button variant="ghost" size="sm" onClick={onDelete} className="text-red-400 hover:bg-red-500/10 hover:text-red-300">Delete</Button>
+            <Button variant="ghost" size="sm" onClick={onEdit}>עריכה</Button>
+            <Button variant="ghost" size="sm" onClick={onDelete} className="text-red-400 hover:bg-red-500/10 hover:text-red-300">מחיקה</Button>
           </div>
         </div>
       </div>

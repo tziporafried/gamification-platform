@@ -1,5 +1,6 @@
 import { Zap, Minus } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { he } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import type { PointTransactionWithDetails } from '@/types'
 
@@ -8,7 +9,7 @@ interface TransactionRowProps {
 }
 
 export function TransactionRow({ transaction }: TransactionRowProps) {
-  const relativeTime = formatDistanceToNow(new Date(transaction.created_at), { addSuffix: true })
+  const relativeTime = formatDistanceToNow(new Date(transaction.created_at), { addSuffix: true, locale: he })
   const isPositive = transaction.points >= 0
 
   return (
@@ -24,7 +25,7 @@ export function TransactionRow({ transaction }: TransactionRowProps) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm text-gray-200">
           <span className="font-medium text-white">{transaction.participant.name}</span>
-          {' scored '}
+          {' ביצע '}
           <span className="font-medium text-gray-300">{transaction.action.name}</span>
         </p>
         <p className="text-xs text-gray-500">

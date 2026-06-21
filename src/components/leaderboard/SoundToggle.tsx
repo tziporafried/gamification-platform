@@ -8,7 +8,7 @@ export function SoundToggle({ muted, onToggle }: SoundToggleProps) {
   return (
     <button
       onClick={onToggle}
-      title={muted ? 'Enable sound effects' : 'Mute sound effects'}
+      title={muted ? 'הפעלת אפקטי קול' : 'השתקת אפקטי קול'}
       className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-white/10 hover:text-gray-300"
       style={!muted ? { color: '#a78bfa' } : undefined}
     >

@@ -15,10 +15,10 @@ export function LeaderboardEmptyState({ themeColor, message }: LeaderboardEmptyS
         <Trophy size={32} style={{ color: themeColor }} />
       </div>
       <h3 className="text-lg font-bold text-white">
-        Arena Ready
+        הזירה מוכנה
       </h3>
       <p className="mt-2 max-w-sm text-sm text-gray-400">
-        {message || 'No scores have been recorded yet. Start awarding points to see the first rankings appear.'}
+        {message || 'עדיין לא נרשמו ניקודים. התחילו להעניק ניקוד כדי לראות את הדירוגים הראשונים.'}
       </p>
     </div>
   )

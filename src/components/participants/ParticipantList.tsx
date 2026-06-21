@@ -107,11 +107,11 @@ export function ParticipantList({ eventId, onCountChange }: ParticipantListProps
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
             <Users size={18} className="text-brand-400" />
           </div>
-          <h2 className="text-lg font-bold text-white">Participants</h2>
+          <h2 className="text-lg font-bold text-white">משתתפים</h2>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setCsvImportOpen(true)}>Import CSV</Button>
-          <Button size="sm" onClick={handleCreate}>Add Participant</Button>
+          <Button size="sm" variant="outline" onClick={() => setCsvImportOpen(true)}>ייבוא CSV</Button>
+          <Button size="sm" onClick={handleCreate}>הוספת משתתף</Button>
         </div>
       </div>
 
@@ -121,9 +121,9 @@ export function ParticipantList({ eventId, onCountChange }: ParticipantListProps
 
       {participants.length === 0 ? (
         <EmptyState
-          title="No participants yet"
-          description="Add participants to your event to get started."
-          action={<Button size="sm" onClick={handleCreate}>Add Participant</Button>}
+          title="אין משתתפים עדיין"
+          description="הוסיפו משתתפים לאירוע כדי להתחיל."
+          action={<Button size="sm" onClick={handleCreate}>הוספת משתתף</Button>}
         />
       ) : (
         <div className="space-y-2">
@@ -152,18 +152,18 @@ export function ParticipantList({ eventId, onCountChange }: ParticipantListProps
       <Modal
         isOpen={!!deletingParticipant}
         onClose={() => setDeletingParticipant(null)}
-        title="Delete Participant"
+        title="מחיקת משתתף"
       >
         <p className="text-sm text-gray-400">
-          Are you sure you want to delete <strong>{deletingParticipant?.name}</strong>?
-          All group assignments for this participant will also be removed. This action cannot be undone.
+          האם אתם בטוחים שברצונכם למחוק את <strong>{deletingParticipant?.name}</strong>?
+          כל שיוכי הקבוצות של משתתף זה יוסרו גם כן. לא ניתן לבטל פעולה זו.
         </p>
         <div className="mt-4 flex gap-3">
           <Button variant="danger" loading={deleting} onClick={handleDelete}>
-            Delete
+            מחיקה
           </Button>
           <Button variant="outline" onClick={() => setDeletingParticipant(null)}>
-            Cancel
+            ביטול
           </Button>
         </div>
       </Modal>

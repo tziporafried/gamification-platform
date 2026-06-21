@@ -9,10 +9,10 @@ import { ColorPicker } from '@/components/ui/ColorPicker'
 import type { Event, EventStatus } from '@/types'
 
 const STATUS_LABELS: Record<EventStatus, string> = {
-  draft: 'Draft',
-  active: 'Active',
-  finished: 'Finished',
-  archived: 'Archived',
+  draft: 'טיוטה',
+  active: 'פעיל',
+  finished: 'הסתיים',
+  archived: 'בארכיון',
 }
 
 interface EventFormProps {
@@ -80,11 +80,11 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
     setError('')
 
     if (!name.trim()) {
-      setError('Event name is required.')
+      setError('שם האירוע הוא שדה חובה.')
       return
     }
     if (!slug.trim()) {
-      setError('Slug is required.')
+      setError('כתובת קצרה היא שדה חובה.')
       return
     }
 
@@ -126,16 +126,16 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
         if (insertError) {
           if (insertError.code === '23505') {
             if (insertError.message.includes('slug')) {
-              throw new Error('This slug is already taken. Please choose a different one.')
+              throw new Error('כתובת קצרה זו כבר תפוסה. אנא בחרו אחרת.')
             }
-            throw new Error('You already have an event.')
+            throw new Error('כבר יש לכם אירוע.')
           }
           throw insertError
         }
         onSaved(data as Event)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
+      setError(err instanceof Error ? err.message : 'משהו השתבש.')
     } finally {
       setSaving(false)
     }
@@ -144,7 +144,7 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
   return (
     <Card className="p-6">
       <h2 className="mb-6 text-xl font-semibold text-white">
-        {isEdit ? 'Edit Event' : 'Create Your Event'}
+        {isEdit ? 'עריכת אירוע' : 'יצירת האירוע שלכם'}
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -154,35 +154,35 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
 
         <Input
           id="name"
-          label="Event Name"
-          placeholder="My Awesome Event"
+          label="שם האירוע"
+          placeholder="האירוע המדהים שלי"
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
         />
 
         <Input
           id="slug"
-          label="Slug"
+          label="כתובת קצרה"
           placeholder="my-awesome-event"
           value={slug}
           onChange={(e) => handleSlugChange(e.target.value)}
         />
 
         <ColorPicker
-          label="Theme Color"
+          label="צבע נושא"
           value={themeColor}
           onChange={setThemeColor}
         />
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">
-            Event Logo
+            לוגו האירוע
           </label>
           <div className="flex items-center gap-4">
             {logoPreview && (
               <img
                 src={logoPreview}
-                alt="Logo preview"
+                alt="תצוגה מקדימה"
                 className="h-16 w-16 rounded-lg object-cover border border-game-border"
               />
             )}
@@ -200,7 +200,7 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
               >
-                {logoPreview ? 'Change Logo' : 'Upload Logo'}
+                {logoPreview ? 'החלפת לוגו' : 'העלאת לוגו'}
               </Button>
             </div>
           </div>
@@ -209,7 +209,7 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
         {isEdit && (
           <div>
             <label htmlFor="status" className="block text-sm font-medium text-gray-300 mb-1">
-              Status
+              סטטוס
             </label>
             <select
               id="status"
@@ -226,11 +226,11 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
 
         <div className="flex gap-3 pt-2">
           <Button type="submit" variant="gradient" loading={saving}>
-            {isEdit ? 'Save Changes' : 'Create Event'}
+            {isEdit ? 'שמירת שינויים' : 'יצירת אירוע'}
           </Button>
           {onCancel && (
             <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
+              ביטול
             </Button>
           )}
         </div>

@@ -43,7 +43,7 @@ export function LeaderboardRow({
 
       <span className="shrink-0 text-sm font-bold tabular-nums text-brand-400">
         {totalPoints.toLocaleString()}
-        <span className="ml-0.5 text-xs font-medium text-brand-500/50">pts</span>
+        <span className="mr-0.5 text-xs font-medium text-brand-500/50">נק׳</span>
       </span>
     </div>
   )

@@ -44,7 +44,7 @@ export function Dashboard() {
   }
 
   const userEmail = user?.email || ''
-  const userName = userEmail.split('@')[0] || 'User'
+  const userName = userEmail.split('@')[0] || 'משתמש'
 
   if (!event) {
     return (

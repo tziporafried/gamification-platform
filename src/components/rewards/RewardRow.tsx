@@ -12,10 +12,10 @@ interface RewardRowProps {
 }
 
 function getRewardTier(points: number): { icon: typeof Trophy; gradient: string; border: string; label: string } {
-  if (points >= 2000) return { icon: Gem, gradient: 'gradient-diamond', border: 'border-purple-500/30', label: 'LEGENDARY' }
-  if (points >= 1000) return { icon: Trophy, gradient: 'gradient-gold', border: 'border-amber-500/30', label: 'GOLD' }
-  if (points >= 500) return { icon: Award, gradient: 'gradient-silver', border: 'border-gray-400/30', label: 'SILVER' }
-  return { icon: Star, gradient: 'gradient-bronze', border: 'border-orange-500/30', label: 'BRONZE' }
+  if (points >= 2000) return { icon: Gem, gradient: 'gradient-diamond', border: 'border-purple-500/30', label: 'אגדי' }
+  if (points >= 1000) return { icon: Trophy, gradient: 'gradient-gold', border: 'border-amber-500/30', label: 'זהב' }
+  if (points >= 500) return { icon: Award, gradient: 'gradient-silver', border: 'border-gray-400/30', label: 'כסף' }
+  return { icon: Star, gradient: 'gradient-bronze', border: 'border-orange-500/30', label: 'ארד' }
 }
 
 export function RewardRow({ reward, onEdit, onToggleActive, onManageGroups }: RewardRowProps) {
@@ -52,7 +52,7 @@ export function RewardRow({ reward, onEdit, onToggleActive, onManageGroups }: Re
         )}
 
         <div className="mt-3 inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-brand-300">
-          {reward.required_points.toLocaleString()} pts
+          {reward.required_points.toLocaleString()} נק׳
         </div>
 
         {reward.groups.length > 0 && (
@@ -64,8 +64,7 @@ export function RewardRow({ reward, onEdit, onToggleActive, onManageGroups }: Re
         )}
       </div>
 
-      {/* Overflow menu */}
-      <div className="absolute right-2 top-2">
+      <div className="absolute left-2 top-2">
         <button
           onClick={() => setMenuOpen(!menuOpen)}
           className="rounded-lg p-1.5 text-gray-500 hover:bg-white/10 hover:text-gray-300"
@@ -76,27 +75,27 @@ export function RewardRow({ reward, onEdit, onToggleActive, onManageGroups }: Re
         {menuOpen && (
           <>
             <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-            <div className="absolute right-0 top-8 z-20 w-36 rounded-xl border border-game-border bg-game-dark p-1 shadow-podium">
+            <div className="absolute left-0 top-8 z-20 w-36 rounded-xl border border-game-border bg-game-dark p-1 shadow-podium">
               <button
                 onClick={() => { onEdit(); setMenuOpen(false) }}
-                className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/5"
+                className="w-full rounded-lg px-3 py-2 text-right text-sm text-gray-300 hover:bg-white/5"
               >
-                Edit
+                עריכה
               </button>
               <button
                 onClick={() => { onManageGroups(); setMenuOpen(false) }}
-                className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/5"
+                className="w-full rounded-lg px-3 py-2 text-right text-sm text-gray-300 hover:bg-white/5"
               >
-                Groups
+                קבוצות
               </button>
               <button
                 onClick={() => { onToggleActive(); setMenuOpen(false) }}
                 className={cn(
-                  'w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-white/5',
+                  'w-full rounded-lg px-3 py-2 text-right text-sm hover:bg-white/5',
                   reward.is_active ? 'text-amber-400' : 'text-emerald-400',
                 )}
               >
-                {reward.is_active ? 'Deactivate' : 'Activate'}
+                {reward.is_active ? 'השבתה' : 'הפעלה'}
               </button>
             </div>
           </>
@@ -104,9 +103,9 @@ export function RewardRow({ reward, onEdit, onToggleActive, onManageGroups }: Re
       </div>
 
       {!reward.is_active && (
-        <div className="absolute left-2 top-2">
+        <div className="absolute right-2 top-2">
           <span className="rounded-full bg-gray-600/50 px-2 py-0.5 text-[10px] font-medium text-gray-400">
-            Inactive
+            לא פעיל
           </span>
         </div>
       )}

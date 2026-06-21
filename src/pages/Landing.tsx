@@ -9,20 +9,20 @@ export function Landing() {
           G
         </div>
         <h1 className="mb-3 text-4xl font-black tracking-tight text-white sm:text-5xl">
-          Gamification Platform
+          פלטפורמת משחוק
         </h1>
         <p className="mb-8 max-w-md text-lg text-gray-400">
-          Create engaging competitions with points, teams, and leaderboards.
+          צרו תחרויות מרתקות עם ניקוד, קבוצות וטבלאות דירוג.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link to="/login">
             <Button size="lg" variant="outline" className="w-full sm:w-auto">
-              Log In
+              התחברות
             </Button>
           </Link>
           <Link to="/register">
             <Button size="lg" variant="gradient" className="w-full sm:w-auto">
-              Get Started
+              התחלה
             </Button>
           </Link>
         </div>

@@ -89,7 +89,7 @@ export function CsvImportParticipantsModal({ eventId, isOpen, onClose, onImporte
 
   async function handleImport() {
     if (!file) {
-      setError('Please select a CSV file.')
+      setError('אנא בחרו קובץ CSV.')
       return
     }
 
@@ -101,7 +101,7 @@ export function CsvImportParticipantsModal({ eventId, isOpen, onClose, onImporte
       const { headers, rows } = parseCsv(text)
 
       if (headers.length === 0) {
-        setError('The CSV file is empty.')
+        setError('קובץ ה-CSV ריק.')
         setImporting(false)
         return
       }
@@ -113,7 +113,7 @@ export function CsvImportParticipantsModal({ eventId, isOpen, onClose, onImporte
         const missing: string[] = []
         if (nameIdx === -1) missing.push('participant_name')
         if (groupIdx === -1) missing.push('group_name')
-        setError(`Missing required column(s): ${missing.join(', ')}`)
+        setError(`עמודות חובה חסרות: ${missing.join(', ')}`)
         setImporting(false)
         return
       }
@@ -151,24 +151,24 @@ export function CsvImportParticipantsModal({ eventId, isOpen, onClose, onImporte
         if (!rawName && !rawGroup) continue
 
         if (!rawName) {
-          errors.push({ row: rowNumber, reason: 'Missing participant name' })
+          errors.push({ row: rowNumber, reason: 'שם משתתף חסר' })
           continue
         }
 
         if (!rawGroup) {
-          errors.push({ row: rowNumber, reason: 'Missing group name' })
+          errors.push({ row: rowNumber, reason: 'שם קבוצה חסר' })
           continue
         }
 
         const nameLower = rawName.toLowerCase()
 
         if (existingParticipantNames.has(nameLower)) {
-          errors.push({ row: rowNumber, reason: `Participant "${rawName}" already exists` })
+          errors.push({ row: rowNumber, reason: `משתתף "${rawName}" כבר קיים` })
           continue
         }
 
         if (seenNames.has(nameLower)) {
-          errors.push({ row: rowNumber, reason: `Duplicate participant "${rawName}" in CSV` })
+          errors.push({ row: rowNumber, reason: `משתתף כפול "${rawName}" ב-CSV` })
           continue
         }
 
@@ -200,7 +200,7 @@ export function CsvImportParticipantsModal({ eventId, isOpen, onClose, onImporte
               }
             } else {
               for (const r of validRows.filter((v) => v.groupName.toLowerCase() === groupLower)) {
-                errors.push({ row: r.rowNumber, reason: `Failed to create group "${row.groupName}": ${groupError.message}` })
+                errors.push({ row: r.rowNumber, reason: `יצירת קבוצה "${row.groupName}" נכשלה: ${groupError.message}` })
               }
               continue
             }
@@ -232,7 +232,7 @@ export function CsvImportParticipantsModal({ eventId, isOpen, onClose, onImporte
           .insert({ participant_id: newParticipant.id, group_id: groupId })
 
         if (assignError) {
-          errors.push({ row: row.rowNumber, reason: `Created participant but failed to assign group: ${assignError.message}` })
+          errors.push({ row: row.rowNumber, reason: `משתתף נוצר אך שיוך לקבוצה נכשל: ${assignError.message}` })
         }
 
         created++
@@ -248,14 +248,14 @@ export function CsvImportParticipantsModal({ eventId, isOpen, onClose, onImporte
 
       setSummary({ totalRows, created, skipped, groupsCreated, errors })
     } catch {
-      setError('Failed to read the CSV file.')
+      setError('קריאת קובץ ה-CSV נכשלה.')
     } finally {
       setImporting(false)
     }
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Import Participants from CSV">
+    <Modal isOpen={isOpen} onClose={handleClose} title="ייבוא משתתפים מ-CSV">
       <div className="space-y-4">
         {error && (
           <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
@@ -264,7 +264,7 @@ export function CsvImportParticipantsModal({ eventId, isOpen, onClose, onImporte
         {!summary ? (
           <>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">CSV File</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">קובץ CSV</label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -273,24 +273,24 @@ export function CsvImportParticipantsModal({ eventId, isOpen, onClose, onImporte
                   setFile(e.target.files?.[0] ?? null)
                   setError('')
                 }}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brand-500/20 file:text-brand-300 hover:file:bg-brand-500/30"
+                className="block w-full text-sm text-gray-500 file:ml-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brand-500/20 file:text-brand-300 hover:file:bg-brand-500/30"
               />
             </div>
 
             <div className="rounded-lg bg-game-dark border border-game-border rounded-xl p-3">
-              <p className="text-xs font-medium text-gray-700 mb-1">Required columns:</p>
+              <p className="text-xs font-medium text-gray-700 mb-1">עמודות נדרשות:</p>
               <code className="text-xs text-gray-400">participant_name, group_name</code>
               <p className="text-xs text-gray-500 mt-2">
-                Missing groups will be created automatically. Duplicate participant names will be skipped.
+                קבוצות חסרות ייווצרו אוטומטית. שמות משתתפים כפולים ידולגו.
               </p>
             </div>
 
             <div className="flex gap-3 pt-2">
               <Button onClick={handleImport} loading={importing} disabled={!file}>
-                Import
+                ייבוא
               </Button>
               <Button variant="outline" onClick={handleClose}>
-                Cancel
+                ביטול
               </Button>
             </div>
           </>
@@ -298,34 +298,34 @@ export function CsvImportParticipantsModal({ eventId, isOpen, onClose, onImporte
           <>
             <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Total rows processed</span>
+                <span className="text-gray-600">סה״כ שורות שעובדו</span>
                 <span className="font-medium text-gray-900">{summary.totalRows}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Participants created</span>
+                <span className="text-gray-600">משתתפים שנוצרו</span>
                 <span className="font-medium text-green-700">{summary.created}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Rows skipped (duplicates)</span>
+                <span className="text-gray-600">שורות שדולגו (כפולים)</span>
                 <span className="font-medium text-yellow-700">{summary.skipped}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Groups created</span>
+                <span className="text-gray-600">קבוצות שנוצרו</span>
                 <span className="font-medium text-blue-700">{summary.groupsCreated}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Errors</span>
+                <span className="text-gray-600">שגיאות</span>
                 <span className="font-medium text-red-700">{summary.errors.length}</span>
               </div>
             </div>
 
             {summary.errors.length > 0 && (
               <div className="rounded-lg bg-red-50 border border-red-200 p-3">
-                <p className="text-xs font-medium text-red-800 mb-2">Error details:</p>
+                <p className="text-xs font-medium text-red-800 mb-2">פירוט שגיאות:</p>
                 <ul className="space-y-1 max-h-40 overflow-y-auto">
                   {summary.errors.map((err, i) => (
                     <li key={i} className="text-xs text-red-700">
-                      Row {err.row}: {err.reason}
+                      שורה {err.row}: {err.reason}
                     </li>
                   ))}
                 </ul>
@@ -333,7 +333,7 @@ export function CsvImportParticipantsModal({ eventId, isOpen, onClose, onImporte
             )}
 
             <div className="flex gap-3 pt-2">
-              <Button onClick={handleClose}>Done</Button>
+              <Button onClick={handleClose}>סיום</Button>
             </div>
           </>
         )}

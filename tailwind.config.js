@@ -6,6 +6,9 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Heebo', 'sans-serif'],
+      },
       colors: {
         brand: {
           50: '#f5f3ff',

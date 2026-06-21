@@ -17,7 +17,7 @@ export function Login() {
     setError('')
 
     if (!email || !password) {
-      setError('Please fill in all fields.')
+      setError('יש למלא את כל השדות.')
       return
     }
 
@@ -40,8 +40,8 @@ export function Login() {
           <Link to="/" className="inline-flex h-10 w-10 items-center justify-center rounded-xl gradient-brand text-lg font-bold text-white">
             G
           </Link>
-          <h1 className="mt-4 text-2xl font-bold text-white">Welcome back</h1>
-          <p className="mt-1 text-sm text-gray-500">Sign in to your account</p>
+          <h1 className="mt-4 text-2xl font-bold text-white">ברוכים השבים</h1>
+          <p className="mt-1 text-sm text-gray-500">התחברו לחשבון שלכם</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -51,7 +51,7 @@ export function Login() {
 
           <Input
             id="email"
-            label="Email"
+            label="אימייל"
             type="email"
             placeholder="you@example.com"
             value={email}
@@ -61,7 +61,7 @@ export function Login() {
 
           <Input
             id="password"
-            label="Password"
+            label="סיסמה"
             type="password"
             placeholder="••••••••"
             value={password}
@@ -70,14 +70,14 @@ export function Login() {
           />
 
           <Button type="submit" variant="gradient" loading={loading} className="w-full">
-            Sign In
+            התחברות
           </Button>
         </form>
 
         <p className="mt-4 text-center text-sm text-gray-500">
-          Don&apos;t have an account?{' '}
+          אין לכם חשבון?{' '}
           <Link to="/register" className="font-medium text-brand-400 hover:text-brand-300">
-            Register
+            הרשמה
           </Link>
         </p>
       </div>

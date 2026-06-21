@@ -36,7 +36,7 @@ export function DashboardLayout({
         onSignOut={onSignOut}
       />
 
-      <main className="md:ml-16 lg:ml-60">
+      <main className="md:mr-16 lg:mr-60">
         <div className="mx-auto max-w-5xl px-4 py-6 pb-24 md:py-8 md:pb-8">
           {children}
         </div>

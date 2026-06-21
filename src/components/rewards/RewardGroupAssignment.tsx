@@ -80,9 +80,9 @@ export function RewardGroupAssignment({ eventId, rewardId, rewardName, isOpen, o
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Groups for ${rewardName}`}>
+    <Modal isOpen={isOpen} onClose={onClose} title={`קבוצות עבור ${rewardName}`}>
       <p className="mb-3 text-xs text-gray-500">
-        Leave empty to make this reward available to all participants.
+        השאירו ריק כדי להפוך פרס זה לזמין לכל המשתתפים.
       </p>
       {loading ? (
         <div className="flex justify-center py-6">
@@ -90,7 +90,7 @@ export function RewardGroupAssignment({ eventId, rewardId, rewardName, isOpen, o
         </div>
       ) : groups.length === 0 ? (
         <p className="py-4 text-center text-sm text-gray-500">
-          No groups created yet. This reward will be available to all participants.
+          עדיין לא נוצרו קבוצות. פרס זה יהיה זמין לכל המשתתפים.
         </p>
       ) : (
         <div className="space-y-2">

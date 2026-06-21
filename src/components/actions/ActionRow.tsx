@@ -39,7 +39,7 @@ export function ActionRow({ action, onEdit, onToggleActive }: ActionRowProps) {
             </span>
             {!action.is_active && (
               <span className="shrink-0 rounded-full bg-gray-600/50 px-2 py-0.5 text-[10px] font-medium text-gray-400">
-                Inactive
+                לא פעיל
               </span>
             )}
           </div>
@@ -50,14 +50,14 @@ export function ActionRow({ action, onEdit, onToggleActive }: ActionRowProps) {
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        <Button variant="ghost" size="sm" onClick={onEdit}>Edit</Button>
+        <Button variant="ghost" size="sm" onClick={onEdit}>עריכה</Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={onToggleActive}
           className={action.is_active ? 'text-amber-400 hover:bg-amber-500/10 hover:text-amber-300' : 'text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300'}
         >
-          {action.is_active ? 'Deactivate' : 'Activate'}
+          {action.is_active ? 'השבתה' : 'הפעלה'}
         </Button>
       </div>
     </div>

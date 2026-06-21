@@ -18,17 +18,17 @@ export function Register() {
     setError('')
 
     if (!email || !password || !confirmPassword) {
-      setError('Please fill in all fields.')
+      setError('יש למלא את כל השדות.')
       return
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters.')
+      setError('הסיסמה חייבת להכיל לפחות 6 תווים.')
       return
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.')
+      setError('הסיסמאות אינן תואמות.')
       return
     }
 
@@ -51,8 +51,8 @@ export function Register() {
           <Link to="/" className="inline-flex h-10 w-10 items-center justify-center rounded-xl gradient-brand text-lg font-bold text-white">
             G
           </Link>
-          <h1 className="mt-4 text-2xl font-bold text-white">Create an account</h1>
-          <p className="mt-1 text-sm text-gray-500">Get started with your event</p>
+          <h1 className="mt-4 text-2xl font-bold text-white">יצירת חשבון</h1>
+          <p className="mt-1 text-sm text-gray-500">התחילו עם האירוע שלכם</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -62,7 +62,7 @@ export function Register() {
 
           <Input
             id="email"
-            label="Email"
+            label="אימייל"
             type="email"
             placeholder="you@example.com"
             value={email}
@@ -72,7 +72,7 @@ export function Register() {
 
           <Input
             id="password"
-            label="Password"
+            label="סיסמה"
             type="password"
             placeholder="••••••••"
             value={password}
@@ -82,7 +82,7 @@ export function Register() {
 
           <Input
             id="confirmPassword"
-            label="Confirm Password"
+            label="אימות סיסמה"
             type="password"
             placeholder="••••••••"
             value={confirmPassword}
@@ -91,14 +91,14 @@ export function Register() {
           />
 
           <Button type="submit" variant="gradient" loading={loading} className="w-full">
-            Create Account
+            יצירת חשבון
           </Button>
         </form>
 
         <p className="mt-4 text-center text-sm text-gray-500">
-          Already have an account?{' '}
+          כבר יש לכם חשבון?{' '}
           <Link to="/login" className="font-medium text-brand-400 hover:text-brand-300">
-            Sign in
+            התחברות
           </Link>
         </p>
       </div>

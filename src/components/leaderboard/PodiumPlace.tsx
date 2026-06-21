@@ -112,7 +112,7 @@ export function PodiumPlace({
             'text-sm font-medium',
             isFirst ? 'text-amber-500/60' : 'text-gray-500',
           )}>
-            pts
+            נק׳
           </span>
         </div>
 
@@ -124,7 +124,7 @@ export function PodiumPlace({
           }}
         >
           {rank <= 2 && <Medal size={11} />}
-          {rank === 1 ? 'Champion' : rank === 2 ? 'Runner Up' : '3rd Place'}
+          {rank === 1 ? 'אלוף' : rank === 2 ? 'סגן אלוף' : 'מקום שלישי'}
         </span>
       </div>
     </div>

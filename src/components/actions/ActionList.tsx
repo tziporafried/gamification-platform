@@ -85,11 +85,11 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
             <Zap size={18} className="text-brand-400" />
           </div>
-          <h2 className="text-lg font-bold text-white">Actions</h2>
+          <h2 className="text-lg font-bold text-white">משימות</h2>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setCsvImportOpen(true)}>Import CSV</Button>
-          <Button size="sm" onClick={handleCreate}>Add Action</Button>
+          <Button size="sm" variant="outline" onClick={() => setCsvImportOpen(true)}>ייבוא CSV</Button>
+          <Button size="sm" onClick={handleCreate}>הוספת משימה</Button>
         </div>
       </div>
 
@@ -99,9 +99,9 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
 
       {actions.length === 0 ? (
         <EmptyState
-          title="No actions yet"
-          description="Create actions to define scoring rules for your event."
-          action={<Button size="sm" onClick={handleCreate}>Add Action</Button>}
+          title="אין משימות עדיין"
+          description="צרו משימות כדי להגדיר כללי ניקוד לאירוע שלכם."
+          action={<Button size="sm" onClick={handleCreate}>הוספת משימה</Button>}
         />
       ) : (
         <div className="space-y-2">

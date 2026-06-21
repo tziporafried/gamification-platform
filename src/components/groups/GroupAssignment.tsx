@@ -85,14 +85,14 @@ export function GroupAssignment({ eventId, participantId, participantName, isOpe
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={`Groups for ${participantName}`}>
+    <Modal isOpen={isOpen} onClose={handleClose} title={`קבוצות של ${participantName}`}>
       {loading ? (
         <div className="flex justify-center py-6">
           <div className="h-6 w-6 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
         </div>
       ) : groups.length === 0 ? (
         <p className="py-4 text-center text-sm text-gray-500">
-          No groups created yet. Create groups first to assign participants.
+          עדיין לא נוצרו קבוצות. צרו קבוצות קודם כדי לשייך משתתפים.
         </p>
       ) : (
         <div className="space-y-2">

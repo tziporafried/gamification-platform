@@ -219,7 +219,7 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
 
     const sign = result.points >= 0 ? '+' : ''
     setToast({
-      message: `${sign}${result.points} pts to ${result.participantName} for ${result.actionName}`,
+      message: `${sign}${result.points} נק׳ ל${result.participantName} עבור ${result.actionName}`,
       variant: 'success',
     })
 
@@ -233,8 +233,8 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
 
   const bothValid = participantPreview && actionPreview
   const submitLabel = bothValid
-    ? `AWARD ${actionPreview.points >= 0 ? '+' : ''}${actionPreview.points} PTS`
-    : 'Award Points'
+    ? `הענקת ${actionPreview.points >= 0 ? '+' : ''}${actionPreview.points} נק׳`
+    : 'הענקת ניקוד'
 
   return (
     <div className="-mx-4 -mt-6 md:-mt-8">
@@ -245,8 +245,8 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
               <Zap size={22} className="text-emerald-400" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">Award Points</h2>
-              <p className="text-xs text-gray-400">Power up your players</p>
+              <h2 className="text-xl font-bold text-white">הענקת ניקוד</h2>
+              <p className="text-xs text-gray-400">חזקו את השחקנים שלכם</p>
             </div>
           </div>
 
@@ -254,7 +254,7 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
             <form onSubmit={handleSubmit} className="space-y-4 p-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Player</label>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">שחקן</label>
                   <input
                     ref={participantInputRef}
                     id="participant-code"
@@ -267,7 +267,7 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
                   {participantLoading && (
                     <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
                       <div className="h-3 w-3 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-                      Looking up...
+                      מחפש...
                     </div>
                   )}
                   {participantPreview && !participantLoading && (
@@ -282,7 +282,7 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
                   )}
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Action</label>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">משימה</label>
                   <input
                     id="action-code"
                     placeholder="A-1001"
@@ -293,7 +293,7 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
                   {actionLoading && (
                     <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
                       <div className="h-3 w-3 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-                      Looking up...
+                      מחפש...
                     </div>
                   )}
                   {actionPreview && !actionLoading && (
@@ -304,7 +304,7 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
                           <span className="text-sm font-medium text-gray-200">{actionPreview.name}</span>
                         </div>
                         <span className={`text-sm font-bold ${actionPreview.points >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {actionPreview.points >= 0 ? '+' : ''}{actionPreview.points} pts
+                          {actionPreview.points >= 0 ? '+' : ''}{actionPreview.points} נק׳
                         </span>
                       </div>
                     </div>
@@ -320,7 +320,7 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
                   loading={submitting}
                   className={bothValid ? 'w-full animate-glow-pulse font-bold tracking-wide' : 'w-full font-bold tracking-wide'}
                 >
-                  <Zap size={16} className="mr-1.5" />
+                  <Zap size={16} className="ml-1.5" />
                   {submitLabel}
                 </Button>
                 <PointsFlyUp points={flyUpPoints} onDone={() => setFlyUpPoints(null)} />
@@ -329,7 +329,7 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
           </div>
 
           <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Recent Activity</h3>
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">פעילות אחרונה</h3>
           </div>
 
           {loading ? (
@@ -338,7 +338,7 @@ export function ScoreEntry({ eventId }: ScoreEntryProps) {
             </div>
           ) : transactions.length === 0 ? (
             <div className="rounded-2xl border border-game-border bg-game-card/50 px-6 py-12 text-center">
-              <p className="text-sm text-gray-500">No transactions yet. Award points to see activity here.</p>
+              <p className="text-sm text-gray-500">אין פעולות עדיין. הענקו ניקוד כדי לראות פעילות כאן.</p>
             </div>
           ) : (
             <div className="space-y-1.5">

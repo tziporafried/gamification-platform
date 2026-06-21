@@ -35,11 +35,11 @@ export function ParticipantPreview({
           </div>
           <div className="mt-0.5 flex items-center gap-2">
             <span className="text-xs font-bold text-brand-400">
-              {totalPoints.toLocaleString()} pts
+              {totalPoints.toLocaleString()} נק׳
             </span>
             {rank !== null && (
               <span className="text-xs text-gray-500">
-                #{rank} rank
+                מקום #{rank}
               </span>
             )}
           </div>
@@ -59,7 +59,7 @@ export function ParticipantPreview({
           <XPBar
             current={totalPoints}
             target={nextReward.required_points}
-            label={`${(nextReward.required_points - totalPoints).toLocaleString()} pts to "${nextReward.name}"`}
+            label={`${(nextReward.required_points - totalPoints).toLocaleString()} נק׳ עד "${nextReward.name}"`}
           />
         </div>
       )}

@@ -13,10 +13,10 @@ interface BottomTabBarProps {
 }
 
 const TABS: { key: DashboardTab; label: string; icon: typeof Home }[] = [
-  { key: 'home', label: 'Home', icon: Home },
-  { key: 'leaderboard', label: 'Board', icon: BarChart3 },
-  { key: 'score', label: 'Score', icon: Target },
-  { key: 'participants', label: 'People', icon: Users },
+  { key: 'home', label: 'בית', icon: Home },
+  { key: 'leaderboard', label: 'דירוג', icon: BarChart3 },
+  { key: 'score', label: 'ניקוד', icon: Target },
+  { key: 'participants', label: 'משתתפים', icon: Users },
 ]
 
 const MORE_TABS: DashboardTab[] = ['actions', 'rewards', 'groups', 'event']
@@ -109,7 +109,7 @@ export function BottomTabBar({
               'text-[10px] font-medium',
               isMoreActive ? 'text-brand-400' : 'text-gray-500',
             )}>
-              More
+              עוד
             </span>
           </button>
         </nav>

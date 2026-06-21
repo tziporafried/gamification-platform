@@ -27,7 +27,7 @@ export function GroupForm({ eventId, group, isOpen, onClose, onSaved }: GroupFor
     setError('')
 
     if (!name.trim()) {
-      setError('Group name is required.')
+      setError('שם הקבוצה הוא שדה חובה.')
       return
     }
 
@@ -53,7 +53,7 @@ export function GroupForm({ eventId, group, isOpen, onClose, onSaved }: GroupFor
 
         if (insertError) {
           if (insertError.code === '23505') {
-            throw new Error('A group with this name already exists.')
+            throw new Error('קבוצה עם שם זה כבר קיימת.')
           }
           throw insertError
         }
@@ -61,14 +61,14 @@ export function GroupForm({ eventId, group, isOpen, onClose, onSaved }: GroupFor
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
+      setError(err instanceof Error ? err.message : 'משהו השתבש.')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'Edit Group' : 'Create Group'}>
+    <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'עריכת קבוצה' : 'יצירת קבוצה'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
@@ -76,25 +76,25 @@ export function GroupForm({ eventId, group, isOpen, onClose, onSaved }: GroupFor
 
         <Input
           id="group-name"
-          label="Group Name"
-          placeholder="Team Alpha"
+          label="שם הקבוצה"
+          placeholder="קבוצה א׳"
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoFocus
         />
 
         <ColorPicker
-          label="Color"
+          label="צבע"
           value={color}
           onChange={setColor}
         />
 
         <div className="flex gap-3 pt-2">
           <Button type="submit" loading={saving}>
-            {isEdit ? 'Save Changes' : 'Create Group'}
+            {isEdit ? 'שמירת שינויים' : 'יצירת קבוצה'}
           </Button>
           <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
+            ביטול
           </Button>
         </div>
       </form>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Users, Zap, Trophy, ChevronRight, ClipboardList } from 'lucide-react'
+import { Users, Zap, Trophy, ChevronLeft, ClipboardList } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { StatCard } from '@/components/ui/StatCard'
 import { TransactionRow } from '@/components/scoring/TransactionRow'
@@ -90,8 +90,8 @@ export function DashboardHome({ eventId, themeColor, onTabChange }: DashboardHom
 
     const rewardEntries: RecentRewardEntry[] = (recentRewardsResult.data ?? []).map((r: Record<string, unknown>) => ({
       id: r.id as string,
-      participantName: (r.participant as { name: string } | null)?.name ?? 'Unknown',
-      rewardName: (r.reward as { name: string } | null)?.name ?? 'Unknown',
+      participantName: (r.participant as { name: string } | null)?.name ?? 'לא ידוע',
+      rewardName: (r.reward as { name: string } | null)?.name ?? 'לא ידוע',
       awardedAt: r.awarded_at as string,
     }))
     setRecentRewards(rewardEntries)
@@ -144,52 +144,48 @@ export function DashboardHome({ eventId, themeColor, onTabChange }: DashboardHom
     <div className="-mx-4 -mt-6 md:-mt-8">
       <div className="bg-game-radial px-4 pt-6 pb-6 md:pt-8">
         <div className="mx-auto max-w-5xl space-y-5">
-          {/* Hero Stats */}
           <div className="grid grid-cols-3 gap-3">
             <StatCard
               icon={<Users size={20} />}
-              label="Players"
+              label="שחקנים"
               value={participantCount}
               gradient="from-brand-500 to-brand-700"
             />
             <StatCard
               icon={<Zap size={20} />}
-              label="Total XP"
+              label="סה״כ XP"
               value={totalPoints}
               gradient="from-emerald-500 to-emerald-700"
             />
             <StatCard
               icon={<Trophy size={20} />}
-              label="Unlocked"
+              label="נפתחו"
               value={rewardsUnlocked}
               gradient="from-amber-500 to-amber-700"
             />
           </div>
 
-          {/* Leaderboard */}
           <HomeLeaderboard
             entries={leaderboard}
             themeColor={themeColor}
             onViewFull={() => onTabChange('leaderboard')}
           />
 
-          {/* Quick Score */}
           <QuickScoreCard eventId={eventId} onScoreSubmitted={fetchHomeData} />
 
-          {/* Battle Log */}
           <div className="rounded-2xl border border-game-border bg-game-card overflow-hidden">
             <div className="flex items-center justify-between border-b border-game-border px-5 py-4">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/20">
                   <ClipboardList size={18} className="text-brand-400" />
                 </div>
-                <h3 className="text-base font-bold text-white">Battle Log</h3>
+                <h3 className="text-base font-bold text-white">פעילות אחרונה</h3>
               </div>
             </div>
 
             {recentTransactions.length === 0 ? (
               <div className="px-5 py-10 text-center">
-                <p className="text-sm text-gray-500">No activity yet. Award points to see the action here.</p>
+                <p className="text-sm text-gray-500">אין פעילות עדיין. הענקו ניקוד כדי לראות את הפעולה כאן.</p>
               </div>
             ) : (
               <>
@@ -203,15 +199,14 @@ export function DashboardHome({ eventId, themeColor, onTabChange }: DashboardHom
                     onClick={() => onTabChange('score')}
                     className="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold text-brand-400 transition-colors hover:bg-brand-600/10 hover:text-brand-300"
                   >
-                    View All Activity
-                    <ChevronRight size={14} />
+                    צפייה בכל הפעילות
+                    <ChevronLeft size={14} />
                   </button>
                 </div>
               </>
             )}
           </div>
 
-          {/* Recent Rewards */}
           <RecentRewards entries={recentRewards} />
         </div>
       </div>

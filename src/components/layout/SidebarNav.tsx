@@ -14,14 +14,14 @@ interface SidebarNavProps {
 }
 
 const NAV_ITEMS: { key: DashboardTab; label: string; icon: typeof Home }[] = [
-  { key: 'home', label: 'Home', icon: Home },
-  { key: 'leaderboard', label: 'Leaderboard', icon: BarChart3 },
-  { key: 'score', label: 'Score', icon: Target },
-  { key: 'participants', label: 'Participants', icon: Users },
-  { key: 'actions', label: 'Actions', icon: Zap },
-  { key: 'rewards', label: 'Rewards', icon: Trophy },
-  { key: 'groups', label: 'Groups', icon: Layers },
-  { key: 'event', label: 'Settings', icon: Settings },
+  { key: 'home', label: 'בית', icon: Home },
+  { key: 'leaderboard', label: 'טבלת דירוג', icon: BarChart3 },
+  { key: 'score', label: 'ניקוד', icon: Target },
+  { key: 'participants', label: 'משתתפים', icon: Users },
+  { key: 'actions', label: 'משימות', icon: Zap },
+  { key: 'rewards', label: 'פרסים', icon: Trophy },
+  { key: 'groups', label: 'קבוצות', icon: Layers },
+  { key: 'event', label: 'הגדרות', icon: Settings },
 ]
 
 export function SidebarNav({
@@ -34,7 +34,7 @@ export function SidebarNav({
   onSignOut,
 }: SidebarNavProps) {
   return (
-    <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:z-20 md:w-16 lg:w-60 md:bg-game-dark md:border-r md:border-game-border">
+    <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:right-0 md:z-20 md:w-16 lg:w-60 md:bg-game-dark md:border-l md:border-game-border">
       <div className="flex h-16 shrink-0 items-center gap-3 border-b border-game-border px-4">
         {eventLogoUrl ? (
           <img src={eventLogoUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
@@ -64,7 +64,7 @@ export function SidebarNav({
                   )}
                 >
                   {isActive && (
-                    <div className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full gradient-brand" />
+                    <div className="absolute right-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-l-full gradient-brand" />
                   )}
                   <Icon
                     size={20}
@@ -97,7 +97,7 @@ export function SidebarNav({
           className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-white/5 hover:text-gray-300"
         >
           <LogOut size={18} className="shrink-0" />
-          <span className="hidden lg:block">Log Out</span>
+          <span className="hidden lg:block">התנתקות</span>
         </button>
       </div>
     </aside>
