@@ -21,7 +21,6 @@ export function EventControlCenterPage() {
         .from('events')
         .select('*')
         .eq('id', id)
-        .eq('owner_admin_id', user!.id)
         .single()
 
       if (!data) {

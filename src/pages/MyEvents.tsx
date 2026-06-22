@@ -16,13 +16,27 @@ export function MyEvents() {
 
   useEffect(() => {
     async function fetchEvents() {
-      const { data } = await supabase
-        .from('events')
-        .select('*')
-        .eq('owner_admin_id', user!.id)
-        .order('created_at', { ascending: false })
+      const [owned, shared] = await Promise.all([
+        supabase
+          .from('events')
+          .select('*')
+          .eq('owner_admin_id', user!.id),
+        supabase
+          .from('event_collaborators')
+          .select('event_id')
+          .eq('user_id', user!.id)
+          .then(async ({ data: collabs }) => {
+            if (!collabs?.length) return { data: [] as Event[] }
+            return supabase
+              .from('events')
+              .select('*')
+              .in('id', collabs.map(c => c.event_id))
+          }),
+      ])
 
-      setEvents(data || [])
+      const all = [...(owned.data || []), ...(shared.data || [])]
+      all.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      setEvents(all)
       setLoading(false)
     }
     fetchEvents()

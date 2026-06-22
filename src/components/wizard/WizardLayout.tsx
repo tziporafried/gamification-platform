@@ -1,6 +1,9 @@
-import { ArrowRight } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowRight, Share2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { WizardProgress } from './WizardProgress'
+import { ShareEventModal } from '@/components/ShareEventModal'
+import { Button } from '@/components/ui/Button'
 import type { WizardState, Event } from '@/types'
 
 interface WizardLayoutProps {
@@ -13,6 +16,7 @@ interface WizardLayoutProps {
 
 export function WizardLayout({ event, currentStep, wizardState, onStepClick, children }: WizardLayoutProps) {
   const navigate = useNavigate()
+  const [shareOpen, setShareOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-game-dark">
@@ -32,6 +36,10 @@ export function WizardLayout({ event, currentStep, wizardState, onStepClick, chi
               {event.name || 'אירוע חדש'}
             </h1>
           </div>
+          <Button variant="ghost" size="sm" onClick={() => setShareOpen(true)}>
+            <Share2 size={16} className="ml-1" />
+            שיתוף
+          </Button>
         </div>
 
         {/* Progress bar */}
@@ -48,6 +56,8 @@ export function WizardLayout({ event, currentStep, wizardState, onStepClick, chi
       <main className="mx-auto max-w-3xl px-4 py-8">
         {children}
       </main>
+
+      <ShareEventModal isOpen={shareOpen} onClose={() => setShareOpen(false)} eventId={event.id} />
     </div>
   )
 }

@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Play, QrCode, Monitor, Download, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Play, QrCode, Monitor, Download, ArrowRight, AlertCircle, CheckCircle2, Share2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { ShareEventModal } from '@/components/ShareEventModal'
 import { calculateReadiness, isEventReady } from '@/lib/wizard'
 import { cn } from '@/lib/utils'
 import type { Event, EventCounts } from '@/types'
@@ -20,6 +22,7 @@ const ACTIONS = [
 
 export function ControlCenter({ event, counts }: ControlCenterProps) {
   const navigate = useNavigate()
+  const [shareOpen, setShareOpen] = useState(false)
   const ready = isEventReady(event, counts)
   const checks = calculateReadiness(event, counts)
 
@@ -46,13 +49,19 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
             <h1 className="text-sm font-bold text-white truncate">{event.name}</h1>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(`/events/${event.id}/step/1`)}
-          >
-            עריכת הגדרות
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setShareOpen(true)}>
+              <Share2 size={16} className="ml-1" />
+              שיתוף
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(`/events/${event.id}/step/1`)}
+            >
+              עריכת הגדרות
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -112,6 +121,8 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
           })}
         </div>
       </main>
+
+      <ShareEventModal isOpen={shareOpen} onClose={() => setShareOpen(false)} eventId={event.id} />
     </div>
   )
 }
