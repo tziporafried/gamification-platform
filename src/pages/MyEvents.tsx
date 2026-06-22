@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Calendar, ExternalLink } from 'lucide-react'
+import { Plus, Calendar, ExternalLink, Trash2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Modal } from '@/components/ui/Modal'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { cn } from '@/lib/utils'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
@@ -14,6 +16,10 @@ export function MyEvents() {
   const navigate = useNavigate()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
+  const [deletingEvent, setDeletingEvent] = useState<Event | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     async function fetchEvents() {
@@ -44,12 +50,21 @@ export function MyEvents() {
   }, [user])
 
   async function handleCreateEvent() {
-    const { data } = await supabase
+    setError('')
+    const existingDraft = events.find(e => e.status === 'draft' && !e.name && e.owner_admin_id === user!.id)
+    if (existingDraft) {
+      navigate(`/events/${existingDraft.id}/step/1`)
+      return
+    }
+
+    setCreating(true)
+    const slug = `event-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    const { data, error: insertError } = await supabase
       .from('events')
       .insert({
         owner_admin_id: user!.id,
         name: '',
-        slug: `event-${Date.now()}`,
+        slug,
         theme_color: '#7c3aed',
         status: 'draft',
         qr_scoring_mode: 'separate',
@@ -57,46 +72,103 @@ export function MyEvents() {
       .select()
       .single()
 
+    setCreating(false)
+
+    if (insertError) {
+      setError(`שגיאה ביצירת אירוע: ${insertError.message}`)
+      return
+    }
+
     if (data) {
       navigate(`/events/${data.id}/step/1`)
     }
+  }
+
+  async function handleDeleteEvent() {
+    if (!deletingEvent) return
+    setDeleting(true)
+    await supabase.from('events').delete().eq('id', deletingEvent.id)
+    setEvents(prev => prev.filter(e => e.id !== deletingEvent.id))
+    setDeleting(false)
+    setDeletingEvent(null)
   }
 
   if (loading) return <FullPageLoader />
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
-        {events.length === 0 ? (
-          /* Empty state */
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-600/20 mb-6">
-              <Calendar size={32} className="text-brand-400" />
-            </div>
-            <h2 className="text-xl font-bold text-white mb-2">אין לך אירועים עדיין</h2>
-            <p className="text-gray-400 mb-8 max-w-sm">
-              צור את האירוע הראשון שלך – חופשה משפחתית, מחנה קיץ, או כל פעילות קבוצתית
-            </p>
-            <Button variant="gradient" size="lg" onClick={handleCreateEvent}>
-              <Plus size={20} className="ml-2" />
-              יצירת אירוע חדש
+      {events.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-brand-600/20 mb-6">
+            <Calendar size={40} className="text-brand-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">עדיין אין אירועים</h2>
+          <p className="text-gray-400 mb-8 max-w-sm">
+            צרו את האירוע הראשון שלכם והתחילו לנהל משתתפים, קבוצות ומשימות.
+          </p>
+          {error && <ErrorAlert message={error} className="mb-4 max-w-sm" />}
+          <Button variant="gradient" size="lg" loading={creating} onClick={handleCreateEvent}>
+            <Plus size={20} className="ml-2" />
+            צור אירוע ראשון
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-bold text-white">האירועים שלי</h1>
+            <Button variant="gradient" size="md" loading={creating} onClick={handleCreateEvent}>
+              <Plus size={18} className="ml-1.5" />
+              צור אירוע חדש
             </Button>
           </div>
-        ) : (
-          /* Event list */
-          <div className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {events.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </div>
 
+          {error && <ErrorAlert message={error} />}
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {events.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                isOwner={event.owner_admin_id === user!.id}
+                onDelete={() => setDeletingEvent(event)}
+              />
+            ))}
           </div>
-        )}
+        </div>
+      )}
+
+      <Modal
+        isOpen={!!deletingEvent}
+        onClose={() => setDeletingEvent(null)}
+        title="מחיקת אירוע"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-400">
+            פעולה זו תמחק את האירוע{' '}
+            <strong className="text-white">{deletingEvent?.name || 'ללא שם'}</strong>{' '}
+            וכל הנתונים המשויכים אליו לצמיתות. לא ניתן לשחזר מידע זה.
+          </p>
+          <div className="flex gap-3">
+            <Button variant="danger" loading={deleting} onClick={handleDeleteEvent}>
+              מחק אירוע
+            </Button>
+            <Button variant="outline" onClick={() => setDeletingEvent(null)}>
+              ביטול
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </main>
   )
 }
 
-function EventCard({ event }: { event: Event }) {
+interface EventCardProps {
+  event: Event
+  isOwner: boolean
+  onDelete: () => void
+}
+
+function EventCard({ event, isOwner, onDelete }: EventCardProps) {
   const navigate = useNavigate()
 
   const statusLabels: Record<string, { label: string; color: string }> = {
@@ -110,13 +182,14 @@ function EventCard({ event }: { event: Event }) {
 
   function handleOpenControl(e: React.MouseEvent) {
     e.stopPropagation()
-    if (!event.slug) {
-      console.warn('Event is missing slug, cannot open control center:', event.id)
-      return
-    }
+    if (!event.slug) return
     navigate(`/e/${event.slug}/control`)
   }
 
+  function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation()
+    onDelete()
+  }
 
   return (
     <button
@@ -132,9 +205,20 @@ function EventCard({ event }: { event: Event }) {
               <Calendar size={20} className="text-brand-400" />
             )}
           </div>
-          <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', status.color)}>
-            {status.label}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', status.color)}>
+              {status.label}
+            </span>
+            {isOwner && (
+              <button
+                onClick={handleDelete}
+                className="p-1 rounded-lg text-gray-500 hover:bg-red-500/10 hover:text-red-400 transition-all"
+                title="מחיקת אירוע"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
         </div>
 
         <div>
