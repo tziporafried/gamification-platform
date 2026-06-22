@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { ActionList } from '@/components/actions/ActionList'
 import { UsageBar } from '@/components/ui/UsageBar'
@@ -13,8 +14,15 @@ interface StepTasksProps {
 }
 
 export function StepTasks({ eventId, counts, onCountsRefresh, onNext, onBack }: StepTasksProps) {
-  const canAdvance = counts.tasks > 0
+  const [localTaskCount, setLocalTaskCount] = useState(counts.tasks)
+  const canAdvance = localTaskCount > 0
   const planLimits = usePlanLimits(eventId)
+
+  function handleCountChange(count: number) {
+    setLocalTaskCount(count)
+    onCountsRefresh()
+    planLimits.refresh()
+  }
 
   return (
     <WizardStepWrapper
@@ -25,10 +33,17 @@ export function StepTasks({ eventId, counts, onCountsRefresh, onNext, onBack }: 
       onNext={onNext}
       onBack={onBack}
     >
-      {planLimits.isFreePlan && (
-        <UsageBar info={planLimits.actions} entity="actions" className="mb-4" />
-      )}
-      <ActionList eventId={eventId} onCountChange={onCountsRefresh} />
+      <div className="flex h-full flex-col">
+        <div className="shrink-0">
+          <div className="mb-2 text-sm text-gray-400">{localTaskCount} משימות</div>
+          {planLimits.isFreePlan && (
+            <UsageBar info={planLimits.actions} entity="actions" className="mb-4" />
+          )}
+        </div>
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <ActionList eventId={eventId} onCountChange={handleCountChange} />
+        </div>
+      </div>
     </WizardStepWrapper>
   )
 }

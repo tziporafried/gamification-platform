@@ -23,32 +23,16 @@ export function UsageBar({ info, entity, className }: UsageBarProps) {
     <div className={cn('space-y-1', className)}>
       <div className="flex items-center justify-between text-xs">
         <span className="text-gray-400">{ENTITY_LABELS[entity]}</span>
-        <span className={cn(
-          'font-medium',
-          info.isAtLimit ? 'text-red-400' : info.isNearLimit ? 'text-amber-400' : 'text-gray-400',
-        )}>
+        <span className="font-medium text-gray-400">
           {info.current} מתוך {info.limit}
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-game-border overflow-hidden">
         <div
-          className={cn(
-            'h-full rounded-full transition-all duration-500',
-            info.isAtLimit
-              ? 'bg-red-500'
-              : info.isNearLimit
-                ? 'bg-amber-500'
-                : 'bg-brand-500',
-          )}
+          className="h-full rounded-full transition-all duration-500 bg-brand-500"
           style={{ width: `${pct}%` }}
         />
       </div>
-      {info.isNearLimit && !info.isAtLimit && (
-        <p className="text-[10px] text-amber-400">אתם מתקרבים למגבלת התוכנית החינמית.</p>
-      )}
-      {info.isAtLimit && (
-        <p className="text-[10px] text-red-400">הגעתם למגבלת התוכנית החינמית.</p>
-      )}
     </div>
   )
 }

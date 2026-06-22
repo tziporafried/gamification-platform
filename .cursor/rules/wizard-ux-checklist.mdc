@@ -1,0 +1,72 @@
+---
+description: Wizard UX fixes checklist - run through these to verify nothing is broken
+globs: src/components/wizard/**,src/components/groups/**,src/components/participants/**,src/components/actions/**,src/hooks/useWizardState.ts
+alwaysApply: false
+---
+
+# Wizard UX Checklist
+
+When asked to verify the wizard, check all of the following:
+
+## Participants Step (Step 3)
+
+- [ ] Adding a participant updates the counter and usage bar immediately (no refresh needed)
+- [ ] Deleting a participant updates the counter and usage bar immediately
+- [ ] Inline editing a name (click → type → Enter) shows the new name immediately
+- [ ] Click target for editing a name covers the full row width, not just the text
+- [ ] After adding a participant, focus returns to the input for rapid entry
+- [ ] The participant list scrolls independently; counter + usage bar stay pinned at top
+- [ ] The add input stays pinned at the bottom, always visible
+- [ ] After adding a participant, the list auto-scrolls to show the new entry
+- [ ] The "Next" button is disabled until at least one participant exists
+- [ ] Clicking a group badge does NOT trigger name editing (stopPropagation)
+
+## Groups Step (Step 2)
+
+- [ ] Adding a group updates the counter and usage bar immediately
+- [ ] Deleting a group updates the counter and usage bar immediately
+- [ ] After adding a group, focus returns to the input for rapid entry
+- [ ] The group list scrolls independently; type selector + counter stay pinned at top
+- [ ] The add input stays pinned at the bottom, always visible
+- [ ] After adding a group, the list auto-scrolls to show the new entry
+- [ ] Changing a group color reflects immediately in the UI (color bar + dot)
+- [ ] The color picker opens downward (not clipped by scroll container)
+- [ ] The selected option card ring is not clipped
+- [ ] "Next" button is disabled until groupType is "none" or at least one group exists
+- [ ] If groups exist in the DB, groupType is always "custom" (DB overrides localStorage)
+- [ ] New event with no choice: groups step is gray (not_started), NOT green
+
+## Tasks Step (Step 4)
+
+- [ ] Adding a task updates the counter and usage bar immediately
+- [ ] Deleting a task actually removes it from the DB and the list (not just soft-delete)
+- [ ] Inline editing a name (click → type → Enter) shows the new name immediately
+- [ ] Click target for editing a name covers the full row width, not just the text
+- [ ] Inline editing points shows the new value immediately
+- [ ] After adding a task, focus returns to the name input for rapid entry
+- [ ] The task list scrolls independently; counter + usage bar stay pinned at top
+- [ ] The add input stays pinned at the bottom, always visible
+- [ ] After adding a task, the list auto-scrolls to show the new entry
+- [ ] The "Next" button is disabled until at least one task exists
+- [ ] Clicking a group badge does NOT trigger name editing (stopPropagation)
+- [ ] "כל הקבוצות" is always visible as a clickable button (default option)
+- [ ] Clicking "כל הקבוצות" clears all specific group assignments
+- [ ] No "השבת/הפעל" toggle button exists on tasks
+
+## Wizard Navigation
+
+- [ ] Refreshing the page returns to the same step (URL syncs to /events/:id/step/:n)
+- [ ] The progress bar shows correct green/gray status for each step
+- [ ] Groups step shows green when "no groups" was chosen OR groups exist
+- [ ] New event: groups step is gray until the user makes a choice
+- [ ] Nav buttons (Previous/Next) are always sticky at the bottom of the screen
+- [ ] Step content scrolls independently between the header and nav buttons
+
+## UsageBar (Free Plan)
+
+- [ ] Shows "X מתוך Y" without warning text or color changes
+- [ ] Updates when items are added or removed
+
+## DB / RLS
+
+- [ ] Actions table has DELETE RLS policy for owner (migration 013)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { WizardStepWrapper } from './WizardStepWrapper'
@@ -24,44 +24,63 @@ interface ParticipantGroupJoin {
   groups: Group
 }
 
-export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, onNext, onBack }: StepParticipantsProps) {
+export function StepParticipants({ eventId, groupType, onCountsRefresh, onNext, onBack }: StepParticipantsProps) {
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const listRef = useRef<HTMLDivElement>(null)
+  const prevCountRef = useRef(0)
   const planLimits = usePlanLimits(eventId)
+  const refreshPlanLimits = planLimits.refresh
 
   const hasGroups = groupType === 'custom'
-  const canAdvance = counts.participants > 0
 
-  const fetchData = useCallback(async () => {
-    const [pRes, gRes] = await Promise.all([
-      supabase
-        .from('participants')
-        .select('*, participant_groups(group_id, groups(*))')
-        .eq('event_id', eventId)
-        .order('created_at', { ascending: true }),
-      hasGroups
-        ? supabase.from('groups').select('*').eq('event_id', eventId).order('created_at', { ascending: true })
-        : Promise.resolve({ data: [] }),
-    ])
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      const [pRes, gRes] = await Promise.all([
+        supabase
+          .from('participants')
+          .select('*, participant_groups(group_id, groups(*))')
+          .eq('event_id', eventId)
+          .order('created_at', { ascending: true }),
+        hasGroups
+          ? supabase.from('groups').select('*').eq('event_id', eventId).order('created_at', { ascending: true })
+          : Promise.resolve({ data: [] }),
+      ])
+      if (cancelled) return
 
-    const mapped: ParticipantWithGroups[] = (pRes.data ?? []).map((p) => ({
-      ...p,
-      groups: ((p.participant_groups as unknown as ParticipantGroupJoin[]) ?? []).map((pg) => pg.groups),
-    }))
+      const mapped: ParticipantWithGroups[] = (pRes.data ?? []).map((p) => ({
+        ...p,
+        groups: ((p.participant_groups as unknown as ParticipantGroupJoin[]) ?? []).map((pg) => pg.groups),
+      }))
 
-    setParticipants(mapped)
-    setGroups((gRes.data as Group[]) ?? [])
-    onCountsRefresh()
-    setLoading(false)
-  }, [eventId, hasGroups, onCountsRefresh])
+      setParticipants(mapped)
+      setGroups((gRes.data as Group[]) ?? [])
+      onCountsRefresh()
+      refreshPlanLimits()
+      setLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [eventId, hasGroups, refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => {
+    if (participants.length > prevCountRef.current && listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight
+    }
+    prevCountRef.current = participants.length
+  }, [participants.length])
+
+  function triggerRefresh() {
+    setRefreshKey(k => k + 1)
+  }
 
   async function handleDelete(id: string) {
     await supabase.from('participants').delete().eq('id', id)
-    fetchData()
+    triggerRefresh()
   }
 
   async function toggleGroup(participantId: string, groupId: string, isMember: boolean) {
@@ -70,7 +89,7 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
     } else {
       await supabase.from('participant_groups').insert({ participant_id: participantId, group_id: groupId })
     }
-    fetchData()
+    triggerRefresh()
   }
 
   if (loading) {
@@ -86,39 +105,48 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
       title="משתתפים"
       subtitle="הוסף את כל מי שמשתתף באירוע"
       currentStep={3}
-      canAdvance={canAdvance}
+      canAdvance={participants.length > 0}
       onNext={onNext}
       onBack={onBack}
     >
-      {planLimits.isFreePlan && (
-        <UsageBar info={planLimits.participants} entity="participants" className="mb-4" />
-      )}
+      <div className="flex h-full flex-col min-h-0">
+        {/* Pinned top: counter + usage bar */}
+        <div className="shrink-0 space-y-3 pb-3">
+          {participants.length > 0 && (
+            <p className="text-xs text-gray-500 text-center">
+              {participants.length} משתתפים
+            </p>
+          )}
+          {planLimits.isFreePlan && (
+            <UsageBar info={planLimits.participants} entity="participants" />
+          )}
+        </div>
 
-      <div className="space-y-2">
-        {participants.length === 0 ? (
-          <EmptyState
-            title="אין משתתפים עדיין"
-            description="הקלד שם למטה ולחץ Enter להוספה מהירה"
-          />
-        ) : (
-          participants.map((p) => (
-            <ParticipantInlineRow
-              key={p.id}
-              participant={p}
-              groups={hasGroups ? groups : []}
-              onDelete={() => handleDelete(p.id)}
-              onToggleGroup={(groupId, isMember) => toggleGroup(p.id, groupId, isMember)}
+        {/* Scrollable list */}
+        <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-2 pb-2">
+          {participants.length === 0 ? (
+            <EmptyState
+              title="אין משתתפים עדיין"
+              description="הקלד שם למטה ולחץ Enter להוספה מהירה"
             />
-          ))
-        )}
-        <InlineAddParticipant eventId={eventId} onAdded={fetchData} onPlanLimit={() => setUpgradeOpen(true)} />
-      </div>
+          ) : (
+            participants.map((p) => (
+              <ParticipantInlineRow
+                key={p.id}
+                participant={p}
+                groups={hasGroups ? groups : []}
+                onDelete={() => handleDelete(p.id)}
+                onToggleGroup={(groupId, isMember) => toggleGroup(p.id, groupId, isMember)}
+              />
+            ))
+          )}
+        </div>
 
-      {participants.length > 0 && (
-        <p className="text-xs text-gray-500 mt-3 text-center">
-          {counts.participants} משתתפים
-        </p>
-      )}
+        {/* Pinned bottom: add input */}
+        <div className="shrink-0 pt-2">
+          <InlineAddParticipant eventId={eventId} onAdded={triggerRefresh} onPlanLimit={() => setUpgradeOpen(true)} />
+        </div>
+      </div>
 
       <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </WizardStepWrapper>
@@ -154,7 +182,7 @@ function ParticipantInlineRow({
 
   return (
     <div className="flex items-center gap-3 rounded-xl border border-game-border bg-game-card p-3 transition-all hover:border-brand-700/50 group">
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1" onClick={() => !editing && setEditing(true)} role="button" tabIndex={-1}>
         {editing ? (
           <input
             type="text"
@@ -166,12 +194,9 @@ function ParticipantInlineRow({
             className="w-full bg-transparent text-sm font-medium text-white outline-none border-b border-brand-500 pb-0.5"
           />
         ) : (
-          <button
-            onClick={() => setEditing(true)}
-            className="text-sm font-medium text-gray-200 hover:text-white transition-colors cursor-text truncate"
-          >
-            {participant.name}
-          </button>
+          <span className="block w-full text-sm font-medium text-gray-200 hover:text-white transition-colors cursor-text truncate">
+            {name}
+          </span>
         )}
 
         {/* Inline group selector */}
@@ -182,7 +207,7 @@ function ParticipantInlineRow({
               return (
                 <button
                   key={g.id}
-                  onClick={() => onToggleGroup(g.id, isMember)}
+                  onClick={(e) => { e.stopPropagation(); onToggleGroup(g.id, isMember) }}
                   className={cn(
                     'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-all border',
                     isMember

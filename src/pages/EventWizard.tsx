@@ -49,7 +49,7 @@ export function EventWizard() {
     fetchEvent()
   }, [id, user, navigate])
 
-  // Sync URL step param with state
+  // Sync URL step param → state (on initial load / direct link)
   useEffect(() => {
     if (step) {
       const stepNum = parseInt(step, 10)
@@ -57,7 +57,16 @@ export function EventWizard() {
         goToStep(stepNum)
       }
     }
-  }, [step])
+  }, [step]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync state → URL (keep URL in sync with current step)
+  useEffect(() => {
+    if (!id || loading) return
+    const expectedPath = `/events/${id}/step/${currentStep}`
+    if (window.location.pathname !== expectedPath) {
+      navigate(expectedPath, { replace: true })
+    }
+  }, [currentStep, id, loading, navigate])
 
   if (loading || !event) {
     return (
