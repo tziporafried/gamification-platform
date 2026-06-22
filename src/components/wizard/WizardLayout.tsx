@@ -21,9 +21,9 @@ export function WizardLayout({ event, currentStep, wizardState, onStepClick, chi
   const { isFreePlan } = useAuth()
 
   return (
-    <div className="min-h-screen bg-game-dark">
+    <div className="flex h-screen flex-col bg-game-dark">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-game-border bg-game-dark/95 backdrop-blur-sm">
+      <header className="shrink-0 border-b border-game-border bg-game-dark/95 backdrop-blur-sm z-30">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <button
@@ -59,9 +59,11 @@ export function WizardLayout({ event, currentStep, wizardState, onStepClick, chi
         </div>
       </header>
 
-      {/* Step content */}
-      <main className="mx-auto max-w-3xl px-4 py-8">
-        {children}
+      {/* Step content — fills remaining height */}
+      <main className="flex-1 overflow-hidden">
+        <div className="mx-auto h-full max-w-3xl px-4">
+          {children}
+        </div>
       </main>
 
       <ShareEventModal isOpen={shareOpen} onClose={() => setShareOpen(false)} eventId={event.id} />

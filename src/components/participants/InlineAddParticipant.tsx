@@ -32,7 +32,7 @@ export function InlineAddParticipant({ eventId, onAdded, onPlanLimit }: InlineAd
     }
     setName('')
     onAdded()
-    inputRef.current?.focus()
+    setTimeout(() => inputRef.current?.focus(), 0)
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {

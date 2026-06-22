@@ -28,20 +28,20 @@ export function WizardStepWrapper({
   const isLast = currentStep === totalSteps
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
+    <div className="flex h-full flex-col animate-fade-in-up">
       {/* Step header */}
-      <div className="space-y-1">
+      <div className="shrink-0 space-y-1 pt-8 pb-6">
         <h2 className="text-2xl font-bold text-white">{title}</h2>
         {subtitle && <p className="text-gray-400 text-sm">{subtitle}</p>}
       </div>
 
-      {/* Step content */}
-      <div className="min-h-[300px]">
+      {/* Step content — scrollable */}
+      <div className="flex-1 overflow-y-auto min-h-0 pb-4">
         {children}
       </div>
 
-      {/* Navigation buttons */}
-      <div className="flex items-center justify-between border-t border-game-border pt-6">
+      {/* Navigation buttons — always at bottom */}
+      <div className="shrink-0 flex items-center justify-between border-t border-game-border bg-game-dark py-4">
         {!isFirst ? (
           <Button variant="ghost" size="lg" onClick={onBack}>
             <ArrowRight size={18} className="ml-2" />
