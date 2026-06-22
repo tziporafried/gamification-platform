@@ -207,7 +207,7 @@ function ParticipantInlineRow({
               return (
                 <button
                   key={g.id}
-                  onClick={() => onToggleGroup(g.id, isMember)}
+                  onClick={(e) => { e.stopPropagation(); onToggleGroup(g.id, isMember) }}
                   className={cn(
                     'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-all border',
                     isMember

@@ -36,7 +36,7 @@ export function InlineAddAction({ eventId, onAdded, onPlanLimit }: InlineAddActi
     setName('')
     setPoints('10')
     onAdded()
-    nameRef.current?.focus()
+    setTimeout(() => nameRef.current?.focus(), 0)
   }
 
   function handleNameKeyDown(e: KeyboardEvent<HTMLInputElement>) {

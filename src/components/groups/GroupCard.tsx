@@ -127,12 +127,12 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
                   disabled={saving}
                 />
               ) : (
-                <button
+                <span
                   onClick={() => setEditing(true)}
-                  className="font-semibold text-gray-200 hover:text-white transition-colors cursor-text text-right truncate"
+                  className="block w-full font-semibold text-gray-200 hover:text-white transition-colors cursor-text text-right truncate"
                 >
-                  {group.name}
-                </button>
+                  {name}
+                </span>
               )}
             </div>
 

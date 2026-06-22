@@ -21,8 +21,6 @@ export function useWizardState(event: Event | null, counts: EventCounts, countsL
     const saved = getWizardPrefs(event.id)
     if (saved.groupType !== null) {
       setGroupTypeRaw(saved.groupType)
-    } else {
-      setGroupTypeRaw('none')
     }
   }, [countsLoaded, counts.groups, event?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 

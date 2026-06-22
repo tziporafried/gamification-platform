@@ -8,11 +8,10 @@ interface ActionRowProps {
   action: ActionWithGroups
   groups: Group[]
   onEdit: () => void
-  onToggleActive: () => void
   onDeleted?: () => void
 }
 
-export function ActionRow({ action, groups, onToggleActive, onDeleted }: ActionRowProps) {
+export function ActionRow({ action, groups, onDeleted }: ActionRowProps) {
   const [editingName, setEditingName] = useState(false)
   const [editingPoints, setEditingPoints] = useState(false)
   const [name, setName] = useState(action.name)
@@ -21,7 +20,7 @@ export function ActionRow({ action, groups, onToggleActive, onDeleted }: ActionR
   const nameRef = useRef<HTMLInputElement>(null)
   const pointsRef = useRef<HTMLInputElement>(null)
 
-  const isPositive = action.points >= 0
+  const isPositive = parseInt(points, 10) >= 0
   const assignedGroupIds = new Set(action.groups.map(g => g.id))
   const isAllGroups = action.groups.length === 0
 
@@ -74,8 +73,13 @@ export function ActionRow({ action, groups, onToggleActive, onDeleted }: ActionR
 
   async function handleDelete() {
     if (!onDeleted) return
-    await supabase.from('actions').update({ is_active: false }).eq('id', action.id)
+    await supabase.from('actions').delete().eq('id', action.id)
     onDeleted()
+  }
+
+  async function selectAllGroups() {
+    await supabase.from('action_groups').delete().eq('action_id', action.id)
+    if (onDeleted) onDeleted()
   }
 
   async function toggleGroup(groupId: string) {
@@ -85,14 +89,13 @@ export function ActionRow({ action, groups, onToggleActive, onDeleted }: ActionR
     } else {
       await supabase.from('action_groups').insert({ action_id: action.id, group_id: groupId })
     }
-    if (onDeleted) onDeleted() // triggers refetch
+    if (onDeleted) onDeleted()
   }
 
   return (
     <div
       className={cn(
         'rounded-xl border bg-game-card px-4 py-3 transition-all duration-200 hover:border-brand-700/50 group/row',
-        !action.is_active && 'opacity-50',
         isPositive ? 'border-game-border' : 'border-red-500/20',
       )}
     >
@@ -122,12 +125,12 @@ export function ActionRow({ action, groups, onToggleActive, onDeleted }: ActionR
                 : 'bg-red-500/15 text-red-400 hover:bg-red-500/25',
             )}
           >
-            {isPositive ? '+' : ''}{action.points}
+            {isPositive ? '+' : ''}{points}
           </button>
         )}
 
         {/* Name */}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1" onClick={() => !editingName && setEditingName(true)} role="button" tabIndex={-1}>
           {editingName ? (
             <input
               ref={nameRef}
@@ -143,58 +146,41 @@ export function ActionRow({ action, groups, onToggleActive, onDeleted }: ActionR
               disabled={saving}
             />
           ) : (
-            <button
-              onClick={() => setEditingName(true)}
-              className="truncate text-sm font-semibold text-gray-200 hover:text-white transition-colors cursor-text text-right"
-            >
-              {action.name}
-            </button>
+            <span className="block w-full text-sm font-semibold text-gray-200 hover:text-white transition-colors cursor-text truncate">
+              {name}
+            </span>
           )}
         </div>
 
-        {/* Status + delete */}
-        <div className="flex shrink-0 items-center gap-1">
-          {!action.is_active && (
-            <span className="rounded-full bg-gray-600/50 px-2 py-0.5 text-[10px] font-medium text-gray-400">
-              לא פעיל
-            </span>
-          )}
-          <button
-            onClick={onToggleActive}
-            className={cn(
-              'shrink-0 px-2 py-1 rounded-lg text-xs font-medium transition-colors',
-              action.is_active
-                ? 'text-gray-500 hover:bg-amber-500/10 hover:text-amber-400'
-                : 'text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-300',
-            )}
-          >
-            {action.is_active ? 'השבת' : 'הפעל'}
-          </button>
-          <button
-            onClick={handleDelete}
-            className="shrink-0 p-1.5 rounded-lg text-gray-600 opacity-0 group-hover/row:opacity-100 hover:bg-red-500/10 hover:text-red-400 transition-all"
-            title="מחיקה"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
+        <button
+          onClick={handleDelete}
+          className="shrink-0 p-1.5 rounded-lg text-gray-600 opacity-0 group-hover/row:opacity-100 hover:bg-red-500/10 hover:text-red-400 transition-all"
+          title="מחיקה"
+        >
+          <Trash2 size={16} />
+        </button>
       </div>
 
       {/* Group assignment (only if groups exist) */}
       {groups.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2 mr-14">
-          <span className={cn(
-            'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
-            isAllGroups ? 'text-emerald-400 bg-emerald-400/10' : 'text-gray-500',
-          )}>
-            {isAllGroups ? 'כל הקבוצות' : ''}
-          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); selectAllGroups() }}
+            className={cn(
+              'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium transition-all border',
+              isAllGroups
+                ? 'border-transparent text-emerald-400 bg-emerald-400/10'
+                : 'border-dashed border-gray-600 text-gray-500 hover:border-emerald-500/50 hover:text-emerald-400',
+            )}
+          >
+            כל הקבוצות
+          </button>
           {groups.map((g) => {
             const isAssigned = assignedGroupIds.has(g.id)
             return (
               <button
                 key={g.id}
-                onClick={() => toggleGroup(g.id)}
+                onClick={(e) => { e.stopPropagation(); toggleGroup(g.id) }}
                 className={cn(
                   'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-all border',
                   isAssigned
