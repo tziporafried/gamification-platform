@@ -100,6 +100,7 @@ export interface Action {
   points: number;
   description: string | null;
   is_active: boolean;
+  max_completions: number | null;
   created_at: string;
   updated_at: string;
 }

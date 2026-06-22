@@ -6,7 +6,7 @@ import { InlineAddParticipant } from '@/components/participants/InlineAddPartici
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { UsageBar } from '@/components/ui/UsageBar'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { cn } from '@/lib/utils'
+import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
 import { usePlanLimits } from '@/hooks/usePlanLimits'
 import type { EventCounts, GroupType, ParticipantWithGroups, Group } from '@/types'
 
@@ -92,6 +92,21 @@ export function StepParticipants({ eventId, groupType, onCountsRefresh, onNext, 
     triggerRefresh()
   }
 
+  async function selectAllGroups(participantId: string, currentGroupIds: Set<string>) {
+    const isAllSelected = groups.length > 0 && groups.every(g => currentGroupIds.has(g.id))
+    if (isAllSelected) {
+      await supabase.from('participant_groups').delete().eq('participant_id', participantId)
+    } else {
+      const missing = groups.filter(g => !currentGroupIds.has(g.id))
+      if (missing.length > 0) {
+        await supabase.from('participant_groups').insert(
+          missing.map(g => ({ participant_id: participantId, group_id: g.id }))
+        )
+      }
+    }
+    triggerRefresh()
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -137,6 +152,7 @@ export function StepParticipants({ eventId, groupType, onCountsRefresh, onNext, 
                 groups={hasGroups ? groups : []}
                 onDelete={() => handleDelete(p.id)}
                 onToggleGroup={(groupId, isMember) => toggleGroup(p.id, groupId, isMember)}
+                onSelectAllGroups={(memberIds) => selectAllGroups(p.id, memberIds)}
               />
             ))
           )}
@@ -158,11 +174,13 @@ function ParticipantInlineRow({
   groups,
   onDelete,
   onToggleGroup,
+  onSelectAllGroups,
 }: {
   participant: ParticipantWithGroups
   groups: Group[]
   onDelete: () => void
   onToggleGroup: (groupId: string, isMember: boolean) => void
+  onSelectAllGroups: (memberIds: Set<string>) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(participant.name)
@@ -179,6 +197,7 @@ function ParticipantInlineRow({
   }
 
   const memberGroupIds = new Set(participant.groups.map(g => g.id))
+  const isAllSelected = groups.length > 0 && groups.every(g => memberGroupIds.has(g.id))
 
   return (
     <div className="flex items-center gap-3 rounded-xl border border-game-border bg-game-card p-3 transition-all hover:border-brand-700/50 group">
@@ -198,35 +217,21 @@ function ParticipantInlineRow({
             {name}
           </span>
         )}
-
-        {/* Inline group selector */}
-        {groups.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1.5">
-            {groups.map((g) => {
-              const isMember = memberGroupIds.has(g.id)
-              return (
-                <button
-                  key={g.id}
-                  onClick={(e) => { e.stopPropagation(); onToggleGroup(g.id, isMember) }}
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-all border',
-                    isMember
-                      ? 'border-transparent text-white'
-                      : 'border-dashed border-gray-600 text-gray-500 hover:border-gray-400 hover:text-gray-300',
-                  )}
-                  style={isMember ? { backgroundColor: g.color + '33', color: g.color } : undefined}
-                >
-                  <span
-                    className="h-2 w-2 rounded-full shrink-0"
-                    style={{ backgroundColor: isMember ? g.color : undefined }}
-                  />
-                  {g.name}
-                </button>
-              )
-            })}
-          </div>
-        )}
       </div>
+
+      {groups.length > 0 && (
+        <div className="shrink-0">
+          <GroupSelectDropdown
+            groups={groups}
+            selectedGroupIds={memberGroupIds}
+            allGroupsLabel="כל הקבוצות"
+            tooltip="לאילו קבוצות שייך המשתתף"
+            isAllSelected={isAllSelected}
+            onSelectAll={() => onSelectAllGroups(memberGroupIds)}
+            onToggleGroup={onToggleGroup}
+          />
+        </div>
+      )}
 
       <button
         onClick={onDelete}

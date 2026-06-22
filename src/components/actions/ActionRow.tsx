@@ -1,8 +1,23 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Repeat, RotateCcw, Hash, ChevronDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
+import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
 import type { ActionWithGroups, Group } from '@/types'
+
+type LimitMode = 'unlimited' | 'once' | 'limited'
+
+function toLimitMode(max: number | null): LimitMode {
+  if (max === null) return 'unlimited'
+  if (max === 1) return 'once'
+  return 'limited'
+}
+
+function toMaxCompletions(mode: LimitMode, customLimit: number): number | null {
+  if (mode === 'unlimited') return null
+  if (mode === 'once') return 1
+  return customLimit
+}
 
 interface ActionRowProps {
   action: ActionWithGroups
@@ -20,12 +35,21 @@ export function ActionRow({ action, groups, onDeleted }: ActionRowProps) {
   const nameRef = useRef<HTMLInputElement>(null)
   const pointsRef = useRef<HTMLInputElement>(null)
 
+  const [limitMode, setLimitMode] = useState<LimitMode>(toLimitMode(action.max_completions))
+  const [customLimit, setCustomLimit] = useState(action.max_completions && action.max_completions > 1 ? action.max_completions : 5)
+  const [editingLimit, setEditingLimit] = useState(false)
+  const limitRef = useRef<HTMLInputElement>(null)
+
   const isPositive = parseInt(points, 10) >= 0
   const assignedGroupIds = new Set(action.groups.map(g => g.id))
   const isAllGroups = action.groups.length === 0
 
   useEffect(() => { setName(action.name) }, [action.name])
   useEffect(() => { setPoints(action.points.toString()) }, [action.points])
+  useEffect(() => {
+    setLimitMode(toLimitMode(action.max_completions))
+    if (action.max_completions && action.max_completions > 1) setCustomLimit(action.max_completions)
+  }, [action.max_completions])
 
   useEffect(() => {
     if (editingName) { nameRef.current?.focus(); nameRef.current?.select() }
@@ -69,6 +93,14 @@ export function ActionRow({ action, groups, onDeleted }: ActionRowProps) {
   function handlePointsKey(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') { e.preventDefault(); savePoints() }
     if (e.key === 'Escape') { setPoints(action.points.toString()); setEditingPoints(false) }
+  }
+
+  async function saveLimitMode(mode: LimitMode, limit?: number) {
+    const val = toMaxCompletions(mode, limit ?? customLimit)
+    setLimitMode(mode)
+    if (mode === 'limited' && limit) setCustomLimit(limit)
+    await supabase.from('actions').update({ max_completions: val }).eq('id', action.id)
+    if (onDeleted) onDeleted()
   }
 
   async function handleDelete() {
@@ -152,6 +184,31 @@ export function ActionRow({ action, groups, onDeleted }: ActionRowProps) {
           )}
         </div>
 
+        {/* Task limit dropdown */}
+        <TaskLimitSelect
+          limitMode={limitMode}
+          customLimit={customLimit}
+          editingLimit={editingLimit}
+          limitRef={limitRef}
+          onSaveLimitMode={saveLimitMode}
+          onSetEditingLimit={setEditingLimit}
+          onSetCustomLimit={setCustomLimit}
+          onResetLimit={() => setLimitMode(toLimitMode(action.max_completions))}
+        />
+
+        {groups.length > 0 && (
+          <div className="shrink-0">
+            <GroupSelectDropdown
+              groups={groups}
+              selectedGroupIds={assignedGroupIds}
+              isAllSelected={isAllGroups}
+              tooltip="על אילו קבוצות חלה המשימה"
+              onSelectAll={selectAllGroups}
+              onToggleGroup={(groupId) => toggleGroup(groupId)}
+            />
+          </div>
+        )}
+
         <button
           onClick={handleDelete}
           className="shrink-0 p-1.5 rounded-lg text-gray-600 opacity-0 group-hover/row:opacity-100 hover:bg-red-500/10 hover:text-red-400 transition-all"
@@ -160,43 +217,134 @@ export function ActionRow({ action, groups, onDeleted }: ActionRowProps) {
           <Trash2 size={16} />
         </button>
       </div>
+    </div>
+  )
+}
 
-      {/* Group assignment (only if groups exist) */}
-      {groups.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-2 mr-14">
+function TaskLimitSelect({
+  limitMode,
+  customLimit,
+  editingLimit,
+  limitRef,
+  onSaveLimitMode,
+  onSetEditingLimit,
+  onSetCustomLimit,
+  onResetLimit,
+}: {
+  limitMode: LimitMode
+  customLimit: number
+  editingLimit: boolean
+  limitRef: React.RefObject<HTMLInputElement>
+  onSaveLimitMode: (mode: LimitMode, limit?: number) => void
+  onSetEditingLimit: (v: boolean) => void
+  onSetCustomLimit: (v: number) => void
+  onResetLimit: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+        onSetEditingLimit(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  const label = limitMode === 'unlimited' ? 'ללא הגבלה'
+    : limitMode === 'once' ? 'פעם אחת'
+    : `${customLimit} פעמים`
+
+  const Icon = limitMode === 'unlimited' ? Repeat : limitMode === 'once' ? RotateCcw : Hash
+  const colorClass = limitMode === 'unlimited'
+    ? 'border-brand-500/30 text-brand-400 bg-brand-400/10 hover:bg-brand-400/15'
+    : limitMode === 'once'
+    ? 'border-amber-500/30 text-amber-400 bg-amber-400/10 hover:bg-amber-400/15'
+    : 'border-cyan-500/30 text-cyan-400 bg-cyan-400/10 hover:bg-cyan-400/15'
+
+  return (
+    <div ref={ref} className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => setOpen(!open)}
+        title="כמה פעמים כל משתתף יכול לבצע את המשימה"
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all border',
+          colorClass,
+        )}
+      >
+        <Icon size={10} />
+        {label}
+        <ChevronDown size={12} className={cn('transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 top-full mt-1 right-0 w-52 rounded-xl border border-game-border bg-game-card shadow-xl py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="px-3 py-1.5 text-[10px] text-gray-500">כמה פעמים כל משתתף יכול לבצע</div>
           <button
-            onClick={(e) => { e.stopPropagation(); selectAllGroups() }}
+            onClick={() => { onSaveLimitMode('unlimited'); setOpen(false) }}
             className={cn(
-              'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium transition-all border',
-              isAllGroups
-                ? 'border-transparent text-emerald-400 bg-emerald-400/10'
-                : 'border-dashed border-gray-600 text-gray-500 hover:border-emerald-500/50 hover:text-emerald-400',
+              'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-white/5',
+              limitMode === 'unlimited' ? 'text-brand-400' : 'text-gray-400',
             )}
           >
-            כל הקבוצות
+            <Repeat size={12} className="shrink-0" />
+            <div className="text-right">
+              <div>ללא הגבלה</div>
+              <div className="text-[10px] font-normal text-gray-500">ניתן לבצע כמה פעמים שרוצים</div>
+            </div>
           </button>
-          {groups.map((g) => {
-            const isAssigned = assignedGroupIds.has(g.id)
-            return (
-              <button
-                key={g.id}
-                onClick={(e) => { e.stopPropagation(); toggleGroup(g.id) }}
-                className={cn(
-                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-all border',
-                  isAssigned
-                    ? 'border-transparent text-white'
-                    : 'border-dashed border-gray-600 text-gray-500 hover:border-gray-400 hover:text-gray-300',
-                )}
-                style={isAssigned ? { backgroundColor: g.color + '33', color: g.color } : undefined}
-              >
-                <span
-                  className="h-2 w-2 rounded-full shrink-0"
-                  style={{ backgroundColor: isAssigned ? g.color : undefined }}
-                />
-                {g.name}
-              </button>
-            )
-          })}
+          <button
+            onClick={() => { onSaveLimitMode('once'); setOpen(false) }}
+            className={cn(
+              'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-white/5',
+              limitMode === 'once' ? 'text-amber-400' : 'text-gray-400',
+            )}
+          >
+            <RotateCcw size={12} className="shrink-0" />
+            <div className="text-right">
+              <div>פעם אחת</div>
+              <div className="text-[10px] font-normal text-gray-500">כל משתתף יכול לבצע פעם אחת בלבד</div>
+            </div>
+          </button>
+          <div className="mx-2 my-1 border-t border-game-border" />
+          {editingLimit ? (
+            <div className="flex items-center gap-1.5 px-3 py-2">
+              <Hash size={12} className="text-cyan-400 shrink-0" />
+              <input
+                ref={limitRef}
+                type="number"
+                min={2}
+                value={customLimit}
+                onChange={(e) => onSetCustomLimit(Math.max(2, parseInt(e.target.value, 10) || 2))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); onSaveLimitMode('limited', Math.max(2, customLimit)); onSetEditingLimit(false); setOpen(false) }
+                  if (e.key === 'Escape') { onSetEditingLimit(false); onResetLimit() }
+                }}
+                onBlur={() => { onSaveLimitMode('limited', Math.max(2, customLimit)); onSetEditingLimit(false) }}
+                className="w-12 bg-game-dark rounded px-1.5 py-0.5 text-xs text-center text-white font-medium outline-none border border-brand-500"
+                autoFocus
+              />
+              <span className="text-xs text-gray-400">פעמים</span>
+            </div>
+          ) : (
+            <button
+              onClick={() => { onSaveLimitMode('limited'); onSetEditingLimit(true) }}
+              className={cn(
+                'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-white/5',
+                limitMode === 'limited' ? 'text-cyan-400' : 'text-gray-400',
+              )}
+            >
+              <Hash size={12} className="shrink-0" />
+              <div className="text-right">
+                <div>{limitMode === 'limited' ? `${customLimit} פעמים` : 'מוגבל...'}</div>
+                <div className="text-[10px] font-normal text-gray-500">הגדר מספר מרבי של ביצועים</div>
+              </div>
+            </button>
+          )}
         </div>
       )}
     </div>
