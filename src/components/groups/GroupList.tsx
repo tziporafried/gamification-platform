@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { GroupForm } from './GroupForm'
 import { GroupCard } from './GroupCard'
@@ -119,7 +120,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
+        <ErrorAlert message={error} className="mb-4" />
       )}
 
       {groups.length === 0 ? (

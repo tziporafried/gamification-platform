@@ -4,12 +4,11 @@ import { WizardStepWrapper } from './WizardStepWrapper'
 import { QrCardGenerator } from '@/components/qr-cards/QrCardGenerator'
 import { UsageBar } from '@/components/ui/UsageBar'
 import { usePlanLimits } from '@/hooks/usePlanLimits'
-import { FREE_PLAN_LIMITS, ENTITY_LABELS, type LimitableEntity } from '@/lib/plans'
+import { FREE_PLAN_LIMITS, ENTITY_LABELS, UPGRADE_CONTACT_EMAIL, type LimitableEntity } from '@/lib/plans'
 import { Card } from '@/components/ui/Card'
 import type { Event, EventCounts } from '@/types'
 import { isEventReady } from '@/lib/wizard'
 
-const CONTACT_EMAIL = 'zipi3637@gmail.com'
 const ENTITIES = Object.keys(FREE_PLAN_LIMITS) as LimitableEntity[]
 
 interface StepReviewGenerateProps {
@@ -62,7 +61,7 @@ export function StepReviewGenerate({ event, counts, onBack }: StepReviewGenerate
             </p>
             <p className="text-[11px] text-gray-600">
               צריך יותר?{' '}
-              <a href={`mailto:${CONTACT_EMAIL}?subject=שדרוג מסלול`} className="text-brand-400 hover:text-brand-300 transition-colors">
+              <a href={`mailto:${UPGRADE_CONTACT_EMAIL}?subject=שדרוג מסלול`} className="text-brand-400 hover:text-brand-300 transition-colors">
                 צור קשר לשדרוג
               </a>
             </p>
@@ -83,7 +82,7 @@ export function StepReviewGenerate({ event, counts, onBack }: StepReviewGenerate
             </div>
             <p className="text-[11px] text-gray-500 pt-1">
               צריך יותר?{' '}
-              <a href={`mailto:${CONTACT_EMAIL}?subject=שדרוג מסלול`} className="text-brand-400 hover:text-brand-300 transition-colors">
+              <a href={`mailto:${UPGRADE_CONTACT_EMAIL}?subject=שדרוג מסלול`} className="text-brand-400 hover:text-brand-300 transition-colors">
                 צור קשר לשדרוג
               </a>
             </p>

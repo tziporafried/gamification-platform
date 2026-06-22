@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const isSuperAdmin = profile?.role === 'super_admin'
-  const isFreePlan = profile?.plan !== 'paid'
+  const isFreePlan = profile ? profile.plan !== 'paid' : false
 
   return (
     <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signInWithMagicLink, signOut, isSuperAdmin, isFreePlan, refreshProfile }}>

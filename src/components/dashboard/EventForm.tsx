@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 import { ColorPicker } from '@/components/ui/ColorPicker'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import type { Event, EventStatus, QrScoringMode } from '@/types'
 
 const STATUS_LABELS: Record<EventStatus, string> = {
@@ -152,7 +153,7 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
-          <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
+          <ErrorAlert message={error} />
         )}
 
         <Input

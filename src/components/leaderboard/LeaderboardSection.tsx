@@ -6,6 +6,7 @@ import { LeaderboardToggle, type LeaderboardView } from './LeaderboardToggle'
 import { SoundToggle } from './SoundToggle'
 import { WinnersReveal } from './WinnersReveal'
 import { LeaderboardEmptyState } from './LeaderboardEmptyState'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import type { ParticipantLeaderboardEntry, GroupLeaderboardEntry } from '@/types'
 
 interface LeaderboardSectionProps {
@@ -71,9 +72,7 @@ export function LeaderboardSection({ eventId: _eventId, themeColor }: Leaderboar
 
   if (error) {
     return (
-      <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">
-        {error}
-      </div>
+      <ErrorAlert message={error} />
     )
   }
 

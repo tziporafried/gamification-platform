@@ -12,6 +12,7 @@ import { RewardList } from '@/components/rewards/RewardList'
 import { ScoreEntry } from '@/components/scoring/ScoreEntry'
 import { LeaderboardSection } from '@/components/leaderboard/LeaderboardSection'
 import { QrCardGenerator } from '@/components/qr-cards/QrCardGenerator'
+import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event, DashboardTab } from '@/types'
 
 export function Dashboard() {
@@ -36,13 +37,7 @@ export function Dashboard() {
 
   const noop = useCallback(() => {}, [])
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-game-dark">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <FullPageLoader />
 
   const userEmail = user?.email || ''
   const userName = userEmail.split('@')[0] || 'משתמש'

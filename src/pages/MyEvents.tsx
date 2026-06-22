@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
+import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
 
 export function MyEvents() {
@@ -64,13 +65,7 @@ export function MyEvents() {
   const userEmail = user?.email || ''
   const userName = userEmail.split('@')[0] || 'משתמש'
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-game-dark">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <FullPageLoader />
 
   return (
     <div className="min-h-screen bg-game-dark">

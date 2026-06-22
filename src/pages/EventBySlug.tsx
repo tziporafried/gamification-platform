@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { useEventCounts } from '@/hooks/useEventCounts'
 import { ControlCenter } from '@/components/wizard/ControlCenter'
 import type { Event } from '@/types'
@@ -36,11 +37,7 @@ export function EventBySlugControl() {
   }, [slug])
 
   if (state === 'loading') {
-    return (
-      <div className="flex h-screen items-center justify-center bg-game-dark">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
-      </div>
-    )
+    return <FullPageLoader />
   }
 
   if (state === 'not_found') {
@@ -65,5 +62,5 @@ export function EventBySlugControl() {
     )
   }
 
-  return <ControlCenter event={event!} counts={counts} onEventUpdated={setEvent} />
+  return <ControlCenter event={event!} counts={counts} />
 }

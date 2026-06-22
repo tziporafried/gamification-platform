@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { ActionForm } from './ActionForm'
 import { ActionRow } from './ActionRow'
@@ -112,7 +113,7 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
       </div>
 
       {error && (
-        <div className="shrink-0 mb-4 rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
+        <ErrorAlert message={error} className="shrink-0 mb-4" />
       )}
 
       {actions.length === 0 ? (

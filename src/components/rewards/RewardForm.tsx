@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { isPlanLimitError } from '@/lib/plans'
 import type { Reward } from '@/types'
 
@@ -94,7 +95,7 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved, onPlanLi
     <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'עריכת פרס' : 'יצירת פרס'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
+          <ErrorAlert message={error} />
         )}
 
         <Input

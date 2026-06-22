@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useClickOutside } from '@/hooks/useClickOutside'
 import type { Group } from '@/types'
 
 interface GroupSelectDropdownProps {
@@ -24,15 +25,8 @@ export function GroupSelectDropdown({
 }: GroupSelectDropdownProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [open])
+  const closeDropdown = useCallback(() => setOpen(false), [])
+  useClickOutside(ref, closeDropdown)
 
   const selectedGroups = groups.filter((g) => selectedGroupIds.has(g.id))
 

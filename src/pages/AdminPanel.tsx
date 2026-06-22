@@ -4,6 +4,7 @@ import { ArrowRight, Shield, Crown, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { cn } from '@/lib/utils'
 
 interface AdminUser {
@@ -47,13 +48,7 @@ export function AdminPanel() {
     setUpdatingId(null)
   }
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-game-dark">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <FullPageLoader />
 
   return (
     <div className="min-h-screen bg-game-dark">

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 
 interface CsvImportActionsModalProps {
   eventId: string
@@ -208,7 +209,7 @@ export function CsvImportActionsModal({ eventId, isOpen, onClose, onImported }: 
     <Modal isOpen={isOpen} onClose={handleClose} title="ייבוא משימות מ-CSV">
       <div className="space-y-4">
         {error && (
-          <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
+          <ErrorAlert message={error} />
         )}
 
         {!summary ? (

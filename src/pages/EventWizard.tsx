@@ -10,6 +10,7 @@ import { StepParticipants } from '@/components/wizard/StepParticipants'
 import { StepGroups } from '@/components/wizard/StepGroups'
 import { StepTasks } from '@/components/wizard/StepTasks'
 import { StepReviewGenerate } from '@/components/wizard/StepReviewGenerate'
+import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
 
 export function EventWizard() {
@@ -68,13 +69,7 @@ export function EventWizard() {
     }
   }, [currentStep, id, loading, navigate])
 
-  if (loading || !event) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-game-dark">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading || !event) return <FullPageLoader />
 
   return (
     <WizardLayout
@@ -106,7 +101,6 @@ export function EventWizard() {
       {currentStep === 3 && (
         <StepParticipants
           eventId={event.id}
-          counts={counts}
           groupType={groupType}
           onCountsRefresh={refreshCounts}
           onNext={goNext}

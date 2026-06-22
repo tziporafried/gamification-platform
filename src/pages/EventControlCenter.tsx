@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { useEventCounts } from '@/hooks/useEventCounts'
 import { ControlCenter } from '@/components/wizard/ControlCenter'
+import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
 
 export function EventControlCenterPage() {
@@ -33,13 +34,7 @@ export function EventControlCenterPage() {
     fetchEvent()
   }, [id, user, navigate])
 
-  if (loading || !event) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-game-dark">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading || !event) return <FullPageLoader />
 
   return <ControlCenter event={event} counts={counts} />
 }

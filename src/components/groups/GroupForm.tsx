@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { ColorPicker } from '@/components/ui/ColorPicker'
 import type { Group } from '@/types'
 
@@ -71,7 +72,7 @@ export function GroupForm({ eventId, group, isOpen, onClose, onSaved }: GroupFor
     <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'עריכת קבוצה' : 'יצירת קבוצה'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
+          <ErrorAlert message={error} />
         )}
 
         <Input

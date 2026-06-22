@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect, KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
 import { Trash2, Repeat, RotateCcw, Hash, ChevronDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
+import { useClickOutside } from '@/hooks/useClickOutside'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
 import type { ActionWithGroups, Group } from '@/types'
 
@@ -242,18 +243,8 @@ function TaskLimitSelect({
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-        onSetEditingLimit(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [open])
+  const closeSelect = useCallback(() => { setOpen(false); onSetEditingLimit(false) }, [onSetEditingLimit])
+  useClickOutside(ref, closeSelect)
 
   const label = limitMode === 'unlimited' ? 'ללא הגבלה'
     : limitMode === 'once' ? 'פעם אחת'

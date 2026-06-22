@@ -35,7 +35,7 @@ BEGIN
     v_limit := 10;
     SELECT COUNT(*) INTO v_current_count FROM participants WHERE event_id = NEW.event_id;
   ELSIF v_table_name = 'groups' THEN
-    v_limit := 2;
+    v_limit := 3;
     SELECT COUNT(*) INTO v_current_count FROM groups WHERE event_id = NEW.event_id;
   ELSIF v_table_name = 'actions' THEN
     v_limit := 3;

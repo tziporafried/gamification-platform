@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect, KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
 import { Users, Trash2, Palette } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
+import { useClickOutside } from '@/hooks/useClickOutside'
 import type { GroupWithCount } from '@/types'
 
 interface GroupCardProps {
@@ -35,16 +36,8 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
     }
   }, [editing])
 
-  useEffect(() => {
-    if (!showColorPicker) return
-    function handleClickOutside(e: MouseEvent) {
-      if (colorRef.current && !colorRef.current.contains(e.target as Node)) {
-        setShowColorPicker(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showColorPicker])
+  const closeColorPicker = useCallback(() => setShowColorPicker(false), [])
+  useClickOutside(colorRef, closeColorPicker)
 
   async function saveEdit() {
     const trimmed = name.trim()

@@ -11,7 +11,6 @@ import type { Event, EventCounts } from '@/types'
 interface ControlCenterProps {
   event: Event
   counts: EventCounts
-  onEventUpdated?: (event: Event) => void
 }
 
 const ACTIONS = [
@@ -19,7 +18,7 @@ const ACTIONS = [
   { id: 'display', label: 'מסך תצוגה', icon: Monitor, color: 'text-blue-400', route: 'display' },
 ]
 
-export function ControlCenter({ event, counts, onEventUpdated: _onEventUpdated }: ControlCenterProps) {
+export function ControlCenter({ event, counts }: ControlCenterProps) {
   const navigate = useNavigate()
   const [shareOpen, setShareOpen] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -33,6 +32,7 @@ export function ControlCenter({ event, counts, onEventUpdated: _onEventUpdated }
   }
 
   async function copyManagementLink() {
+    if (!event.slug) return
     const url = `${window.location.origin}/e/${event.slug}/control`
     await navigator.clipboard.writeText(url)
     setCopied(true)

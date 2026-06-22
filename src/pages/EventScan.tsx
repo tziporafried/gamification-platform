@@ -4,6 +4,7 @@ import { ArrowRight } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { ScoreEntry } from '@/components/scoring/ScoreEntry'
+import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
 
 export function EventScanPage() {
@@ -32,13 +33,7 @@ export function EventScanPage() {
     fetchEvent()
   }, [id, user, navigate])
 
-  if (loading || !event) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-game-dark">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading || !event) return <FullPageLoader />
 
   return (
     <div className="min-h-screen bg-game-dark">

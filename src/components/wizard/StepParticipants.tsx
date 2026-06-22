@@ -8,11 +8,10 @@ import { UsageBar } from '@/components/ui/UsageBar'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
 import { usePlanLimits } from '@/hooks/usePlanLimits'
-import type { EventCounts, GroupType, ParticipantWithGroups, Group } from '@/types'
+import type { GroupType, ParticipantWithGroups, Group } from '@/types'
 
 interface StepParticipantsProps {
   eventId: string
-  counts: EventCounts
   groupType: GroupType | null
   onCountsRefresh: () => void
   onNext: () => void

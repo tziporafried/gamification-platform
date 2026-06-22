@@ -1,3 +1,5 @@
+export const UPGRADE_CONTACT_EMAIL = 'zipi3637@gmail.com'
+
 export const FREE_PLAN_LIMITS = {
   participants: 10,
   groups: 3,

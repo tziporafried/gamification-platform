@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { ParticipantForm } from './ParticipantForm'
 import { ParticipantRow } from './ParticipantRow'
 import { InlineAddParticipant } from './InlineAddParticipant'
@@ -111,7 +112,7 @@ export function ParticipantList({ eventId, onCountChange }: ParticipantListProps
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
+        <ErrorAlert message={error} className="mb-4" />
       )}
 
       {participants.length === 0 ? (

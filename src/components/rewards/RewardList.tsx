@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { RewardForm } from './RewardForm'
 import { RewardRow } from './RewardRow'
@@ -107,7 +108,7 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
           </div>
 
           {error && (
-            <div className="mb-4 rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
+            <ErrorAlert message={error} className="mb-4" />
           )}
 
           {rewards.length === 0 ? (
