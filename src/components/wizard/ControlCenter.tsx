@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Play, QrCode, Monitor, Download, ArrowRight, AlertCircle, CheckCircle2, Share2 } from 'lucide-react'
+import { QrCode, Monitor, ArrowRight, AlertCircle, CheckCircle2, Share2, Link as LinkIcon, Check } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ShareEventModal } from '@/components/ShareEventModal'
@@ -11,18 +11,18 @@ import type { Event, EventCounts } from '@/types'
 interface ControlCenterProps {
   event: Event
   counts: EventCounts
+  onEventUpdated?: (event: Event) => void
 }
 
 const ACTIONS = [
-  { id: 'start', label: 'התחל אירוע', icon: Play, color: 'text-emerald-400', route: null },
   { id: 'scan', label: 'מצב סריקה', icon: QrCode, color: 'text-brand-400', route: 'scan' },
   { id: 'display', label: 'מסך תצוגה', icon: Monitor, color: 'text-blue-400', route: 'display' },
-  { id: 'export', label: 'ייצוא תוצאות', icon: Download, color: 'text-amber-400', route: 'export' },
 ]
 
-export function ControlCenter({ event, counts }: ControlCenterProps) {
+export function ControlCenter({ event, counts, onEventUpdated: _onEventUpdated }: ControlCenterProps) {
   const navigate = useNavigate()
   const [shareOpen, setShareOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
   const ready = isEventReady(event, counts)
   const checks = calculateReadiness(event, counts)
 
@@ -30,6 +30,13 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
     if (route) {
       navigate(`/events/${event.id}/${route}`)
     }
+  }
+
+  async function copyManagementLink() {
+    const url = `${window.location.origin}/e/${event.slug}/control`
+    await navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -50,6 +57,10 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={copyManagementLink}>
+              {copied ? <Check size={16} className="ml-1 text-emerald-400" /> : <LinkIcon size={16} className="ml-1" />}
+              {copied ? 'הועתק!' : 'העתק קישור'}
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => setShareOpen(true)}>
               <Share2 size={16} className="ml-1" />
               שיתוף
@@ -98,20 +109,15 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
         {/* Action cards */}
         <div className="grid grid-cols-2 gap-4">
           {ACTIONS.map(({ id, label, icon: Icon, color, route }) => {
-            const disabled = !ready && id === 'start'
             return (
               <button
                 key={id}
                 onClick={() => handleAction(route)}
-                disabled={disabled}
                 className="text-right"
               >
                 <Card
                   variant="interactive"
-                  className={cn(
-                    'p-6 flex flex-col items-center gap-3 text-center min-h-[140px] justify-center',
-                    disabled && 'opacity-50 cursor-not-allowed',
-                  )}
+                  className="p-6 flex flex-col items-center gap-3 text-center min-h-[140px] justify-center"
                 >
                   <Icon size={32} className={color} />
                   <span className="text-sm font-medium text-white">{label}</span>

@@ -172,6 +172,15 @@ DO $$ BEGIN
 END $$;
 
 -- ============================================================
+-- RPC: Check if an event slug exists (no data exposed)
+-- ============================================================
+CREATE OR REPLACE FUNCTION check_event_slug_exists(p_slug TEXT)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+AS 'SELECT EXISTS (SELECT 1 FROM public.events WHERE slug = p_slug)';
+
+-- ============================================================
 -- RPC: Share event with a user by email
 -- ============================================================
 CREATE OR REPLACE FUNCTION share_event_by_email(p_event_id UUID, p_email TEXT)

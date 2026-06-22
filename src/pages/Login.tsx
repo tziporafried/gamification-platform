@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
 
 export function Login() {
   const { signInWithGoogle } = useAuth()
+  const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -12,7 +13,8 @@ export function Login() {
     setError('')
     setLoading(true)
     try {
-      await signInWithGoogle()
+      const returnTo = searchParams.get('returnTo')
+      await signInWithGoogle(returnTo || undefined)
     } catch {
       setError('שגיאה בהתחברות. נסו שוב.')
       setLoading(false)

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Calendar, LogOut, Shield } from 'lucide-react'
+import { Plus, Calendar, LogOut, Shield, ExternalLink } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
@@ -149,6 +149,16 @@ function EventCard({ event }: { event: Event }) {
 
   const status = statusLabels[event.status] || statusLabels.draft
 
+  function handleOpenControl(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!event.slug) {
+      console.warn('Event is missing slug, cannot open control center:', event.id)
+      return
+    }
+    navigate(`/e/${event.slug}/control`)
+  }
+
+
   return (
     <button
       onClick={() => navigate(`/events/${event.id}`)}
@@ -176,6 +186,18 @@ function EventCard({ event }: { event: Event }) {
             {new Date(event.created_at).toLocaleDateString('he-IL')}
           </p>
         </div>
+
+        {event.slug && (
+          <div className="flex items-center gap-3 pt-1 border-t border-game-border">
+            <button
+              onClick={handleOpenControl}
+              className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300 transition-colors"
+            >
+              <ExternalLink size={12} />
+              פתח מרכז בקרה
+            </button>
+          </div>
+        )}
       </Card>
     </button>
   )

@@ -102,11 +102,10 @@ export function AdminPanel() {
                       )}
                     </div>
                     <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                    {user.event_count > 0 && (
-                      <p className="text-xs text-gray-600 truncate mt-0.5">
-                        {user.event_count} אירועים · {user.event_names}
-                      </p>
-                    )}
+                    <p className="text-xs text-gray-600 mt-0.5">
+                      הצטרף {new Date(user.created_at).toLocaleDateString('he-IL')}
+                      {user.event_count > 0 && <> · {user.event_count} אירועים</>}
+                    </p>
                   </div>
                 </div>
 

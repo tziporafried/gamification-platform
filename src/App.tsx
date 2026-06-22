@@ -10,6 +10,7 @@ import { EventControlCenterPage } from '@/pages/EventControlCenter'
 import { EventScanPage } from '@/pages/EventScan'
 import { EventDisplayPage } from '@/pages/EventDisplay'
 import { AdminPanel } from '@/pages/AdminPanel'
+import { EventBySlugControl } from '@/pages/EventBySlug'
 
 export default function App() {
   return (
@@ -26,6 +27,9 @@ export default function App() {
           <Route path="/events/:id/control" element={<ProtectedRoute><EventControlCenterPage /></ProtectedRoute>} />
           <Route path="/events/:id/scan" element={<ProtectedRoute><EventScanPage /></ProtectedRoute>} />
           <Route path="/events/:id/display" element={<ProtectedRoute><EventDisplayPage /></ProtectedRoute>} />
+
+          {/* Shareable slug-based control link */}
+          <Route path="/e/:slug/control" element={<ProtectedRoute><EventBySlugControl /></ProtectedRoute>} />
 
           {/* Super Admin */}
           <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AdminPanel /></ProtectedRoute>} />

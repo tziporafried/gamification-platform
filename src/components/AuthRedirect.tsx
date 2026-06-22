@@ -1,8 +1,9 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 
 export function AuthRedirect({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  const [searchParams] = useSearchParams()
 
   if (loading) {
     return (
@@ -12,7 +13,10 @@ export function AuthRedirect({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (user) return <Navigate to="/events" replace />
+  if (user) {
+    const returnTo = searchParams.get('returnTo')
+    return <Navigate to={returnTo || '/events'} replace />
+  }
 
   return <>{children}</>
 }
