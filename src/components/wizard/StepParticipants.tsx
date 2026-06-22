@@ -24,7 +24,7 @@ interface ParticipantGroupJoin {
   groups: Group
 }
 
-export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, onNext, onBack }: StepParticipantsProps) {
+export function StepParticipants({ eventId, groupType, onCountsRefresh, onNext, onBack }: StepParticipantsProps) {
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
