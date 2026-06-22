@@ -1,24 +1,57 @@
-import { useState } from 'react'
+import { useState, FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 
 export function Login() {
-  const { signInWithGoogle } = useAuth()
+  const { signInWithGoogle, signInWithMagicLink } = useAuth()
   const [searchParams] = useSearchParams()
-  const [loading, setLoading] = useState(false)
+  const returnTo = searchParams.get('returnTo') || undefined
+
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const [email, setEmail] = useState('')
+  const [magicLinkLoading, setMagicLinkLoading] = useState(false)
+  const [magicLinkSent, setMagicLinkSent] = useState(false)
 
   async function handleGoogleSignIn() {
     setError('')
-    setLoading(true)
+    setGoogleLoading(true)
     try {
-      const returnTo = searchParams.get('returnTo')
-      await signInWithGoogle(returnTo || undefined)
+      await signInWithGoogle(returnTo)
     } catch {
       setError('שגיאה בהתחברות. נסו שוב.')
-      setLoading(false)
+      setGoogleLoading(false)
     }
+  }
+
+  async function handleMagicLink(e: FormEvent) {
+    e.preventDefault()
+    setError('')
+
+    const trimmed = email.trim()
+    if (!trimmed) {
+      setError('יש להזין כתובת מייל')
+      return
+    }
+
+    setMagicLinkLoading(true)
+    const result = await signInWithMagicLink(trimmed, returnTo)
+    setMagicLinkLoading(false)
+
+    if (result.error) {
+      if (result.error.includes('rate')) {
+        setError('נסו שוב בעוד מספר דקות')
+      } else {
+        setError('לא ניתן לשלוח קישור התחברות כרגע')
+      }
+      return
+    }
+
+    setMagicLinkSent(true)
   }
 
   return (
@@ -29,17 +62,18 @@ export function Login() {
             G
           </Link>
           <h1 className="mt-4 text-2xl font-bold text-white">ברוכים הבאים</h1>
-          <p className="mt-1 text-sm text-gray-500">התחברו עם חשבון Google שלכם</p>
+          <p className="mt-1 text-sm text-gray-500">התחברו לפלטפורמה</p>
         </div>
 
         {error && (
           <div className="mb-4 rounded-lg bg-red-900/20 border border-red-800/30 p-3 text-sm text-red-300">{error}</div>
         )}
 
+        {/* Google — Primary */}
         <Button
           variant="gradient"
           size="lg"
-          loading={loading}
+          loading={googleLoading}
           className="w-full"
           onClick={handleGoogleSignIn}
         >
@@ -51,6 +85,50 @@ export function Login() {
           </svg>
           התחברות עם Google
         </Button>
+
+        {/* Divider */}
+        <div className="my-5 flex items-center gap-3">
+          <div className="flex-1 h-px bg-game-border" />
+          <span className="text-xs text-gray-500">או</span>
+          <div className="flex-1 h-px bg-game-border" />
+        </div>
+
+        {/* Magic Link — Secondary */}
+        {magicLinkSent ? (
+          <div className="text-center space-y-2 py-2">
+            <CheckCircle2 size={32} className="mx-auto text-emerald-400" />
+            <p className="text-sm font-medium text-white">קישור התחברות נשלח למייל שלך</p>
+            <p className="text-xs text-gray-400">בדוק את תיבת הדואר ולחץ על הקישור</p>
+            <button
+              onClick={() => { setMagicLinkSent(false); setEmail('') }}
+              className="text-xs text-brand-400 hover:text-brand-300 transition-colors mt-2"
+            >
+              שלח שוב
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleMagicLink} className="space-y-3">
+            <Input
+              id="magic-email"
+              label="כתובת אימייל"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+            <Button
+              type="submit"
+              variant="outline"
+              size="md"
+              loading={magicLinkLoading}
+              className="w-full"
+            >
+              שלח קישור התחברות
+            </Button>
+          </form>
+        )}
+
       </div>
     </div>
   )

@@ -8,6 +8,7 @@ interface AuthContextType {
   profile: UserProfile | null
   loading: boolean
   signInWithGoogle: (redirectTo?: string) => Promise<void>
+  signInWithMagicLink: (email: string, redirectTo?: string) => Promise<{ error?: string }>
   signOut: () => Promise<void>
   isSuperAdmin: boolean
   isFreePlan: boolean
@@ -67,6 +68,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const signInWithMagicLink = useCallback(async (email: string, redirectTo?: string) => {
+    const callbackUrl = `${window.location.origin}/auth/callback${redirectTo ? `?returnTo=${encodeURIComponent(redirectTo)}` : ''}`
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: callbackUrl },
+    })
+    if (error) return { error: error.message }
+    return {}
+  }, [])
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
     setProfile(null)
@@ -76,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isFreePlan = profile?.plan !== 'paid'
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signOut, isSuperAdmin, isFreePlan, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signInWithMagicLink, signOut, isSuperAdmin, isFreePlan, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

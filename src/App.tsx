@@ -11,6 +11,7 @@ import { EventScanPage } from '@/pages/EventScan'
 import { EventDisplayPage } from '@/pages/EventDisplay'
 import { AdminPanel } from '@/pages/AdminPanel'
 import { EventBySlugControl } from '@/pages/EventBySlug'
+import { AuthCallback } from '@/pages/AuthCallback'
 
 export default function App() {
   return (
@@ -33,6 +34,9 @@ export default function App() {
 
           {/* Super Admin */}
           <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AdminPanel /></ProtectedRoute>} />
+
+          {/* Auth callback for magic link */}
+          <Route path="/auth/callback" element={<AuthCallback />} />
 
           {/* Backward compat */}
           <Route path="/dashboard" element={<Navigate to="/events" replace />} />
