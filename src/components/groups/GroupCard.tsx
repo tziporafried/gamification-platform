@@ -19,12 +19,14 @@ const PRESET_COLORS = [
 export function GroupCard({ group, onDelete }: GroupCardProps) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(group.name)
+  const [color, setColor] = useState(group.color)
   const [saving, setSaving] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const colorRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setName(group.name) }, [group.name])
+  useEffect(() => { setColor(group.color) }, [group.color])
 
   useEffect(() => {
     if (editing) {
@@ -58,9 +60,10 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
     setEditing(false)
   }
 
-  async function changeColor(color: string) {
-    await supabase.from('groups').update({ color }).eq('id', group.id)
+  async function changeColor(newColor: string) {
+    setColor(newColor)
     setShowColorPicker(false)
+    await supabase.from('groups').update({ color: newColor }).eq('id', group.id)
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -71,8 +74,8 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
   return (
     <Card variant="interactive" className="group/card">
       <div
-        className="h-1.5 w-full rounded-t-xl"
-        style={{ backgroundColor: group.color }}
+        className="h-1.5 w-full rounded-t-xl transition-colors"
+        style={{ backgroundColor: color }}
       />
       <div className="p-4">
         <div className="flex items-center justify-between gap-2">
@@ -82,24 +85,24 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
               <button
                 onClick={() => setShowColorPicker(!showColorPicker)}
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-transparent hover:border-white/30 transition-all"
-                style={{ backgroundColor: group.color }}
+                style={{ backgroundColor: color }}
                 title="שנה צבע"
               >
                 <Palette size={12} className="text-white/70" />
               </button>
 
               {showColorPicker && (
-                <div className="absolute bottom-9 right-0 z-50 rounded-xl border border-game-border bg-game-card p-3 shadow-podium animate-scale-in">
+                <div className="absolute top-full mt-2 right-0 z-50 rounded-xl border border-game-border bg-game-card p-3 shadow-podium animate-scale-in">
                   <div className="flex gap-1.5">
-                    {PRESET_COLORS.map((color) => (
+                    {PRESET_COLORS.map((c) => (
                       <button
-                        key={color}
-                        onClick={() => changeColor(color)}
+                        key={c}
+                        onClick={() => changeColor(c)}
                         className={cn(
                           'w-6 h-6 rounded-full border-2 transition-transform hover:scale-110',
-                          group.color === color ? 'border-white scale-110' : 'border-transparent',
+                          color === c ? 'border-white scale-110' : 'border-transparent',
                         )}
-                        style={{ backgroundColor: color }}
+                        style={{ backgroundColor: c }}
                       />
                     ))}
                   </div>

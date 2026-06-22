@@ -38,7 +38,7 @@ export function InlineAddGroup({ eventId, onAdded, onPlanLimit }: InlineAddGroup
     }
     setName('')
     onAdded()
-    inputRef.current?.focus()
+    setTimeout(() => inputRef.current?.focus(), 0)
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Users, Layers, AlertTriangle } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { Card } from '@/components/ui/Card'
@@ -37,13 +37,21 @@ export function StepGroups({
 }: StepGroupsProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [localGroupCount, setLocalGroupCount] = useState(counts.groups)
   const planLimits = usePlanLimits(eventId)
+  const refreshPlanLimits = planLimits.refresh
 
   const showGroupSetup = groupType === 'custom'
-  const canAdvance = groupType === 'none' || counts.groups > 0
+  const canAdvance = groupType === 'none' || localGroupCount > 0
+
+  const handleCountChange = useCallback((count: number) => {
+    setLocalGroupCount(count)
+    onCountsRefresh()
+    refreshPlanLimits()
+  }, [onCountsRefresh, refreshPlanLimits])
 
   function handleOptionClick(type: GroupType) {
-    if (type === 'none' && counts.groups > 0) {
+    if (type === 'none' && localGroupCount > 0) {
       setConfirmDelete(true)
     } else {
       onGroupTypeSelect(type)
@@ -67,7 +75,9 @@ export function StepGroups({
     setDeleting(false)
     setConfirmDelete(false)
     onGroupTypeSelect('none')
+    setLocalGroupCount(0)
     onCountsRefresh()
+    refreshPlanLimits()
   }
 
   return (
@@ -79,49 +89,58 @@ export function StepGroups({
       onNext={onNext}
       onBack={onBack}
     >
-      {/* Two simple options */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {GROUP_OPTIONS.map(({ type, label, description, icon: Icon }) => (
-          <button
-            key={type}
-            onClick={() => handleOptionClick(type)}
-            className="text-right w-full"
-          >
-            <Card
-              variant="interactive"
-              className={cn(
-                'p-6 flex flex-col items-center gap-3 text-center cursor-pointer transition-all min-h-[120px] justify-center',
-                groupType === type && 'ring-2 ring-brand-500 border-brand-500/50',
-              )}
-            >
-              <Icon
-                size={32}
-                className={cn(
-                  'transition-colors',
-                  groupType === type ? 'text-brand-400' : 'text-gray-500',
-                )}
-              />
-              <span className={cn(
-                'text-base font-medium',
-                groupType === type ? 'text-white' : 'text-gray-300',
-              )}>
-                {label}
-              </span>
-              <span className="text-xs text-gray-500">{description}</span>
-            </Card>
-          </button>
-        ))}
-      </div>
+      <div className="flex h-full flex-col min-h-0">
+        {/* Pinned top: options + counter + usage bar */}
+        <div className="shrink-0 space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 p-0.5">
+            {GROUP_OPTIONS.map(({ type, label, description, icon: Icon }) => (
+              <button
+                key={type}
+                onClick={() => handleOptionClick(type)}
+                className="text-right w-full"
+              >
+                <Card
+                  variant="interactive"
+                  className={cn(
+                    'p-6 flex flex-col items-center gap-3 text-center cursor-pointer transition-all min-h-[120px] justify-center',
+                    groupType === type && 'ring-2 ring-brand-500 border-brand-500/50',
+                  )}
+                >
+                  <Icon
+                    size={32}
+                    className={cn(
+                      'transition-colors',
+                      groupType === type ? 'text-brand-400' : 'text-gray-500',
+                    )}
+                  />
+                  <span className={cn(
+                    'text-base font-medium',
+                    groupType === type ? 'text-white' : 'text-gray-300',
+                  )}>
+                    {label}
+                  </span>
+                  <span className="text-xs text-gray-500">{description}</span>
+                </Card>
+              </button>
+            ))}
+          </div>
 
-      {/* Group management (when "Yes" is selected) */}
-      {showGroupSetup && (
-        <div className="mt-8 space-y-4">
-          {planLimits.isFreePlan && (
+          {showGroupSetup && localGroupCount > 0 && (
+            <p className="text-xs text-gray-500 text-center">{localGroupCount} קבוצות</p>
+          )}
+
+          {showGroupSetup && planLimits.isFreePlan && (
             <UsageBar info={planLimits.groups} entity="groups" />
           )}
-          <GroupList eventId={eventId} onCountChange={onCountsRefresh} />
         </div>
-      )}
+
+        {/* Scrollable group management */}
+        {showGroupSetup && (
+          <div className="flex-1 overflow-y-auto min-h-0 mt-4">
+            <GroupList eventId={eventId} onCountChange={handleCountChange} />
+          </div>
+        )}
+      </div>
 
       {/* Confirmation modal for deleting all groups */}
       <Modal
@@ -134,7 +153,7 @@ export function StepGroups({
             <AlertTriangle size={20} className="shrink-0 text-amber-400 mt-0.5" />
             <div className="text-sm text-amber-200">
               <p className="font-medium mb-1">שים לב!</p>
-              <p>מעבר ל"בלי קבוצות" ימחק את כל הקבוצות הקיימות ({counts.groups}) ואת כל שיוכי המשתתפים לקבוצות.</p>
+              <p>מעבר ל"בלי קבוצות" ימחק את כל הקבוצות הקיימות ({localGroupCount}) ואת כל שיוכי המשתתפים לקבוצות.</p>
               <p className="mt-1">לא ניתן לבטל פעולה זו.</p>
             </div>
           </div>

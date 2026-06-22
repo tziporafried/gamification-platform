@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Layers } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
@@ -24,30 +24,49 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
   const [deletingGroup, setDeletingGroup] = useState<GroupWithCount | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const listRef = useRef<HTMLDivElement>(null)
+  const prevCountRef = useRef(0)
 
-  const fetchGroups = useCallback(async () => {
-    const { data, error: fetchError } = await supabase
-      .from('groups')
-      .select('*, participant_groups(count)')
-      .eq('event_id', eventId)
-      .order('created_at', { ascending: true })
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      const { data, error: fetchError } = await supabase
+        .from('groups')
+        .select('*, participant_groups(count)')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true })
 
-    if (fetchError) {
-      setError(fetchError.message)
-      return
+      if (cancelled) return
+
+      if (fetchError) {
+        setError(fetchError.message)
+        return
+      }
+
+      const mapped: GroupWithCount[] = (data ?? []).map((g) => ({
+        ...g,
+        member_count: (g.participant_groups as unknown as { count: number }[])?.[0]?.count ?? 0,
+      }))
+
+      setGroups(mapped)
+      onCountChange(mapped.length)
+      setLoading(false)
     }
+    load()
+    return () => { cancelled = true }
+  }, [eventId, refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const mapped: GroupWithCount[] = (data ?? []).map((g) => ({
-      ...g,
-      member_count: (g.participant_groups as unknown as { count: number }[])?.[0]?.count ?? 0,
-    }))
+  useEffect(() => {
+    if (groups.length > prevCountRef.current && listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight
+    }
+    prevCountRef.current = groups.length
+  }, [groups.length])
 
-    setGroups(mapped)
-    onCountChange(mapped.length)
-    setLoading(false)
-  }, [eventId, onCountChange])
-
-  useEffect(() => { fetchGroups() }, [fetchGroups])
+  function triggerRefresh() {
+    setRefreshKey(k => k + 1)
+  }
 
   function handleEdit(group: GroupWithCount) {
     setEditingGroup(group)
@@ -77,7 +96,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
     }
 
     setDeletingGroup(null)
-    fetchGroups()
+    triggerRefresh()
   }
 
   if (loading) {
@@ -89,8 +108,8 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
   }
 
   return (
-    <div>
-      <div className="mb-4 flex items-center">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="shrink-0 mb-4 flex items-center">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
             <Layers size={18} className="text-brand-400" />
@@ -104,15 +123,12 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
       )}
 
       {groups.length === 0 ? (
-        <div className="space-y-4">
-          <EmptyState
-            title="אין קבוצות עדיין"
-            description="הקלד שם קבוצה למטה ולחץ Enter"
-          />
-          <InlineAddGroup eventId={eventId} onAdded={fetchGroups} onPlanLimit={() => setUpgradeOpen(true)} />
-        </div>
+        <EmptyState
+          title="אין קבוצות עדיין"
+          description="הקלד שם קבוצה למטה ולחץ Enter"
+        />
       ) : (
-        <div className="space-y-3">
+        <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             {groups.map((group) => (
               <GroupCard
@@ -123,9 +139,12 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
               />
             ))}
           </div>
-          <InlineAddGroup eventId={eventId} onAdded={fetchGroups} onPlanLimit={() => setUpgradeOpen(true)} />
         </div>
       )}
+
+      <div className="shrink-0 pt-3">
+        <InlineAddGroup eventId={eventId} onAdded={triggerRefresh} onPlanLimit={() => setUpgradeOpen(true)} />
+      </div>
 
       {formOpen && (
         <GroupForm
@@ -133,7 +152,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
           group={editingGroup ?? undefined}
           isOpen={formOpen}
           onClose={handleFormClose}
-          onSaved={() => { handleFormClose(); fetchGroups() }}
+          onSaved={() => { handleFormClose(); triggerRefresh() }}
         />
       )}
 
