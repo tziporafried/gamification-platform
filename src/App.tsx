@@ -4,12 +4,12 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { AuthRedirect } from '@/components/AuthRedirect'
 import { Landing } from '@/pages/Landing'
 import { Login } from '@/pages/Login'
-import { Register } from '@/pages/Register'
 import { MyEvents } from '@/pages/MyEvents'
 import { EventWizard } from '@/pages/EventWizard'
 import { EventControlCenterPage } from '@/pages/EventControlCenter'
 import { EventScanPage } from '@/pages/EventScan'
 import { EventDisplayPage } from '@/pages/EventDisplay'
+import { AdminPanel } from '@/pages/AdminPanel'
 
 export default function App() {
   return (
@@ -18,7 +18,6 @@ export default function App() {
         <Routes>
           <Route path="/" element={<AuthRedirect><Landing /></AuthRedirect>} />
           <Route path="/login" element={<AuthRedirect><Login /></AuthRedirect>} />
-          <Route path="/register" element={<AuthRedirect><Register /></AuthRedirect>} />
 
           {/* Protected: Event management */}
           <Route path="/events" element={<ProtectedRoute><MyEvents /></ProtectedRoute>} />
@@ -28,8 +27,12 @@ export default function App() {
           <Route path="/events/:id/scan" element={<ProtectedRoute><EventScanPage /></ProtectedRoute>} />
           <Route path="/events/:id/display" element={<ProtectedRoute><EventDisplayPage /></ProtectedRoute>} />
 
+          {/* Super Admin */}
+          <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AdminPanel /></ProtectedRoute>} />
+
           {/* Backward compat */}
           <Route path="/dashboard" element={<Navigate to="/events" replace />} />
+          <Route path="/register" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

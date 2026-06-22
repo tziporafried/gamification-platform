@@ -1,6 +1,20 @@
 export type EventStatus = 'draft' | 'active' | 'finished' | 'archived';
 export type QrScoringMode = 'combined' | 'separate';
 
+export type UserRole = 'super_admin' | 'user';
+export type UserPlan = 'free' | 'paid';
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  role: UserRole;
+  plan: UserPlan;
+  created_at: string;
+  updated_at: string;
+}
+
 export type StepStatus = 'not_started' | 'in_progress' | 'completed';
 export type WizardStepId = 'details' | 'groups' | 'participants' | 'tasks' | 'review';
 export type GroupType = 'none' | 'custom';
@@ -25,6 +39,7 @@ export interface EventCounts {
   groups: number;
   tasks: number;
   transactions: number;
+  rewards: number;
 }
 
 export interface WizardPrefs {

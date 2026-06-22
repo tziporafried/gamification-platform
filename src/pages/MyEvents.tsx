@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Calendar, LogOut } from 'lucide-react'
+import { Plus, Calendar, LogOut, Shield } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import type { Event } from '@/types'
 
 export function MyEvents() {
-  const { user, signOut } = useAuth()
+  const { user, signOut, isSuperAdmin } = useAuth()
   const navigate = useNavigate()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
@@ -65,6 +65,15 @@ export function MyEvents() {
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <h1 className="text-lg font-bold text-white">האירועים שלי</h1>
           <div className="flex items-center gap-3">
+            {isSuperAdmin && (
+              <button
+                onClick={() => navigate('/admin')}
+                className="flex items-center gap-1.5 text-sm text-amber-400 hover:text-amber-300 transition-colors"
+              >
+                <Shield size={16} />
+                <span className="hidden sm:inline">ניהול</span>
+              </button>
+            )}
             <span className="text-sm text-gray-400 hidden sm:inline">{userName}</span>
             <button
               onClick={signOut}
