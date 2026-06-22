@@ -1,6 +1,6 @@
 export const FREE_PLAN_LIMITS = {
   participants: 10,
-  groups: 2,
+  groups: 3,
   actions: 3,
   rewards: 3,
 } as const
