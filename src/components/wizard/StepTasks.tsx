@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { ActionList } from '@/components/actions/ActionList'
 import { UsageBar } from '@/components/ui/UsageBar'
-import { usePlanLimits } from '@/hooks/usePlanLimits'
+import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
 import type { EventCounts } from '@/types'
 
 interface StepTasksProps {
@@ -16,7 +16,7 @@ interface StepTasksProps {
 export function StepTasks({ eventId, counts, onCountsRefresh, onNext, onBack }: StepTasksProps) {
   const [localTaskCount, setLocalTaskCount] = useState(counts.tasks)
   const canAdvance = localTaskCount > 0
-  const planLimits = usePlanLimits(eventId)
+  const planLimits = usePlanLimitsFromCounts(counts, onCountsRefresh)
 
   function handleCountChange(count: number) {
     setLocalTaskCount(count)

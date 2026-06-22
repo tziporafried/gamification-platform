@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { AuthRedirect } from '@/components/AuthRedirect'
+import { AppShell } from '@/components/layout/AppShell'
 import { Landing } from '@/pages/Landing'
 import { Login } from '@/pages/Login'
 import { MyEvents } from '@/pages/MyEvents'
@@ -20,23 +21,17 @@ export default function App() {
         <Routes>
           <Route path="/" element={<AuthRedirect><Landing /></AuthRedirect>} />
           <Route path="/login" element={<AuthRedirect><Login /></AuthRedirect>} />
-
-          {/* Protected: Event management */}
-          <Route path="/events" element={<ProtectedRoute><MyEvents /></ProtectedRoute>} />
-          <Route path="/events/:id" element={<ProtectedRoute><EventWizard /></ProtectedRoute>} />
-          <Route path="/events/:id/step/:step" element={<ProtectedRoute><EventWizard /></ProtectedRoute>} />
-          <Route path="/events/:id/control" element={<ProtectedRoute><EventControlCenterPage /></ProtectedRoute>} />
-          <Route path="/events/:id/scan" element={<ProtectedRoute><EventScanPage /></ProtectedRoute>} />
-          <Route path="/events/:id/display" element={<ProtectedRoute><EventDisplayPage /></ProtectedRoute>} />
-
-          {/* Shareable slug-based control link */}
-          <Route path="/e/:slug/control" element={<ProtectedRoute><EventBySlugControl /></ProtectedRoute>} />
-
-          {/* Super Admin */}
-          <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AdminPanel /></ProtectedRoute>} />
-
-          {/* Auth callback for magic link */}
           <Route path="/auth/callback" element={<AuthCallback />} />
+
+          {/* All authenticated routes share AppShell (GlobalHeader) */}
+          <Route path="/events" element={<ProtectedRoute><AppShell><MyEvents /></AppShell></ProtectedRoute>} />
+          <Route path="/events/:id" element={<ProtectedRoute><AppShell><EventWizard /></AppShell></ProtectedRoute>} />
+          <Route path="/events/:id/step/:step" element={<ProtectedRoute><AppShell><EventWizard /></AppShell></ProtectedRoute>} />
+          <Route path="/events/:id/control" element={<ProtectedRoute><AppShell><EventControlCenterPage /></AppShell></ProtectedRoute>} />
+          <Route path="/events/:id/scan" element={<ProtectedRoute><AppShell><EventScanPage /></AppShell></ProtectedRoute>} />
+          <Route path="/events/:id/display" element={<ProtectedRoute><AppShell><EventDisplayPage /></AppShell></ProtectedRoute>} />
+          <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell><EventBySlugControl /></AppShell></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />
 
           {/* Backward compat */}
           <Route path="/dashboard" element={<Navigate to="/events" replace />} />

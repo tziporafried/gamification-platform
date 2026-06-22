@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, memo, KeyboardEvent } from 'react'
 import { Trash2, Repeat, RotateCcw, Hash, ChevronDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
@@ -25,9 +25,10 @@ interface ActionRowProps {
   groups: Group[]
   onEdit: () => void
   onDeleted?: () => void
+  onError?: (msg: string) => void
 }
 
-export function ActionRow({ action, groups, onDeleted }: ActionRowProps) {
+export const ActionRow = memo(function ActionRow({ action, groups, onDeleted, onError }: ActionRowProps) {
   const [editingName, setEditingName] = useState(false)
   const [editingPoints, setEditingPoints] = useState(false)
   const [name, setName] = useState(action.name)
@@ -41,12 +42,15 @@ export function ActionRow({ action, groups, onDeleted }: ActionRowProps) {
   const [editingLimit, setEditingLimit] = useState(false)
   const limitRef = useRef<HTMLInputElement>(null)
 
+  const [localGroups, setLocalGroups] = useState(action.groups)
+
   const isPositive = parseInt(points, 10) >= 0
-  const assignedGroupIds = new Set(action.groups.map(g => g.id))
-  const isAllGroups = action.groups.length === 0
+  const assignedGroupIds = new Set(localGroups.map(g => g.id))
+  const isAllGroups = localGroups.length === 0
 
   useEffect(() => { setName(action.name) }, [action.name])
   useEffect(() => { setPoints(action.points.toString()) }, [action.points])
+  useEffect(() => { setLocalGroups(action.groups) }, [action.groups])
   useEffect(() => {
     setLimitMode(toLimitMode(action.max_completions))
     if (action.max_completions && action.max_completions > 1) setCustomLimit(action.max_completions)
@@ -110,19 +114,35 @@ export function ActionRow({ action, groups, onDeleted }: ActionRowProps) {
     onDeleted()
   }
 
-  async function selectAllGroups() {
-    await supabase.from('action_groups').delete().eq('action_id', action.id)
-    if (onDeleted) onDeleted()
+  function selectAllGroups() {
+    setLocalGroups([])
+    supabase.from('action_groups').delete().eq('action_id', action.id)
+      .then(({ error: err }) => {
+        if (err) {
+          if (onError) onError('שגיאה בעדכון קבוצות. הנתונים רועננו.')
+          if (onDeleted) onDeleted()
+        }
+      })
   }
 
-  async function toggleGroup(groupId: string) {
+  function toggleGroup(groupId: string) {
     const isMember = assignedGroupIds.has(groupId)
-    if (isMember) {
-      await supabase.from('action_groups').delete().eq('action_id', action.id).eq('group_id', groupId)
-    } else {
-      await supabase.from('action_groups').insert({ action_id: action.id, group_id: groupId })
-    }
-    if (onDeleted) onDeleted()
+    setLocalGroups(prev =>
+      isMember
+        ? prev.filter(g => g.id !== groupId)
+        : [...prev, groups.find(g => g.id === groupId)!]
+    )
+
+    const mutation = isMember
+      ? supabase.from('action_groups').delete().eq('action_id', action.id).eq('group_id', groupId)
+      : supabase.from('action_groups').insert({ action_id: action.id, group_id: groupId })
+
+    mutation.then(({ error: err }) => {
+      if (err) {
+        if (onError) onError('שגיאה בעדכון קבוצה. הנתונים רועננו.')
+        if (onDeleted) onDeleted()
+      }
+    })
   }
 
   return (
@@ -220,7 +240,7 @@ export function ActionRow({ action, groups, onDeleted }: ActionRowProps) {
       </div>
     </div>
   )
-}
+})
 
 function TaskLimitSelect({
   limitMode,

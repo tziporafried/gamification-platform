@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Calendar, LogOut, Shield, ExternalLink } from 'lucide-react'
+import { Plus, Calendar, ExternalLink } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
@@ -10,7 +10,7 @@ import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
 
 export function MyEvents() {
-  const { user, signOut, isSuperAdmin } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
@@ -62,39 +62,10 @@ export function MyEvents() {
     }
   }
 
-  const userEmail = user?.email || ''
-  const userName = userEmail.split('@')[0] || 'משתמש'
-
   if (loading) return <FullPageLoader />
 
   return (
-    <div className="min-h-screen bg-game-dark">
-      {/* Header */}
-      <header className="border-b border-game-border">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-          <h1 className="text-lg font-bold text-white">האירועים שלי</h1>
-          <div className="flex items-center gap-3">
-            {isSuperAdmin && (
-              <button
-                onClick={() => navigate('/admin')}
-                className="flex items-center gap-1.5 text-sm text-amber-400 hover:text-amber-300 transition-colors"
-              >
-                <Shield size={16} />
-                <span className="hidden sm:inline">ניהול</span>
-              </button>
-            )}
-            <span className="text-sm text-gray-400 hidden sm:inline">{userName}</span>
-            <button
-              onClick={signOut}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-300 transition-colors"
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-4 py-8">
+    <main className="mx-auto max-w-5xl px-4 py-8">
         {events.length === 0 ? (
           /* Empty state */
           <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -121,8 +92,7 @@ export function MyEvents() {
 
           </div>
         )}
-      </main>
-    </div>
+    </main>
   )
 }
 

@@ -101,6 +101,7 @@ export function EventWizard() {
       {currentStep === 3 && (
         <StepParticipants
           eventId={event.id}
+          counts={counts}
           groupType={groupType}
           onCountsRefresh={refreshCounts}
           onNext={goNext}

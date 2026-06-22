@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, memo } from 'react'
 import { Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { WizardStepWrapper } from './WizardStepWrapper'
@@ -6,12 +6,14 @@ import { InlineAddParticipant } from '@/components/participants/InlineAddPartici
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { UsageBar } from '@/components/ui/UsageBar'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
-import { usePlanLimits } from '@/hooks/usePlanLimits'
-import type { GroupType, ParticipantWithGroups, Group } from '@/types'
+import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
+import type { EventCounts, GroupType, ParticipantWithGroups, Group } from '@/types'
 
 interface StepParticipantsProps {
   eventId: string
+  counts: EventCounts
   groupType: GroupType | null
   onCountsRefresh: () => void
   onNext: () => void
@@ -23,16 +25,17 @@ interface ParticipantGroupJoin {
   groups: Group
 }
 
-export function StepParticipants({ eventId, groupType, onCountsRefresh, onNext, onBack }: StepParticipantsProps) {
+export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, onNext, onBack }: StepParticipantsProps) {
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [error, setError] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const prevCountRef = useRef(0)
-  const planLimits = usePlanLimits(eventId)
-  const refreshPlanLimits = planLimits.refresh
+  const needsCountRefresh = useRef(false)
+  const planLimits = usePlanLimitsFromCounts(counts, onCountsRefresh)
 
   const hasGroups = groupType === 'custom'
 
@@ -58,8 +61,11 @@ export function StepParticipants({ eventId, groupType, onCountsRefresh, onNext, 
 
       setParticipants(mapped)
       setGroups((gRes.data as Group[]) ?? [])
-      onCountsRefresh()
-      refreshPlanLimits()
+      setError('')
+      if (needsCountRefresh.current) {
+        onCountsRefresh()
+        needsCountRefresh.current = false
+      }
       setLoading(false)
     }
     load()
@@ -73,38 +79,66 @@ export function StepParticipants({ eventId, groupType, onCountsRefresh, onNext, 
     prevCountRef.current = participants.length
   }, [participants.length])
 
-  function triggerRefresh() {
+  function refreshData() {
     setRefreshKey(k => k + 1)
   }
 
-  async function handleDelete(id: string) {
+  function refreshDataWithCounts() {
+    needsCountRefresh.current = true
+    setRefreshKey(k => k + 1)
+  }
+
+  const handleDelete = useCallback(async (id: string) => {
     await supabase.from('participants').delete().eq('id', id)
-    triggerRefresh()
-  }
+    refreshDataWithCounts()
+  }, [])
 
-  async function toggleGroup(participantId: string, groupId: string, isMember: boolean) {
-    if (isMember) {
-      await supabase.from('participant_groups').delete().eq('participant_id', participantId).eq('group_id', groupId)
-    } else {
-      await supabase.from('participant_groups').insert({ participant_id: participantId, group_id: groupId })
-    }
-    triggerRefresh()
-  }
+  const handleToggleGroup = useCallback((participantId: string, groupId: string, isMember: boolean) => {
+    setParticipants(prev => prev.map(p => {
+      if (p.id !== participantId) return p
+      const newGroups = isMember
+        ? p.groups.filter(g => g.id !== groupId)
+        : [...p.groups, groups.find(g => g.id === groupId)!]
+      return { ...p, groups: newGroups }
+    }))
 
-  async function selectAllGroups(participantId: string, currentGroupIds: Set<string>) {
-    const isAllSelected = groups.length > 0 && groups.every(g => currentGroupIds.has(g.id))
-    if (isAllSelected) {
-      await supabase.from('participant_groups').delete().eq('participant_id', participantId)
-    } else {
-      const missing = groups.filter(g => !currentGroupIds.has(g.id))
-      if (missing.length > 0) {
-        await supabase.from('participant_groups').insert(
-          missing.map(g => ({ participant_id: participantId, group_id: g.id }))
-        )
+    const mutation = isMember
+      ? supabase.from('participant_groups').delete().eq('participant_id', participantId).eq('group_id', groupId)
+      : supabase.from('participant_groups').insert({ participant_id: participantId, group_id: groupId })
+
+    mutation.then(({ error: err }) => {
+      if (err) {
+        setError('שגיאה בעדכון קבוצה. הנתונים רועננו.')
+        refreshData()
       }
-    }
-    triggerRefresh()
-  }
+    })
+  }, [groups])
+
+  const handleSelectAllGroups = useCallback((participantId: string, currentGroupIds: Set<string>, allGroups: Group[]) => {
+    const isAllSelected = allGroups.length > 0 && allGroups.every(g => currentGroupIds.has(g.id))
+    const newGroups = isAllSelected ? [] : [...allGroups]
+
+    setParticipants(prev => prev.map(p => {
+      if (p.id !== participantId) return p
+      return { ...p, groups: newGroups }
+    }))
+
+    const mutation = isAllSelected
+      ? supabase.from('participant_groups').delete().eq('participant_id', participantId)
+      : (() => {
+          const missing = allGroups.filter(g => !currentGroupIds.has(g.id))
+          return missing.length > 0
+            ? supabase.from('participant_groups').insert(missing.map(g => ({ participant_id: participantId, group_id: g.id })))
+            : Promise.resolve({ error: null })
+        })()
+
+    mutation.then(({ error: err }: { error: unknown }) => {
+      if (err) {
+        setError('שגיאה בעדכון קבוצות. הנתונים רועננו.')
+        refreshData()
+      }
+    })
+  }, [])
 
   if (loading) {
     return (
@@ -136,6 +170,12 @@ export function StepParticipants({ eventId, groupType, onCountsRefresh, onNext, 
           )}
         </div>
 
+        {error && (
+          <div className="shrink-0 pb-2">
+            <ErrorAlert message={error} />
+          </div>
+        )}
+
         {/* Scrollable list */}
         <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-2 pb-2">
           {participants.length === 0 ? (
@@ -145,13 +185,14 @@ export function StepParticipants({ eventId, groupType, onCountsRefresh, onNext, 
             />
           ) : (
             participants.map((p) => (
-              <ParticipantInlineRow
+              <MemoParticipantRow
                 key={p.id}
                 participant={p}
                 groups={hasGroups ? groups : []}
-                onDelete={() => handleDelete(p.id)}
-                onToggleGroup={(groupId, isMember) => toggleGroup(p.id, groupId, isMember)}
-                onSelectAllGroups={(memberIds) => selectAllGroups(p.id, memberIds)}
+                allGroups={groups}
+                onDelete={handleDelete}
+                onToggleGroup={handleToggleGroup}
+                onSelectAllGroups={handleSelectAllGroups}
               />
             ))
           )}
@@ -159,7 +200,7 @@ export function StepParticipants({ eventId, groupType, onCountsRefresh, onNext, 
 
         {/* Pinned bottom: add input */}
         <div className="shrink-0 pt-2">
-          <InlineAddParticipant eventId={eventId} onAdded={triggerRefresh} onPlanLimit={() => setUpgradeOpen(true)} />
+          <InlineAddParticipant eventId={eventId} onAdded={refreshDataWithCounts} onPlanLimit={() => setUpgradeOpen(true)} />
         </div>
       </div>
 
@@ -168,19 +209,23 @@ export function StepParticipants({ eventId, groupType, onCountsRefresh, onNext, 
   )
 }
 
-function ParticipantInlineRow({
+interface ParticipantRowProps {
+  participant: ParticipantWithGroups
+  groups: Group[]
+  allGroups: Group[]
+  onDelete: (id: string) => void
+  onToggleGroup: (participantId: string, groupId: string, isMember: boolean) => void
+  onSelectAllGroups: (participantId: string, memberIds: Set<string>, allGroups: Group[]) => void
+}
+
+const MemoParticipantRow = memo(function ParticipantInlineRow({
   participant,
   groups,
+  allGroups,
   onDelete,
   onToggleGroup,
   onSelectAllGroups,
-}: {
-  participant: ParticipantWithGroups
-  groups: Group[]
-  onDelete: () => void
-  onToggleGroup: (groupId: string, isMember: boolean) => void
-  onSelectAllGroups: (memberIds: Set<string>) => void
-}) {
+}: ParticipantRowProps) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(participant.name)
 
@@ -226,18 +271,18 @@ function ParticipantInlineRow({
             allGroupsLabel="כל הקבוצות"
             tooltip="לאילו קבוצות שייך המשתתף"
             isAllSelected={isAllSelected}
-            onSelectAll={() => onSelectAllGroups(memberGroupIds)}
-            onToggleGroup={onToggleGroup}
+            onSelectAll={() => onSelectAllGroups(participant.id, memberGroupIds, allGroups)}
+            onToggleGroup={(groupId, isMember) => onToggleGroup(participant.id, groupId, isMember)}
           />
         </div>
       )}
 
       <button
-        onClick={onDelete}
+        onClick={() => onDelete(participant.id)}
         className="shrink-0 p-1.5 rounded-lg text-gray-600 opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-400 transition-all"
       >
         <Trash2 size={14} />
       </button>
     </div>
   )
-}
+})

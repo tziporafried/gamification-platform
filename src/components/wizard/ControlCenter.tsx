@@ -40,29 +40,29 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   }
 
   return (
-    <div className="min-h-screen bg-game-dark">
-      {/* Header */}
-      <header className="border-b border-game-border bg-game-dark/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+    <>
+      {/* Secondary nav */}
+      <div className="border-b border-game-border">
+        <div className="mx-auto flex h-10 max-w-5xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/events')}
-              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 transition-colors"
             >
-              <ArrowRight size={16} />
+              <ArrowRight size={14} />
               <span className="hidden sm:inline">האירועים שלי</span>
             </button>
             <span className="text-game-border">/</span>
-            <h1 className="text-sm font-bold text-white truncate">{event.name}</h1>
+            <span className="text-xs font-medium text-white truncate max-w-[160px]">{event.name}</span>
           </div>
 
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={copyManagementLink}>
-              {copied ? <Check size={16} className="ml-1 text-emerald-400" /> : <LinkIcon size={16} className="ml-1" />}
+              {copied ? <Check size={14} className="ml-1 text-emerald-400" /> : <LinkIcon size={14} className="ml-1" />}
               {copied ? 'הועתק!' : 'העתק קישור'}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setShareOpen(true)}>
-              <Share2 size={16} className="ml-1" />
+              <Share2 size={14} className="ml-1" />
               שיתוף
             </Button>
             <Button
@@ -74,7 +74,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
             </Button>
           </div>
         </div>
-      </header>
+      </div>
 
       <main className="mx-auto max-w-3xl px-4 py-8 space-y-8">
         <div className="text-center space-y-2">
@@ -129,6 +129,6 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
       </main>
 
       <ShareEventModal isOpen={shareOpen} onClose={() => setShareOpen(false)} eventId={event.id} />
-    </div>
+    </>
   )
 }

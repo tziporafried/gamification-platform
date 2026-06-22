@@ -3,7 +3,7 @@ import { AlertTriangle } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { QrCardGenerator } from '@/components/qr-cards/QrCardGenerator'
 import { UsageBar } from '@/components/ui/UsageBar'
-import { usePlanLimits } from '@/hooks/usePlanLimits'
+import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
 import { FREE_PLAN_LIMITS, ENTITY_LABELS, UPGRADE_CONTACT_EMAIL, type LimitableEntity } from '@/lib/plans'
 import { Card } from '@/components/ui/Card'
 import type { Event, EventCounts } from '@/types'
@@ -20,7 +20,7 @@ interface StepReviewGenerateProps {
 export function StepReviewGenerate({ event, counts, onBack }: StepReviewGenerateProps) {
   const navigate = useNavigate()
   const ready = isEventReady(event, counts)
-  const planLimits = usePlanLimits(event.id)
+  const planLimits = usePlanLimitsFromCounts(counts, () => {})
 
   const hasWarning = planLimits.isFreePlan && ENTITIES.some(e => planLimits[e].isNearLimit)
 

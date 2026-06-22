@@ -7,7 +7,7 @@ import { Modal } from '@/components/ui/Modal'
 import { UsageBar } from '@/components/ui/UsageBar'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import { usePlanLimits } from '@/hooks/usePlanLimits'
+import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
 import { GroupList } from '@/components/groups/GroupList'
 import type { GroupType, EventCounts } from '@/types'
 
@@ -38,7 +38,7 @@ export function StepGroups({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [localGroupCount, setLocalGroupCount] = useState(counts.groups)
-  const planLimits = usePlanLimits(eventId)
+  const planLimits = usePlanLimitsFromCounts(counts, onCountsRefresh)
   const refreshPlanLimits = planLimits.refresh
 
   const showGroupSetup = groupType === 'custom'

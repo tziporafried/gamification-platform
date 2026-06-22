@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -31,7 +31,7 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
   const listRef = useRef<HTMLDivElement>(null)
   const prevCountRef = useRef(0)
 
-  function triggerRefresh() { setRefreshKey((k) => k + 1) }
+  const triggerRefresh = useCallback(() => { setRefreshKey((k) => k + 1) }, [])
 
   useEffect(() => {
     async function fetchActions() {
@@ -70,6 +70,7 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
 
       setActions(mapped)
       setGroups((groupsRes.data as Group[]) ?? [])
+      setError('')
       onCountChange(mapped.length)
       setLoading(false)
     }
@@ -83,15 +84,10 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
     prevCountRef.current = actions.length
   }, [actions.length])
 
-  function handleEdit(action: Action) {
-    setEditingAction(action)
-    setFormOpen(true)
-  }
-
-  function handleFormClose() {
+  const handleFormClose = useCallback(() => {
     setFormOpen(false)
     setEditingAction(null)
-  }
+  }, [])
 
   if (loading) {
     return (
@@ -134,8 +130,9 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
                 key={action.id}
                 action={action}
                 groups={groups}
-                onEdit={() => handleEdit(action)}
+                onEdit={triggerRefresh}
                 onDeleted={triggerRefresh}
+                onError={setError}
               />
             ))}
           </div>

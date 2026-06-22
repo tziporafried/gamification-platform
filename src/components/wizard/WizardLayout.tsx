@@ -21,43 +21,42 @@ export function WizardLayout({ event, currentStep, wizardState, onStepClick, chi
   const { isFreePlan } = useAuth()
 
   return (
-    <div className="flex h-screen flex-col bg-game-dark">
-      {/* Header */}
-      <header className="shrink-0 border-b border-game-border bg-game-dark/95 backdrop-blur-sm z-30">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 56px)' }}>
+      {/* Secondary nav: breadcrumb + progress */}
+      <div className="shrink-0 border-b border-game-border">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/events')}
-              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 transition-colors"
             >
-              <ArrowRight size={16} />
+              <ArrowRight size={14} />
               <span className="hidden sm:inline">האירועים שלי</span>
             </button>
             <span className="text-game-border">/</span>
-            <h1 className="text-sm font-bold text-white truncate max-w-[200px]">
+            <span className="text-xs font-medium text-white truncate max-w-[160px]">
               {event.name || 'אירוע חדש'}
-            </h1>
+            </span>
             {isFreePlan && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full text-amber-400 bg-amber-400/10">
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full text-amber-400 bg-amber-400/10">
                 מסלול חינמי
               </span>
             )}
           </div>
           <Button variant="ghost" size="sm" onClick={() => setShareOpen(true)}>
-            <Share2 size={16} className="ml-1" />
+            <Share2 size={14} className="ml-1" />
             שיתוף
           </Button>
         </div>
 
-        {/* Progress bar */}
-        <div className="mx-auto max-w-5xl px-4 pb-3">
+        <div className="mx-auto max-w-5xl px-4 pb-2">
           <WizardProgress
             currentStep={currentStep}
             wizardState={wizardState}
             onStepClick={onStepClick}
           />
         </div>
-      </header>
+      </div>
 
       {/* Step content — fills remaining height */}
       <main className="flex-1 overflow-hidden">

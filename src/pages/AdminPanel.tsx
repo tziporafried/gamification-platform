@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Shield, Crown, Users } from 'lucide-react'
+import { Crown, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -20,7 +19,6 @@ interface AdminUser {
 }
 
 export function AdminPanel() {
-  const navigate = useNavigate()
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -51,21 +49,7 @@ export function AdminPanel() {
   if (loading) return <FullPageLoader />
 
   return (
-    <div className="min-h-screen bg-game-dark">
-      <header className="border-b border-game-border">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <Shield size={20} className="text-brand-400" />
-            <h1 className="text-lg font-bold text-white">ניהול מערכת</h1>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/events')}>
-            חזרה לאירועים
-            <ArrowRight size={16} className="mr-1" />
-          </Button>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-4 py-8">
+    <main className="mx-auto max-w-5xl px-4 py-8">
         <div className="flex items-center gap-2 mb-6">
           <Users size={18} className="text-gray-400" />
           <h2 className="text-sm font-medium text-gray-400">
@@ -126,7 +110,6 @@ export function AdminPanel() {
             </Card>
           ))}
         </div>
-      </main>
-    </div>
+    </main>
   )
 }

@@ -36,9 +36,9 @@ export function EventDisplayPage() {
   if (loading || !event) return <FullPageLoader />
 
   return (
-    <div className="min-h-screen bg-game-dark">
-      <header className="border-b border-game-border bg-game-dark/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-14 max-w-5xl items-center px-4">
+    <>
+      <div className="border-b border-game-border">
+        <div className="mx-auto flex h-10 max-w-5xl items-center px-4">
           <button
             onClick={() => navigate(`/events/${event.id}/control`)}
             className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 transition-colors"
@@ -47,11 +47,10 @@ export function EventDisplayPage() {
             <span>חזרה למרכז הבקרה</span>
           </button>
         </div>
-      </header>
-
+      </div>
       <main className="mx-auto max-w-5xl px-4 py-6 md:py-8">
         <LeaderboardSection eventId={event.id} themeColor={event.theme_color} />
       </main>
-    </div>
+    </>
   )
 }
