@@ -8,18 +8,23 @@ export function useWizardState(event: Event | null, counts: EventCounts, countsL
   const [currentStep, setCurrentStepRaw] = useState(prefs.lastStep)
   const [groupType, setGroupTypeRaw] = useState<GroupType | null>(prefs.groupType)
 
-  // Once counts are loaded from DB, resolve groupType if user hasn't saved a preference
+  // Resolve groupType: DB groups > 0 always wins, then localStorage, then default
   useEffect(() => {
-    if (!countsLoaded) return
-    if (prefs.groupType !== null) return // user already made a choice stored in localStorage
-    if (groupType !== null && groupType !== prefs.groupType) return // already resolved in this session
+    if (!countsLoaded || !event) return
 
     if (counts.groups > 0) {
       setGroupTypeRaw('custom')
+      setWizardPrefs(event.id, { groupType: 'custom' })
+      return
+    }
+
+    const saved = getWizardPrefs(event.id)
+    if (saved.groupType !== null) {
+      setGroupTypeRaw(saved.groupType)
     } else {
       setGroupTypeRaw('none')
     }
-  }, [countsLoaded, counts.groups]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [countsLoaded, counts.groups, event?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const wizardState: WizardState = useMemo(() => {
     if (!event) return { details: 'not_started', groups: 'not_started', participants: 'not_started', tasks: 'not_started', review: 'not_started' }
