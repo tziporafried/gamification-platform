@@ -124,12 +124,6 @@ export function MyEvents() {
               ))}
             </div>
 
-            <div className="flex justify-center pt-4">
-              <Button variant="outline" size="lg" onClick={handleCreateEvent}>
-                <Plus size={18} className="ml-2" />
-                אירוע חדש
-              </Button>
-            </div>
           </div>
         )}
       </main>
