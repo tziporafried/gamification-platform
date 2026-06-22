@@ -4,8 +4,10 @@ import { WizardStepWrapper } from './WizardStepWrapper'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { UsageBar } from '@/components/ui/UsageBar'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
+import { usePlanLimits } from '@/hooks/usePlanLimits'
 import { GroupList } from '@/components/groups/GroupList'
 import type { GroupType, EventCounts } from '@/types'
 
@@ -35,6 +37,7 @@ export function StepGroups({
 }: StepGroupsProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const planLimits = usePlanLimits(eventId)
 
   const showGroupSetup = groupType === 'custom'
   const canAdvance = groupType === 'none' || counts.groups > 0
@@ -112,7 +115,10 @@ export function StepGroups({
 
       {/* Group management (when "Yes" is selected) */}
       {showGroupSetup && (
-        <div className="mt-8">
+        <div className="mt-8 space-y-4">
+          {planLimits.isFreePlan && (
+            <UsageBar info={planLimits.groups} entity="groups" />
+          )}
           <GroupList eventId={eventId} onCountChange={onCountsRefresh} />
         </div>
       )}

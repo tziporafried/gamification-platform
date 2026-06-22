@@ -27,7 +27,7 @@ export function UsageBar({ info, entity, className }: UsageBarProps) {
           'font-medium',
           info.isAtLimit ? 'text-red-400' : info.isNearLimit ? 'text-amber-400' : 'text-gray-400',
         )}>
-          {info.current} / {info.limit}
+          {info.current} מתוך {info.limit}
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-game-border overflow-hidden">

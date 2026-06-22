@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
+import { isPlanLimitError } from '@/lib/plans'
 import type { Reward } from '@/types'
 
 interface RewardFormProps {
@@ -11,9 +12,10 @@ interface RewardFormProps {
   isOpen: boolean
   onClose: () => void
   onSaved: () => void
+  onPlanLimit?: () => void
 }
 
-export function RewardForm({ eventId, reward, isOpen, onClose, onSaved }: RewardFormProps) {
+export function RewardForm({ eventId, reward, isOpen, onClose, onSaved, onPlanLimit }: RewardFormProps) {
   const [name, setName] = useState(reward?.name ?? '')
   const [requiredPoints, setRequiredPoints] = useState(reward?.required_points?.toString() ?? '')
   const [description, setDescription] = useState(reward?.description ?? '')
@@ -76,7 +78,13 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved }: Reward
       }
       onSaved()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'משהו השתבש.')
+      const msg = err instanceof Error ? err.message : 'משהו השתבש.'
+      if (isPlanLimitError(msg) && onPlanLimit) {
+        onClose()
+        onPlanLimit()
+        return
+      }
+      setError(msg)
     } finally {
       setSaving(false)
     }

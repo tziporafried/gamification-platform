@@ -2,13 +2,15 @@ import { useState, useRef, KeyboardEvent } from 'react'
 import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
+import { isPlanLimitError } from '@/lib/plans'
 
 interface InlineAddParticipantProps {
   eventId: string
   onAdded: () => void
+  onPlanLimit?: () => void
 }
 
-export function InlineAddParticipant({ eventId, onAdded }: InlineAddParticipantProps) {
+export function InlineAddParticipant({ eventId, onAdded, onPlanLimit }: InlineAddParticipantProps) {
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -24,11 +26,13 @@ export function InlineAddParticipant({ eventId, onAdded }: InlineAddParticipantP
 
     setSaving(false)
 
-    if (!error) {
-      setName('')
-      onAdded()
-      inputRef.current?.focus()
+    if (error) {
+      if (isPlanLimitError(error.message) && onPlanLimit) onPlanLimit()
+      return
     }
+    setName('')
+    onAdded()
+    inputRef.current?.focus()
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { WizardProgress } from './WizardProgress'
 import { ShareEventModal } from '@/components/ShareEventModal'
 import { Button } from '@/components/ui/Button'
+import { useAuth } from '@/contexts/AuthContext'
 import type { WizardState, Event } from '@/types'
 
 interface WizardLayoutProps {
@@ -17,6 +18,7 @@ interface WizardLayoutProps {
 export function WizardLayout({ event, currentStep, wizardState, onStepClick, children }: WizardLayoutProps) {
   const navigate = useNavigate()
   const [shareOpen, setShareOpen] = useState(false)
+  const { isFreePlan } = useAuth()
 
   return (
     <div className="min-h-screen bg-game-dark">
@@ -35,6 +37,11 @@ export function WizardLayout({ event, currentStep, wizardState, onStepClick, chi
             <h1 className="text-sm font-bold text-white truncate max-w-[200px]">
               {event.name || 'אירוע חדש'}
             </h1>
+            {isFreePlan && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full text-amber-400 bg-amber-400/10">
+                מסלול חינמי
+              </span>
+            )}
           </div>
           <Button variant="ghost" size="sm" onClick={() => setShareOpen(true)}>
             <Share2 size={16} className="ml-1" />

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { UpgradeModal } from '@/components/UpgradeModal'
 import { ActionForm } from './ActionForm'
 import { ActionRow } from './ActionRow'
 import { InlineAddAction } from './InlineAddAction'
@@ -24,6 +25,7 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
   const [error, setError] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editingAction, setEditingAction] = useState<Action | null>(null)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   const fetchActions = useCallback(async () => {
     const [actionsRes, groupsRes] = await Promise.all([
@@ -112,7 +114,7 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
             title="אין משימות עדיין"
             description="הקלד שם משימה למטה ולחץ Enter"
           />
-          <InlineAddAction eventId={eventId} onAdded={fetchActions} />
+          <InlineAddAction eventId={eventId} onAdded={fetchActions} onPlanLimit={() => setUpgradeOpen(true)} />
         </div>
       ) : (
         <div className="space-y-2">
@@ -126,7 +128,7 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
               onDeleted={fetchActions}
             />
           ))}
-          <InlineAddAction eventId={eventId} onAdded={fetchActions} />
+          <InlineAddAction eventId={eventId} onAdded={fetchActions} onPlanLimit={() => setUpgradeOpen(true)} />
         </div>
       )}
 
@@ -139,6 +141,8 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
           onSaved={() => { handleFormClose(); fetchActions() }}
         />
       )}
+
+      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </div>
   )
 }

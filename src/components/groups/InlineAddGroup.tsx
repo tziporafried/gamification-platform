@@ -2,15 +2,17 @@ import { useState, useRef, KeyboardEvent } from 'react'
 import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
+import { isPlanLimitError } from '@/lib/plans'
 
 interface InlineAddGroupProps {
   eventId: string
   onAdded: () => void
+  onPlanLimit?: () => void
 }
 
 const PRESET_COLORS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#14b8a6']
 
-export function InlineAddGroup({ eventId, onAdded }: InlineAddGroupProps) {
+export function InlineAddGroup({ eventId, onAdded, onPlanLimit }: InlineAddGroupProps) {
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -30,11 +32,13 @@ export function InlineAddGroup({ eventId, onAdded }: InlineAddGroupProps) {
 
     setSaving(false)
 
-    if (!error) {
-      setName('')
-      onAdded()
-      inputRef.current?.focus()
+    if (error) {
+      if (isPlanLimitError(error.message) && onPlanLimit) onPlanLimit()
+      return
     }
+    setName('')
+    onAdded()
+    inputRef.current?.focus()
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {

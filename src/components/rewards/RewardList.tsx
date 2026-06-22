@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { UpgradeModal } from '@/components/UpgradeModal'
 import { RewardForm } from './RewardForm'
 import { RewardRow } from './RewardRow'
 import { RewardGroupAssignment } from './RewardGroupAssignment'
@@ -24,6 +25,7 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
   const [formOpen, setFormOpen] = useState(false)
   const [editingReward, setEditingReward] = useState<Reward | null>(null)
   const [assigningReward, setAssigningReward] = useState<RewardWithGroups | null>(null)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   const fetchRewards = useCallback(async () => {
     const { data, error: fetchError } = await supabase
@@ -140,6 +142,7 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
           isOpen={formOpen}
           onClose={handleFormClose}
           onSaved={() => { handleFormClose(); fetchRewards() }}
+          onPlanLimit={() => setUpgradeOpen(true)}
         />
       )}
 
@@ -153,6 +156,8 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
           onChanged={fetchRewards}
         />
       )}
+
+      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </div>
   )
 }

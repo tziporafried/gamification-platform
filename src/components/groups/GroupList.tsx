@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { UpgradeModal } from '@/components/UpgradeModal'
 import { GroupForm } from './GroupForm'
 import { GroupCard } from './GroupCard'
 import { InlineAddGroup } from './InlineAddGroup'
@@ -22,6 +23,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
   const [editingGroup, setEditingGroup] = useState<GroupWithCount | null>(null)
   const [deletingGroup, setDeletingGroup] = useState<GroupWithCount | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   const fetchGroups = useCallback(async () => {
     const { data, error: fetchError } = await supabase
@@ -107,7 +109,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
             title="אין קבוצות עדיין"
             description="הקלד שם קבוצה למטה ולחץ Enter"
           />
-          <InlineAddGroup eventId={eventId} onAdded={fetchGroups} />
+          <InlineAddGroup eventId={eventId} onAdded={fetchGroups} onPlanLimit={() => setUpgradeOpen(true)} />
         </div>
       ) : (
         <div className="space-y-3">
@@ -121,7 +123,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
               />
             ))}
           </div>
-          <InlineAddGroup eventId={eventId} onAdded={fetchGroups} />
+          <InlineAddGroup eventId={eventId} onAdded={fetchGroups} onPlanLimit={() => setUpgradeOpen(true)} />
         </div>
       )}
 
@@ -153,6 +155,8 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
           </Button>
         </div>
       </Modal>
+
+      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </div>
   )
 }

@@ -3,8 +3,11 @@ import { Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { InlineAddParticipant } from '@/components/participants/InlineAddParticipant'
+import { UpgradeModal } from '@/components/UpgradeModal'
+import { UsageBar } from '@/components/ui/UsageBar'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { cn } from '@/lib/utils'
+import { usePlanLimits } from '@/hooks/usePlanLimits'
 import type { EventCounts, GroupType, ParticipantWithGroups, Group } from '@/types'
 
 interface StepParticipantsProps {
@@ -25,6 +28,8 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const planLimits = usePlanLimits(eventId)
 
   const hasGroups = groupType === 'custom'
   const canAdvance = counts.participants > 0
@@ -85,6 +90,10 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
       onNext={onNext}
       onBack={onBack}
     >
+      {planLimits.isFreePlan && (
+        <UsageBar info={planLimits.participants} entity="participants" className="mb-4" />
+      )}
+
       <div className="space-y-2">
         {participants.length === 0 ? (
           <EmptyState
@@ -102,7 +111,7 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
             />
           ))
         )}
-        <InlineAddParticipant eventId={eventId} onAdded={fetchData} />
+        <InlineAddParticipant eventId={eventId} onAdded={fetchData} onPlanLimit={() => setUpgradeOpen(true)} />
       </div>
 
       {participants.length > 0 && (
@@ -110,6 +119,8 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
           {counts.participants} משתתפים
         </p>
       )}
+
+      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </WizardStepWrapper>
   )
 }
