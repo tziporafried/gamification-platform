@@ -236,21 +236,24 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
       {/* ===== MAIN 60/40 LAYOUT ===== */}
       <div className="relative z-10 flex flex-1 flex-col overflow-hidden lg:flex-row">
         {/* LEFT 60% — Scanner */}
-        <div className="flex flex-1 flex-col items-center justify-center px-4 py-6 lg:basis-[60%]">
-          <motion.h1 className="mb-1 text-3xl font-black text-white md:text-4xl"
+        <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center px-4 py-4 sm:py-6 lg:basis-[60%]">
+          <motion.h1 className="mb-1 text-2xl font-black text-white sm:text-3xl md:text-4xl"
             initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            סרקו ברקוד
+            תחנת ניקוד
           </motion.h1>
-          <motion.p className="mb-5 text-sm text-gray-400"
+          <motion.p className="mb-3 max-w-sm text-center text-xs text-gray-400 sm:mb-5 sm:text-sm"
             initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            סרקו ברקוד של משימה ומשתתף כדי להעניק ניקוד
+            סרקו כרטיס משימה כדי לקבל נקודות
           </motion.p>
 
-          <ScannerZone ref={scannerZoneRef} mode={qrScoringMode} successFlash={successFlash} accent={accent} />
+          <div className="relative z-10 flex w-full min-h-0 shrink items-center justify-center">
+            <ScannerZone ref={scannerZoneRef} mode={qrScoringMode} successFlash={successFlash} accent={accent} />
+          </div>
 
           {/* Manual input toggle */}
           {!showManualInput && (
-            <motion.button className="mt-4 text-xs text-gray-500 underline-offset-2 hover:text-gray-300 hover:underline"
+            <motion.button type="button"
+              className="relative z-20 mt-4 shrink-0 cursor-pointer text-xs text-gray-500 underline-offset-2 hover:text-gray-300 hover:underline"
               onClick={() => setShowManualInput(true)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
               הזנה ידנית
             </motion.button>
@@ -357,7 +360,7 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
                     loading={submitting}
                     disabled={!bothValid}
                     aria-label="שליחה"
-                    className="h-[42px] w-[42px] shrink-0 p-0"
+                    className="h-10 w-10 shrink-0 p-0"
                   >
                     <Send size={18} />
                   </Button>

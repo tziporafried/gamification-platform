@@ -35,12 +35,12 @@ export const ScannerZone = forwardRef<ScannerZoneRef, ScannerZoneProps>(
     const a = accent
 
     return (
-      <div className="flex h-full flex-col items-center justify-center">
-        <motion.div className="relative" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }}
+      <div className="flex w-full max-w-full flex-col items-center justify-center">
+        <motion.div className="relative mx-auto w-full max-w-[640px]" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 180, damping: 22 }}>
 
           {/* Ambient outer glow */}
-          <motion.div className="absolute rounded-3xl" style={{ inset: '-10%', background: `radial-gradient(circle, ${rgba(a, 0.18)} 0%, ${rgba(a, 0.05)} 50%, transparent 75%)` }}
+          <motion.div className="pointer-events-none absolute rounded-3xl" style={{ inset: '-10%', background: `radial-gradient(circle, ${rgba(a, 0.18)} 0%, ${rgba(a, 0.05)} 50%, transparent 75%)` }}
             animate={{ opacity: [0.5, 1, 0.5], scale: [0.97, 1.03, 0.97] }} transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }} />
 
           {/* Expanding rings on success */}
@@ -66,14 +66,14 @@ export const ScannerZone = forwardRef<ScannerZoneRef, ScannerZoneProps>(
           </AnimatePresence>
 
           {/* ===== SCANNER FRAME ===== */}
-          <div className="relative aspect-square w-[min(80vw,520px)] overflow-hidden rounded-3xl bg-game-dark/80 backdrop-blur-sm"
+          <div className="relative mx-auto aspect-square w-[min(100%,640px,min(92vw,48dvh))] overflow-hidden rounded-2xl bg-game-dark/80 backdrop-blur-sm sm:rounded-3xl lg:w-[min(100%,640px,min(52vw,62dvh))]"
             style={{ borderWidth: 2, borderStyle: 'solid', borderColor: rgba(a, 0.3) }}>
 
             {/* Pulsing QR icon */}
             <div className="absolute inset-0 z-0 flex items-center justify-center">
-              <motion.div animate={{ opacity: [0.12, 0.28, 0.12], scale: [0.92, 1.08, 0.92] }}
+              <motion.div className="w-[34%]" animate={{ opacity: [0.12, 0.28, 0.12], scale: [0.92, 1.08, 0.92] }}
                 transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}>
-                <QrCode size={180} style={{ color: rgba(a, 0.2) }} />
+                <QrCode className="h-auto w-full max-w-[180px] min-w-[72px]" style={{ color: rgba(a, 0.2) }} />
               </motion.div>
             </div>
 
@@ -85,7 +85,7 @@ export const ScannerZone = forwardRef<ScannerZoneRef, ScannerZoneProps>(
                 'bottom-2 left-2 rounded-bl-xl border-b-[3px] border-l-[3px]',
                 'bottom-2 right-2 rounded-br-xl border-b-[3px] border-r-[3px]',
               ].map((cls, i) => (
-                <motion.div key={i} className={`absolute h-12 w-12 ${cls}`}
+                <motion.div key={i} className={`absolute h-[10%] w-[10%] min-h-8 min-w-8 max-h-12 max-w-12 ${cls}`}
                   style={{ borderColor: rgba(a, 0.8) }}
                   animate={{ opacity: [0.5, 1, 0.5] }}
                   transition={{ duration: 2, repeat: Infinity, delay: i * 0.4 }} />
@@ -117,13 +117,13 @@ export const ScannerZone = forwardRef<ScannerZoneRef, ScannerZoneProps>(
             {/* Success flash inside */}
             <AnimatePresence>
               {successFlash && (
-                <motion.div className="absolute inset-0 z-20 flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-                  <motion.div className="absolute inset-0" style={{ background: `radial-gradient(circle, rgba(34,197,94,0.4) 0%, ${rgba(a, 0.25)} 40%, transparent 75%)` }}
+                <motion.div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+                  <motion.div className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(circle, rgba(34,197,94,0.4) 0%, ${rgba(a, 0.25)} 40%, transparent 75%)` }}
                     initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0.6, 0] }} transition={{ duration: 1 }} />
-                  <motion.div className="flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500/25 backdrop-blur-md"
+                  <motion.div className="flex h-[22%] w-[22%] min-h-14 min-w-14 max-h-24 max-w-24 items-center justify-center rounded-full bg-emerald-500/25 backdrop-blur-md"
                     style={{ boxShadow: '0 0 40px rgba(34,197,94,0.4), 0 0 80px rgba(34,197,94,0.15)' }}
                     initial={{ scale: 0, rotate: -180 }} animate={{ scale: [0, 1.3, 1], rotate: 0 }} transition={{ duration: 0.6, type: 'spring', stiffness: 200 }}>
-                    <Check size={48} className="text-emerald-400" strokeWidth={3} />
+                    <Check className="h-[55%] w-[55%] text-emerald-400" strokeWidth={3} />
                   </motion.div>
                 </motion.div>
               )}

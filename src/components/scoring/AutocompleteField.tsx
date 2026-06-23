@@ -88,7 +88,7 @@ export function AutocompleteField<T>({
       <div className="relative">
         {selected ? (
           <div
-            className="flex items-center justify-between rounded-lg border bg-game-dark px-3 py-2"
+            className="flex h-10 items-center justify-between rounded-lg border bg-game-dark px-3"
             style={{ borderColor: 'rgba(34,197,94,0.5)' }}
           >
             <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -115,7 +115,7 @@ export function AutocompleteField<T>({
               }}
               onFocus={handleFocus}
               onBlur={handleBlur}
-              className="w-full rounded-lg border bg-game-dark py-2 pl-3 pr-9 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-1"
+              className="h-10 w-full rounded-lg border bg-game-dark py-0 pl-3 pr-9 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-1"
               style={{
                 borderColor,
                 ['--tw-ring-color' as string]: isInvalid ? 'rgba(239,68,68,0.5)' : rgba(accent, 0.5),
