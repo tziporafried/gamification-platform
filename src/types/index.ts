@@ -196,5 +196,5 @@ export const WIZARD_STEPS: { id: WizardStepId; label: string; step: number }[] =
   { id: 'groups', label: 'קבוצות', step: 2 },
   { id: 'participants', label: 'משתתפים', step: 3 },
   { id: 'tasks', label: 'משימות', step: 4 },
-  { id: 'review', label: 'סקירה והפקה', step: 5 },
+  { id: 'review', label: 'סקירה והדפסה', step: 5 },
 ];
