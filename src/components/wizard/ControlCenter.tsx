@@ -27,7 +27,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
 
   function handleAction(route: string | null) {
     if (route) {
-      navigate(`/events/${event.id}/${route}`)
+      window.open(`/events/${event.id}/${route}`, '_blank', 'noopener,noreferrer')
     }
   }
 
