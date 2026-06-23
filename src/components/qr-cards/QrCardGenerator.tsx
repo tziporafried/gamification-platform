@@ -293,36 +293,54 @@ export function QrCardGenerator({ event }: QrCardGeneratorProps) {
               לכל משתתף יופק דף נפרד עם כרטיסי QR עבור המשימות הרלוונטיות לקבוצות שלו.
             </p>
 
-            {/* Group → Participant → Tasks hierarchy (or flat list when no groups) */}
-            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
-              {groups.length === 0 ? participants.map((p) => {
-                const relevantActions = getRelevantActions(p)
-                const isExpanded = expandedParticipant === p.id
-                return (
-                  <div key={p.id} className="rounded-lg border border-game-border bg-game-dark">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedParticipant(isExpanded ? null : p.id)}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-right"
-                    >
-                      <User size={12} className="text-gray-600 shrink-0" />
-                      <span className="text-sm text-white flex-1 truncate">{p.name}</span>
-                      <span className="text-xs text-gray-500 shrink-0">{relevantActions.length} כרטיסים</span>
-                      {isExpanded ? <ChevronUp size={12} className="text-gray-600" /> : <ChevronDown size={12} className="text-gray-600" />}
-                    </button>
-                    {isExpanded && (
-                      <div className="px-3 pb-2 space-y-1">
-                        {relevantActions.map((a) => (
-                          <div key={a.id} className="flex items-center gap-2 text-xs text-gray-400 pr-5">
-                            <span className="truncate">{a.name}</span>
-                            <span className="text-gray-600">({a.points >= 0 ? '+' : ''}{a.points} נק׳)</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+            {/* Group → Participant → Tasks hierarchy (or flat collapsible list when no groups) */}
+            {groups.length === 0 ? (
+              <div className="rounded-xl border border-game-border bg-game-dark">
+                <button
+                  type="button"
+                  onClick={() => setExpandedGroup(expandedGroup === '__flat__' ? null : '__flat__')}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-right"
+                >
+                  <User size={14} className="text-gray-500 shrink-0" />
+                  <span className="text-sm text-gray-200 flex-1">{participants.length} משתתפים</span>
+                  {expandedGroup === '__flat__' ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
+                </button>
+                {expandedGroup === '__flat__' && (
+                  <div className="border-t border-game-border space-y-1 p-1.5 max-h-56 overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
+                    {participants.map((p) => {
+                      const relevantActions = getRelevantActions(p)
+                      const isExpanded = expandedParticipant === p.id
+                      return (
+                        <div key={p.id} className="rounded-lg border border-game-border/50 bg-game-card/50">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedParticipant(isExpanded ? null : p.id)}
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-right"
+                          >
+                            <User size={12} className="text-gray-600 shrink-0" />
+                            <span className="text-sm text-white flex-1 truncate">{p.name}</span>
+                            <span className="text-xs text-gray-500 shrink-0">{relevantActions.length} כרטיסים</span>
+                            {isExpanded ? <ChevronUp size={12} className="text-gray-600" /> : <ChevronDown size={12} className="text-gray-600" />}
+                          </button>
+                          {isExpanded && (
+                            <div className="px-3 pb-2 space-y-1">
+                              {relevantActions.map((a) => (
+                                <div key={a.id} className="flex items-center gap-2 text-xs text-gray-400 pr-5">
+                                  <span className="truncate">{a.name}</span>
+                                  <span className="text-gray-600">({a.points >= 0 ? '+' : ''}{a.points} נק׳)</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
-                )
-              }) : getGroupBuckets().map((bucket) => {
+                )}
+              </div>
+            ) : (
+            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
+              {getGroupBuckets().map((bucket) => {
                 const isGroupOpen = expandedGroup === bucket.id
                 return (
                   <div key={bucket.id} className="rounded-xl border border-game-border bg-game-dark">
@@ -376,6 +394,7 @@ export function QrCardGenerator({ event }: QrCardGeneratorProps) {
                 )
               })}
             </div>
+            )}
 
             <div className="rounded-xl border border-game-border bg-game-dark/50 p-3 text-center">
               <p className="text-sm text-gray-400">
