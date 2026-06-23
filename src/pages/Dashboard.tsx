@@ -88,7 +88,7 @@ export function Dashboard() {
         <ScoreEntry eventId={event.id} qrScoringMode={event.qr_scoring_mode} />
       )}
       {activeTab === 'qr-cards' && (
-        <QrCardGenerator eventId={event.id} qrScoringMode={event.qr_scoring_mode} />
+        <QrCardGenerator event={event} />
       )}
       {activeTab === 'leaderboard' && (
         <LeaderboardSection eventId={event.id} themeColor={event.theme_color} />

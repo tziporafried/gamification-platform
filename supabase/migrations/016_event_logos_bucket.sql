@@ -3,6 +3,11 @@ INSERT INTO storage.buckets (id, name, public)
   VALUES ('event-logos', 'event-logos', true)
   ON CONFLICT (id) DO NOTHING;
 
+-- Drop old policies if they were created manually from migration 001 comments
+DROP POLICY IF EXISTS "Authenticated users can upload logos" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can update own logos" ON storage.objects;
+DROP POLICY IF EXISTS "Public logo access" ON storage.objects;
+
 -- Helper: check if the current user can manage a given event (owner OR collaborator)
 CREATE OR REPLACE FUNCTION public.can_manage_event_logo(object_name TEXT)
 RETURNS BOOLEAN

@@ -1,34 +1,37 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { QrCode, Printer, Filter } from 'lucide-react'
+import { QrCode, Printer, ChevronDown, ChevronUp, User, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
-import type { Action, Group, ParticipantWithGroups, QrScoringMode } from '@/types'
+import type { Action, Group, ParticipantWithGroups, Event } from '@/types'
 
 interface QrCardGeneratorProps {
-  eventId: string
-  qrScoringMode: QrScoringMode
+  event: Event
 }
 
-interface ParticipantGroupJoin {
+interface ActionGroupJoin {
   group_id: string
   groups: Group
 }
 
-type FilterMode = 'all' | 'group' | 'selected-participants' | 'selected-actions'
+interface ActionWithGroupIds extends Action {
+  groupIds: string[]
+}
 
-export function QrCardGenerator({ eventId, qrScoringMode }: QrCardGeneratorProps) {
+interface ParticipantSheet {
+  participant: ParticipantWithGroups
+  actions: ActionWithGroupIds[]
+}
+
+export function QrCardGenerator({ event }: QrCardGeneratorProps) {
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
-  const [actions, setActions] = useState<Action[]>([])
+  const [actions, setActions] = useState<ActionWithGroupIds[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
-
-  const [filterMode, setFilterMode] = useState<FilterMode>('all')
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('')
-  const [selectedParticipantIds, setSelectedParticipantIds] = useState<Set<string>>(new Set())
-  const [selectedActionIds, setSelectedActionIds] = useState<Set<string>>(new Set())
+  const [sheets, setSheets] = useState<ParticipantSheet[]>([])
   const [generated, setGenerated] = useState(false)
-  const [separateTab, setSeparateTab] = useState<'participants' | 'actions'>('participants')
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null)
+  const [expandedParticipant, setExpandedParticipant] = useState<string | null>(null)
 
   const printRef = useRef<HTMLDivElement>(null)
 
@@ -37,72 +40,80 @@ export function QrCardGenerator({ eventId, qrScoringMode }: QrCardGeneratorProps
       supabase
         .from('participants')
         .select('*, participant_groups(group_id, groups(*))')
-        .eq('event_id', eventId)
+        .eq('event_id', event.id)
         .order('name'),
       supabase
         .from('actions')
-        .select('*')
-        .eq('event_id', eventId)
+        .select('*, action_groups(group_id, groups(*))')
+        .eq('event_id', event.id)
         .eq('is_active', true)
         .order('name'),
       supabase
         .from('groups')
         .select('*')
-        .eq('event_id', eventId)
+        .eq('event_id', event.id)
         .order('name'),
     ])
 
     const mappedParticipants: ParticipantWithGroups[] = (participantsRes.data ?? []).map((p) => ({
       ...p,
-      groups: ((p.participant_groups as unknown as ParticipantGroupJoin[]) ?? []).map((pg) => pg.groups),
+      groups: ((p.participant_groups as unknown as { group_id: string; groups: Group }[]) ?? []).map((pg) => pg.groups),
+    }))
+
+    const mappedActions: ActionWithGroupIds[] = (actionsRes.data ?? []).map((a) => ({
+      ...a,
+      groupIds: ((a.action_groups as unknown as ActionGroupJoin[]) ?? []).map((ag) => ag.group_id),
     }))
 
     setParticipants(mappedParticipants)
-    setActions((actionsRes.data ?? []) as Action[])
+    setActions(mappedActions)
     setGroups((groupsRes.data ?? []) as Group[])
     setLoading(false)
-  }, [eventId])
+  }, [event.id])
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  function getFilteredParticipants(): ParticipantWithGroups[] {
-    switch (filterMode) {
-      case 'group':
-        if (!selectedGroupId) return []
-        return participants.filter((p) => p.groups.some((g) => g.id === selectedGroupId))
-      case 'selected-participants':
-        return participants.filter((p) => selectedParticipantIds.has(p.id))
-      default:
-        return participants
+  interface GroupBucket {
+    id: string
+    name: string
+    color: string
+    participants: ParticipantWithGroups[]
+  }
+
+  function getGroupBuckets(): GroupBucket[] {
+    const buckets: GroupBucket[] = groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      color: g.color,
+      participants: participants.filter((p) => p.groups.some((pg) => pg.id === g.id)),
+    }))
+
+    const ungrouped = participants.filter((p) => p.groups.length === 0)
+    if (ungrouped.length > 0) {
+      buckets.push({
+        id: '__none__',
+        name: 'ללא קבוצה',
+        color: '#6b7280',
+        participants: ungrouped,
+      })
     }
+
+    return buckets.filter((b) => b.participants.length > 0)
   }
 
-  function getFilteredActions(): Action[] {
-    if (filterMode === 'selected-actions') {
-      return actions.filter((a) => selectedActionIds.has(a.id))
-    }
-    return actions
-  }
-
-  function toggleParticipant(id: string) {
-    setSelectedParticipantIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  function toggleAction(id: string) {
-    setSelectedActionIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
+  function getRelevantActions(participant: ParticipantWithGroups): ActionWithGroupIds[] {
+    const participantGroupIds = new Set(participant.groups.map((g) => g.id))
+    return actions.filter((action) => {
+      if (action.groupIds.length === 0) return true
+      return action.groupIds.some((gid) => participantGroupIds.has(gid))
     })
   }
 
   function handleGenerate() {
+    const built: ParticipantSheet[] = participants
+      .map((p) => ({ participant: p, actions: getRelevantActions(p) }))
+      .filter((s) => s.actions.length > 0)
+    setSheets(built)
     setGenerated(true)
   }
 
@@ -113,61 +124,122 @@ export function QrCardGenerator({ eventId, qrScoringMode }: QrCardGeneratorProps
     const printWindow = window.open('', '_blank')
     if (!printWindow) return
 
+    const c = event.theme_color || '#6366f1'
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html dir="rtl">
       <head>
         <meta charset="utf-8" />
-        <title>כרטיסי QR</title>
+        <title>כרטיסי QR – ${event.name}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; direction: rtl; }
-          .page {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
+          body { font-family: Arial, sans-serif; direction: rtl; padding: 12mm; }
+
+          .participant-section {
+            margin-bottom: 16px;
+          }
+
+          .participant-divider {
+            display: flex;
+            align-items: center;
             gap: 8px;
-            padding: 12px;
-            page-break-after: always;
+            margin: 12px 0 10px;
+            padding: 6px 0;
+            border-bottom: 2px solid ${c};
           }
-          .page:last-child { page-break-after: auto; }
-          .card {
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            padding: 10px;
-            text-align: center;
-            break-inside: avoid;
-          }
-          .card .participant-name {
-            font-size: 13px;
+          .participant-divider .name {
+            font-size: 14px;
             font-weight: bold;
-            margin-bottom: 4px;
+            color: #222;
+          }
+          .participant-divider .group-dots {
+            display: flex;
+            gap: 4px;
+          }
+          .participant-divider .group-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+          }
+
+          .cards-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+          }
+
+          .card {
+            width: 280px;
+            border: 1px solid #ccc;
+            padding: 0;
+            break-inside: avoid;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            direction: ltr;
+          }
+          .card .qr-side {
+            flex-shrink: 0;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-left: 2px solid ${c};
+          }
+          .card .qr-side svg { display: block; }
+          .card .info-side {
+            flex: 1;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            direction: rtl;
+            min-width: 0;
+          }
+          .card .event-label {
+            font-size: 8px;
+            color: #aaa;
+            margin-bottom: 2px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
           }
           .card .action-name {
-            font-size: 11px;
-            color: #555;
-            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #111;
+            margin-bottom: 3px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
           }
-          .card .code-label {
-            font-size: 10px;
-            color: #888;
-            margin-bottom: 2px;
+          .card .participant-label {
+            font-size: 11px;
+            color: #444;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
           }
-          .card .points-label {
-            font-size: 10px;
-            color: #2d7d46;
-            margin-top: 4px;
+          .card .meta-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 2px;
+          }
+          .card .points {
+            font-size: 11px;
+            color: ${c};
             font-weight: bold;
           }
-          .card svg { display: block; margin: 0 auto; }
+          .card .scan-limit {
+            font-size: 9px;
+            color: #888;
+          }
+
           @media print {
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .page { padding: 8mm; }
           }
         </style>
       </head>
@@ -179,23 +251,25 @@ export function QrCardGenerator({ eventId, qrScoringMode }: QrCardGeneratorProps
     setTimeout(() => printWindow.print(), 300)
   }
 
-  const filteredParticipants = getFilteredParticipants()
-  const filteredActions = getFilteredActions()
-
-  const totalCards = qrScoringMode === 'combined'
-    ? filteredParticipants.length * filteredActions.length
-    : (separateTab === 'participants' ? filteredParticipants.length : filteredActions.length)
-
-  const cardCountLabel = qrScoringMode === 'combined'
-    ? `${filteredParticipants.length} משתתפים × ${filteredActions.length} משימות`
-    : (separateTab === 'participants'
-        ? `${filteredParticipants.length} משתתפים`
-        : `${filteredActions.length} משימות`)
+  const totalCards = sheets.reduce((sum, s) => sum + s.actions.length, 0)
 
   if (loading) {
     return (
       <div className="flex justify-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (participants.length === 0 || actions.length === 0) {
+    return (
+      <div className="rounded-2xl border border-game-border bg-game-card p-6 text-center">
+        <QrCode size={32} className="mx-auto text-gray-600 mb-3" />
+        <p className="text-sm text-gray-400">
+          {participants.length === 0
+            ? 'אין משתתפים – הוסיפו משתתפים כדי ליצור כרטיסים'
+            : 'אין משימות פעילות – הוסיפו משימות כדי ליצור כרטיסים'}
+        </p>
       </div>
     )
   }
@@ -207,184 +281,124 @@ export function QrCardGenerator({ eventId, qrScoringMode }: QrCardGeneratorProps
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
             <QrCode size={18} className="text-brand-400" />
           </div>
-          <h2 className="text-lg font-bold text-white">
-            {qrScoringMode === 'combined' ? 'כרטיסי QR משולבים' : 'כרטיסי QR נפרדים'}
-          </h2>
+          <h2 className="text-lg font-bold text-white">כרטיסי QR למשתתפים</h2>
         </div>
       </div>
 
       {!generated ? (
         <div className="space-y-4">
-          {qrScoringMode === 'separate' && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSeparateTab('participants')}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                  separateTab === 'participants'
-                    ? 'bg-brand-600/20 text-white'
-                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
-                }`}
-              >
-                כרטיסי משתתפים
-              </button>
-              <button
-                onClick={() => setSeparateTab('actions')}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                  separateTab === 'actions'
-                    ? 'bg-brand-600/20 text-white'
-                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
-                }`}
-              >
-                כרטיסי משימות
-              </button>
+          {/* Preview of what will be generated */}
+          <div className="rounded-2xl border border-game-border bg-game-card p-5 space-y-3">
+            <p className="text-sm text-gray-300">
+              לכל משתתף יופק דף נפרד עם כרטיסי QR עבור המשימות הרלוונטיות לקבוצות שלו.
+            </p>
+
+            {/* Group → Participant → Tasks hierarchy */}
+            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
+              {getGroupBuckets().map((bucket) => {
+                const isGroupOpen = expandedGroup === bucket.id
+                return (
+                  <div key={bucket.id} className="rounded-xl border border-game-border bg-game-dark">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedGroup(isGroupOpen ? null : bucket.id)}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-right"
+                    >
+                      <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: bucket.color }} />
+                      <span className="text-sm text-gray-200 flex-1 truncate">{bucket.name}</span>
+                      <span className="text-xs text-gray-500 shrink-0">{bucket.participants.length} משתתפים</span>
+                      {isGroupOpen ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
+                    </button>
+
+                    {isGroupOpen && (
+                      <div className="border-t border-game-border space-y-1 p-1.5">
+                        {bucket.participants.map((p) => {
+                          const relevantActions = getRelevantActions(p)
+                          const isExpanded = expandedParticipant === `${bucket.id}:${p.id}`
+                          return (
+                            <div key={p.id} className="rounded-lg border border-game-border/50 bg-game-card/50">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedParticipant(isExpanded ? null : `${bucket.id}:${p.id}`)}
+                                className="flex w-full items-center gap-2 px-3 py-1.5 text-right"
+                              >
+                                <User size={12} className="text-gray-600 shrink-0" />
+                                <span className="text-sm text-white flex-1 truncate">{p.name}</span>
+                                <span className="text-xs text-gray-500 shrink-0">{relevantActions.length} כרטיסים</span>
+                                {isExpanded ? <ChevronUp size={12} className="text-gray-600" /> : <ChevronDown size={12} className="text-gray-600" />}
+                              </button>
+                              {isExpanded && (
+                                <div className="px-3 pb-2 space-y-1">
+                                  {relevantActions.map((a) => (
+                                    <div key={a.id} className="flex items-center gap-2 text-xs text-gray-400 pr-5">
+                                      <span className="truncate">{a.name}</span>
+                                      <span className="text-gray-600">({a.points >= 0 ? '+' : ''}{a.points} נק׳)</span>
+                                    </div>
+                                  ))}
+                                  {relevantActions.length === 0 && (
+                                    <p className="text-xs text-gray-600 pr-5">אין משימות רלוונטיות</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
-          )}
-
-          <div className="rounded-2xl border border-game-border bg-game-card p-5">
-            <div className="mb-4 flex items-center gap-2">
-              <Filter size={16} className="text-gray-400" />
-              <h3 className="text-sm font-semibold text-gray-300">סינון</h3>
-            </div>
-
-            {(qrScoringMode === 'combined' || separateTab === 'participants') && (
-              <div className="mb-4">
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">מצב סינון</label>
-                <select
-                  value={filterMode}
-                  onChange={(e) => { setFilterMode(e.target.value as FilterMode); setGenerated(false) }}
-                  className="w-full rounded-xl border border-game-border bg-game-dark px-4 py-3 text-sm font-medium text-white focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                >
-                  <option value="all">
-                    {qrScoringMode === 'combined' ? 'כל המשתתפים וכל המשימות' : 'כל המשתתפים'}
-                  </option>
-                  <option value="group">לפי קבוצה</option>
-                  <option value="selected-participants">משתתפים נבחרים</option>
-                  {qrScoringMode === 'combined' && (
-                    <option value="selected-actions">משימות נבחרות</option>
-                  )}
-                </select>
-              </div>
-            )}
-
-            {(qrScoringMode === 'separate' && separateTab === 'actions') && (
-              <div className="mb-4">
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">מצב סינון</label>
-                <select
-                  value={filterMode}
-                  onChange={(e) => { setFilterMode(e.target.value as FilterMode); setGenerated(false) }}
-                  className="w-full rounded-xl border border-game-border bg-game-dark px-4 py-3 text-sm font-medium text-white focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                >
-                  <option value="all">כל המשימות</option>
-                  <option value="selected-actions">משימות נבחרות</option>
-                </select>
-              </div>
-            )}
-
-            {filterMode === 'group' && (
-              <div className="mb-4">
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">קבוצה</label>
-                <select
-                  value={selectedGroupId}
-                  onChange={(e) => setSelectedGroupId(e.target.value)}
-                  className="w-full rounded-xl border border-game-border bg-game-dark px-4 py-3 text-sm font-medium text-white focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                >
-                  <option value="">בחרו קבוצה...</option>
-                  {groups.map((g) => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {filterMode === 'selected-participants' && (
-              <div className="mb-4">
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">
-                  משתתפים ({selectedParticipantIds.size} נבחרו)
-                </label>
-                <div className="max-h-48 overflow-y-auto rounded-xl border border-game-border bg-game-dark p-2 space-y-1">
-                  {participants.map((p) => (
-                    <label key={p.id} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedParticipantIds.has(p.id)}
-                        onChange={() => toggleParticipant(p.id)}
-                        className="rounded border-gray-600 bg-game-dark text-brand-500 focus:ring-brand-500"
-                      />
-                      <span>{p.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {filterMode === 'selected-actions' && (
-              <div className="mb-4">
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">
-                  משימות ({selectedActionIds.size} נבחרו)
-                </label>
-                <div className="max-h-48 overflow-y-auto rounded-xl border border-game-border bg-game-dark p-2 space-y-1">
-                  {actions.map((a) => (
-                    <label key={a.id} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedActionIds.has(a.id)}
-                        onChange={() => toggleAction(a.id)}
-                        className="rounded border-gray-600 bg-game-dark text-brand-500 focus:ring-brand-500"
-                      />
-                      <span>{a.name}</span>
-                      <span className="text-xs text-gray-500">({a.code})</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="rounded-xl border border-game-border bg-game-dark/50 p-3 text-center">
               <p className="text-sm text-gray-400">
-                {totalCards > 0 ? (
-                  <>סה״כ <span className="font-bold text-white">{totalCards}</span> כרטיסים ({cardCountLabel})</>
-                ) : (
-                  'בחרו פריטים ליצירת כרטיסים'
-                )}
+                <span className="font-bold text-white">{participants.length}</span> משתתפים
+                {' × '}
+                <span className="font-bold text-white">{actions.length}</span> משימות
+                {' = '}
+                סה״כ{' '}
+                <span className="font-bold text-white">
+                  {participants.reduce((sum, p) => sum + getRelevantActions(p).length, 0)}
+                </span>
+                {' '}כרטיסים (לפי קבוצות)
               </p>
             </div>
 
-            <div className="mt-4">
-              <Button
-                onClick={handleGenerate}
-                disabled={totalCards === 0}
-                className="w-full"
-              >
-                <QrCode size={16} className="ml-1.5" />
-                יצירת כרטיסים ({totalCards})
-              </Button>
-            </div>
+            <Button onClick={handleGenerate} className="w-full">
+              <QrCode size={16} className="ml-1.5" />
+              יצירת כרטיסים
+            </Button>
           </div>
         </div>
       ) : (
         <div>
           <div className="mb-4 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setGenerated(false)}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-game-border text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+            >
+              <X size={16} />
+            </button>
             <Button onClick={handlePrint}>
               <Printer size={16} className="ml-1.5" />
               הדפסה
             </Button>
-            <Button variant="outline" onClick={() => setGenerated(false)}>
-              חזרה לסינון
-            </Button>
-            <span className="text-sm text-gray-400">{totalCards} כרטיסים</span>
+            <span className="text-sm text-gray-400">
+              {sheets.length} משתתפים • {totalCards} כרטיסים
+            </span>
           </div>
 
-          <div className="rounded-2xl border border-game-border bg-white p-4 overflow-auto max-h-[70vh]">
-            <div ref={printRef}>
-              {qrScoringMode === 'combined' && (
-                renderCombinedCards(filteredParticipants, filteredActions)
-              )}
-              {qrScoringMode === 'separate' && separateTab === 'participants' && (
-                renderParticipantCards(filteredParticipants)
-              )}
-              {qrScoringMode === 'separate' && separateTab === 'actions' && (
-                renderActionCards(filteredActions)
-              )}
+          {/* On-screen preview */}
+          <div className="rounded-2xl border border-game-border bg-white overflow-auto max-h-[70vh]" style={{ scrollbarGutter: 'stable' }}>
+            <div ref={printRef} className="p-6">
+              {sheets.map((sheet) => (
+                <ParticipantPage
+                  key={sheet.participant.id}
+                  sheet={sheet}
+                  event={event}
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -393,92 +407,132 @@ export function QrCardGenerator({ eventId, qrScoringMode }: QrCardGeneratorProps
   )
 }
 
-function renderCombinedCards(participants: ParticipantWithGroups[], actions: Action[]) {
-  const allCards: { participant: ParticipantWithGroups; action: Action }[] = []
-  for (const participant of participants) {
-    for (const action of actions) {
-      allCards.push({ participant, action })
-    }
-  }
+function ParticipantPage({ sheet, event }: { sheet: ParticipantSheet; event: Event }) {
+  const { participant, actions } = sheet
+  const c = event.theme_color || '#6366f1'
 
-  return chunkArray(allCards, 9).map((page, pageIdx) => (
-    <div key={pageIdx} className="page" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '12px', pageBreakAfter: 'always' }}>
-      {page.map(({ participant, action }) => (
-        <div
-          key={`${participant.id}-${action.id}`}
-          className="card"
-          style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '10px', textAlign: 'center', breakInside: 'avoid' }}
-        >
-          <div className="participant-name" style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {participant.name}
+  return (
+    <div className="participant-section" style={{ marginBottom: '16px' }}>
+      {/* Divider */}
+      <div
+        className="participant-divider"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          margin: '12px 0 10px',
+          padding: '6px 0',
+          borderBottom: `2px solid ${c}`,
+        }}
+      >
+        <span className="name" style={{ fontSize: '14px', fontWeight: 'bold', color: '#222' }}>
+          {participant.name}
+        </span>
+        {participant.groups.length > 0 && (
+          <div className="group-dots" style={{ display: 'flex', gap: '4px' }}>
+            {participant.groups.map((g) => (
+              <span
+                key={g.id}
+                className="group-dot"
+                style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: g.color }}
+                title={g.name}
+              />
+            ))}
           </div>
-          <div className="action-name" style={{ fontSize: '11px', color: '#555', marginBottom: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {action.name}
+        )}
+      </div>
+
+      {/* Cards grid */}
+      <div
+        className="cards-grid"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '10px',
+        }}
+      >
+        {actions.map((action) => (
+          <div
+            key={action.id}
+            className="card"
+            style={{
+              width: '280px',
+              border: '1px solid #ccc',
+              breakInside: 'avoid',
+              overflow: 'hidden',
+              display: 'flex',
+              direction: 'ltr',
+            }}
+          >
+            {/* QR side (right in RTL print) */}
+            <div
+              className="qr-side"
+              style={{
+                flexShrink: 0,
+                padding: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderLeft: `2px solid ${c}`,
+              }}
+            >
+              <QRCodeSVG
+                value={JSON.stringify({
+                  type: 'combined_score',
+                  participantCode: participant.external_id,
+                  actionCode: action.code,
+                })}
+                size={80}
+                level="M"
+                fgColor="#111"
+              />
+            </div>
+
+            {/* Info side (left in RTL print) */}
+            <div
+              className="info-side"
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                direction: 'rtl',
+                minWidth: 0,
+              }}
+            >
+              {event.logo_url && (
+                <img
+                  src={event.logo_url}
+                  alt=""
+                  style={{ width: '20px', height: '20px', objectFit: 'contain', marginBottom: '4px' }}
+                />
+              )}
+              <div className="event-label" style={{ fontSize: '8px', color: '#aaa', marginBottom: '2px' }}>
+                {event.name}
+              </div>
+              <div className="action-name" style={{ fontSize: '13px', fontWeight: 'bold', color: '#111', marginBottom: '3px' }}>
+                {action.name}
+              </div>
+              <div className="participant-label" style={{ fontSize: '11px', color: '#444', marginBottom: '4px' }}>
+                {participant.name}
+              </div>
+              <div className="meta-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                <span className="points" style={{ fontSize: '11px', color: c, fontWeight: 'bold' }}>
+                  {action.points >= 0 ? '+' : ''}{action.points} נק׳
+                </span>
+                <span className="scan-limit" style={{ fontSize: '9px', color: '#888' }}>
+                  {action.max_completions === null
+                    ? 'ללא הגבלה'
+                    : action.max_completions === 1
+                      ? 'מוגבל לסריקה אחת'
+                      : `מוגבל ל-${action.max_completions} סריקות`}
+                </span>
+              </div>
+            </div>
           </div>
-          <QRCodeSVG
-            value={JSON.stringify({ type: 'combined_score', participantCode: participant.external_id, actionCode: action.code })}
-            size={100}
-            level="M"
-          />
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
-  ))
-}
-
-function renderParticipantCards(participants: ParticipantWithGroups[]) {
-  return chunkArray(participants, 9).map((page, pageIdx) => (
-    <div key={pageIdx} className="page" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '12px', pageBreakAfter: 'always' }}>
-      {page.map((participant) => (
-        <div
-          key={participant.id}
-          className="card"
-          style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '10px', textAlign: 'center', breakInside: 'avoid' }}
-        >
-          <div className="participant-name" style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {participant.name}
-          </div>
-          <QRCodeSVG
-            value={JSON.stringify({ type: 'participant', participantCode: participant.external_id })}
-            size={100}
-            level="M"
-          />
-        </div>
-      ))}
-    </div>
-  ))
-}
-
-function renderActionCards(actions: Action[]) {
-  return chunkArray(actions, 9).map((page, pageIdx) => (
-    <div key={pageIdx} className="page" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '12px', pageBreakAfter: 'always' }}>
-      {page.map((action) => (
-        <div
-          key={action.id}
-          className="card"
-          style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '10px', textAlign: 'center', breakInside: 'avoid' }}
-        >
-          <div className="participant-name" style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {action.name}
-          </div>
-          <div className="points-label" style={{ fontSize: '10px', color: '#2d7d46', marginBottom: '6px', fontWeight: 'bold' }}>
-            {action.points >= 0 ? '+' : ''}{action.points} נק׳
-          </div>
-          <QRCodeSVG
-            value={JSON.stringify({ type: 'action', actionCode: action.code })}
-            size={100}
-            level="M"
-          />
-        </div>
-      ))}
-    </div>
-  ))
-}
-
-function chunkArray<T>(arr: T[], perPage: number): T[][] {
-  const pages: T[][] = []
-  for (let i = 0; i < arr.length; i += perPage) {
-    pages.push(arr.slice(i, i + perPage))
-  }
-  return pages
+  )
 }
