@@ -339,7 +339,7 @@ export function QrCardGenerator({ event }: QrCardGeneratorProps) {
                 )}
               </div>
             ) : (
-            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
+            <div className="space-y-1.5 max-h-64 overflow-y-auto pl-1" style={{ scrollbarGutter: 'stable' }}>
               {getGroupBuckets().map((bucket) => {
                 const isGroupOpen = expandedGroup === bucket.id
                 return (

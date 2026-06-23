@@ -1,6 +1,5 @@
-import { ArrowRight } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import { WizardProgress } from './WizardProgress'
+import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
 import type { WizardState, Event } from '@/types'
 
 interface WizardLayoutProps {
@@ -12,29 +11,13 @@ interface WizardLayoutProps {
 }
 
 export function WizardLayout({ event, currentStep, wizardState, onStepClick, children }: WizardLayoutProps) {
-  const navigate = useNavigate()
+  useEventHeaderBreadcrumb(event.name)
 
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 56px)' }}>
-      {/* Secondary nav: breadcrumb + progress */}
-      <div className="shrink-0 border-b border-game-border">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/events')}
-              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 transition-colors"
-            >
-              <ArrowRight size={14} />
-              <span className="hidden sm:inline">האירועים שלי</span>
-            </button>
-            <span className="text-game-border">/</span>
-            <span className="text-xs font-medium text-white truncate max-w-[160px]">
-              {event.name || 'אירוע חדש'}
-            </span>
-          </div>
-        </div>
-
-        <div className="mx-auto max-w-5xl px-4 pb-2">
+      {/* Progress bar only */}
+      <div className="shrink-0 border-b border-game-border px-4 py-2">
+        <div className="mx-auto max-w-5xl">
           <WizardProgress
             currentStep={currentStep}
             wizardState={wizardState}
@@ -49,7 +32,6 @@ export function WizardLayout({ event, currentStep, wizardState, onStepClick, chi
           {children}
         </div>
       </main>
-
     </div>
   )
 }

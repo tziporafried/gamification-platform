@@ -38,18 +38,21 @@ export function calculateReadiness(event: Event, counts: EventCounts): Readiness
       label: 'לאירוע יש שם',
       passed: !!event.name,
       required: true,
+      stepNumber: 1,
     },
     {
       id: 'has_participants',
       label: 'לפחות 2 משתתפים',
       passed: counts.participants >= 2,
       required: true,
+      stepNumber: 3,
     },
     {
       id: 'has_tasks',
       label: 'לפחות משימה אחת',
       passed: counts.tasks > 0,
       required: true,
+      stepNumber: 4,
     },
   ]
 }

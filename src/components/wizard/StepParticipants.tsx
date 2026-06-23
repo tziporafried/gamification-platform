@@ -177,7 +177,7 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
         )}
 
         {/* Scrollable list */}
-        <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-2 pb-2">
+        <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-2 pb-2 pl-1" style={{ scrollbarGutter: 'stable' }}>
           {participants.length === 0 ? (
             <EmptyState
               title="אין משתתפים עדיין"

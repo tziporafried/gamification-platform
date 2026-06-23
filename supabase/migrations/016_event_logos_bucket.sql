@@ -1,7 +1,7 @@
 -- Storage bucket for event logos
 INSERT INTO storage.buckets (id, name, public)
   VALUES ('event-logos', 'event-logos', true)
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET public = true;
 
 -- Drop old policies if they were created manually from migration 001 comments
 DROP POLICY IF EXISTS "Authenticated users can upload logos" ON storage.objects;
