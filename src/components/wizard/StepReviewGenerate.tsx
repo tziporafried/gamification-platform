@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { QrCardGenerator } from '@/components/qr-cards/QrCardGenerator'
+import { supabase } from '@/lib/supabase'
 import type { Event, EventCounts } from '@/types'
 import { isEventReady } from '@/lib/wizard'
 
@@ -14,7 +15,10 @@ export function StepReviewGenerate({ event, counts, onBack }: StepReviewGenerate
   const navigate = useNavigate()
   const ready = isEventReady(event, counts)
 
-  function handleFinish() {
+  async function handleFinish() {
+    if (event.status !== 'active') {
+      await supabase.from('events').update({ status: 'active' }).eq('id', event.id)
+    }
     navigate(`/events/${event.id}/control`)
   }
 

@@ -1,4 +1,4 @@
-export type EventStatus = 'draft' | 'active' | 'finished' | 'archived';
+export type EventStatus = 'editing' | 'active';
 export type QrScoringMode = 'combined' | 'separate';
 
 export type UserRole = 'super_admin' | 'user';

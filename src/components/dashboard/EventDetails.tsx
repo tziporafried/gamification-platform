@@ -3,10 +3,8 @@ import { Card } from '@/components/ui/Card'
 import type { Event } from '@/types'
 
 const STATUS_LABELS: Record<string, string> = {
-  draft: 'טיוטה',
+  editing: 'בעריכה',
   active: 'פעיל',
-  finished: 'הסתיים',
-  archived: 'בארכיון',
 }
 
 interface EventDetailsProps {

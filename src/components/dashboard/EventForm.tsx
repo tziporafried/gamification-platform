@@ -7,14 +7,7 @@ import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 import { ColorPicker } from '@/components/ui/ColorPicker'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
-import type { Event, EventStatus, QrScoringMode } from '@/types'
-
-const STATUS_LABELS: Record<EventStatus, string> = {
-  draft: 'טיוטה',
-  active: 'פעיל',
-  finished: 'הסתיים',
-  archived: 'בארכיון',
-}
+import type { Event, QrScoringMode } from '@/types'
 
 interface EventFormProps {
   event?: Event
@@ -30,7 +23,6 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
   const [slug, setSlug] = useState(event?.slug ?? '')
   const [slugManual, setSlugManual] = useState(!!event)
   const [themeColor, setThemeColor] = useState(event?.theme_color ?? '#6366f1')
-  const [status, setStatus] = useState<EventStatus>(event?.status ?? 'draft')
   const [qrScoringMode, setQrScoringMode] = useState<QrScoringMode>(event?.qr_scoring_mode ?? 'combined')
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(event?.logo_url ?? null)
@@ -102,7 +94,6 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
             name: name.trim(),
             slug: slug.trim(),
             theme_color: themeColor,
-            status,
             qr_scoring_mode: qrScoringMode,
             logo_url: logoUrl,
           })
@@ -120,7 +111,6 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
             name: name.trim(),
             slug: slug.trim(),
             theme_color: themeColor,
-            status,
             qr_scoring_mode: qrScoringMode,
             logo_url: logoUrl,
           })
@@ -209,24 +199,6 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
             </div>
           </div>
         </div>
-
-        {isEdit && (
-          <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-300 mb-1">
-              סטטוס
-            </label>
-            <select
-              id="status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value as EventStatus)}
-              className="block w-full rounded-xl border border-game-border bg-game-dark px-3 py-2 text-sm text-white shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-            >
-              {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {isEdit && (
           <div>

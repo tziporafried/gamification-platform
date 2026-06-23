@@ -51,7 +51,7 @@ export function MyEvents() {
 
   async function handleCreateEvent() {
     setError('')
-    const existingDraft = events.find(e => e.status === 'draft' && !e.name && e.owner_admin_id === user!.id)
+    const existingDraft = events.find(e => e.status === 'editing' && !e.name && e.owner_admin_id === user!.id)
     if (existingDraft) {
       navigate(`/events/${existingDraft.id}/step/1`)
       return
@@ -66,7 +66,7 @@ export function MyEvents() {
         name: '',
         slug,
         theme_color: '#7c3aed',
-        status: 'draft',
+        status: 'editing',
         qr_scoring_mode: 'separate',
       })
       .select()
@@ -172,13 +172,11 @@ function EventCard({ event, isOwner, onDelete }: EventCardProps) {
   const navigate = useNavigate()
 
   const statusLabels: Record<string, { label: string; color: string }> = {
-    draft: { label: 'טיוטה', color: 'text-gray-400 bg-gray-400/10' },
+    editing: { label: 'בעריכה', color: 'text-gray-400 bg-gray-400/10' },
     active: { label: 'פעיל', color: 'text-emerald-400 bg-emerald-400/10' },
-    finished: { label: 'הסתיים', color: 'text-amber-400 bg-amber-400/10' },
-    archived: { label: 'ארכיון', color: 'text-gray-500 bg-gray-500/10' },
   }
 
-  const status = statusLabels[event.status] || statusLabels.draft
+  const status = statusLabels[event.status] || statusLabels.editing
 
   function handleOpenControl(e: React.MouseEvent) {
     e.stopPropagation()

@@ -41,8 +41,8 @@ export function calculateReadiness(event: Event, counts: EventCounts): Readiness
     },
     {
       id: 'has_participants',
-      label: 'לפחות משתתף אחד',
-      passed: counts.participants > 0,
+      label: 'לפחות 2 משתתפים',
+      passed: counts.participants >= 2,
       required: true,
     },
     {
