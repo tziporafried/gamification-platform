@@ -28,7 +28,7 @@ export default function App() {
           <Route path="/events/:id" element={<ProtectedRoute><AppShell><EventWizard /></AppShell></ProtectedRoute>} />
           <Route path="/events/:id/step/:step" element={<ProtectedRoute><AppShell><EventWizard /></AppShell></ProtectedRoute>} />
           <Route path="/events/:id/control" element={<ProtectedRoute><AppShell><EventControlCenterPage /></AppShell></ProtectedRoute>} />
-          <Route path="/events/:id/scan" element={<ProtectedRoute><AppShell><EventScanPage /></AppShell></ProtectedRoute>} />
+          <Route path="/events/:id/scan" element={<ProtectedRoute><EventScanPage /></ProtectedRoute>} />
           <Route path="/events/:id/display" element={<ProtectedRoute><AppShell><EventDisplayPage /></AppShell></ProtectedRoute>} />
           <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell><EventBySlugControl /></AppShell></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />

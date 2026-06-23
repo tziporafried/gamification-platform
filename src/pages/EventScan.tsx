@@ -37,21 +37,25 @@ export function EventScanPage() {
   if (loading || !event) return <FullPageLoader />
 
   return (
-    <>
-      <div className="border-b border-game-border">
-        <div className="mx-auto flex h-10 max-w-5xl items-center px-4">
-          <button
-            onClick={() => navigate(`/events/${event.id}/control`)}
-            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 transition-colors"
-          >
-            <ArrowRight size={16} />
-            <span>חזרה למרכז הבקרה</span>
-          </button>
-        </div>
+    <div className="relative h-screen overflow-hidden bg-game-dark">
+      {/* Minimal back button — floating overlay */}
+      <div className="absolute left-4 top-3 z-30">
+        <button
+          onClick={() => navigate(`/events/${event.id}/control`)}
+          className="flex items-center gap-1.5 rounded-lg bg-game-card/60 px-3 py-1.5 text-sm text-gray-400 backdrop-blur-sm transition-colors hover:bg-game-card hover:text-gray-200"
+        >
+          <ArrowRight size={14} />
+          <span>חזרה</span>
+        </button>
       </div>
-      <main className="mx-auto max-w-5xl px-4 py-6 md:py-8">
-        <ScoreEntry eventId={event.id} qrScoringMode={event.qr_scoring_mode} />
-      </main>
-    </>
+
+      <ScoreEntry
+        eventId={event.id}
+        qrScoringMode={event.qr_scoring_mode}
+        themeColor={event.theme_color}
+        eventName={event.name}
+        eventLogoUrl={event.logo_url}
+      />
+    </div>
   )
 }

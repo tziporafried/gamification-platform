@@ -86,7 +86,7 @@ export function Dashboard() {
         <RewardList eventId={event.id} onCountChange={noop} />
       )}
       {activeTab === 'score' && (
-        <ScoreEntry eventId={event.id} qrScoringMode={event.qr_scoring_mode} />
+        <ScoreEntry eventId={event.id} qrScoringMode={event.qr_scoring_mode} themeColor={event.theme_color} eventName={event.name} eventLogoUrl={event.logo_url} />
       )}
       {activeTab === 'qr-cards' && (
         <QrCardGenerator event={event} />
