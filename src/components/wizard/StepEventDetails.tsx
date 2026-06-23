@@ -123,32 +123,29 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
       canAdvance={canAdvance && !saving}
       onNext={handleNext}
     >
-      <div className="space-y-8">
-        {/* Event name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            שם האירוע
-          </label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="למשל: חופשה משפחתית 2026"
-            className="text-lg"
-            autoFocus
-            disabled={saving}
-          />
-        </div>
-
-        {/* Brand color */}
-        <div>
-          <ColorPicker
-            label="צבע מותג"
-            value={themeColor}
-            onChange={setThemeColor}
-          />
-          <p className="mt-1.5 text-xs text-gray-500">
-            הצבע ישמש כצבע הראשי בעמוד האירוע ובכרטיסי QR
-          </p>
+      <div className="space-y-6">
+        {/* Event name + brand color on same row */}
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              שם האירוע
+            </label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="למשל: חופשה משפחתית 2026"
+              className="text-lg"
+              autoFocus
+              disabled={saving}
+            />
+          </div>
+          <div className="shrink-0 pb-0.5">
+            <ColorPicker
+              label="צבע מותג"
+              value={themeColor}
+              onChange={setThemeColor}
+            />
+          </div>
         </div>
 
         {/* Logo upload */}

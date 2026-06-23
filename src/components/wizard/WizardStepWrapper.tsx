@@ -36,7 +36,7 @@ export function WizardStepWrapper({
       </div>
 
       {/* Step content — scrollable */}
-      <div className="flex-1 overflow-y-auto min-h-0 pb-4 pl-1 pr-2" style={{ scrollbarGutter: 'stable' }}>
+      <div className="flex-1 overflow-y-auto min-h-0 pb-4 pl-1 pr-0" style={{ scrollbarGutter: 'stable' }}>
         {children}
       </div>
 

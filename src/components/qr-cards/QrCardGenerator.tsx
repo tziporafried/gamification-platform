@@ -89,7 +89,7 @@ export function QrCardGenerator({ event }: QrCardGeneratorProps) {
     }))
 
     const ungrouped = participants.filter((p) => p.groups.length === 0)
-    if (ungrouped.length > 0) {
+    if (ungrouped.length > 0 && groups.length > 0) {
       buckets.push({
         id: '__none__',
         name: 'ללא קבוצה',
@@ -293,9 +293,36 @@ export function QrCardGenerator({ event }: QrCardGeneratorProps) {
               לכל משתתף יופק דף נפרד עם כרטיסי QR עבור המשימות הרלוונטיות לקבוצות שלו.
             </p>
 
-            {/* Group → Participant → Tasks hierarchy */}
+            {/* Group → Participant → Tasks hierarchy (or flat list when no groups) */}
             <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
-              {getGroupBuckets().map((bucket) => {
+              {groups.length === 0 ? participants.map((p) => {
+                const relevantActions = getRelevantActions(p)
+                const isExpanded = expandedParticipant === p.id
+                return (
+                  <div key={p.id} className="rounded-lg border border-game-border bg-game-dark">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedParticipant(isExpanded ? null : p.id)}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-right"
+                    >
+                      <User size={12} className="text-gray-600 shrink-0" />
+                      <span className="text-sm text-white flex-1 truncate">{p.name}</span>
+                      <span className="text-xs text-gray-500 shrink-0">{relevantActions.length} כרטיסים</span>
+                      {isExpanded ? <ChevronUp size={12} className="text-gray-600" /> : <ChevronDown size={12} className="text-gray-600" />}
+                    </button>
+                    {isExpanded && (
+                      <div className="px-3 pb-2 space-y-1">
+                        {relevantActions.map((a) => (
+                          <div key={a.id} className="flex items-center gap-2 text-xs text-gray-400 pr-5">
+                            <span className="truncate">{a.name}</span>
+                            <span className="text-gray-600">({a.points >= 0 ? '+' : ''}{a.points} נק׳)</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              }) : getGroupBuckets().map((bucket) => {
                 const isGroupOpen = expandedGroup === bucket.id
                 return (
                   <div key={bucket.id} className="rounded-xl border border-game-border bg-game-dark">
