@@ -21,7 +21,7 @@ interface ShareEventModalProps {
 
 const ERROR_MESSAGES: Record<string, string> = {
   USER_NOT_FOUND: 'לא נמצא משתמש עם אימייל זה',
-  NOT_OWNER: 'רק בעל האירוע יכול לשתף',
+  NOT_OWNER: 'אין לך הרשאה לשתף אירוע זה',
   CANNOT_SHARE_SELF: 'לא ניתן לשתף עם עצמך',
 }
 

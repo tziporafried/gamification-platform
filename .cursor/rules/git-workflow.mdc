@@ -1,0 +1,10 @@
+---
+description: Git workflow rules - never commit or push without explicit user instruction
+alwaysApply: true
+---
+
+# Git Workflow
+
+- **Never commit** without an explicit instruction from the user.
+- **Never push** without an explicit instruction from the user.
+- **Always run `npm run build`** before committing. If the build fails, fix the errors first.

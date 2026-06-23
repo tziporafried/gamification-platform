@@ -1,22 +1,24 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Calendar, ExternalLink, Trash2 } from 'lucide-react'
+import { Plus, Calendar, ExternalLink, Trash2, Share2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { ShareEventModal } from '@/components/ShareEventModal'
 import { cn } from '@/lib/utils'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
 
 export function MyEvents() {
-  const { user } = useAuth()
+  const { user, isFreePlan } = useAuth()
   const navigate = useNavigate()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null)
+  const [sharingEvent, setSharingEvent] = useState<Event | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
@@ -113,29 +115,41 @@ export function MyEvents() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-lg font-bold text-white">האירועים שלי</h1>
-            <Button variant="gradient" size="md" loading={creating} onClick={handleCreateEvent}>
-              <Plus size={18} className="ml-1.5" />
-              צור אירוע חדש
-            </Button>
-          </div>
+        <div className="space-y-4">
+          <h1 className="text-lg font-bold text-white">האירועים שלי</h1>
 
           {error && <ErrorAlert message={error} />}
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {events.map((event) => (
-              <EventCard
+          <div className="rounded-2xl border border-game-border overflow-hidden">
+            {events.map((event, i) => (
+              <EventRow
                 key={event.id}
                 event={event}
                 isOwner={event.owner_admin_id === user!.id}
+                isFreePlan={isFreePlan}
+                isLast={i === events.length - 1}
                 onDelete={() => setDeletingEvent(event)}
+                onShare={() => setSharingEvent(event)}
               />
             ))}
           </div>
+
+          <button
+            onClick={handleCreateEvent}
+            disabled={creating}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-game-border py-3 text-sm text-gray-500 hover:border-brand-500/50 hover:text-brand-400 transition-colors disabled:opacity-50"
+          >
+            <Plus size={16} />
+            {creating ? 'יוצר...' : 'צור אירוע חדש'}
+          </button>
         </div>
       )}
+
+      <ShareEventModal
+        isOpen={!!sharingEvent}
+        onClose={() => setSharingEvent(null)}
+        eventId={sharingEvent?.id ?? ''}
+      />
 
       <Modal
         isOpen={!!deletingEvent}
@@ -162,18 +176,21 @@ export function MyEvents() {
   )
 }
 
-interface EventCardProps {
+interface EventRowProps {
   event: Event
   isOwner: boolean
+  isFreePlan: boolean
+  isLast: boolean
   onDelete: () => void
+  onShare: () => void
 }
 
-function EventCard({ event, isOwner, onDelete }: EventCardProps) {
+function EventRow({ event, isOwner, isFreePlan, isLast, onDelete, onShare }: EventRowProps) {
   const navigate = useNavigate()
 
   const statusLabels: Record<string, { label: string; color: string }> = {
-    editing: { label: 'בעריכה', color: 'text-gray-400 bg-gray-400/10' },
-    active: { label: 'פעיל', color: 'text-emerald-400 bg-emerald-400/10' },
+    editing: { label: 'בעריכה', color: '#f59e0b' },
+    active: { label: 'פעיל', color: '#34d399' },
   }
 
   const status = statusLabels[event.status] || statusLabels.editing
@@ -189,57 +206,87 @@ function EventCard({ event, isOwner, onDelete }: EventCardProps) {
     onDelete()
   }
 
+  function handleShare(e: React.MouseEvent) {
+    e.stopPropagation()
+    onShare()
+  }
+
+  const accent = event.theme_color || '#7c3aed'
+
   return (
     <button
       onClick={() => navigate(`/events/${event.id}`)}
-      className="text-right w-full"
+      className={cn(
+        'group relative flex w-full items-center gap-5 px-5 py-4 text-right bg-game-dark hover:bg-white/[0.03] transition-colors',
+        !isLast && 'border-b border-game-border',
+      )}
     >
-      <Card variant="interactive" className="p-5 space-y-3">
-        <div className="flex items-start justify-between">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600/20">
-            {event.logo_url ? (
-              <img src={event.logo_url} alt="" className="h-10 w-10 rounded-xl object-cover" />
-            ) : (
-              <Calendar size={20} className="text-brand-400" />
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', status.color)}>
-              {status.label}
-            </span>
-            {isOwner && (
-              <button
-                onClick={handleDelete}
-                className="p-1 rounded-lg text-gray-500 hover:bg-red-500/10 hover:text-red-400 transition-all"
-                title="מחיקת אירוע"
-              >
-                <Trash2 size={14} />
-              </button>
-            )}
-          </div>
-        </div>
+      {/* Brand color left accent bar */}
+      <div
+        className="absolute right-0 top-0 h-full w-1 rounded-r-none transition-opacity opacity-60 group-hover:opacity-100"
+        style={{ backgroundColor: accent }}
+      />
 
-        <div>
-          <h3 className="font-bold text-white truncate">
-            {event.name || 'אירוע ללא שם'}
-          </h3>
-          <p className="text-xs text-gray-500 mt-1">
-            {new Date(event.created_at).toLocaleDateString('he-IL')}
-          </p>
-        </div>
-
-        {event.slug && (
-          <div className="flex items-center gap-3 pt-1 border-t border-game-border">
-            <button
-              onClick={handleOpenControl}
-              className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300 transition-colors"
-            >
-              <ExternalLink size={12} />
-              פתח מרכז בקרה
-            </button>
-          </div>
+      {/* Logo / icon */}
+      <div
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+        style={{ backgroundColor: accent + '22', border: `1.5px solid ${accent}44` }}
+      >
+        {event.logo_url ? (
+          <img src={event.logo_url} alt="" className="h-12 w-12 rounded-xl object-cover" />
+        ) : (
+          <Calendar size={22} style={{ color: accent }} />
         )}
-      </Card>
+      </div>
+
+      {/* Name + date */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-base font-bold text-white truncate leading-snug">
+            {event.name || 'אירוע ללא שם'}
+          </p>
+          {isFreePlan && <Badge label="גרסה חינמית" color="#fbbf24" />}
+        </div>
+        <p className="text-xs text-gray-500 mt-0.5">
+          נוצר {new Date(event.created_at).toLocaleDateString('he-IL')}
+        </p>
+      </div>
+
+      {/* Status badge */}
+      <div className="shrink-0">
+        <Badge label={status.label} color={status.color} />
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+        {event.slug && (
+          <button
+            onClick={handleOpenControl}
+            disabled={event.status === 'editing'}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 hover:bg-white/10 hover:text-white"
+            title={event.status === 'editing' ? 'האירוע עדיין בעריכה' : 'פתח מרכז בקרה'}
+          >
+            <ExternalLink size={13} />
+            מרכז בקרה
+          </button>
+        )}
+        <button
+          onClick={handleShare}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-all"
+        >
+          <Share2 size={13} />
+          שיתוף
+        </button>
+        {isOwner && (
+          <button
+            onClick={handleDelete}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100"
+          >
+            <Trash2 size={13} />
+            מחיקה
+          </button>
+        )}
+      </div>
     </button>
   )
 }
