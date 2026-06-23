@@ -158,7 +158,7 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
         />
       )}
 
-      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
+      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} limitType="rewards" />
     </div>
   )
 }
