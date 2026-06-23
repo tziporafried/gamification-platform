@@ -20,7 +20,7 @@ export function StepReviewGenerate({ event, counts, onBack }: StepReviewGenerate
 
   return (
     <WizardStepWrapper
-      title="סקירה והפקה"
+      title="סקירה והדפסה"
       subtitle="בדוק שהכל מוכן והפק כרטיסים למשתתפים"
       currentStep={5}
       canAdvance={ready}
