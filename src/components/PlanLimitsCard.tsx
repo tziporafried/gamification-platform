@@ -15,7 +15,7 @@ export function PlanLimitsCard({ limits, isFreePlan }: PlanLimitsCardProps) {
 
   return (
     <Card className="p-5 space-y-4">
-      <h3 className="text-sm font-medium text-white">המסלול שלך: חינמי</h3>
+      <h3 className="text-sm font-medium text-white">הגרסה שלך: חינמית</h3>
 
       <div className="space-y-3">
         {ENTITIES.map(entity => (
@@ -26,7 +26,7 @@ export function PlanLimitsCard({ limits, isFreePlan }: PlanLimitsCardProps) {
       <div className="pt-2 border-t border-game-border text-center">
         <span className="text-xs text-gray-500">צריך יותר? </span>
         <a
-          href={`mailto:${UPGRADE_CONTACT_EMAIL}?subject=שדרוג מסלול`}
+          href={`mailto:${UPGRADE_CONTACT_EMAIL}?subject=שדרוג גרסה`}
           className="text-xs font-medium text-brand-400 hover:text-brand-300 transition-colors"
         >
           צור קשר לשדרוג

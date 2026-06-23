@@ -48,9 +48,12 @@ export function StepReviewGenerate({ event, counts, onBack }: StepReviewGenerate
 }
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
+  const isNone = label === 'קבוצות' && value === 0
   return (
     <div className="rounded-xl border border-game-border bg-game-card px-3 py-2 flex items-center justify-center gap-2">
-      <span className="text-xl font-bold text-white">{value}</span>
+      <span className={isNone ? 'text-sm text-gray-400' : 'text-xl font-bold text-white'}>
+        {isNone ? 'ללא' : value}
+      </span>
       <span className="text-xs text-gray-400">{label}</span>
     </div>
   )

@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { QrCode, Monitor, ArrowRight, AlertCircle, CheckCircle2, Share2, Link as LinkIcon, Check } from 'lucide-react'
+import { QrCode, Monitor, ArrowRight, AlertCircle, CheckCircle2, Link as LinkIcon, Check } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { ShareEventModal } from '@/components/ShareEventModal'
 import { calculateReadiness, isEventReady } from '@/lib/wizard'
 import { cn } from '@/lib/utils'
 import type { Event, EventCounts } from '@/types'
@@ -20,7 +19,6 @@ const ACTIONS = [
 
 export function ControlCenter({ event, counts }: ControlCenterProps) {
   const navigate = useNavigate()
-  const [shareOpen, setShareOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const ready = isEventReady(event, counts)
   const checks = calculateReadiness(event, counts)
@@ -60,10 +58,6 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
             <Button variant="ghost" size="sm" onClick={copyManagementLink}>
               {copied ? <Check size={14} className="ml-1 text-emerald-400" /> : <LinkIcon size={14} className="ml-1" />}
               {copied ? 'הועתק!' : 'העתק קישור'}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setShareOpen(true)}>
-              <Share2 size={14} className="ml-1" />
-              שיתוף
             </Button>
             <Button
               variant="ghost"
@@ -129,7 +123,6 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
 
       </main>
 
-      <ShareEventModal isOpen={shareOpen} onClose={() => setShareOpen(false)} eventId={event.id} />
     </>
   )
 }
