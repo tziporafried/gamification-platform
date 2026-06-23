@@ -92,7 +92,7 @@ export function StepGroups({
       <div className="flex h-full flex-col min-h-0">
         {/* Pinned top: options + counter + usage bar */}
         <div className="shrink-0 space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 p-0.5">
+          <div className="grid grid-cols-2 gap-3 p-0.5">
             {GROUP_OPTIONS.map(({ type, label, description, icon: Icon }) => (
               <button
                 key={type}
@@ -102,24 +102,32 @@ export function StepGroups({
                 <Card
                   variant="interactive"
                   className={cn(
-                    'p-6 flex flex-col items-center gap-3 text-center cursor-pointer transition-all min-h-[120px] justify-center',
+                    'flex cursor-pointer transition-all justify-center',
+                    showGroupSetup
+                      ? 'p-3 flex-row items-center gap-2 text-right'
+                      : 'p-6 flex-col items-center gap-3 text-center min-h-[120px]',
                     groupType === type && 'ring-2 ring-brand-500 border-brand-500/50',
                   )}
                 >
                   <Icon
-                    size={32}
+                    size={showGroupSetup ? 20 : 32}
                     className={cn(
-                      'transition-colors',
+                      'shrink-0 transition-colors',
                       groupType === type ? 'text-brand-400' : 'text-gray-500',
                     )}
                   />
-                  <span className={cn(
-                    'text-base font-medium',
-                    groupType === type ? 'text-white' : 'text-gray-300',
-                  )}>
-                    {label}
-                  </span>
-                  <span className="text-xs text-gray-500">{description}</span>
+                  <div>
+                    <span className={cn(
+                      'font-medium',
+                      showGroupSetup ? 'text-sm' : 'text-base',
+                      groupType === type ? 'text-white' : 'text-gray-300',
+                    )}>
+                      {label}
+                    </span>
+                    {!showGroupSetup && (
+                      <span className="text-xs text-gray-500 block mt-1">{description}</span>
+                    )}
+                  </div>
                 </Card>
               </button>
             ))}
