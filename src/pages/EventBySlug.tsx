@@ -22,6 +22,7 @@ export function EventBySlugControl() {
         .from('events')
         .select('*')
         .eq('slug', slug)
+        .neq('status', 'archived')
         .single()
 
       if (data) {

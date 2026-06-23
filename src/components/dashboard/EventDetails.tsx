@@ -5,6 +5,7 @@ import type { Event } from '@/types'
 const STATUS_LABELS: Record<string, string> = {
   editing: 'בעריכה',
   active: 'פעיל',
+  archived: 'בארכיון',
 }
 
 interface EventDetailsProps {

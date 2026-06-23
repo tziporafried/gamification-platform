@@ -20,6 +20,7 @@ export function MyEvents() {
   const [deleting, setDeleting] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
 
   useEffect(() => {
     async function fetchEvents() {
@@ -27,7 +28,8 @@ export function MyEvents() {
         supabase
           .from('events')
           .select('*')
-          .eq('owner_admin_id', user!.id),
+          .eq('owner_admin_id', user!.id)
+          .neq('status', 'archived'),
         supabase
           .from('event_collaborators')
           .select('event_id')
@@ -38,6 +40,7 @@ export function MyEvents() {
               .from('events')
               .select('*')
               .in('id', collabs.map(c => c.event_id))
+              .neq('status', 'archived')
           }),
       ])
 
@@ -87,10 +90,12 @@ export function MyEvents() {
   async function handleDeleteEvent() {
     if (!deletingEvent) return
     setDeleting(true)
-    await supabase.from('events').delete().eq('id', deletingEvent.id)
+    await supabase.from('events').update({ status: 'archived' }).eq('id', deletingEvent.id)
     setEvents(prev => prev.filter(e => e.id !== deletingEvent.id))
     setDeleting(false)
     setDeletingEvent(null)
+    setSuccessMsg('האירוע נמחק בהצלחה.')
+    setTimeout(() => setSuccessMsg(''), 3000)
   }
 
   if (loading) return <FullPageLoader />
@@ -123,6 +128,11 @@ export function MyEvents() {
           </div>
 
           {error && <ErrorAlert message={error} />}
+          {successMsg && (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+              {successMsg}
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {events.map((event) => (
@@ -144,9 +154,9 @@ export function MyEvents() {
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-400">
-            פעולה זו תמחק את האירוע{' '}
-            <strong className="text-white">{deletingEvent?.name || 'ללא שם'}</strong>{' '}
-            וכל הנתונים המשויכים אליו לצמיתות. לא ניתן לשחזר מידע זה.
+            האם את בטוחה שברצונך למחוק את האירוע{' '}
+            <strong className="text-white">{deletingEvent?.name || 'ללא שם'}</strong>?
+            {' '}האירוע יועבר לארכיון ולא יוצג במערכת.
           </p>
           <div className="flex gap-3">
             <Button variant="danger" loading={deleting} onClick={handleDeleteEvent}>
@@ -174,6 +184,7 @@ function EventCard({ event, isOwner, onDelete }: EventCardProps) {
   const statusLabels: Record<string, { label: string; color: string }> = {
     editing: { label: 'בעריכה', color: 'text-gray-400 bg-gray-400/10' },
     active: { label: 'פעיל', color: 'text-emerald-400 bg-emerald-400/10' },
+    archived: { label: 'בארכיון', color: 'text-red-400 bg-red-400/10' },
   }
 
   const status = statusLabels[event.status] || statusLabels.editing

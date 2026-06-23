@@ -19,7 +19,7 @@ UPDATE events SET status = 'editing' WHERE status IN ('draft', 'finished', 'arch
 
 -- Step 4: Drop and recreate the enum
 DROP TYPE event_status;
-CREATE TYPE event_status AS ENUM ('editing', 'active');
+CREATE TYPE event_status AS ENUM ('editing', 'active', 'archived');
 
 -- Step 5: Convert column back to enum
 ALTER TABLE events ALTER COLUMN status TYPE event_status USING status::event_status;

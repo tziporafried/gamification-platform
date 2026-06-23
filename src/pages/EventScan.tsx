@@ -21,6 +21,7 @@ export function EventScanPage() {
         .from('events')
         .select('*')
         .eq('id', id)
+        .neq('status', 'archived')
         .single()
 
       if (!data) {

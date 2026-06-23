@@ -27,6 +27,7 @@ export function Dashboard() {
         .from('events')
         .select('*')
         .eq('owner_admin_id', user!.id)
+        .neq('status', 'archived')
         .maybeSingle()
 
       setEvent(data)
