@@ -20,15 +20,29 @@ function toMaxCompletions(mode: LimitMode, customLimit: number): number | null {
   return customLimit
 }
 
+type ActionCopyVariant = 'default' | 'wizard'
+
 interface ActionRowProps {
   action: ActionWithGroups
   groups: Group[]
   onEdit: () => void
   onDeleted?: () => void
+  onUpdated?: () => void
   onError?: (msg: string) => void
+  variant?: ActionCopyVariant
+  siblingNames?: string[]
 }
 
-export const ActionRow = memo(function ActionRow({ action, groups, onDeleted, onError }: ActionRowProps) {
+export const ActionRow = memo(function ActionRow({
+  action,
+  groups,
+  onEdit,
+  onDeleted,
+  onUpdated,
+  onError,
+  variant = 'default',
+  siblingNames = [],
+}: ActionRowProps) {
   const [editingName, setEditingName] = useState(false)
   const [editingPoints, setEditingPoints] = useState(false)
   const [name, setName] = useState(action.name)
@@ -45,6 +59,11 @@ export const ActionRow = memo(function ActionRow({ action, groups, onDeleted, on
   const [localGroups, setLocalGroups] = useState(action.groups)
 
   const isPositive = parseInt(points, 10) >= 0
+  const isWizard = variant === 'wizard'
+  const pointsNum = parseInt(points, 10) || 0
+  const pointsLabel = isWizard
+    ? `${pointsNum < 0 ? '−' : ''}${Math.abs(pointsNum)} נק'`
+    : `${isPositive ? '+' : ''}${points}`
   const assignedGroupIds = new Set(localGroups.map(g => g.id))
   const isAllGroups = localGroups.length === 0
 
@@ -71,15 +90,28 @@ export const ActionRow = memo(function ActionRow({ action, groups, onDeleted, on
       setEditingName(false)
       return
     }
+    if (siblingNames.some((n) => n.toLowerCase() === trimmed.toLowerCase())) {
+      setName(action.name)
+      setEditingName(false)
+      onError?.('כבר קיימת פעילות בשם זה')
+      return
+    }
     setSaving(true)
     await supabase.from('actions').update({ name: trimmed }).eq('id', action.id)
     setSaving(false)
     setEditingName(false)
+    onUpdated?.()
   }
 
   async function savePoints() {
     const num = parseInt(points, 10)
-    if (isNaN(num) || num === action.points) {
+    if (isNaN(num)) {
+      setPoints(action.points.toString())
+      setEditingPoints(false)
+      onError?.('יש לבחור מספר נקודות')
+      return
+    }
+    if (num === action.points) {
       setPoints(action.points.toString())
       setEditingPoints(false)
       return
@@ -88,6 +120,7 @@ export const ActionRow = memo(function ActionRow({ action, groups, onDeleted, on
     await supabase.from('actions').update({ points: num }).eq('id', action.id)
     setSaving(false)
     setEditingPoints(false)
+    onUpdated?.()
   }
 
   function handleNameKey(e: KeyboardEvent<HTMLInputElement>) {
@@ -105,7 +138,8 @@ export const ActionRow = memo(function ActionRow({ action, groups, onDeleted, on
     setLimitMode(mode)
     if (mode === 'limited' && limit) setCustomLimit(limit)
     await supabase.from('actions').update({ max_completions: val }).eq('id', action.id)
-    if (onDeleted) onDeleted()
+    if (onUpdated) onUpdated()
+    else onEdit()
   }
 
   async function handleDelete() {
@@ -120,7 +154,7 @@ export const ActionRow = memo(function ActionRow({ action, groups, onDeleted, on
       .then(({ error: err }) => {
         if (err) {
           if (onError) onError('שגיאה בעדכון קבוצות. הנתונים רועננו.')
-          if (onDeleted) onDeleted()
+          onEdit()
         }
       })
   }
@@ -140,7 +174,7 @@ export const ActionRow = memo(function ActionRow({ action, groups, onDeleted, on
     mutation.then(({ error: err }) => {
       if (err) {
         if (onError) onError('שגיאה בעדכון קבוצה. הנתונים רועננו.')
-        if (onDeleted) onDeleted()
+        onEdit()
       }
     })
   }
@@ -172,13 +206,14 @@ export const ActionRow = memo(function ActionRow({ action, groups, onDeleted, on
           <button
             onClick={() => setEditingPoints(true)}
             className={cn(
-              'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold cursor-text transition-colors',
+              'flex shrink-0 items-center justify-center rounded-xl text-sm font-bold cursor-text transition-colors',
+              isWizard ? 'h-11 min-w-[3.25rem] px-2' : 'h-11 w-11',
               isPositive
                 ? 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'
                 : 'bg-red-500/15 text-red-400 hover:bg-red-500/25',
             )}
           >
-            {isPositive ? '+' : ''}{points}
+            {pointsLabel}
           </button>
         )}
 
@@ -215,6 +250,7 @@ export const ActionRow = memo(function ActionRow({ action, groups, onDeleted, on
           onSetEditingLimit={setEditingLimit}
           onSetCustomLimit={setCustomLimit}
           onResetLimit={() => setLimitMode(toLimitMode(action.max_completions))}
+          variant={variant}
         />
 
         {groups.length > 0 && (
@@ -223,7 +259,7 @@ export const ActionRow = memo(function ActionRow({ action, groups, onDeleted, on
               groups={groups}
               selectedGroupIds={assignedGroupIds}
               isAllSelected={isAllGroups}
-              tooltip="על אילו קבוצות חלה המשימה"
+              tooltip={isWizard ? 'על אילו קבוצות חלה הפעילות' : 'על אילו קבוצות חלה המשימה'}
               onSelectAll={selectAllGroups}
               onToggleGroup={(groupId) => toggleGroup(groupId)}
             />
@@ -251,6 +287,7 @@ function TaskLimitSelect({
   onSetEditingLimit,
   onSetCustomLimit,
   onResetLimit,
+  variant = 'default',
 }: {
   limitMode: LimitMode
   customLimit: number
@@ -260,13 +297,20 @@ function TaskLimitSelect({
   onSetEditingLimit: (v: boolean) => void
   onSetCustomLimit: (v: number) => void
   onResetLimit: () => void
+  variant?: ActionCopyVariant
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const closeSelect = useCallback(() => { setOpen(false); onSetEditingLimit(false) }, [onSetEditingLimit])
   useClickOutside(ref, closeSelect)
 
-  const label = limitMode === 'unlimited' ? 'ללא הגבלה'
+  const isWizard = variant === 'wizard'
+  const unlimitedLabel = isWizard ? 'ניתן לבצע ללא הגבלה' : 'ללא הגבלה'
+  const limitTooltip = isWizard
+    ? 'כמה פעמים כל משתתף יכול לבצע את הפעילות'
+    : 'כמה פעמים כל משתתף יכול לבצע את המשימה'
+
+  const label = limitMode === 'unlimited' ? unlimitedLabel
     : limitMode === 'once' ? 'פעם אחת'
     : `${customLimit} פעמים`
 
@@ -281,14 +325,14 @@ function TaskLimitSelect({
     <div ref={ref} className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
       <button
         onClick={() => setOpen(!open)}
-        title="כמה פעמים כל משתתף יכול לבצע את המשימה"
+        title={limitTooltip}
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all border',
+          'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all border max-w-[9rem]',
           colorClass,
         )}
       >
-        <Icon size={10} />
-        {label}
+        <Icon size={10} className="shrink-0" />
+        <span className="truncate">{label}</span>
         <ChevronDown size={12} className={cn('transition-transform', open && 'rotate-180')} />
       </button>
 
@@ -304,7 +348,7 @@ function TaskLimitSelect({
           >
             <Repeat size={12} className="shrink-0" />
             <div className="text-right">
-              <div>ללא הגבלה</div>
+              <div>{unlimitedLabel}</div>
               <div className="text-[10px] font-normal text-gray-500">ניתן לבצע כמה פעמים שרוצים</div>
             </div>
           </button>

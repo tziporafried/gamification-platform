@@ -8,9 +8,15 @@ interface InlineAddParticipantProps {
   eventId: string
   onAdded: () => void
   onPlanLimit?: () => void
+  placeholder?: string
 }
 
-export function InlineAddParticipant({ eventId, onAdded, onPlanLimit }: InlineAddParticipantProps) {
+export function InlineAddParticipant({
+  eventId,
+  onAdded,
+  onPlanLimit,
+  placeholder = 'הקלד שם ולחץ Enter להוספה...',
+}: InlineAddParticipantProps) {
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -51,7 +57,7 @@ export function InlineAddParticipant({ eventId, onAdded, onPlanLimit }: InlineAd
         value={name}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="הקלד שם ולחץ Enter להוספה..."
+        placeholder={placeholder}
         className={cn(
           'flex-1 bg-transparent text-sm text-white placeholder-gray-500 outline-none',
           saving && 'opacity-50',

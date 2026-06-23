@@ -3,15 +3,19 @@ import { Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { Toast } from '@/components/ui/Toast'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { ActionForm } from './ActionForm'
 import { ActionRow } from './ActionRow'
 import { InlineAddAction } from './InlineAddAction'
 import type { Action, ActionWithGroups, Group } from '@/types'
 
+type ActionCopyVariant = 'default' | 'wizard'
+
 interface ActionListProps {
   eventId: string
   onCountChange: (count: number) => void
+  variant?: ActionCopyVariant
 }
 
 interface ActionGroupJoin {
@@ -19,7 +23,7 @@ interface ActionGroupJoin {
   groups: Group
 }
 
-export function ActionList({ eventId, onCountChange }: ActionListProps) {
+export function ActionList({ eventId, onCountChange, variant = 'default' }: ActionListProps) {
   const [actions, setActions] = useState<ActionWithGroups[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
@@ -28,10 +32,18 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
   const [editingAction, setEditingAction] = useState<Action | null>(null)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const prevCountRef = useRef(0)
+  const addInputRef = useRef<HTMLInputElement>(null)
+
+  const isWizard = variant === 'wizard'
 
   const triggerRefresh = useCallback(() => { setRefreshKey((k) => k + 1) }, [])
+
+  const showFeedback = useCallback((message: string, feedbackVariant: 'success' | 'error') => {
+    if (isWizard) setToast({ message, variant: feedbackVariant })
+  }, [isWizard])
 
   useEffect(() => {
     async function fetchActions() {
@@ -89,6 +101,15 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
     setEditingAction(null)
   }, [])
 
+  const handleDeleted = useCallback(() => {
+    triggerRefresh()
+  }, [triggerRefresh])
+
+  const handleUpdated = useCallback(() => {
+    showFeedback('הפעילות עודכנה', 'success')
+    triggerRefresh()
+  }, [showFeedback, triggerRefresh])
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -97,16 +118,20 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
     )
   }
 
+  const existingNames = actions.map((a) => a.name)
+
   return (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 mb-4 flex items-center">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
-            <Zap size={18} className="text-brand-400" />
+      {!isWizard && (
+        <div className="shrink-0 mb-4 flex items-center">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
+              <Zap size={18} className="text-brand-400" />
+            </div>
+            <h2 className="text-lg font-bold text-white">משימות</h2>
           </div>
-          <h2 className="text-lg font-bold text-white">משימות</h2>
         </div>
-      </div>
+      )}
 
       {error && (
         <ErrorAlert message={error} className="shrink-0 mb-4" />
@@ -115,11 +140,34 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
       {actions.length === 0 ? (
         <div className="space-y-4">
           <EmptyState
-            title="אין משימות עדיין"
-            description="הקלד שם משימה למטה ולחץ Enter"
+            title={isWizard ? 'עדיין לא נוספו פעילויות' : 'אין משימות עדיין'}
+            description={
+              isWizard
+                ? 'הוסיפו את הפעילות הראשונה שמעניקה נקודות למשתתפים'
+                : 'הקלד שם משימה למטה ולחץ Enter'
+            }
+            action={
+              isWizard ? (
+                <button
+                  type="button"
+                  onClick={() => addInputRef.current?.focus()}
+                  className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-500"
+                >
+                  ➕ הוסף פעילות
+                </button>
+              ) : undefined
+            }
           />
           <div className="shrink-0">
-            <InlineAddAction eventId={eventId} onAdded={triggerRefresh} onPlanLimit={() => setUpgradeOpen(true)} />
+            <InlineAddAction
+              eventId={eventId}
+              onAdded={triggerRefresh}
+              onPlanLimit={() => setUpgradeOpen(true)}
+              variant={variant}
+              existingNames={existingNames}
+              onFeedback={isWizard ? showFeedback : undefined}
+              nameInputRef={addInputRef}
+            />
           </div>
         </div>
       ) : (
@@ -131,13 +179,24 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
                 action={action}
                 groups={groups}
                 onEdit={triggerRefresh}
-                onDeleted={triggerRefresh}
+                onDeleted={isWizard ? handleDeleted : triggerRefresh}
+                onUpdated={isWizard ? handleUpdated : undefined}
                 onError={setError}
+                variant={variant}
+                siblingNames={existingNames.filter((n) => n !== action.name)}
               />
             ))}
           </div>
           <div className="shrink-0 pt-2">
-            <InlineAddAction eventId={eventId} onAdded={triggerRefresh} onPlanLimit={() => setUpgradeOpen(true)} />
+            <InlineAddAction
+              eventId={eventId}
+              onAdded={triggerRefresh}
+              onPlanLimit={() => setUpgradeOpen(true)}
+              variant={variant}
+              existingNames={existingNames}
+              onFeedback={isWizard ? showFeedback : undefined}
+              nameInputRef={addInputRef}
+            />
           </div>
         </>
       )}
@@ -153,6 +212,15 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
       )}
 
       <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          autoDismissMs={3000}
+          onDismiss={() => setToast(null)}
+        />
+      )}
     </div>
   )
 }

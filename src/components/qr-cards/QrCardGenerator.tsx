@@ -7,6 +7,7 @@ import type { Action, Group, ParticipantWithGroups, Event } from '@/types'
 
 interface QrCardGeneratorProps {
   event: Event
+  variant?: 'default' | 'wizard'
 }
 
 interface ActionGroupJoin {
@@ -23,7 +24,12 @@ interface ParticipantSheet {
   actions: ActionWithGroupIds[]
 }
 
-export function QrCardGenerator({ event }: QrCardGeneratorProps) {
+function formatCardsReadyLabel(count: number): string {
+  return count === 1 ? '1 כרטיס מוכן להדפסה' : `${count} כרטיסים מוכנים להדפיסה`
+}
+
+export function QrCardGenerator({ event, variant = 'default' }: QrCardGeneratorProps) {
+  const isWizard = variant === 'wizard'
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [actions, setActions] = useState<ActionWithGroupIds[]>([])
   const [groups, setGroups] = useState<Group[]>([])
@@ -252,6 +258,7 @@ export function QrCardGenerator({ event }: QrCardGeneratorProps) {
   }
 
   const totalCards = sheets.reduce((sum, s) => sum + s.actions.length, 0)
+  const previewTotalCards = participants.reduce((sum, p) => sum + getRelevantActions(p).length, 0)
 
   if (loading) {
     return (
@@ -276,21 +283,25 @@ export function QrCardGenerator({ event }: QrCardGeneratorProps) {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
-            <QrCode size={18} className="text-brand-400" />
+      {!isWizard && (
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
+              <QrCode size={18} className="text-brand-400" />
+            </div>
+            <h2 className="text-lg font-bold text-white">כרטיסי QR למשתתפים</h2>
           </div>
-          <h2 className="text-lg font-bold text-white">כרטיסי QR למשתתפים</h2>
         </div>
-      </div>
+      )}
 
       {!generated ? (
         <div className="space-y-4">
           {/* Preview of what will be generated */}
           <div className="rounded-2xl border border-game-border bg-game-card p-5 space-y-3">
             <p className="text-sm text-gray-300">
-              לכל משתתף יופק דף נפרד עם כרטיסי QR עבור המשימות הרלוונטיות לקבוצות שלו.
+              {isWizard
+                ? 'לכל משתתף ייווצר דף כרטיסים אישי עם כל הפעילויות הזמינות עבורו.'
+                : 'לכל משתתף יופק דף נפרד עם כרטיסי QR עבור המשימות הרלוונטיות לקבוצות שלו.'}
             </p>
 
             {/* Group → Participant → Tasks hierarchy (or flat collapsible list when no groups) */}
@@ -398,22 +409,33 @@ export function QrCardGenerator({ event }: QrCardGeneratorProps) {
 
             <div className="rounded-xl border border-game-border bg-game-dark/50 p-3 text-center">
               <p className="text-sm text-gray-400">
-                <span className="font-bold text-white">{participants.length}</span> משתתפים
-                {' × '}
-                <span className="font-bold text-white">{actions.length}</span> משימות
-                {' = '}
-                סה״כ{' '}
-                <span className="font-bold text-white">
-                  {participants.reduce((sum, p) => sum + getRelevantActions(p).length, 0)}
-                </span>
-                {' '}כרטיסים (לפי קבוצות)
+                {isWizard ? (
+                  formatCardsReadyLabel(previewTotalCards)
+                ) : (
+                  <>
+                    <span className="font-bold text-white">{participants.length}</span> משתתפים
+                    {' × '}
+                    <span className="font-bold text-white">{actions.length}</span> משימות
+                    {' = '}
+                    סה״כ{' '}
+                    <span className="font-bold text-white">{previewTotalCards}</span>
+                    {' '}כרטיסים (לפי קבוצות)
+                  </>
+                )}
               </p>
             </div>
 
-            <Button onClick={handleGenerate} className="w-full">
-              <QrCode size={16} className="ml-1.5" />
-              יצירת כרטיסים
-            </Button>
+            <div className="space-y-2">
+              <Button onClick={handleGenerate} className="w-full">
+                <Printer size={16} className="ml-1.5" />
+                {isWizard ? 'הדפס כרטיסים' : 'יצירת כרטיסים'}
+              </Button>
+              {isWizard && (
+                <p className="text-center text-xs text-gray-500">
+                  אפשר תמיד לחזור ולהדפיס שוב בהמשך.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       ) : (
@@ -428,7 +450,7 @@ export function QrCardGenerator({ event }: QrCardGeneratorProps) {
             </button>
             <Button onClick={handlePrint}>
               <Printer size={16} className="ml-1.5" />
-              הדפסה
+              {isWizard ? 'הדפס כרטיסים' : 'הדפסה'}
             </Button>
             <span className="text-sm text-gray-400">
               {sheets.length} משתתפים • {totalCards} כרטיסים

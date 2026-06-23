@@ -31,18 +31,44 @@ export function computeWizardState(event: Event, counts: EventCounts, groupType:
   }
 }
 
-export function calculateReadiness(event: Event, counts: EventCounts): ReadinessCheck[] {
+export function calculateReadiness(
+  event: Event,
+  counts: EventCounts,
+  groupType: GroupType | null = getWizardPrefs(event.id).groupType,
+): ReadinessCheck[] {
   return [
     {
       id: 'event_name',
       label: 'לאירוע יש שם',
+      wizardPassedLabel: 'נתתם שם לפעילות',
+      wizardFailedLabel: 'יש לתת שם לפעילות',
       passed: !!event.name,
       required: true,
       stepNumber: 1,
     },
     {
+      id: 'groups_decided',
+      label: 'נבחרה חלוקה לקבוצות',
+      wizardPassedLabel: 'בחרתם איך לשחק',
+      wizardFailedLabel: 'יש לבחור איך לשחק',
+      passed: groupType !== null,
+      required: true,
+      stepNumber: 2,
+    },
+    {
+      id: 'has_groups',
+      label: 'הוגדרה לפחות קבוצה אחת',
+      wizardPassedLabel: 'נוספה לפחות קבוצה אחת',
+      wizardFailedLabel: 'יש להוסיף לפחות קבוצה אחת',
+      passed: groupType !== 'custom' || counts.groups > 0,
+      required: true,
+      stepNumber: 2,
+    },
+    {
       id: 'has_participants',
       label: 'לפחות 2 משתתפים',
+      wizardPassedLabel: 'נוספו מספיק משתתפים',
+      wizardFailedLabel: 'יש להוסיף משתתף נוסף',
       passed: counts.participants >= 2,
       required: true,
       stepNumber: 3,
@@ -50,6 +76,8 @@ export function calculateReadiness(event: Event, counts: EventCounts): Readiness
     {
       id: 'has_tasks',
       label: 'לפחות משימה אחת',
+      wizardPassedLabel: 'נוספה לפחות פעילות אחת',
+      wizardFailedLabel: 'יש להוסיף לפחות פעילות אחת',
       passed: counts.tasks > 0,
       required: true,
       stepNumber: 4,
@@ -57,8 +85,19 @@ export function calculateReadiness(event: Event, counts: EventCounts): Readiness
   ]
 }
 
-export function isEventReady(event: Event, counts: EventCounts): boolean {
-  return calculateReadiness(event, counts).filter(c => c.required).every(c => c.passed)
+export function getFirstIncompleteStep(checks: ReadinessCheck[]): number | null {
+  const steps = checks
+    .filter((c) => c.required && !c.passed && c.stepNumber != null)
+    .map((c) => c.stepNumber as number)
+  return steps.length > 0 ? Math.min(...steps) : null
+}
+
+export function isEventReady(
+  event: Event,
+  counts: EventCounts,
+  groupType: GroupType | null = getWizardPrefs(event.id).groupType,
+): boolean {
+  return calculateReadiness(event, counts, groupType).filter(c => c.required).every(c => c.passed)
 }
 
 export function getStepNumber(stepId: WizardStepId): number {

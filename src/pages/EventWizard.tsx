@@ -51,24 +51,27 @@ export function EventWizard() {
     fetchEvent()
   }, [id, user, navigate])
 
-  // Sync URL step param → state (on initial load / direct link)
+  // Sync URL step param → state
   useEffect(() => {
-    if (step) {
-      const stepNum = parseInt(step, 10)
-      if (stepNum >= 1 && stepNum <= 5 && stepNum !== currentStep) {
-        goToStep(stepNum)
-      }
+    if (!step) return
+    const stepNum = parseInt(step, 10)
+    if (stepNum >= 1 && stepNum <= 5) {
+      goToStep(stepNum)
     }
-  }, [step]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [step, goToStep])
 
-  // Sync state → URL (keep URL in sync with current step)
+  // Sync state → URL (don't override an explicit URL step until state catches up)
   useEffect(() => {
     if (!id || loading) return
+    const urlStep = step ? parseInt(step, 10) : NaN
+    if (!Number.isNaN(urlStep) && urlStep >= 1 && urlStep <= 5 && urlStep !== currentStep) {
+      return
+    }
     const expectedPath = `/events/${id}/step/${currentStep}`
     if (window.location.pathname !== expectedPath) {
       navigate(expectedPath, { replace: true })
     }
-  }, [currentStep, id, loading, navigate])
+  }, [currentStep, id, loading, navigate, step])
 
   if (loading || !event) return <FullPageLoader />
 
@@ -124,6 +127,8 @@ export function EventWizard() {
         <StepReviewGenerate
           event={event}
           counts={counts}
+          groupType={groupType}
+          onGoToStep={goToStep}
           onBack={goBack}
         />
       )}

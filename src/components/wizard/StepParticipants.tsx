@@ -150,8 +150,8 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
 
   return (
     <WizardStepWrapper
-      title="משתתפים"
-      subtitle="הוסף את כל מי שמשתתף באירוע"
+      title="מי משתתף?"
+      subtitle="הוסיפו את כל המשתתפים בפעילות"
       currentStep={3}
       canAdvance={participants.length > 0}
       onNext={onNext}
@@ -161,12 +161,16 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
         {/* Pinned top: counter + usage bar */}
         <div className="shrink-0 space-y-3 pb-3">
           {participants.length > 0 && (
-            <p className="text-xs text-gray-500 text-center">
-              {participants.length} משתתפים
+            <p className="text-xs text-gray-400 text-center">
+              נוספו {participants.length} משתתפים
             </p>
           )}
-          {planLimits.isFreePlan && (
-            <UsageBar info={planLimits.participants} entity="participants" />
+          {planLimits.isFreePlan && planLimits.participants.limit !== null && (
+            <UsageBar
+              info={planLimits.participants}
+              entity="participants"
+              showCount={false}
+            />
           )}
         </div>
 
@@ -181,7 +185,7 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
           {participants.length === 0 ? (
             <EmptyState
               title="אין משתתפים עדיין"
-              description="הקלד שם למטה ולחץ Enter להוספה מהירה"
+              description="הקלידו שם משתתף ולחצו Enter"
             />
           ) : (
             participants.map((p) => (
@@ -200,7 +204,12 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
 
         {/* Pinned bottom: add input */}
         <div className="shrink-0 pt-2">
-          <InlineAddParticipant eventId={eventId} onAdded={refreshDataWithCounts} onPlanLimit={() => setUpgradeOpen(true)} />
+          <InlineAddParticipant
+            eventId={eventId}
+            onAdded={refreshDataWithCounts}
+            onPlanLimit={() => setUpgradeOpen(true)}
+            placeholder="הקלידו שם משתתף ולחצו Enter"
+          />
         </div>
       </div>
 

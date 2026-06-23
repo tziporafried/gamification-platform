@@ -4,23 +4,55 @@ import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { isPlanLimitError } from '@/lib/plans'
 
+type ActionCopyVariant = 'default' | 'wizard'
+
 interface InlineAddActionProps {
   eventId: string
   onAdded: () => void
   onPlanLimit?: () => void
+  variant?: ActionCopyVariant
+  existingNames?: string[]
+  onFeedback?: (message: string, variant: 'success' | 'error') => void
+  nameInputRef?: React.RefObject<HTMLInputElement | null>
 }
 
-export function InlineAddAction({ eventId, onAdded, onPlanLimit }: InlineAddActionProps) {
+export function InlineAddAction({
+  eventId,
+  onAdded,
+  onPlanLimit,
+  variant = 'default',
+  existingNames = [],
+  onFeedback,
+  nameInputRef,
+}: InlineAddActionProps) {
   const [name, setName] = useState('')
   const [points, setPoints] = useState('10')
   const [saving, setSaving] = useState(false)
-  const nameRef = useRef<HTMLInputElement>(null)
+  const internalNameRef = useRef<HTMLInputElement>(null)
   const pointsRef = useRef<HTMLInputElement>(null)
+  const nameRef = nameInputRef ?? internalNameRef
+
+  const isWizard = variant === 'wizard'
+  const placeholder = 'שם המשימה...'
+  const addLabel = isWizard ? 'הוסף פעילות' : 'הוסף'
 
   async function addAction() {
     const trimmed = name.trim()
     const pointsNum = parseInt(points, 10)
-    if (!trimmed || isNaN(pointsNum) || saving) return
+    if (saving) return
+
+    if (!trimmed) {
+      onFeedback?.('יש להזין שם לפעילות', 'error')
+      return
+    }
+    if (isNaN(pointsNum)) {
+      onFeedback?.('יש לבחור מספר נקודות', 'error')
+      return
+    }
+    if (existingNames.some((n) => n.toLowerCase() === trimmed.toLowerCase())) {
+      onFeedback?.('כבר קיימת פעילות בשם זה', 'error')
+      return
+    }
 
     setSaving(true)
     const { error } = await supabase
@@ -58,12 +90,12 @@ export function InlineAddAction({ eventId, onAdded, onPlanLimit }: InlineAddActi
     <div className="flex items-center gap-2 rounded-xl border border-dashed border-game-border bg-game-card/50 p-3 transition-colors focus-within:border-brand-500/50">
       <Plus size={18} className="shrink-0 text-gray-500" />
       <input
-        ref={nameRef}
+        ref={nameRef as React.RefObject<HTMLInputElement>}
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={handleNameKeyDown}
-        placeholder="שם המשימה..."
+        placeholder={placeholder}
         className={cn(
           'flex-1 bg-transparent text-sm text-white placeholder-gray-500 outline-none',
           saving && 'opacity-50',
@@ -89,7 +121,7 @@ export function InlineAddAction({ eventId, onAdded, onPlanLimit }: InlineAddActi
           disabled={saving}
           className="shrink-0 text-xs font-medium text-brand-400 hover:text-brand-300 transition-colors disabled:opacity-50"
         >
-          הוסף
+          {addLabel}
         </button>
       )}
     </div>
