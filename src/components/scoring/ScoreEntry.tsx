@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, useRef, FormEvent, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Zap, Send } from 'lucide-react'
+import { Zap, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { hexToRgb, rgba } from '@/lib/accentColor'
 import { Button } from '@/components/ui/Button'
-import { PointsFlyUp } from '@/components/ui/PointsFlyUp'
 import { Toast } from '@/components/ui/Toast'
 import { CelebrationModal } from './CelebrationModal'
 import { ScannerZone } from './ScannerZone'
@@ -12,7 +11,7 @@ import type { ScannerZoneRef } from './ScannerZone'
 import { RecentActionsFeed } from './RecentActionsFeed'
 import { ScanBackground } from './ScanBackground'
 import { useScoreSubmit } from '@/hooks/useScoreSubmit'
-import type { PointTransactionWithDetails, NewlyAwardedReward, Group, QrScoringMode } from '@/types'
+import type { PointTransactionWithDetails, NewlyAwardedReward, QrScoringMode } from '@/types'
 
 interface ScoreEntryProps {
   eventId: string
@@ -22,35 +21,35 @@ interface ScoreEntryProps {
   eventLogoUrl: string | null
 }
 
-interface ParticipantPreviewData {
-  id: string; name: string; externalId: string; totalPoints: number; rank: number | null; groups: Group[]
-}
-interface ActionPreviewData {
-  id: string; name: string; code: string; points: number
-}
+interface ParticipantOption { id: string; name: string; externalId: string }
+interface ActionOption { id: string; name: string; code: string; points: number }
 
 export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, eventLogoUrl }: ScoreEntryProps) {
   const accent = useMemo(() => hexToRgb(themeColor), [themeColor])
 
-  const [participantCode, setParticipantCode] = useState('')
-  const [actionCode, setActionCode] = useState('')
   const [transactions, setTransactions] = useState<PointTransactionWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [celebrationRewards, setCelebrationRewards] = useState<NewlyAwardedReward[]>([])
   const [celebratingParticipantName, setCelebratingParticipantName] = useState('')
 
-  const [participantPreview, setParticipantPreview] = useState<ParticipantPreviewData | null>(null)
-  const [actionPreview, setActionPreview] = useState<ActionPreviewData | null>(null)
-  const [participantLoading, setParticipantLoading] = useState(false)
-  const [actionLoading, setActionLoading] = useState(false)
+  // Manual input — name-based autocomplete
+  const [participantQuery, setParticipantQuery] = useState('')
+  const [actionQuery, setActionQuery] = useState('')
+  const [selectedParticipant, setSelectedParticipant] = useState<ParticipantOption | null>(null)
+  const [selectedAction, setSelectedAction] = useState<ActionOption | null>(null)
+  const [participantSuggestions, setParticipantSuggestions] = useState<ParticipantOption[]>([])
+  const [actionSuggestions, setActionSuggestions] = useState<ActionOption[]>([])
+  const [showParticipantDropdown, setShowParticipantDropdown] = useState(false)
+  const [showActionDropdown, setShowActionDropdown] = useState(false)
 
-  const [flyUpPoints, setFlyUpPoints] = useState<number | null>(null)
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
   const [successFlash, setSuccessFlash] = useState(false)
   const [showManualInput, setShowManualInput] = useState(false)
 
   const scannerZoneRef = useRef<ScannerZoneRef>(null)
   const participantInputRef = useRef<HTMLInputElement>(null)
+  const participantDropdownRef = useRef<HTMLDivElement>(null)
+  const actionDropdownRef = useRef<HTMLDivElement>(null)
   const { submit, submitting, lastError } = useScoreSubmit(eventId)
 
   useEffect(() => { if (lastError) setToast({ message: lastError, variant: 'error' }) }, [lastError])
@@ -68,72 +67,110 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
 
   useEffect(() => { fetchTransactions() }, [fetchTransactions])
 
-  // Participant preview debounce
-  const participantDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Close dropdowns on outside click
   useEffect(() => {
-    if (participantDebounceRef.current) clearTimeout(participantDebounceRef.current)
-    const code = participantCode.trim()
-    if (!code) { setParticipantPreview(null); return }
-    participantDebounceRef.current = setTimeout(async () => {
-      setParticipantLoading(true)
-      try {
-        const { data: participant } = await supabase
-          .from('participants').select('id, name, external_id, participant_groups(group_id, groups(*))')
-          .eq('event_id', eventId).eq('external_id', code).maybeSingle()
-        if (!participant) { setParticipantPreview(null); setParticipantLoading(false); return }
-        const groups: Group[] = ((participant.participant_groups as unknown as { group_id: string; groups: Group }[]) ?? []).map((pg) => pg.groups)
-        const [pointsResult, leaderboardResult] = await Promise.all([
-          supabase.from('point_transactions').select('points').eq('participant_id', participant.id),
-          supabase.rpc('get_participant_leaderboard'),
-        ])
-        const totalPoints = (pointsResult.data ?? []).reduce((sum, t) => sum + t.points, 0)
-        let rank: number | null = null
-        if (leaderboardResult.data) {
-          const sorted = leaderboardResult.data as { participant_id: string; total_points: number }[]
-          const idx = sorted.findIndex((e) => e.participant_id === participant.id)
-          if (idx >= 0) { let r = 1; for (let i = 0; i < idx; i++) { if (sorted[i].total_points > sorted[idx].total_points) r = i + 2 } rank = r }
-        }
-        setParticipantPreview({ id: participant.id, name: participant.name, externalId: participant.external_id, totalPoints, rank, groups })
-      } catch { setParticipantPreview(null) }
-      setParticipantLoading(false)
-    }, 500)
-    return () => { if (participantDebounceRef.current) clearTimeout(participantDebounceRef.current) }
-  }, [participantCode, eventId])
+    function handleClick(e: MouseEvent) {
+      if (participantDropdownRef.current && !participantDropdownRef.current.contains(e.target as Node)) {
+        setShowParticipantDropdown(false)
+      }
+      if (actionDropdownRef.current && !actionDropdownRef.current.contains(e.target as Node)) {
+        setShowActionDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
-  // Action preview debounce
-  const actionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Participant name search
+  const pSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    if (actionDebounceRef.current) clearTimeout(actionDebounceRef.current)
-    const code = actionCode.trim()
-    if (!code) { setActionPreview(null); return }
-    actionDebounceRef.current = setTimeout(async () => {
-      setActionLoading(true)
-      try {
-        const { data: action } = await supabase.from('actions').select('id, name, code, points, is_active').eq('event_id', eventId).eq('code', code).maybeSingle()
-        if (action && action.is_active) setActionPreview({ id: action.id, name: action.name, code: action.code, points: action.points })
-        else setActionPreview(null)
-      } catch { setActionPreview(null) }
-      setActionLoading(false)
-    }, 400)
-    return () => { if (actionDebounceRef.current) clearTimeout(actionDebounceRef.current) }
-  }, [actionCode, eventId])
+    if (pSearchRef.current) clearTimeout(pSearchRef.current)
+    if (selectedParticipant) return
+    const q = participantQuery.trim()
+    if (!q) { setParticipantSuggestions([]); setShowParticipantDropdown(false); return }
 
-  const handleSubmit = useCallback(async (pCode?: string, aCode?: string) => {
+    pSearchRef.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from('participants')
+        .select('id, name, external_id')
+        .eq('event_id', eventId)
+        .ilike('name', `%${q}%`)
+        .limit(8)
+      const results: ParticipantOption[] = (data ?? []).map((p) => ({ id: p.id, name: p.name, externalId: p.external_id }))
+      setParticipantSuggestions(results)
+      setShowParticipantDropdown(results.length > 0)
+    }, 300)
+
+    return () => { if (pSearchRef.current) clearTimeout(pSearchRef.current) }
+  }, [participantQuery, selectedParticipant, eventId])
+
+  // Action name search
+  const aSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (aSearchRef.current) clearTimeout(aSearchRef.current)
+    if (selectedAction) return
+    const q = actionQuery.trim()
+    if (!q) { setActionSuggestions([]); setShowActionDropdown(false); return }
+
+    aSearchRef.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from('actions')
+        .select('id, name, code, points, is_active')
+        .eq('event_id', eventId)
+        .eq('is_active', true)
+        .ilike('name', `%${q}%`)
+        .limit(8)
+      const results: ActionOption[] = (data ?? []).map((a) => ({ id: a.id, name: a.name, code: a.code, points: a.points }))
+      setActionSuggestions(results)
+      setShowActionDropdown(results.length > 0)
+    }, 300)
+
+    return () => { if (aSearchRef.current) clearTimeout(aSearchRef.current) }
+  }, [actionQuery, selectedAction, eventId])
+
+  function selectParticipant(p: ParticipantOption) {
+    setSelectedParticipant(p)
+    setParticipantQuery(p.name)
+    setShowParticipantDropdown(false)
+  }
+
+  function clearParticipant() {
+    setSelectedParticipant(null)
+    setParticipantQuery('')
+    participantInputRef.current?.focus()
+  }
+
+  function selectAction(a: ActionOption) {
+    setSelectedAction(a)
+    setActionQuery(a.name)
+    setShowActionDropdown(false)
+  }
+
+  function clearAction() {
+    setSelectedAction(null)
+    setActionQuery('')
+  }
+
+  const handleSubmit = useCallback(async () => {
     setToast(null)
-    const result = await submit(pCode ?? participantCode, aCode ?? actionCode)
+    if (!selectedParticipant || !selectedAction) {
+      setToast({ message: 'יש לבחור משתתף ומשימה', variant: 'error' })
+      return
+    }
+    const result = await submit(selectedParticipant.externalId, selectedAction.code)
     if (!result) return
     setSuccessFlash(true); setTimeout(() => setSuccessFlash(false), 1500)
     if (result.celebrationRewards.length > 0) { setCelebratingParticipantName(result.participantName); setCelebrationRewards(result.celebrationRewards) }
-    setFlyUpPoints(result.points)
     const sign = result.points >= 0 ? '+' : ''
     setToast({ message: `${sign}${result.points} נק׳ ל${result.participantName} עבור ${result.actionName}`, variant: 'success' })
-    setParticipantCode(''); setActionCode(''); setParticipantPreview(null); setActionPreview(null)
+    setSelectedParticipant(null); setParticipantQuery('')
+    setSelectedAction(null); setActionQuery('')
     scannerZoneRef.current?.resetSeparateState(); fetchTransactions()
-  }, [participantCode, actionCode, submit, fetchTransactions])
+  }, [selectedParticipant, selectedAction, submit, fetchTransactions])
 
   function handleFormSubmit(e: FormEvent) { e.preventDefault(); handleSubmit() }
 
-  const bothValid = participantPreview && actionPreview
+  const bothValid = selectedParticipant && selectedAction
 
   const confettiParticles = useMemo(() => {
     if (!successFlash) return []
@@ -173,7 +210,6 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
       <div className="relative z-10 flex flex-1 flex-col overflow-hidden lg:flex-row">
         {/* LEFT 60% — Scanner */}
         <div className="flex flex-1 flex-col items-center justify-center px-4 py-6 lg:basis-[60%]">
-          {/* Title */}
           <motion.h1 className="mb-1 text-3xl font-black text-white md:text-4xl"
             initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             סרקו ברקוד
@@ -185,84 +221,114 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
 
           <ScannerZone ref={scannerZoneRef} mode={qrScoringMode} successFlash={successFlash} accent={accent} />
 
-          {/* Preview chips */}
-          <AnimatePresence>
-            {(participantPreview || actionPreview) && (
-              <motion.div className="mt-4 flex flex-wrap items-center justify-center gap-3"
-                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}>
-                {participantPreview && (
-                  <motion.div className="flex items-center gap-2 rounded-xl px-4 py-2 backdrop-blur-sm"
-                    style={{ backgroundColor: rgba(accent, 0.1), borderWidth: 1, borderColor: rgba(accent, 0.2) }}
-                    initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: rgba(accent, 0.25) }}>
-                      {participantPreview.name.slice(0, 2)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-white">{participantPreview.name}</p>
-                      <p className="text-[10px]" style={{ color: rgba(accent, 0.8) }}>{participantPreview.totalPoints.toLocaleString()} נק׳</p>
-                    </div>
-                  </motion.div>
-                )}
-                {actionPreview && (
-                  <motion.div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 backdrop-blur-sm"
-                    initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-                    <Zap size={14} className="text-emerald-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-200">{actionPreview.name}</p>
-                      <p className={`text-[10px] font-bold ${actionPreview.points >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {actionPreview.points >= 0 ? '+' : ''}{actionPreview.points} נק׳
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {/* Submit button */}
           <AnimatePresence>
             {bothValid && (
               <motion.div className="relative mt-3" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
-                <Button variant="gradient" size="lg" loading={submitting} onClick={() => handleSubmit()}
+                <Button variant="gradient" size="lg" loading={submitting} onClick={handleSubmit}
                   className="animate-glow-pulse px-8 font-bold tracking-wide">
                   <Zap size={16} className="ml-1.5" />
-                  הענקת {actionPreview.points >= 0 ? '+' : ''}{actionPreview.points} נק׳
+                  הענקת {selectedAction.points >= 0 ? '+' : ''}{selectedAction.points} נק׳
                 </Button>
-                <PointsFlyUp points={flyUpPoints} onDone={() => setFlyUpPoints(null)} />
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Manual input */}
+          {/* Manual input toggle */}
           <motion.button className="mt-4 text-xs text-gray-500 underline-offset-2 hover:text-gray-300 hover:underline"
             onClick={() => setShowManualInput(!showManualInput)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
             {showManualInput ? 'הסתרת הזנה ידנית' : 'הזנה ידנית'}
           </motion.button>
 
+          {/* Manual input form with autocomplete */}
           <AnimatePresence>
             {showManualInput && (
               <motion.form onSubmit={handleFormSubmit}
                 className="mt-3 w-full max-w-md space-y-3 rounded-xl border border-game-border bg-game-card/60 p-4 backdrop-blur-sm"
                 initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
+                  {/* Participant autocomplete */}
+                  <div className="relative" ref={participantDropdownRef}>
                     <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500">שחקן</label>
-                    <input ref={participantInputRef} placeholder="P-1001" value={participantCode} onChange={(e) => setParticipantCode(e.target.value)}
-                      className="w-full rounded-lg border border-game-border bg-game-dark px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-1"
-                      style={{ ['--tw-ring-color' as string]: rgba(accent, 0.5) }} />
-                    {participantLoading && <div className="mt-1 flex items-center gap-1 text-[10px] text-gray-500"><div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: rgba(accent, 0.5), borderTopColor: 'transparent' }} />מחפש...</div>}
+                    {selectedParticipant ? (
+                      <div className="flex items-center justify-between rounded-lg border bg-game-dark px-3 py-2"
+                        style={{ borderColor: rgba(accent, 0.3) }}>
+                        <span className="text-sm font-medium text-white">{selectedParticipant.name}</span>
+                        <button type="button" onClick={clearParticipant} className="mr-1 rounded p-0.5 text-gray-400 hover:text-white">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <input
+                        ref={participantInputRef}
+                        placeholder="הקלידו שם משתתף..."
+                        value={participantQuery}
+                        onChange={(e) => { setParticipantQuery(e.target.value); setSelectedParticipant(null) }}
+                        onFocus={() => { if (participantSuggestions.length > 0) setShowParticipantDropdown(true) }}
+                        className="w-full rounded-lg border border-game-border bg-game-dark px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-1"
+                        style={{ ['--tw-ring-color' as string]: rgba(accent, 0.5) }}
+                      />
+                    )}
+                    {showParticipantDropdown && participantSuggestions.length > 0 && (
+                      <div className="absolute inset-x-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-game-border bg-game-dark shadow-xl">
+                        {participantSuggestions.map((p) => (
+                          <button key={p.id} type="button"
+                            className="flex w-full items-center gap-2 px-3 py-2 text-right text-sm text-gray-200 transition-colors hover:bg-white/5"
+                            onClick={() => selectParticipant(p)}>
+                            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                              style={{ backgroundColor: rgba(accent, 0.2) }}>
+                              {p.name.slice(0, 2)}
+                            </div>
+                            <span className="truncate">{p.name}</span>
+                            <span className="mr-auto font-mono text-[10px] text-gray-500">{p.externalId}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div>
+
+                  {/* Action autocomplete */}
+                  <div className="relative" ref={actionDropdownRef}>
                     <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500">משימה</label>
-                    <input placeholder="A-1001" value={actionCode} onChange={(e) => setActionCode(e.target.value)}
-                      className="w-full rounded-lg border border-game-border bg-game-dark px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-1"
-                      style={{ ['--tw-ring-color' as string]: rgba(accent, 0.5) }} />
-                    {actionLoading && <div className="mt-1 flex items-center gap-1 text-[10px] text-gray-500"><div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: rgba(accent, 0.5), borderTopColor: 'transparent' }} />מחפש...</div>}
+                    {selectedAction ? (
+                      <div className="flex items-center justify-between rounded-lg border bg-game-dark px-3 py-2"
+                        style={{ borderColor: rgba(accent, 0.3) }}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-white">{selectedAction.name}</span>
+                          <span className={`text-[10px] font-bold ${selectedAction.points >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {selectedAction.points >= 0 ? '+' : ''}{selectedAction.points}
+                          </span>
+                        </div>
+                        <button type="button" onClick={clearAction} className="mr-1 rounded p-0.5 text-gray-400 hover:text-white">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <input
+                        placeholder="הקלידו שם משימה..."
+                        value={actionQuery}
+                        onChange={(e) => { setActionQuery(e.target.value); setSelectedAction(null) }}
+                        onFocus={() => { if (actionSuggestions.length > 0) setShowActionDropdown(true) }}
+                        className="w-full rounded-lg border border-game-border bg-game-dark px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-1"
+                        style={{ ['--tw-ring-color' as string]: rgba(accent, 0.5) }}
+                      />
+                    )}
+                    {showActionDropdown && actionSuggestions.length > 0 && (
+                      <div className="absolute inset-x-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-game-border bg-game-dark shadow-xl">
+                        {actionSuggestions.map((a) => (
+                          <button key={a.id} type="button"
+                            className="flex w-full items-center justify-between px-3 py-2 text-right text-sm text-gray-200 transition-colors hover:bg-white/5"
+                            onClick={() => selectAction(a)}>
+                            <span className="truncate">{a.name}</span>
+                            <span className={`shrink-0 text-xs font-bold ${a.points >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {a.points >= 0 ? '+' : ''}{a.points}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <Button type="submit" variant="gradient" size="sm" loading={submitting} className="w-full font-semibold">
-                  <Send size={14} className="ml-1.5" /> שלח
-                </Button>
               </motion.form>
             )}
           </AnimatePresence>
