@@ -1,8 +1,5 @@
-import { useEffect } from 'react'
-import { ArrowRight } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import { WizardProgress } from './WizardProgress'
-import { useHeaderSlot } from '@/contexts/HeaderSlotContext'
+import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
 import type { WizardState, Event } from '@/types'
 
 interface WizardLayoutProps {
@@ -14,27 +11,7 @@ interface WizardLayoutProps {
 }
 
 export function WizardLayout({ event, currentStep, wizardState, onStepClick, children }: WizardLayoutProps) {
-  const navigate = useNavigate()
-  const { setCenterSlot } = useHeaderSlot()
-
-  useEffect(() => {
-    setCenterSlot(
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => navigate('/events')}
-          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 transition-colors"
-        >
-          <ArrowRight size={14} />
-          <span>האירועים שלי</span>
-        </button>
-        <span className="text-brand-400/60">/</span>
-        <span className="text-xs font-medium text-white truncate max-w-[200px]">
-          {event.name || 'אירוע חדש'}
-        </span>
-      </div>
-    )
-    return () => setCenterSlot(null)
-  }, [event.name, navigate, setCenterSlot])
+  useEventHeaderBreadcrumb(event.name)
 
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 56px)' }}>

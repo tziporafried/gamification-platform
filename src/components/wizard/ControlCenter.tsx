@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { QrCode, Monitor, ArrowRight, Link as LinkIcon, Check } from 'lucide-react'
+import { QrCode, Monitor, Link as LinkIcon, Check } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ReadinessChecklist } from './ReadinessChecklist'
+import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
 import { calculateReadiness, isEventReady } from '@/lib/wizard'
 import type { Event, EventCounts } from '@/types'
 
@@ -20,6 +21,7 @@ const ACTIONS = [
 export function ControlCenter({ event, counts }: ControlCenterProps) {
   const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
+  useEventHeaderBreadcrumb(event.name)
   const ready = isEventReady(event, counts)
   const checks = calculateReadiness(event, counts)
 
@@ -39,34 +41,20 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
 
   return (
     <>
-      {/* Secondary nav */}
+      {/* Actions bar */}
       <div className="border-b border-game-border">
-        <div className="mx-auto flex h-10 max-w-5xl items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/events')}
-              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 transition-colors"
-            >
-              <ArrowRight size={14} />
-              <span className="hidden sm:inline">האירועים שלי</span>
-            </button>
-            <span className="text-game-border">/</span>
-            <span className="text-xs font-medium text-white truncate max-w-[160px]">{event.name}</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={copyManagementLink}>
-              {copied ? <Check size={14} className="ml-1 text-emerald-400" /> : <LinkIcon size={14} className="ml-1" />}
-              {copied ? 'הועתק!' : 'העתק קישור'}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate(`/events/${event.id}/step/1`)}
-            >
-              עריכת הגדרות
-            </Button>
-          </div>
+        <div className="mx-auto flex h-10 max-w-5xl items-center justify-end gap-2 px-4">
+          <Button variant="ghost" size="sm" onClick={copyManagementLink}>
+            {copied ? <Check size={14} className="ml-1 text-emerald-400" /> : <LinkIcon size={14} className="ml-1" />}
+            {copied ? 'הועתק!' : 'העתק קישור'}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/events/${event.id}/step/1`)}
+          >
+            עריכת הגדרות
+          </Button>
         </div>
       </div>
 

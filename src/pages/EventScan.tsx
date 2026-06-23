@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { ScoreEntry } from '@/components/scoring/ScoreEntry'
+import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
 
@@ -37,21 +37,16 @@ export function EventScanPage() {
   if (loading || !event) return <FullPageLoader />
 
   return (
-    <>
-      <div className="border-b border-game-border">
-        <div className="mx-auto flex h-10 max-w-5xl items-center px-4">
-          <button
-            onClick={() => navigate(`/events/${event.id}/control`)}
-            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 transition-colors"
-          >
-            <ArrowRight size={16} />
-            <span>חזרה למרכז הבקרה</span>
-          </button>
-        </div>
-      </div>
-      <main className="mx-auto max-w-5xl px-4 py-6 md:py-8">
-        <ScoreEntry eventId={event.id} qrScoringMode={event.qr_scoring_mode} />
-      </main>
-    </>
+    <EventScanContent event={event} />
+  )
+}
+
+function EventScanContent({ event }: { event: Event }) {
+  useEventHeaderBreadcrumb(event.name, 'סריקה')
+
+  return (
+    <main className="mx-auto max-w-5xl px-4 py-6 md:py-8">
+      <ScoreEntry eventId={event.id} qrScoringMode={event.qr_scoring_mode} />
+    </main>
   )
 }

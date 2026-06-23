@@ -281,10 +281,10 @@ function EventRow({ event, isOwner, isFreePlan, onDelete, onShare }: EventRowPro
           onClick={handleOpenControl}
           disabled={isWip}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 hover:bg-white/10 hover:text-white"
-          title={isWip ? 'האירוע עדיין בעריכה' : 'מרכז בקרה'}
+          title={isWip ? 'האירוע עדיין בעריכה' : 'להתחיל לשחק'}
         >
           <ExternalLink size={13} />
-          מרכז בקרה
+          להתחיל לשחק
         </button>
         <button
           onClick={handleShare}

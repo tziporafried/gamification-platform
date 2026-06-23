@@ -32,7 +32,7 @@ export function StepReviewGenerate({ event, counts, onBack }: StepReviewGenerate
       canAdvance={ready}
       onNext={handleFinish}
       onBack={onBack}
-      nextLabel="למרכז הבקרה"
+      nextLabel="להתחיל לשחק"
     >
       <div className="space-y-4">
         {/* Summary stats */}
