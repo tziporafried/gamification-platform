@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Calendar, ExternalLink, Trash2, Share2 } from 'lucide-react'
+import { Plus, Calendar, ExternalLink, Trash2, Share2, Settings2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { ShareEventModal } from '@/components/ShareEventModal'
-import { cn } from '@/lib/utils'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
 
@@ -130,14 +129,13 @@ export function MyEvents() {
             </div>
           )}
 
-          <div className="rounded-2xl border border-game-border overflow-hidden">
-            {events.map((event, i) => (
+          <div className="space-y-2">
+            {events.map((event) => (
               <EventRow
                 key={event.id}
                 event={event}
                 isOwner={event.owner_admin_id === user!.id}
                 isFreePlan={isFreePlan}
-                isLast={i === events.length - 1}
                 onDelete={() => setDeletingEvent(event)}
                 onShare={() => setSharingEvent(event)}
               />
@@ -190,12 +188,11 @@ interface EventRowProps {
   event: Event
   isOwner: boolean
   isFreePlan: boolean
-  isLast: boolean
   onDelete: () => void
   onShare: () => void
 }
 
-function EventRow({ event, isOwner, isFreePlan, isLast, onDelete, onShare }: EventRowProps) {
+function EventRow({ event, isOwner, isFreePlan, onDelete, onShare }: EventRowProps) {
   const navigate = useNavigate()
 
   const statusLabels: Record<string, { label: string; color: string }> = {
@@ -208,8 +205,12 @@ function EventRow({ event, isOwner, isFreePlan, isLast, onDelete, onShare }: Eve
 
   function handleOpenControl(e: React.MouseEvent) {
     e.stopPropagation()
-    if (!event.slug) return
-    navigate(`/e/${event.slug}/control`)
+    navigate(`/events/${event.id}/control`)
+  }
+
+  function handleOpenSettings(e: React.MouseEvent) {
+    e.stopPropagation()
+    navigate(`/events/${event.id}/step/1`)
   }
 
   function handleDelete(e: React.MouseEvent) {
@@ -223,14 +224,12 @@ function EventRow({ event, isOwner, isFreePlan, isLast, onDelete, onShare }: Eve
   }
 
   const accent = event.theme_color || '#7c3aed'
+  const isWip = event.status === 'editing'
 
   return (
     <button
-      onClick={() => navigate(`/events/${event.id}`)}
-      className={cn(
-        'group relative flex w-full items-center gap-5 px-5 py-4 text-right bg-game-dark hover:bg-white/[0.03] transition-colors',
-        !isLast && 'border-b border-game-border',
-      )}
+      onClick={() => isWip ? navigate(`/events/${event.id}/step/1`) : navigate(`/events/${event.id}/control`)}
+      className="group relative flex w-full items-center gap-5 px-5 py-4 text-right bg-game-dark hover:bg-white/[0.03] transition-colors rounded-2xl border border-game-border overflow-hidden"
     >
       {/* Brand color left accent bar */}
       <div
@@ -270,17 +269,23 @@ function EventRow({ event, isOwner, isFreePlan, isLast, onDelete, onShare }: Eve
 
       {/* Actions */}
       <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-        {event.slug && (
-          <button
-            onClick={handleOpenControl}
-            disabled={event.status === 'editing'}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 hover:bg-white/10 hover:text-white"
-            title={event.status === 'editing' ? 'האירוע עדיין בעריכה' : 'פתח מרכז בקרה'}
-          >
-            <ExternalLink size={13} />
-            מרכז בקרה
-          </button>
-        )}
+        <button
+          onClick={handleOpenSettings}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-all"
+          title="הגדרות"
+        >
+          <Settings2 size={13} />
+          הגדרות
+        </button>
+        <button
+          onClick={handleOpenControl}
+          disabled={isWip}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 hover:bg-white/10 hover:text-white"
+          title={isWip ? 'האירוע עדיין בעריכה' : 'מרכז בקרה'}
+        >
+          <ExternalLink size={13} />
+          מרכז בקרה
+        </button>
         <button
           onClick={handleShare}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-all"
