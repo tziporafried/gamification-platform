@@ -117,8 +117,8 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
 
   return (
     <WizardStepWrapper
-      title="פרטי האירוע"
-      subtitle="הגדר את שם האירוע, צבעי המותג והלוגו"
+      title="פרטי הפעילות"
+      subtitle="תנו שם לפעילות ובחרו צבע וסמל שילוו את המשתתפים לאורך כל המשחק"
       currentStep={1}
       canAdvance={canAdvance && !saving}
       onNext={handleNext}
@@ -128,12 +128,12 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
         <div className="flex items-end gap-3">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              שם האירוע
+              שם הפעילות
             </label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="למשל: חופשה משפחתית 2026"
+              placeholder="נופש משפחתי באילת"
               className="text-lg"
               autoFocus
               disabled={saving}
@@ -151,7 +151,7 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
         {/* Logo upload */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            לוגו האירוע
+            סמל הפעילות
           </label>
 
           {logoPreview ? (
@@ -162,7 +162,7 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
               >
                 <img
                   src={logoPreview}
-                  alt="לוגו האירוע"
+                  alt="סמל הפעילות"
                   className="max-w-full max-h-full object-contain p-2"
                 />
               </div>
@@ -214,7 +214,7 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
 
         {/* Live preview */}
         <div className="rounded-xl border border-game-border bg-game-card/50 p-4">
-          <p className="text-xs text-gray-500 mb-3">תצוגה מקדימה</p>
+          <p className="text-xs text-gray-500 mb-3">כך הפעילות תיראה</p>
           <div className="flex items-center gap-3">
             {logoPreview ? (
               <div
@@ -233,7 +233,7 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
             )}
             <div>
               <p className="text-white font-semibold text-sm leading-tight">
-                {name || 'שם האירוע'}
+                {name || 'שם הפעילות'}
               </p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: themeColor }} />

@@ -28,11 +28,13 @@ export interface WizardState {
 }
 
 export interface ReadinessCheck {
-  id: string;
-  label: string;
-  passed: boolean;
-  required: boolean;
-  stepNumber?: number;
+  id: string
+  label: string
+  passed: boolean
+  required: boolean
+  stepNumber?: number
+  wizardPassedLabel?: string
+  wizardFailedLabel?: string
 }
 
 export interface EventCounts {
@@ -193,9 +195,9 @@ export interface DevTodoWithAssignee extends DevTodo {
 export type DashboardTab = 'home' | 'event' | 'participants' | 'groups' | 'actions' | 'rewards' | 'score' | 'leaderboard' | 'qr-cards';
 
 export const WIZARD_STEPS: { id: WizardStepId; label: string; step: number }[] = [
-  { id: 'details', label: 'פרטי האירוע', step: 1 },
-  { id: 'groups', label: 'קבוצות', step: 2 },
-  { id: 'participants', label: 'משתתפים', step: 3 },
-  { id: 'tasks', label: 'משימות', step: 4 },
-  { id: 'review', label: 'סקירה והדפסה', step: 5 },
+  { id: 'details', label: 'פרטי הפעילות', step: 1 },
+  { id: 'groups', label: 'חלוקה לקבוצות', step: 2 },
+  { id: 'participants', label: 'מי משתתף?', step: 3 },
+  { id: 'tasks', label: 'צבירת נקודות', step: 4 },
+  { id: 'review', label: 'מוכנים להתחיל?', step: 5 },
 ];

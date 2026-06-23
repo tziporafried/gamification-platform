@@ -16,6 +16,18 @@ export const ENTITY_LABELS: Record<LimitableEntity, string> = {
   rewards: 'פרסים',
 }
 
+/** User-facing labels for free-plan limit helper text (e.g. wizard usage bars). */
+export const FREE_PLAN_LIMIT_LABELS: Record<LimitableEntity, string> = {
+  participants: 'משתתפים',
+  groups: 'קבוצות',
+  actions: 'פעילויות',
+  rewards: 'פרסים',
+}
+
+export function formatFreePlanLimitHelper(entity: LimitableEntity, limit: number): string {
+  return `עד ${limit} ${FREE_PLAN_LIMIT_LABELS[entity]} בתוכנית החינמית`
+}
+
 export function isPlanLimitError(message: string): LimitableEntity | null {
   const match = message.match(/PLAN_LIMIT_REACHED:(\w+)/)
   if (!match) return null

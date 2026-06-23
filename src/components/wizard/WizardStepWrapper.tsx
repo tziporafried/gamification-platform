@@ -10,6 +10,7 @@ interface WizardStepWrapperProps {
   onNext?: () => void
   onBack?: () => void
   nextLabel?: string
+  backLabel?: string
   children: React.ReactNode
 }
 
@@ -22,6 +23,7 @@ export function WizardStepWrapper({
   onNext,
   onBack,
   nextLabel,
+  backLabel = 'חזרה',
   children,
 }: WizardStepWrapperProps) {
   const isFirst = currentStep === 1
@@ -45,7 +47,7 @@ export function WizardStepWrapper({
         {!isFirst ? (
           <Button variant="ghost" size="lg" onClick={onBack}>
             <ArrowRight size={18} className="ml-2" />
-            הקודם
+            {backLabel}
           </Button>
         ) : (
           <div />
@@ -58,7 +60,7 @@ export function WizardStepWrapper({
             onClick={onNext}
             disabled={!canAdvance}
           >
-            {nextLabel || (isLast ? 'סיום' : 'הבא')}
+            {nextLabel ?? (isLast ? 'סיום' : 'המשך')}
             {!isLast && <ArrowLeft size={18} className="mr-2" />}
           </Button>
         )}

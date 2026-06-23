@@ -22,8 +22,8 @@ interface StepGroupsProps {
 }
 
 const GROUP_OPTIONS: { type: GroupType; label: string; description: string; icon: typeof Users }[] = [
-  { type: 'none', label: 'בלי קבוצות', description: 'כולם משחקים ביחד, בלי חלוקה', icon: Users },
-  { type: 'custom', label: 'כן, חלק לקבוצות', description: 'משפחות, צוותים, או כל חלוקה שתרצה', icon: Layers },
+  { type: 'none', label: 'כולם יחד', description: 'כל המשתתפים צוברים נקודות באותה טבלה', icon: Users },
+  { type: 'custom', label: 'משפחות וקבוצות', description: 'חלקו את המשתתפים למשפחות, צוותים או קבוצות תחרות', icon: Layers },
 ]
 
 export function StepGroups({
@@ -82,8 +82,8 @@ export function StepGroups({
 
   return (
     <WizardStepWrapper
-      title="קבוצות"
-      subtitle="רוצה לחלק את המשתתפים לקבוצות?"
+      title="איך תרצו לשחק?"
+      subtitle="אפשר לשחק יחד או לחלק את המשתתפים לקבוצות ומשפחות"
       currentStep={2}
       canAdvance={canAdvance}
       onNext={onNext}
