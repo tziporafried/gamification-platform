@@ -133,13 +133,6 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
 
   function handleFormSubmit(e: FormEvent) { e.preventDefault(); handleSubmit() }
 
-  const handleQrScan = useCallback((data: { participantCode?: string; actionCode?: string }) => {
-    if (data.participantCode) setParticipantCode(data.participantCode)
-    if (data.actionCode) setActionCode(data.actionCode)
-    if (qrScoringMode === 'combined' && data.participantCode && data.actionCode)
-      setTimeout(() => handleSubmit(data.participantCode, data.actionCode), 100)
-  }, [qrScoringMode, handleSubmit])
-
   const bothValid = participantPreview && actionPreview
 
   const confettiParticles = useMemo(() => {
@@ -190,7 +183,7 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
             סרקו ברקוד של משימה ומשתתף כדי להעניק ניקוד
           </motion.p>
 
-          <ScannerZone ref={scannerZoneRef} mode={qrScoringMode} onScan={handleQrScan} successFlash={successFlash} accent={accent} />
+          <ScannerZone ref={scannerZoneRef} mode={qrScoringMode} successFlash={successFlash} accent={accent} />
 
           {/* Preview chips */}
           <AnimatePresence>

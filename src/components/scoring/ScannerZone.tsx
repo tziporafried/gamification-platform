@@ -1,16 +1,12 @@
-import { useState, useEffect, useRef, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
+import { useMemo, forwardRef, useImperativeHandle, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Html5Qrcode } from 'html5-qrcode'
-import { QrCode, Camera, CameraOff, Check } from 'lucide-react'
+import { QrCode, Check } from 'lucide-react'
 import type { QrScoringMode } from '@/types'
 import type { AccentRgb } from '@/lib/accentColor'
 import { rgba } from '@/lib/accentColor'
 
-interface QrScanResult { participantCode?: string; actionCode?: string }
-
 interface ScannerZoneProps {
   mode: QrScoringMode
-  onScan: (data: QrScanResult) => void
   successFlash: boolean
   accent: AccentRgb
 }
@@ -18,69 +14,11 @@ interface ScannerZoneProps {
 export interface ScannerZoneRef { resetSeparateState: () => void }
 
 export const ScannerZone = forwardRef<ScannerZoneRef, ScannerZoneProps>(
-  function ScannerZone({ mode, onScan, successFlash, accent }, ref) {
-    const [cameraActive, setCameraActive] = useState(false)
-    const [error, setError] = useState('')
+  function ScannerZone({ mode, successFlash, accent }, ref) {
     const [scannedParticipant, setScannedParticipant] = useState<string | null>(null)
     const [scannedAction, setScannedAction] = useState<string | null>(null)
-    const scannerRef = useRef<Html5Qrcode | null>(null)
-    const containerRef = useRef<HTMLDivElement>(null)
 
     useImperativeHandle(ref, () => ({ resetSeparateState() { setScannedParticipant(null); setScannedAction(null) } }))
-
-    const stopScanner = useCallback(() => {
-      if (scannerRef.current) { scannerRef.current.stop().catch(() => {}); scannerRef.current = null }
-    }, [])
-
-    const processQrPayload = useCallback((decodedText: string) => {
-      setError('')
-      let parsed: Record<string, unknown>
-      try { parsed = JSON.parse(decodedText) } catch { setError('QR code not valid'); return }
-      if (typeof parsed !== 'object' || parsed === null) { setError('QR format not recognized'); return }
-      const type = parsed.type as string | undefined
-
-      if (mode === 'combined') {
-        if (type === 'combined_score' || (!type && parsed.participantCode && parsed.actionCode)) {
-          const participantCode = parsed.participantCode as string; const actionCode = parsed.actionCode as string
-          if (!participantCode || !actionCode) { setError('Missing participant or action code'); return }
-          onScan({ participantCode, actionCode }); return
-        }
-        if (type === 'participant' || type === 'action') { setError('This QR is for separate mode'); return }
-        setError('QR not recognized for combined mode'); return
-      }
-      if (type === 'combined_score' || (!type && parsed.participantCode && parsed.actionCode)) { setError('This QR is for combined mode'); return }
-      if (type === 'participant') {
-        const participantCode = parsed.participantCode as string
-        if (!participantCode) { setError('Missing participant code'); return }
-        setScannedParticipant(participantCode); onScan({ participantCode })
-        if (scannedAction) { setScannedParticipant(null); setScannedAction(null) }
-        return
-      }
-      if (type === 'action') {
-        const actionCode = parsed.actionCode as string
-        if (!actionCode) { setError('Missing action code'); return }
-        setScannedAction(actionCode); onScan({ actionCode })
-        if (scannedParticipant) { setScannedParticipant(null); setScannedAction(null) }
-        return
-      }
-      setError('QR type not supported')
-    }, [mode, onScan, scannedParticipant, scannedAction])
-
-    useEffect(() => {
-      if (!cameraActive) return
-      const container = containerRef.current; if (!container) return
-      const scannerId = 'qr-reader-' + Date.now()
-      const readerDiv = document.createElement('div'); readerDiv.id = scannerId; container.appendChild(readerDiv)
-      const scanner = new Html5Qrcode(scannerId); scannerRef.current = scanner
-      let lastScanned = ''; let lastScanTime = 0
-      scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 280, height: 280 } },
-        (decodedText) => { const now = Date.now(); if (decodedText === lastScanned && now - lastScanTime < 2000) return; lastScanned = decodedText; lastScanTime = now; processQrPayload(decodedText) },
-        () => {}
-      ).catch(() => { setError('Cannot access camera. Check permissions.') })
-      return () => { scanner.stop().catch(() => {}); if (container.contains(readerDiv)) container.removeChild(readerDiv) }
-    }, [cameraActive, processQrPayload])
-
-    useEffect(() => { return () => { stopScanner() } }, [stopScanner])
 
     const floatingParticles = useMemo(() => Array.from({ length: 14 }, () => ({
       left: 10 + Math.random() * 80, top: 10 + Math.random() * 80,
@@ -93,8 +31,6 @@ export const ScannerZone = forwardRef<ScannerZoneRef, ScannerZoneProps>(
       { delay: 0.15, maxSize: 900, color: rgba(accent, 0.25) },
       { delay: 0.3, maxSize: 1100, color: 'rgba(34,197,94,0.15)' },
     ], [accent])
-
-    const toggleCamera = () => { if (cameraActive) { stopScanner(); setCameraActive(false) } else { setError(''); setCameraActive(true) } }
 
     const a = accent
 
@@ -133,19 +69,13 @@ export const ScannerZone = forwardRef<ScannerZoneRef, ScannerZoneProps>(
           <div className="relative aspect-square w-[min(80vw,520px)] overflow-hidden rounded-3xl bg-game-dark/80 backdrop-blur-sm"
             style={{ borderWidth: 2, borderStyle: 'solid', borderColor: rgba(a, 0.3) }}>
 
-            {/* Camera feed */}
-            <div ref={containerRef} className="absolute inset-0 z-0 overflow-hidden [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
-              style={{ display: cameraActive ? 'block' : 'none' }} />
-
-            {/* Idle QR icon */}
-            {!cameraActive && (
-              <div className="absolute inset-0 z-0 flex items-center justify-center">
-                <motion.div animate={{ opacity: [0.12, 0.28, 0.12], scale: [0.92, 1.08, 0.92] }}
-                  transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}>
-                  <QrCode size={180} style={{ color: rgba(a, 0.2) }} />
-                </motion.div>
-              </div>
-            )}
+            {/* Pulsing QR icon */}
+            <div className="absolute inset-0 z-0 flex items-center justify-center">
+              <motion.div animate={{ opacity: [0.12, 0.28, 0.12], scale: [0.92, 1.08, 0.92] }}
+                transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}>
+                <QrCode size={180} style={{ color: rgba(a, 0.2) }} />
+              </motion.div>
+            </div>
 
             {/* Corner frames */}
             <div className="pointer-events-none absolute inset-0 z-10">
@@ -179,7 +109,7 @@ export const ScannerZone = forwardRef<ScannerZoneRef, ScannerZoneProps>(
             {/* Second scan line */}
             <motion.div className="pointer-events-none absolute left-6 right-6 z-10 h-[1px]"
               style={{
-                background: `linear-gradient(90deg, transparent 0%, rgba(6,182,212,0.3) 30%, rgba(6,182,212,0.5) 50%, rgba(6,182,212,0.3) 70%, transparent 100%)`,
+                background: 'linear-gradient(90deg, transparent 0%, rgba(6,182,212,0.3) 30%, rgba(6,182,212,0.5) 50%, rgba(6,182,212,0.3) 70%, transparent 100%)',
                 boxShadow: '0 0 8px 2px rgba(6,182,212,0.2)',
               }}
               animate={{ top: ['85%', '15%', '85%'] }} transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut' }} />
@@ -217,31 +147,16 @@ export const ScannerZone = forwardRef<ScannerZoneRef, ScannerZoneProps>(
             animate={{ opacity: [0, 0.3, 0], scale: [1, 1.03, 1.06] }} transition={{ duration: 3.5, repeat: Infinity, ease: 'easeOut', delay: 0.8 }} />
         </motion.div>
 
-        {/* Camera toggle */}
-        <motion.div className="mt-5 flex flex-col items-center gap-2.5" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-          <button onClick={toggleCamera}
-            className="flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition-all"
-            style={{
-              backgroundColor: cameraActive ? 'rgba(34,197,94,0.15)' : rgba(a, 0.15),
-              color: cameraActive ? '#34d399' : rgba(a, 1),
-              boxShadow: `0 0 16px ${cameraActive ? 'rgba(34,197,94,0.15)' : rgba(a, 0.15)}`,
-            }}>
-            {cameraActive ? <><CameraOff size={16} /> כיבוי מצלמה</> : <><Camera size={16} /> הפעלת מצלמה לסריקה</>}
-          </button>
-
-          {mode === 'separate' && (scannedParticipant || scannedAction) && (
-            <div className="flex gap-2">
-              <div className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium ${scannedParticipant ? 'bg-emerald-500/20 text-emerald-400' : 'bg-game-card text-gray-500'}`}>
-                {scannedParticipant && <Check size={12} />} משתתף {scannedParticipant ? `(${scannedParticipant})` : ''}
-              </div>
-              <div className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium ${scannedAction ? 'bg-emerald-500/20 text-emerald-400' : 'bg-game-card text-gray-500'}`}>
-                {scannedAction && <Check size={12} />} משימה {scannedAction ? `(${scannedAction})` : ''}
-              </div>
+        {mode === 'separate' && (scannedParticipant || scannedAction) && (
+          <motion.div className="mt-5 flex gap-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <div className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium ${scannedParticipant ? 'bg-emerald-500/20 text-emerald-400' : 'bg-game-card text-gray-500'}`}>
+              {scannedParticipant && <Check size={12} />} משתתף {scannedParticipant ? `(${scannedParticipant})` : ''}
             </div>
-          )}
-
-          {error && <motion.p className="text-xs text-red-400" initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}>{error}</motion.p>}
-        </motion.div>
+            <div className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium ${scannedAction ? 'bg-emerald-500/20 text-emerald-400' : 'bg-game-card text-gray-500'}`}>
+              {scannedAction && <Check size={12} />} משימה {scannedAction ? `(${scannedAction})` : ''}
+            </div>
+          </motion.div>
+        )}
       </div>
     )
   }
