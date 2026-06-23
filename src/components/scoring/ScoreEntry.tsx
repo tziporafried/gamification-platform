@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, FormEvent, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Zap, X } from 'lucide-react'
+import { Send, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { hexToRgb, rgba } from '@/lib/accentColor'
 import { Button } from '@/components/ui/Button'
@@ -10,6 +10,7 @@ import { ScannerZone } from './ScannerZone'
 import type { ScannerZoneRef } from './ScannerZone'
 import { RecentActionsFeed } from './RecentActionsFeed'
 import { ScanBackground } from './ScanBackground'
+import { AutocompleteField } from './AutocompleteField'
 import { useScoreSubmit } from '@/hooks/useScoreSubmit'
 import type { PointTransactionWithDetails, NewlyAwardedReward, QrScoringMode } from '@/types'
 
@@ -41,6 +42,10 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
   const [actionSuggestions, setActionSuggestions] = useState<ActionOption[]>([])
   const [showParticipantDropdown, setShowParticipantDropdown] = useState(false)
   const [showActionDropdown, setShowActionDropdown] = useState(false)
+  const [participantSearching, setParticipantSearching] = useState(false)
+  const [actionSearching, setActionSearching] = useState(false)
+  const [participantBlurred, setParticipantBlurred] = useState(false)
+  const [actionBlurred, setActionBlurred] = useState(false)
 
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
   const [successFlash, setSuccessFlash] = useState(false)
@@ -87,7 +92,15 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
     if (pSearchRef.current) clearTimeout(pSearchRef.current)
     if (selectedParticipant) return
     const q = participantQuery.trim()
-    if (!q) { setParticipantSuggestions([]); setShowParticipantDropdown(false); return }
+    if (!q) {
+      setParticipantSuggestions([])
+      setShowParticipantDropdown(false)
+      setParticipantSearching(false)
+      return
+    }
+
+    setParticipantSearching(true)
+    setShowParticipantDropdown(true)
 
     pSearchRef.current = setTimeout(async () => {
       const { data } = await supabase
@@ -98,7 +111,8 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
         .limit(8)
       const results: ParticipantOption[] = (data ?? []).map((p) => ({ id: p.id, name: p.name, externalId: p.external_id }))
       setParticipantSuggestions(results)
-      setShowParticipantDropdown(results.length > 0)
+      setParticipantSearching(false)
+      setShowParticipantDropdown(true)
     }, 300)
 
     return () => { if (pSearchRef.current) clearTimeout(pSearchRef.current) }
@@ -110,7 +124,15 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
     if (aSearchRef.current) clearTimeout(aSearchRef.current)
     if (selectedAction) return
     const q = actionQuery.trim()
-    if (!q) { setActionSuggestions([]); setShowActionDropdown(false); return }
+    if (!q) {
+      setActionSuggestions([])
+      setShowActionDropdown(false)
+      setActionSearching(false)
+      return
+    }
+
+    setActionSearching(true)
+    setShowActionDropdown(true)
 
     aSearchRef.current = setTimeout(async () => {
       const { data } = await supabase
@@ -122,7 +144,8 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
         .limit(8)
       const results: ActionOption[] = (data ?? []).map((a) => ({ id: a.id, name: a.name, code: a.code, points: a.points }))
       setActionSuggestions(results)
-      setShowActionDropdown(results.length > 0)
+      setActionSearching(false)
+      setShowActionDropdown(true)
     }, 300)
 
     return () => { if (aSearchRef.current) clearTimeout(aSearchRef.current) }
@@ -132,11 +155,13 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
     setSelectedParticipant(p)
     setParticipantQuery(p.name)
     setShowParticipantDropdown(false)
+    setParticipantBlurred(false)
   }
 
   function clearParticipant() {
     setSelectedParticipant(null)
     setParticipantQuery('')
+    setParticipantBlurred(false)
     participantInputRef.current?.focus()
   }
 
@@ -144,11 +169,13 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
     setSelectedAction(a)
     setActionQuery(a.name)
     setShowActionDropdown(false)
+    setActionBlurred(false)
   }
 
   function clearAction() {
     setSelectedAction(null)
     setActionQuery('')
+    setActionBlurred(false)
   }
 
   const handleSubmit = useCallback(async () => {
@@ -221,113 +248,119 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
 
           <ScannerZone ref={scannerZoneRef} mode={qrScoringMode} successFlash={successFlash} accent={accent} />
 
-          {/* Submit button */}
-          <AnimatePresence>
-            {bothValid && (
-              <motion.div className="relative mt-3" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
-                <Button variant="gradient" size="lg" loading={submitting} onClick={handleSubmit}
-                  className="animate-glow-pulse px-8 font-bold tracking-wide">
-                  <Zap size={16} className="ml-1.5" />
-                  הענקת {selectedAction.points >= 0 ? '+' : ''}{selectedAction.points} נק׳
-                </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {/* Manual input toggle */}
-          <motion.button className="mt-4 text-xs text-gray-500 underline-offset-2 hover:text-gray-300 hover:underline"
-            onClick={() => setShowManualInput(!showManualInput)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
-            {showManualInput ? 'הסתרת הזנה ידנית' : 'הזנה ידנית'}
-          </motion.button>
+          {!showManualInput && (
+            <motion.button className="mt-4 text-xs text-gray-500 underline-offset-2 hover:text-gray-300 hover:underline"
+              onClick={() => setShowManualInput(true)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
+              הזנה ידנית
+            </motion.button>
+          )}
 
           {/* Manual input form with autocomplete */}
           <AnimatePresence>
             {showManualInput && (
               <motion.form onSubmit={handleFormSubmit}
-                className="mt-3 w-full max-w-md space-y-3 rounded-xl border border-game-border bg-game-card/60 p-4 backdrop-blur-sm"
+                className="relative mt-3 w-full max-w-lg space-y-3 overflow-visible rounded-xl border border-game-border bg-game-card/60 p-4 backdrop-blur-sm"
                 initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {/* Participant autocomplete */}
-                  <div className="relative" ref={participantDropdownRef}>
-                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500">שחקן</label>
-                    {selectedParticipant ? (
-                      <div className="flex items-center justify-between rounded-lg border bg-game-dark px-3 py-2"
-                        style={{ borderColor: rgba(accent, 0.3) }}>
-                        <span className="text-sm font-medium text-white">{selectedParticipant.name}</span>
-                        <button type="button" onClick={clearParticipant} className="mr-1 rounded p-0.5 text-gray-400 hover:text-white">
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <input
-                        ref={participantInputRef}
-                        placeholder="הקלידו שם משתתף..."
-                        value={participantQuery}
-                        onChange={(e) => { setParticipantQuery(e.target.value); setSelectedParticipant(null) }}
-                        onFocus={() => { if (participantSuggestions.length > 0) setShowParticipantDropdown(true) }}
-                        className="w-full rounded-lg border border-game-border bg-game-dark px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-1"
-                        style={{ ['--tw-ring-color' as string]: rgba(accent, 0.5) }}
-                      />
+                <button
+                  type="button"
+                  onClick={() => setShowManualInput(false)}
+                  className="absolute left-3 top-3 rounded p-1 text-gray-400 hover:bg-white/10 hover:text-white"
+                  aria-label="סגירת הזנה ידנית"
+                >
+                  <X size={16} />
+                </button>
+                <div className="flex items-end gap-3 overflow-visible">
+                  <div className="grid min-w-0 flex-1 gap-3 overflow-visible sm:grid-cols-2">
+                  <AutocompleteField
+                    label="שחקן"
+                    placeholder="הקלידו שם משתתף..."
+                    query={participantQuery}
+                    onQueryChange={(value) => {
+                      setParticipantQuery(value)
+                      setSelectedParticipant(null)
+                      setParticipantBlurred(false)
+                    }}
+                    selected={selectedParticipant}
+                    onSelect={selectParticipant}
+                    onClear={clearParticipant}
+                    suggestions={participantSuggestions}
+                    searching={participantSearching}
+                    showDropdown={showParticipantDropdown}
+                    onShowDropdown={setShowParticipantDropdown}
+                    blurred={participantBlurred}
+                    onBlurred={() => setParticipantBlurred(true)}
+                    accent={accent}
+                    dropdownRef={participantDropdownRef}
+                    inputRef={participantInputRef}
+                    getKey={(p) => p.id}
+                    renderSelected={(p) => (
+                      <span className="truncate text-sm font-medium text-white">{p.name}</span>
                     )}
-                    {showParticipantDropdown && participantSuggestions.length > 0 && (
-                      <div className="absolute inset-x-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-game-border bg-game-dark shadow-xl">
-                        {participantSuggestions.map((p) => (
-                          <button key={p.id} type="button"
-                            className="flex w-full items-center gap-2 px-3 py-2 text-right text-sm text-gray-200 transition-colors hover:bg-white/5"
-                            onClick={() => selectParticipant(p)}>
-                            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
-                              style={{ backgroundColor: rgba(accent, 0.2) }}>
-                              {p.name.slice(0, 2)}
-                            </div>
-                            <span className="truncate">{p.name}</span>
-                            <span className="mr-auto font-mono text-[10px] text-gray-500">{p.externalId}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action autocomplete */}
-                  <div className="relative" ref={actionDropdownRef}>
-                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500">משימה</label>
-                    {selectedAction ? (
-                      <div className="flex items-center justify-between rounded-lg border bg-game-dark px-3 py-2"
-                        style={{ borderColor: rgba(accent, 0.3) }}>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-white">{selectedAction.name}</span>
-                          <span className={`text-[10px] font-bold ${selectedAction.points >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {selectedAction.points >= 0 ? '+' : ''}{selectedAction.points}
-                          </span>
+                    renderOption={(p) => (
+                      <>
+                        <div
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                          style={{ backgroundColor: rgba(accent, 0.2) }}
+                        >
+                          {p.name.slice(0, 2)}
                         </div>
-                        <button type="button" onClick={clearAction} className="mr-1 rounded p-0.5 text-gray-400 hover:text-white">
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <input
-                        placeholder="הקלידו שם משימה..."
-                        value={actionQuery}
-                        onChange={(e) => { setActionQuery(e.target.value); setSelectedAction(null) }}
-                        onFocus={() => { if (actionSuggestions.length > 0) setShowActionDropdown(true) }}
-                        className="w-full rounded-lg border border-game-border bg-game-dark px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-1"
-                        style={{ ['--tw-ring-color' as string]: rgba(accent, 0.5) }}
-                      />
+                        <span className="truncate">{p.name}</span>
+                        <span className="mr-auto font-mono text-[10px] text-gray-500">{p.externalId}</span>
+                      </>
                     )}
-                    {showActionDropdown && actionSuggestions.length > 0 && (
-                      <div className="absolute inset-x-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-game-border bg-game-dark shadow-xl">
-                        {actionSuggestions.map((a) => (
-                          <button key={a.id} type="button"
-                            className="flex w-full items-center justify-between px-3 py-2 text-right text-sm text-gray-200 transition-colors hover:bg-white/5"
-                            onClick={() => selectAction(a)}>
-                            <span className="truncate">{a.name}</span>
-                            <span className={`shrink-0 text-xs font-bold ${a.points >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                              {a.points >= 0 ? '+' : ''}{a.points}
-                            </span>
-                          </button>
-                        ))}
+                  />
+
+                  <AutocompleteField
+                    label="משימה"
+                    placeholder="הקלידו שם משימה..."
+                    query={actionQuery}
+                    onQueryChange={(value) => {
+                      setActionQuery(value)
+                      setSelectedAction(null)
+                      setActionBlurred(false)
+                    }}
+                    selected={selectedAction}
+                    onSelect={selectAction}
+                    onClear={clearAction}
+                    suggestions={actionSuggestions}
+                    searching={actionSearching}
+                    showDropdown={showActionDropdown}
+                    onShowDropdown={setShowActionDropdown}
+                    blurred={actionBlurred}
+                    onBlurred={() => setActionBlurred(true)}
+                    accent={accent}
+                    dropdownRef={actionDropdownRef}
+                    getKey={(a) => a.id}
+                    renderSelected={(a) => (
+                      <>
+                        <span className="truncate text-sm font-medium text-white">{a.name}</span>
+                        <span className={`text-[10px] font-bold ${a.points >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {a.points >= 0 ? '+' : ''}{a.points}
+                        </span>
+                      </>
+                    )}
+                    renderOption={(a) => (
+                      <div className="flex w-full items-center justify-between gap-2">
+                        <span className="truncate">{a.name}</span>
+                        <span className={`shrink-0 text-xs font-bold ${a.points >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {a.points >= 0 ? '+' : ''}{a.points}
+                        </span>
                       </div>
                     )}
+                  />
                   </div>
+                  <Button
+                    type="submit"
+                    variant="gradient"
+                    size="md"
+                    loading={submitting}
+                    disabled={!bothValid}
+                    aria-label="שליחה"
+                    className="h-[42px] w-[42px] shrink-0 p-0"
+                  >
+                    <Send size={18} />
+                  </Button>
                 </div>
               </motion.form>
             )}
@@ -354,6 +387,7 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
 
       {toast && (
         <Toast message={toast.message} variant={toast.variant}
+          size={toast.variant === 'success' ? 'large' : 'default'}
           autoDismissMs={toast.variant === 'success' ? 3000 : undefined} onDismiss={() => setToast(null)} />
       )}
       {celebrationRewards.length > 0 && (

@@ -8,9 +8,10 @@ interface ToastProps {
   variant: 'success' | 'error'
   onDismiss: () => void
   autoDismissMs?: number
+  size?: 'default' | 'large'
 }
 
-export function Toast({ message, variant, onDismiss, autoDismissMs }: ToastProps) {
+export function Toast({ message, variant, onDismiss, autoDismissMs, size = 'default' }: ToastProps) {
   const [exiting, setExiting] = useState(false)
 
   useEffect(() => {
@@ -41,23 +42,29 @@ export function Toast({ message, variant, onDismiss, autoDismissMs }: ToastProps
   }
 
   const s = styles[variant]
+  const isLarge = size === 'large'
 
   return createPortal(
-    <div className="fixed bottom-20 md:bottom-6 left-1/2 z-50 -translate-x-1/2">
+    <div className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 md:bottom-6">
       <div
         className={cn(
-          'flex items-center gap-2.5 rounded-xl border px-4 py-3 shadow-lg backdrop-blur-sm',
+          'flex items-center rounded-xl border shadow-lg backdrop-blur-sm',
+          isLarge ? 'gap-4 px-8 py-5' : 'gap-2.5 px-4 py-3',
           s.bg,
           exiting ? 'animate-toast-exit' : 'animate-toast-enter',
         )}
       >
-        {s.icon}
-        <span className={cn('text-sm font-medium', s.text)}>{message}</span>
+        {isLarge ? (
+          <span className="shrink-0">{variant === 'success' ? <CheckCircle2 size={32} className="text-emerald-400" /> : <XCircle size={32} className="text-red-400" />}</span>
+        ) : (
+          s.icon
+        )}
+        <span className={cn(isLarge ? 'text-2xl font-bold tracking-tight md:text-3xl' : 'text-sm font-medium', s.text)}>{message}</span>
         <button
           onClick={handleDismiss}
-          className="ml-1 rounded-md p-0.5 text-gray-500 hover:text-gray-300 transition-colors"
+          className={cn('rounded-md text-gray-500 transition-colors hover:text-gray-300', isLarge ? 'ml-2 p-1' : 'ml-1 p-0.5')}
         >
-          <X size={14} />
+          <X size={isLarge ? 18 : 14} />
         </button>
       </div>
     </div>,
