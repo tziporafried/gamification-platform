@@ -1,10 +1,18 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Crown, Users } from 'lucide-react'
+import { Crown, Users, ListTodo } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
+import { DevTodoList } from '@/components/dev-todos/DevTodoList'
 import { cn } from '@/lib/utils'
+
+type AdminTab = 'todos' | 'customers'
+
+const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
+  { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },
+  { id: 'customers', label: 'לקוחות', icon: Users },
+]
 
 interface AdminUser {
   user_id: string
@@ -19,6 +27,7 @@ interface AdminUser {
 }
 
 export function AdminPanel() {
+  const [tab, setTab] = useState<AdminTab>('todos')
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -49,67 +58,93 @@ export function AdminPanel() {
   if (loading) return <FullPageLoader />
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
-        <div className="flex items-center gap-2 mb-6">
-          <Users size={18} className="text-gray-400" />
-          <h2 className="text-sm font-medium text-gray-400">
-            {users.length} משתמשים רשומים
-          </h2>
-        </div>
+    <main className="mx-auto max-w-5xl px-4 py-6">
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-game-border mb-6">
+        {TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+              tab === id
+                ? 'border-brand-500 text-white'
+                : 'border-transparent text-gray-500 hover:text-gray-300',
+            )}
+          >
+            <Icon size={16} />
+            {label}
+          </button>
+        ))}
+      </div>
 
-        <div className="space-y-3">
-          {users.map(user => (
-            <Card key={user.user_id} className="p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  {user.avatar_url ? (
-                    <img src={user.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover shrink-0" />
-                  ) : (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600/20 shrink-0">
-                      <span className="text-sm font-bold text-brand-400">
-                        {(user.display_name || user.email)[0]?.toUpperCase()}
-                      </span>
+      {/* Tab content */}
+      {tab === 'todos' && <DevTodoList />}
+
+      {tab === 'customers' && (
+        <>
+          <div className="flex items-center gap-2 mb-6">
+            <Users size={18} className="text-gray-400" />
+            <h2 className="text-sm font-medium text-gray-400">
+              {users.length} משתמשים רשומים
+            </h2>
+          </div>
+
+          <div className="space-y-3">
+            {users.map(user => (
+              <Card key={user.user_id} className="p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {user.avatar_url ? (
+                      <img src={user.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600/20 shrink-0">
+                        <span className="text-sm font-bold text-brand-400">
+                          {(user.display_name || user.email)[0]?.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-white truncate">
+                          {user.display_name || user.email.split('@')[0]}
+                        </span>
+                        {user.role === 'super_admin' && (
+                          <Crown size={14} className="text-amber-400 shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        הצטרף {new Date(user.created_at).toLocaleDateString('he-IL')}
+                        {user.event_count > 0 && <> · {user.event_count} אירועים</>}
+                      </p>
                     </div>
-                  )}
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-white truncate">
-                        {user.display_name || user.email.split('@')[0]}
-                      </span>
-                      {user.role === 'super_admin' && (
-                        <Crown size={14} className="text-amber-400 shrink-0" />
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                    <p className="text-xs text-gray-600 mt-0.5">
-                      הצטרף {new Date(user.created_at).toLocaleDateString('he-IL')}
-                      {user.event_count > 0 && <> · {user.event_count} אירועים</>}
-                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={cn(
+                      'text-xs font-medium px-2 py-0.5 rounded-full',
+                      user.plan === 'paid'
+                        ? 'text-emerald-400 bg-emerald-400/10'
+                        : 'text-gray-400 bg-gray-400/10'
+                    )}>
+                      {user.plan === 'paid' ? 'בתשלום' : 'חינמי'}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      loading={updatingId === user.user_id}
+                      onClick={() => togglePlan(user.user_id, user.plan)}
+                    >
+                      {user.plan === 'paid' ? 'הורד לחינמי' : 'שדרג לבתשלום'}
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className={cn(
-                    'text-xs font-medium px-2 py-0.5 rounded-full',
-                    user.plan === 'paid'
-                      ? 'text-emerald-400 bg-emerald-400/10'
-                      : 'text-gray-400 bg-gray-400/10'
-                  )}>
-                    {user.plan === 'paid' ? 'בתשלום' : 'חינמי'}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    loading={updatingId === user.user_id}
-                    onClick={() => togglePlan(user.user_id, user.plan)}
-                  >
-                    {user.plan === 'paid' ? 'הורד לחינמי' : 'שדרג לבתשלום'}
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
     </main>
   )
 }

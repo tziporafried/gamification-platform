@@ -126,6 +126,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
             )
           })}
         </div>
+
       </main>
 
       <ShareEventModal isOpen={shareOpen} onClose={() => setShareOpen(false)} eventId={event.id} />

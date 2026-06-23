@@ -19,7 +19,10 @@ When asked to verify the wizard, check all of the following:
 - [ ] The add input stays pinned at the bottom, always visible
 - [ ] After adding a participant, the list auto-scrolls to show the new entry
 - [ ] The "Next" button is disabled until at least one participant exists
-- [ ] Clicking a group badge does NOT trigger name editing (stopPropagation)
+- [ ] Group assignment uses a dropdown select (not inline badges)
+- [ ] Dropdown has "כל הקבוצות" option that assigns to all / removes all
+- [ ] Dropdown shows tooltip on hover: "לאילו קבוצות שייך המשתתף"
+- [ ] Dropdown shows header text inside the menu matching the tooltip
 
 ## Groups Step (Step 2)
 
@@ -48,10 +51,26 @@ When asked to verify the wizard, check all of the following:
 - [ ] The add input stays pinned at the bottom, always visible
 - [ ] After adding a task, the list auto-scrolls to show the new entry
 - [ ] The "Next" button is disabled until at least one task exists
-- [ ] Clicking a group badge does NOT trigger name editing (stopPropagation)
-- [ ] "כל הקבוצות" is always visible as a clickable button (default option)
-- [ ] Clicking "כל הקבוצות" clears all specific group assignments
 - [ ] No "השבת/הפעל" toggle button exists on tasks
+- [ ] Group assignment uses a dropdown select on the name row (next to delete button)
+- [ ] Dropdown has "כל הקבוצות" default option that clears all specific assignments
+- [ ] Dropdown shows tooltip on hover: "על אילו קבוצות חלה המשימה"
+- [ ] Task limit uses a dropdown select on the name row (next to group select)
+- [ ] Task limit dropdown has three options: ללא הגבלה / פעם אחת / מוגבל
+- [ ] Task limit dropdown shows tooltip: "כמה פעמים כל משתתף יכול לבצע את המשימה"
+- [ ] Each option in the limit dropdown has a description explaining its behavior
+- [ ] "מוגבל" opens inline number input inside the dropdown (min 2)
+- [ ] Selected limit mode shows correct color (purple/amber/cyan) and icon
+- [ ] Changing limit saves immediately to DB (max_completions column)
+
+## Shared: GroupSelectDropdown Component
+
+- [ ] Dropdown trigger shows colored dots + label for selected groups
+- [ ] Dropdown has header text explaining its purpose
+- [ ] "כל הקבוצות" row with checkbox at the top
+- [ ] Individual groups with colored dots and checkboxes
+- [ ] Closes when clicking outside
+- [ ] stopPropagation built-in (doesn't trigger parent click handlers)
 
 ## Wizard Navigation
 
@@ -70,3 +89,4 @@ When asked to verify the wizard, check all of the following:
 ## DB / RLS
 
 - [ ] Actions table has DELETE RLS policy for owner (migration 013)
+- [ ] Actions table has max_completions column (migration 014)

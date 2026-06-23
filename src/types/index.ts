@@ -170,6 +170,25 @@ export interface NewlyAwardedReward {
   out_total_points: number;
 }
 
+export type DevTodoStatus = 'todo' | 'in_progress' | 'done';
+export type DevTodoPriority = 'low' | 'medium' | 'high';
+
+export interface DevTodo {
+  id: string;
+  title: string;
+  description: string | null;
+  status: DevTodoStatus;
+  priority: DevTodoPriority;
+  assigned_to: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DevTodoWithAssignee extends DevTodo {
+  assignee?: { display_name: string | null; email: string; avatar_url: string | null };
+}
+
 export type DashboardTab = 'home' | 'event' | 'participants' | 'groups' | 'actions' | 'rewards' | 'score' | 'leaderboard' | 'qr-cards';
 
 export const WIZARD_STEPS: { id: WizardStepId; label: string; step: number }[] = [
