@@ -40,7 +40,7 @@ export function StepTasks({ eventId, counts, onCountsRefresh, onNext, onBack }: 
             <UsageBar info={planLimits.actions} entity="actions" className="mb-4" />
           )}
         </div>
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="flex-1 overflow-y-auto min-h-0 pl-1" style={{ scrollbarGutter: 'stable' }}>
           <ActionList eventId={eventId} onCountChange={handleCountChange} />
         </div>
       </div>

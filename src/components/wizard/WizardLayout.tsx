@@ -27,7 +27,7 @@ export function WizardLayout({ event, currentStep, wizardState, onStepClick, chi
           <ArrowRight size={14} />
           <span>האירועים שלי</span>
         </button>
-        <span className="text-game-border">/</span>
+        <span className="text-brand-400/60">/</span>
         <span className="text-xs font-medium text-white truncate max-w-[200px]">
           {event.name || 'אירוע חדש'}
         </span>

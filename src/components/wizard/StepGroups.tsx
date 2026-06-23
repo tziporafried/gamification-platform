@@ -144,7 +144,7 @@ export function StepGroups({
 
         {/* Scrollable group management */}
         {showGroupSetup && (
-          <div className="flex-1 overflow-y-auto min-h-0 mt-4">
+          <div className="flex-1 overflow-y-auto min-h-0 mt-4 pl-1" style={{ scrollbarGutter: 'stable' }}>
             <GroupList eventId={eventId} onCountChange={handleCountChange} />
           </div>
         )}
