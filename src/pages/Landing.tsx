@@ -23,7 +23,7 @@ export function Landing() {
           G
         </div>
         <h1 className="mb-3 text-4xl font-black tracking-tight text-white sm:text-5xl">
-          פלטפורמת משחוק
+          Gamify PLATFORM
         </h1>
         <p className="mb-8 max-w-md text-lg text-gray-400">
           צרו תחרויות מרתקות עם ניקוד, קבוצות וטבלאות דירוג.
