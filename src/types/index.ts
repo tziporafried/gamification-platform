@@ -32,6 +32,7 @@ export interface ReadinessCheck {
   label: string;
   passed: boolean;
   required: boolean;
+  stepNumber?: number;
 }
 
 export interface EventCounts {

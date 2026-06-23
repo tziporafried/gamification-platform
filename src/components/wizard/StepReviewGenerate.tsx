@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { WizardStepWrapper } from './WizardStepWrapper'
+import { ReadinessChecklist } from './ReadinessChecklist'
 import { QrCardGenerator } from '@/components/qr-cards/QrCardGenerator'
 import { supabase } from '@/lib/supabase'
 import type { Event, EventCounts } from '@/types'
-import { isEventReady } from '@/lib/wizard'
+import { isEventReady, calculateReadiness } from '@/lib/wizard'
 
 interface StepReviewGenerateProps {
   event: Event
@@ -14,6 +15,7 @@ interface StepReviewGenerateProps {
 export function StepReviewGenerate({ event, counts, onBack }: StepReviewGenerateProps) {
   const navigate = useNavigate()
   const ready = isEventReady(event, counts)
+  const checks = calculateReadiness(event, counts)
 
   async function handleFinish() {
     if (event.status !== 'active') {
@@ -40,8 +42,12 @@ export function StepReviewGenerate({ event, counts, onBack }: StepReviewGenerate
           <SummaryCard label="קבוצות" value={counts.groups} />
         </div>
 
-        {/* Card generator */}
-        <QrCardGenerator event={event} />
+        {/* Readiness checklist or QR generator */}
+        {!ready ? (
+          <ReadinessChecklist checks={checks} eventId={event.id} />
+        ) : (
+          <QrCardGenerator event={event} />
+        )}
       </div>
     </WizardStepWrapper>
   )

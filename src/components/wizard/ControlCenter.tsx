@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { QrCode, Monitor, ArrowRight, AlertCircle, CheckCircle2, Link as LinkIcon, Check } from 'lucide-react'
+import { QrCode, Monitor, ArrowRight, Link as LinkIcon, Check } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { ReadinessChecklist } from './ReadinessChecklist'
 import { calculateReadiness, isEventReady } from '@/lib/wizard'
-import { cn } from '@/lib/utils'
 import type { Event, EventCounts } from '@/types'
 
 interface ControlCenterProps {
@@ -79,26 +79,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
         </div>
 
         {/* Readiness checklist (show when not ready) */}
-        {!ready && (
-          <Card className="p-5 space-y-3">
-            <h3 className="text-sm font-medium text-gray-300">רשימת מוכנות</h3>
-            {checks.map((check) => (
-              <div key={check.id} className="flex items-center gap-3">
-                {check.passed ? (
-                  <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
-                ) : (
-                  <AlertCircle size={18} className="text-amber-400 shrink-0" />
-                )}
-                <span className={cn(
-                  'text-sm',
-                  check.passed ? 'text-gray-400' : 'text-gray-200',
-                )}>
-                  {check.label}
-                </span>
-              </div>
-            ))}
-          </Card>
-        )}
+        {!ready && <ReadinessChecklist checks={checks} eventId={event.id} />}
 
         {/* Action cards */}
         <div className="grid grid-cols-2 gap-4">
