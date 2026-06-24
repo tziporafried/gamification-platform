@@ -68,7 +68,7 @@ export function DashboardHome({ eventId, themeColor, onTabChange }: DashboardHom
         .from('participant_rewards')
         .select('*', { count: 'exact', head: true })
         .eq('event_id', eventId),
-      supabase.rpc('get_participant_leaderboard'),
+      supabase.rpc('get_participant_leaderboard', { p_event_id: eventId }),
       supabase
         .from('point_transactions')
         .select('*, participant:participants(name, external_id), action:actions(name, code)')

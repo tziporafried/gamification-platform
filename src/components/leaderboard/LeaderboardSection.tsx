@@ -104,7 +104,7 @@ export function LeaderboardSection({ eventId, themeColor, eventName, eventLogoUr
     setError(''); setLoading(true); setPhase('loading')
     try {
       const [pRes, gRes, txRes] = await Promise.all([
-        supabase.rpc('get_participant_leaderboard'), supabase.rpc('get_group_leaderboard'),
+        supabase.rpc('get_participant_leaderboard', { p_event_id: eventId }), supabase.rpc('get_group_leaderboard', { p_event_id: eventId }),
         supabase.from('point_transactions').select('id, participant_id, action_id, points, created_at, participant:participants(name, external_id), action:actions(name, code)').eq('event_id', eventId).order('created_at', { ascending: false }).limit(200),
       ])
       if (pRes.error || gRes.error) { setError('טבלת הדירוג בהכנה. אנא נסו שוב בקרוב.'); setLoading(false); return }
