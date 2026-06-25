@@ -400,6 +400,11 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
                   </AnimatePresence>
                 </div>
 
+                {/* Combined-limits hint */}
+                <p className="text-[10px] leading-relaxed text-gray-500">
+                  הגבלת זמן והגבלת כמות פועלות יחד. המשתתף יוכל לבצע את המשימה רק אם הוא גם בתוך הזמן המותר וגם לא עבר את מגבלת הביצועים.
+                </p>
+
                 {/* Error */}
                 {formError && (
                   <p className="text-xs text-red-400">⚠ {formError}</p>

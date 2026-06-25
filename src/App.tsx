@@ -10,6 +10,7 @@ import { EventWizard } from '@/pages/EventWizard'
 import { EventControlCenterPage } from '@/pages/EventControlCenter'
 import { EventScanPage } from '@/pages/EventScan'
 import { EventDisplayPage } from '@/pages/EventDisplay'
+import { LiveScreenPage } from '@/pages/LiveScreen'
 import { AdminPanel } from '@/pages/AdminPanel'
 import { EventBySlugControl } from '@/pages/EventBySlug'
 import { AuthCallback } from '@/pages/AuthCallback'
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/events/:id/control" element={<ProtectedRoute><AppShell><EventControlCenterPage /></AppShell></ProtectedRoute>} />
           <Route path="/events/:id/scan" element={<ProtectedRoute><EventScanPage /></ProtectedRoute>} />
           <Route path="/events/:id/display" element={<ProtectedRoute><EventDisplayPage /></ProtectedRoute>} />
+          <Route path="/events/:id/live" element={<ProtectedRoute><LiveScreenPage /></ProtectedRoute>} />
           <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell><EventBySlugControl /></AppShell></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />
 

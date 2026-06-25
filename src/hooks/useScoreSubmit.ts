@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { canPerformAction } from '@/lib/canPerformAction'
 import type { NewlyAwardedReward } from '@/types'
 
 export interface ScoreSubmitResult {
@@ -19,6 +20,7 @@ interface TimedAction {
   code: string
   points: number
   is_active: boolean
+  max_completions: number | null
   time_enabled: boolean
   start_at: string | null
   end_at: string | null
@@ -73,7 +75,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
 
       const { data: rawAction, error: aError } = await supabase
         .from('actions')
-        .select('id, name, code, points, is_active, time_enabled, start_at, end_at, speed_bonus_enabled, speed_bonus_minutes, speed_bonus_flat_points, speed_multiplier')
+        .select('id, name, code, points, is_active, max_completions, time_enabled, start_at, end_at, speed_bonus_enabled, speed_bonus_minutes, speed_bonus_flat_points, speed_multiplier')
         .eq('event_id', eventId)
         .eq('code', aCode)
         .maybeSingle()
@@ -87,25 +89,44 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
 
       const action = rawAction as TimedAction
 
-      if (!action.is_active) {
-        setLastError(`משימה "${action.code}" אינה פעילה.`)
+      // Fetch validation data in parallel: previous completions, action groups, participant groups
+      const [completionsRes, actionGroupsRes, participantGroupsRes] = await Promise.all([
+        supabase
+          .from('point_transactions')
+          .select('id', { count: 'exact', head: true })
+          .eq('participant_id', participant.id)
+          .eq('action_id', action.id),
+        supabase
+          .from('action_groups')
+          .select('group_id')
+          .eq('action_id', action.id),
+        supabase
+          .from('participant_groups')
+          .select('group_id')
+          .eq('participant_id', participant.id),
+      ])
+
+      const previousCompletions = completionsRes.count ?? 0
+      const allowedGroupIds = (actionGroupsRes.data ?? []).map((r) => r.group_id)
+      const participantGroupIds = (participantGroupsRes.data ?? []).map((r) => r.group_id)
+
+      const check = canPerformAction({
+        action: {
+          is_active: action.is_active,
+          time_enabled: action.time_enabled,
+          start_at: action.start_at,
+          end_at: action.end_at,
+          max_completions: action.max_completions,
+          allowedGroupIds,
+        },
+        participantGroupIds,
+        previousCompletions,
+      })
+
+      if (!check.allowed) {
+        setLastError(check.message)
         setSubmitting(false)
         return null
-      }
-
-      // Time availability check
-      if (action.time_enabled) {
-        const now = new Date()
-        if (action.start_at && now < new Date(action.start_at)) {
-          setLastError('האתגר טרם החל.')
-          setSubmitting(false)
-          return null
-        }
-        if (action.end_at && now > new Date(action.end_at)) {
-          setLastError('האתגר הסתיים.')
-          setSubmitting(false)
-          return null
-        }
       }
 
       // Speed bonus calculation
