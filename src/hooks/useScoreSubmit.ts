@@ -7,7 +7,25 @@ export interface ScoreSubmitResult {
   participantName: string
   actionName: string
   points: number
+  basePoints: number
+  speedBonusApplied: boolean
+  speedBonusLabel: string
   celebrationRewards: NewlyAwardedReward[]
+}
+
+interface TimedAction {
+  id: string
+  name: string
+  code: string
+  points: number
+  is_active: boolean
+  time_enabled: boolean
+  start_at: string | null
+  end_at: string | null
+  speed_bonus_enabled: boolean
+  speed_bonus_minutes: number | null
+  speed_bonus_flat_points: number | null
+  speed_multiplier: number
 }
 
 interface UseScoreSubmitReturn {
@@ -53,24 +71,63 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
         return null
       }
 
-      const { data: action, error: aError } = await supabase
+      const { data: rawAction, error: aError } = await supabase
         .from('actions')
-        .select('id, name, code, points, is_active')
+        .select('id, name, code, points, is_active, time_enabled, start_at, end_at, speed_bonus_enabled, speed_bonus_minutes, speed_bonus_flat_points, speed_multiplier')
         .eq('event_id', eventId)
         .eq('code', aCode)
         .maybeSingle()
 
       if (aError) throw aError
-      if (!action) {
+      if (!rawAction) {
         setLastError(`משימה "${aCode}" לא נמצאה.`)
         setSubmitting(false)
         return null
       }
 
+      const action = rawAction as TimedAction
+
       if (!action.is_active) {
         setLastError(`משימה "${action.code}" אינה פעילה.`)
         setSubmitting(false)
         return null
+      }
+
+      // Time availability check
+      if (action.time_enabled) {
+        const now = new Date()
+        if (action.start_at && now < new Date(action.start_at)) {
+          setLastError('האתגר טרם החל.')
+          setSubmitting(false)
+          return null
+        }
+        if (action.end_at && now > new Date(action.end_at)) {
+          setLastError('האתגר הסתיים.')
+          setSubmitting(false)
+          return null
+        }
+      }
+
+      // Speed bonus calculation
+      let finalPoints = action.points
+      let speedBonusApplied = false
+      let speedBonusLabel = ''
+
+      if (action.speed_bonus_enabled && action.start_at && action.speed_bonus_minutes) {
+        const now = new Date()
+        const speedBonusUntil = new Date(
+          new Date(action.start_at).getTime() + action.speed_bonus_minutes * 60_000,
+        )
+        if (now <= speedBonusUntil) {
+          if (action.speed_bonus_flat_points != null) {
+            finalPoints = action.points + action.speed_bonus_flat_points
+            speedBonusLabel = `+${action.speed_bonus_flat_points}`
+          } else {
+            finalPoints = Math.round(action.points * Number(action.speed_multiplier))
+            speedBonusLabel = `×${action.speed_multiplier}`
+          }
+          speedBonusApplied = true
+        }
       }
 
       const { error: insertError } = await supabase
@@ -79,7 +136,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
           event_id: eventId,
           participant_id: participant.id,
           action_id: action.id,
-          points: action.points,
+          points: finalPoints,
           created_by: user!.id,
         })
 
@@ -101,7 +158,10 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
       return {
         participantName: participant.name,
         actionName: action.name,
-        points: action.points,
+        points: finalPoints,
+        basePoints: action.points,
+        speedBonusApplied,
+        speedBonusLabel,
         celebrationRewards,
       }
     } catch (err) {

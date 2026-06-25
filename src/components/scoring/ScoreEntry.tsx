@@ -189,7 +189,8 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
     setSuccessFlash(true); setTimeout(() => setSuccessFlash(false), 1500)
     if (result.celebrationRewards.length > 0) { setCelebratingParticipantName(result.participantName); setCelebrationRewards(result.celebrationRewards) }
     const sign = result.points >= 0 ? '+' : ''
-    setToast({ message: `${sign}${result.points} נק׳ ל${result.participantName} עבור ${result.actionName}`, variant: 'success' })
+    const bonusPrefix = result.speedBonusApplied ? `🔥 בונוס מהירות ${result.speedBonusLabel}! ` : ''
+    setToast({ message: `${bonusPrefix}${sign}${result.points} נק׳ ל${result.participantName} עבור ${result.actionName}`, variant: 'success' })
     setSelectedParticipant(null); setParticipantQuery('')
     setSelectedAction(null); setActionQuery('')
     scannerZoneRef.current?.resetSeparateState(); fetchTransactions()

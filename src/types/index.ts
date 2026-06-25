@@ -106,6 +106,15 @@ export interface Action {
   max_completions: number | null;
   created_at: string;
   updated_at: string;
+  // Time-based fields (migration 021)
+  time_enabled: boolean;
+  start_at: string | null;
+  end_at: string | null;
+  duration_minutes: number | null;
+  speed_bonus_enabled: boolean;
+  speed_bonus_minutes: number | null;
+  speed_bonus_flat_points: number | null;
+  speed_multiplier: number;
 }
 
 export interface ActionWithGroups extends Action {
