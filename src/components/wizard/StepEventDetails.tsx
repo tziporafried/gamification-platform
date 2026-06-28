@@ -2,7 +2,6 @@ import { useState, useRef } from 'react'
 import { Upload, X, Image as ImageIcon } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { Input } from '@/components/ui/Input'
-import { ColorPicker } from '@/components/ui/ColorPicker'
 import type { Event } from '@/types'
 import { supabase } from '@/lib/supabase'
 
@@ -17,7 +16,6 @@ const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'
 
 export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDetailsProps) {
   const [name, setName] = useState(event.name || '')
-  const [themeColor, setThemeColor] = useState(event.theme_color || '#6366f1')
   const [logoUrl, setLogoUrl] = useState<string | null>(event.logo_url)
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(event.logo_url)
@@ -82,7 +80,6 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
 
     const hasChanges =
       name !== event.name ||
-      themeColor !== event.theme_color ||
       logoFile !== null ||
       logoUrl !== event.logo_url
 
@@ -100,7 +97,6 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
         .from('events')
         .update({
           name: name.trim(),
-          theme_color: themeColor,
           logo_url: newLogoUrl,
         })
         .eq('id', event.id)
@@ -118,34 +114,24 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
   return (
     <WizardStepWrapper
       title="פרטי הפעילות"
-      subtitle="תנו שם לפעילות ובחרו צבע וסמל שילוו את המשתתפים לאורך כל המשחק"
+      subtitle="תנו שם לפעילות וסמל שילוו את המשתתפים לאורך כל המשחק"
       currentStep={1}
       canAdvance={canAdvance && !saving}
       onNext={handleNext}
     >
       <div className="space-y-6">
-        {/* Event name + brand color on same row */}
-        <div className="flex items-end gap-3">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              שם הפעילות
-            </label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="נופש משפחתי באילת"
-              className="text-lg"
-              autoFocus
-              disabled={saving}
-            />
-          </div>
-          <div className="shrink-0 pb-0.5">
-            <ColorPicker
-              label="צבע מותג"
-              value={themeColor}
-              onChange={setThemeColor}
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            שם הפעילות
+          </label>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="נופש משפחתי באילת"
+            className="text-lg"
+            autoFocus
+            disabled={saving}
+          />
         </div>
 
         {/* Logo upload */}
@@ -158,7 +144,6 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
             <div className="relative inline-block">
               <div
                 className="w-28 h-28 rounded-xl border-2 border-game-border bg-game-card flex items-center justify-center overflow-hidden"
-                style={{ borderColor: themeColor + '40' }}
               >
                 <img
                   src={logoPreview}
@@ -218,27 +203,21 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
           <div className="flex items-center gap-3">
             {logoPreview ? (
               <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden shrink-0"
-                style={{ backgroundColor: themeColor + '20', borderColor: themeColor + '40', borderWidth: 1 }}
+                className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden shrink-0 border border-game-border bg-game-card"
               >
                 <img src={logoPreview} alt="" className="max-w-full max-h-full object-contain p-0.5" />
               </div>
             ) : (
               <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                style={{ backgroundColor: themeColor + '20' }}
+                className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-brand-600/20"
               >
-                <Upload size={18} style={{ color: themeColor }} />
+                <Upload size={18} className="text-brand-400" />
               </div>
             )}
             <div>
               <p className="text-white font-semibold text-sm leading-tight">
                 {name || 'שם הפעילות'}
               </p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: themeColor }} />
-                <span className="text-xs text-gray-500">צבע מותג</span>
-              </div>
             </div>
           </div>
         </div>

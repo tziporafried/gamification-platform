@@ -10,7 +10,6 @@ import type { DashboardTab, PointTransactionWithDetails, ParticipantLeaderboardE
 
 interface DashboardHomeProps {
   eventId: string
-  themeColor: string
   onTabChange: (tab: DashboardTab) => void
 }
 
@@ -36,7 +35,7 @@ function computeRanks(entries: ParticipantLeaderboardEntry[]): (ParticipantLeade
   })
 }
 
-export function DashboardHome({ eventId, themeColor, onTabChange }: DashboardHomeProps) {
+export function DashboardHome({ eventId, onTabChange }: DashboardHomeProps) {
   const [participantCount, setParticipantCount] = useState(0)
   const [totalPoints, setTotalPoints] = useState(0)
   const [rewardsUnlocked, setRewardsUnlocked] = useState(0)
@@ -167,7 +166,6 @@ export function DashboardHome({ eventId, themeColor, onTabChange }: DashboardHom
 
           <HomeLeaderboard
             entries={leaderboard}
-            themeColor={themeColor}
             onViewFull={() => onTabChange('leaderboard')}
           />
 

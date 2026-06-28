@@ -49,7 +49,7 @@ export function EventOpsPage() {
 
 function EventOpsContent({ event }: { event: Event }) {
   const navigate = useNavigate()
-  const accent = useMemo(() => hexToRgb(event.theme_color), [event.theme_color])
+  const accent = useMemo(() => hexToRgb('#7c3aed'), [])
   const opsData = useOperationsData(event.id)
   const { submit, submitting, lastError } = useScoreSubmit(event.id)
   const opsSound = useOpsSound()

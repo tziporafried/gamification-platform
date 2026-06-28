@@ -11,7 +11,7 @@ import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { AvatarCircle } from '@/components/ui/AvatarCircle'
 import type { ParticipantLeaderboardEntry, GroupLeaderboardEntry } from '@/types'
 
-interface LeaderboardSectionProps { eventId: string; themeColor: string; eventName?: string; eventLogoUrl?: string | null }
+interface LeaderboardSectionProps { eventId: string; eventName?: string; eventLogoUrl?: string | null }
 interface TxRow { id: string; participant_id: string; action_id: string; points: number; created_at: string; participant: { name: string; external_id: string }; action: { name: string; code: string } }
 interface PgMapping { participant_id: string; groups: { id: string; name: string; color: string } | null }
 
@@ -76,7 +76,7 @@ function DetailModal({ title, children, onClose }: { title: string; children: Re
   )
 }
 
-export function LeaderboardSection({ eventId, themeColor, eventName, eventLogoUrl }: LeaderboardSectionProps) {
+export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: LeaderboardSectionProps) {
   const [participantData, setParticipantData] = useState<ParticipantLeaderboardEntry[]>([])
   const [groupData, setGroupData] = useState<GroupLeaderboardEntry[]>([])
   const [transactions, setTransactions] = useState<TxRow[]>([])
@@ -142,7 +142,7 @@ export function LeaderboardSection({ eventId, themeColor, eventName, eventLogoUr
 
   if (loading) return <div className="flex justify-center py-16"><div className="h-9 w-9 animate-spin rounded-full border-4 border-amber-400 border-t-transparent" /></div>
   if (error) return <ErrorAlert message={error} />
-  if (rankedP.length === 0 && rankedG.length === 0) return <LeaderboardEmptyState themeColor={themeColor} />
+  if (rankedP.length === 0 && rankedG.length === 0) return <LeaderboardEmptyState />
 
   const champ = rankedP[0]; const champGroup = champ ? pgMap.get(champ.participant_id) : undefined
   const gChamp = rankedG[0]
@@ -161,17 +161,17 @@ export function LeaderboardSection({ eventId, themeColor, eventName, eventLogoUr
 
           {/* ═══ HEADER ═══ */}
           <motion.div className="mb-10 flex items-center justify-between" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}>
-            <SoundToggle muted={muted} onToggle={handleSoundToggle} themeColor={themeColor} />
+            <SoundToggle muted={muted} onToggle={handleSoundToggle} />
             <div className="flex flex-col items-center gap-2.5">
               {eventLogoUrl ? (
                 <motion.img src={eventLogoUrl} alt={eventName || ''} className="h-16 w-16 rounded-2xl object-cover shadow-xl"
-                  style={{ boxShadow: `0 0 24px ${themeColor}40` }}
-                  animate={{ boxShadow: [`0 0 24px ${themeColor}30`, `0 0 40px ${themeColor}50`, `0 0 24px ${themeColor}30`] }}
+                  style={{ boxShadow: '0 0 24px rgba(124,58,237,0.25)' }}
+                  animate={{ boxShadow: ['0 0 24px rgba(124,58,237,0.18)', '0 0 40px rgba(124,58,237,0.32)', '0 0 24px rgba(124,58,237,0.18)'] }}
                   transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} />
               ) : eventName ? (
                 <motion.div className="flex h-16 w-16 items-center justify-center rounded-2xl text-xl font-black text-white shadow-xl"
-                  style={{ backgroundColor: themeColor + '30' }}
-                  animate={{ boxShadow: [`0 0 24px ${themeColor}30`, `0 0 40px ${themeColor}50`, `0 0 24px ${themeColor}30`] }}
+                  style={{ backgroundColor: 'rgba(124,58,237,0.18)' }}
+                  animate={{ boxShadow: ['0 0 24px rgba(124,58,237,0.18)', '0 0 40px rgba(124,58,237,0.32)', '0 0 24px rgba(124,58,237,0.18)'] }}
                   transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}>{eventName.slice(0, 2)}</motion.div>
               ) : null}
               <div className="flex items-center gap-2.5">

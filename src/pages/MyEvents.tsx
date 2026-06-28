@@ -69,7 +69,6 @@ export function MyEvents() {
         owner_admin_id: user!.id,
         name: '',
         slug,
-        theme_color: '#7c3aed',
         status: 'editing',
         qr_scoring_mode: 'separate',
       })
@@ -223,7 +222,6 @@ function EventRow({ event, isOwner, isFreePlan, onDelete, onShare }: EventRowPro
     onShare()
   }
 
-  const accent = event.theme_color || '#7c3aed'
   const isWip = event.status === 'editing'
 
   return (
@@ -235,20 +233,14 @@ function EventRow({ event, isOwner, isFreePlan, onDelete, onShare }: EventRowPro
       className="group relative flex w-full cursor-pointer items-center gap-5 px-5 py-4 text-right bg-game-dark hover:bg-white/[0.03] transition-colors rounded-2xl border border-game-border overflow-hidden"
     >
       {/* Brand color left accent bar */}
-      <div
-        className="absolute right-0 top-0 h-full w-1 rounded-r-none transition-opacity opacity-60 group-hover:opacity-100"
-        style={{ backgroundColor: accent }}
-      />
+      <div className="absolute right-0 top-0 h-full w-1 rounded-r-none transition-opacity opacity-60 group-hover:opacity-100 bg-brand-600" />
 
       {/* Logo / icon */}
-      <div
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
-        style={{ backgroundColor: accent + '22', border: `1.5px solid ${accent}44` }}
-      >
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-600/10 border border-brand-600/25">
         {event.logo_url ? (
           <img src={event.logo_url} alt="" className="h-12 w-12 rounded-xl object-cover" />
         ) : (
-          <Calendar size={22} style={{ color: accent }} />
+          <Calendar size={22} className="text-brand-400" />
         )}
       </div>
 

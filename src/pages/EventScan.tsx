@@ -43,7 +43,6 @@ function EventScanContent({ event }: { event: Event }) {
     <ScoreEntry
       eventId={event.id}
       qrScoringMode={event.qr_scoring_mode}
-      themeColor={event.theme_color}
       eventName={event.name}
       eventLogoUrl={event.logo_url}
     />

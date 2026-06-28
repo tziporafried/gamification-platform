@@ -87,7 +87,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const tc = event.theme_color || '#8b5cf6'
+  const tc = '#7c3aed'
 
   return (
     <div className="relative min-h-[calc(100vh-4rem)] overflow-hidden">

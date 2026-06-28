@@ -1,7 +1,6 @@
 interface SoundToggleProps {
   muted: boolean
   onToggle: () => void
-  themeColor: string
 }
 
 export function SoundToggle({ muted, onToggle }: SoundToggleProps) {

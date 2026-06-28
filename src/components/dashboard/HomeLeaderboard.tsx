@@ -16,7 +16,6 @@ interface LeaderboardEntry {
 
 interface HomeLeaderboardProps {
   entries: LeaderboardEntry[]
-  themeColor: string
   onViewFull: () => void
 }
 

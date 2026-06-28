@@ -1,18 +1,17 @@
 import { Trophy } from 'lucide-react'
 
 interface LeaderboardEmptyStateProps {
-  themeColor: string
   message?: string
 }
 
-export function LeaderboardEmptyState({ themeColor, message }: LeaderboardEmptyStateProps) {
+export function LeaderboardEmptyState({ message }: LeaderboardEmptyStateProps) {
   return (
     <div className="opacity-0 animate-fade-in-up flex flex-col items-center justify-center rounded-2xl border border-game-border bg-game-card/50 px-6 py-16 text-center">
       <div
         className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl"
-        style={{ backgroundColor: themeColor + '20' }}
+        style={{ backgroundColor: 'rgba(124,58,237,0.12)' }}
       >
-        <Trophy size={32} style={{ color: themeColor }} />
+        <Trophy size={32} style={{ color: '#7c3aed' }} />
       </div>
       <h3 className="text-lg font-bold text-white">
         הזירה מוכנה

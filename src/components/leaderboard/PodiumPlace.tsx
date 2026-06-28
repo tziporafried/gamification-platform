@@ -33,7 +33,6 @@ interface PodiumPlaceProps {
   detail?: string
   color?: string
   totalPoints: number
-  themeColor: string
   animationDelay: number
 }
 

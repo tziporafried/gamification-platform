@@ -5,7 +5,6 @@ export type LeaderboardView = 'participants' | 'groups'
 interface LeaderboardToggleProps {
   activeView: LeaderboardView
   onViewChange: (view: LeaderboardView) => void
-  themeColor: string
 }
 
 export function LeaderboardToggle({ activeView, onViewChange }: LeaderboardToggleProps) {

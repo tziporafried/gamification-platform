@@ -13,7 +13,6 @@ interface WinnerEntry {
 
 interface WinnersRevealProps {
   entries: WinnerEntry[]
-  themeColor: string
   play: () => void
   playApplause: (rank: number) => void
   muted: boolean

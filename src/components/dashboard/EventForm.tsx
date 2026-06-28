@@ -5,7 +5,6 @@ import { slugify } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
-import { ColorPicker } from '@/components/ui/ColorPicker'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import type { Event, QrScoringMode } from '@/types'
 
@@ -22,7 +21,6 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
   const [name, setName] = useState(event?.name ?? '')
   const [slug, setSlug] = useState(event?.slug ?? '')
   const [slugManual, setSlugManual] = useState(!!event)
-  const [themeColor, setThemeColor] = useState(event?.theme_color ?? '#6366f1')
   const [qrScoringMode, setQrScoringMode] = useState<QrScoringMode>(event?.qr_scoring_mode ?? 'combined')
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(event?.logo_url ?? null)
@@ -93,7 +91,6 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
           .update({
             name: name.trim(),
             slug: slug.trim(),
-            theme_color: themeColor,
             qr_scoring_mode: qrScoringMode,
             logo_url: logoUrl,
           })
@@ -110,7 +107,6 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
             owner_admin_id: user!.id,
             name: name.trim(),
             slug: slug.trim(),
-            theme_color: themeColor,
             qr_scoring_mode: qrScoringMode,
             logo_url: logoUrl,
           })
@@ -160,12 +156,6 @@ export function EventForm({ event, onSaved, onCancel }: EventFormProps) {
           placeholder="my-awesome-event"
           value={slug}
           onChange={(e) => handleSlugChange(e.target.value)}
-        />
-
-        <ColorPicker
-          label="צבע נושא"
-          value={themeColor}
-          onChange={setThemeColor}
         />
 
         <div>

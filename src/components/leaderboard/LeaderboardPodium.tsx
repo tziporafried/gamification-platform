@@ -10,10 +10,9 @@ interface PodiumEntry {
 
 interface LeaderboardPodiumProps {
   entries: PodiumEntry[]
-  themeColor: string
 }
 
-export function LeaderboardPodium({ entries, themeColor }: LeaderboardPodiumProps) {
+export function LeaderboardPodium({ entries }: LeaderboardPodiumProps) {
   if (entries.length === 0) return null
 
   const first = entries.find((e) => e.rank === 1)
@@ -32,7 +31,6 @@ export function LeaderboardPodium({ entries, themeColor }: LeaderboardPodiumProp
               detail={second.detail}
               color={second.color}
               totalPoints={second.total_points}
-              themeColor={themeColor}
               animationDelay={0.15}
             />
           )}
@@ -45,7 +43,6 @@ export function LeaderboardPodium({ entries, themeColor }: LeaderboardPodiumProp
               detail={first.detail}
               color={first.color}
               totalPoints={first.total_points}
-              themeColor={themeColor}
               animationDelay={0}
             />
           )}
@@ -58,7 +55,6 @@ export function LeaderboardPodium({ entries, themeColor }: LeaderboardPodiumProp
               detail={third.detail}
               color={third.color}
               totalPoints={third.total_points}
-              themeColor={themeColor}
               animationDelay={0.3}
             />
           )}
@@ -75,7 +71,6 @@ export function LeaderboardPodium({ entries, themeColor }: LeaderboardPodiumProp
             detail={entry.detail}
             color={entry.color}
             totalPoints={entry.total_points}
-            themeColor={themeColor}
             animationDelay={entry.rank * 0.1}
           />
         ))}

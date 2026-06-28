@@ -69,7 +69,7 @@ export function QrCardGenerator({ event, variant = 'default' }: QrCardGeneratorP
   function handlePrint() {
     const content = printRef.current; if (!content) return
     const printWindow = window.open('', '_blank'); if (!printWindow) return
-    const c = event.theme_color || '#6366f1'
+    const c = '#7c3aed'
 
     printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8" />
 <title>כרטיסי QR – ${event.name}</title>
@@ -249,7 +249,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
 
 function ParticipantPage({ sheet, event }: { sheet: ParticipantSheet; event: Event }) {
   const { participant, actions } = sheet
-  const c = event.theme_color || '#6366f1'
+  const c = '#7c3aed'
 
   return (
     <div className="participant-section" style={{ marginBottom: '20px' }}>

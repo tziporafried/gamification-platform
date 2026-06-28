@@ -49,7 +49,6 @@ export function EventDisplayPage() {
       </div>
       <LeaderboardSection
         eventId={event.id}
-        themeColor={event.theme_color}
         eventName={event.name}
         eventLogoUrl={event.logo_url}
       />

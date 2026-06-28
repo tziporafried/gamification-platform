@@ -10,10 +10,9 @@ interface TableEntry {
 
 interface LeaderboardTableProps {
   entries: TableEntry[]
-  themeColor: string
 }
 
-export function LeaderboardTable({ entries, themeColor }: LeaderboardTableProps) {
+export function LeaderboardTable({ entries }: LeaderboardTableProps) {
   if (entries.length === 0) return null
 
   return (
@@ -26,7 +25,6 @@ export function LeaderboardTable({ entries, themeColor }: LeaderboardTableProps)
           detail={entry.detail}
           color={entry.color}
           totalPoints={entry.total_points}
-          themeColor={themeColor}
           animationDelay={index * 0.05}
         />
       ))}

@@ -17,7 +17,6 @@ import type { PointTransactionWithDetails, NewlyAwardedReward, QrScoringMode } f
 interface ScoreEntryProps {
   eventId: string
   qrScoringMode: QrScoringMode
-  themeColor: string
   eventName: string
   eventLogoUrl: string | null
 }
@@ -25,8 +24,10 @@ interface ScoreEntryProps {
 interface ParticipantOption { id: string; name: string; externalId: string }
 interface ActionOption { id: string; name: string; code: string; points: number }
 
-export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, eventLogoUrl }: ScoreEntryProps) {
-  const accent = useMemo(() => hexToRgb(themeColor), [themeColor])
+const BRAND_ACCENT = hexToRgb('#7c3aed')
+
+export function ScoreEntry({ eventId, qrScoringMode, eventName, eventLogoUrl }: ScoreEntryProps) {
+  const accent = BRAND_ACCENT
 
   const [transactions, setTransactions] = useState<PointTransactionWithDetails[]>([])
   const [loading, setLoading] = useState(true)
@@ -205,10 +206,10 @@ export function ScoreEntry({ eventId, qrScoringMode, themeColor, eventName, even
     return Array.from({ length: 30 }, (_, i) => ({
       id: i, x: (Math.random() - 0.5) * 400, y: -150 - Math.random() * 200,
       rotation: Math.random() * 1080 - 540,
-      color: [themeColor, '#a855f7', '#22c55e', '#06b6d4', '#fbbf24', '#ec4899'][i % 6],
+      color: ['#7c3aed', '#a855f7', '#22c55e', '#06b6d4', '#fbbf24', '#ec4899'][i % 6],
       size: 3 + Math.random() * 8, isCircle: Math.random() > 0.5,
     }))
-  }, [successFlash, themeColor])
+  }, [successFlash])
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-game-dark">

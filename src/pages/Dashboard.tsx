@@ -66,7 +66,6 @@ export function Dashboard() {
       {activeTab === 'home' && (
         <DashboardHome
           eventId={event.id}
-          themeColor={event.theme_color}
           onTabChange={setActiveTab}
         />
       )}
@@ -86,13 +85,13 @@ export function Dashboard() {
         <RewardList eventId={event.id} onCountChange={noop} />
       )}
       {activeTab === 'score' && (
-        <ScoreEntry eventId={event.id} qrScoringMode={event.qr_scoring_mode} themeColor={event.theme_color} eventName={event.name} eventLogoUrl={event.logo_url} />
+        <ScoreEntry eventId={event.id} qrScoringMode={event.qr_scoring_mode} eventName={event.name} eventLogoUrl={event.logo_url} />
       )}
       {activeTab === 'qr-cards' && (
         <QrCardGenerator event={event} />
       )}
       {activeTab === 'leaderboard' && (
-        <LeaderboardSection eventId={event.id} themeColor={event.theme_color} eventName={event.name} eventLogoUrl={event.logo_url} />
+        <LeaderboardSection eventId={event.id} eventName={event.name} eventLogoUrl={event.logo_url} />
       )}
     </DashboardLayout>
   )

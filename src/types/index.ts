@@ -56,7 +56,7 @@ export interface Event {
   name: string;
   slug: string;
   logo_url: string | null;
-  theme_color: string;
+  theme_color?: string;
   status: EventStatus;
   qr_scoring_mode: QrScoringMode;
   created_at: string;

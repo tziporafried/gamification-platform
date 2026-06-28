@@ -8,7 +8,6 @@ interface LeaderboardRowProps {
   detail?: string
   color?: string
   totalPoints: number
-  themeColor?: string
   animationDelay: number
 }
 
