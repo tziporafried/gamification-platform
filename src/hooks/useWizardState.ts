@@ -1,12 +1,11 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { getWizardPrefs, setWizardPrefs, computeWizardState, getStepId } from '@/lib/wizard'
-import type { Event, EventCounts, WizardState, GroupType, WizardStepId } from '@/types'
+import { getWizardPrefs, setWizardPrefs, computeWizardState } from '@/lib/wizard'
+import type { Event, EventCounts, WizardState, GroupType } from '@/types'
 
 export function useWizardState(event: Event | null, counts: EventCounts, countsLoaded: boolean) {
-  const prefs = event ? getWizardPrefs(event.id) : { lastStep: 1, groupType: null }
-
-  const [currentStep, setCurrentStepRaw] = useState(prefs.lastStep)
-  const [groupType, setGroupTypeRaw] = useState<GroupType | null>(prefs.groupType)
+  const [groupType, setGroupTypeRaw] = useState<GroupType | null>(
+    () => event ? getWizardPrefs(event.id).groupType : null
+  )
 
   // Resolve groupType: DB groups > 0 always wins, then localStorage, then default
   useEffect(() => {
@@ -29,38 +28,10 @@ export function useWizardState(event: Event | null, counts: EventCounts, countsL
     return computeWizardState(event, counts, groupType)
   }, [event, counts, groupType])
 
-  const setCurrentStep = useCallback((step: number) => {
-    setCurrentStepRaw(step)
-    if (event) setWizardPrefs(event.id, { lastStep: step })
-  }, [event])
-
   const setGroupType = useCallback((type: GroupType) => {
     setGroupTypeRaw(type)
     if (event) setWizardPrefs(event.id, { groupType: type })
   }, [event])
 
-  const goNext = useCallback(() => {
-    setCurrentStep(Math.min(currentStep + 1, 5))
-  }, [currentStep, setCurrentStep])
-
-  const goBack = useCallback(() => {
-    setCurrentStep(Math.max(currentStep - 1, 1))
-  }, [currentStep, setCurrentStep])
-
-  const goToStep = useCallback((step: number) => {
-    if (step >= 1 && step <= 5) setCurrentStep(step)
-  }, [setCurrentStep])
-
-  const currentStepId: WizardStepId = getStepId(currentStep)
-
-  return {
-    currentStep,
-    currentStepId,
-    wizardState,
-    groupType,
-    setGroupType,
-    goNext,
-    goBack,
-    goToStep,
-  }
+  return { wizardState, groupType, setGroupType }
 }

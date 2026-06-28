@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { useEventCounts } from '@/hooks/useEventCounts'
 import { useWizardState } from '@/hooks/useWizardState'
+import { getWizardPrefs, setWizardPrefs } from '@/lib/wizard'
 import { WizardLayout } from '@/components/wizard/WizardLayout'
 import { StepEventDetails } from '@/components/wizard/StepEventDetails'
 import { StepParticipants } from '@/components/wizard/StepParticipants'
@@ -14,22 +14,19 @@ import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
 
 export function EventWizard() {
-  const { id, step } = useParams<{ id: string; step?: string }>()
-  const { user } = useAuth()
+  const { id, step: stepParam } = useParams<{ id: string; step?: string }>()
   const navigate = useNavigate()
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // currentStep is derived directly from the URL — no state, no sync effects
+  const currentStep = useMemo(() => {
+    const n = parseInt(stepParam ?? '', 10)
+    return Number.isFinite(n) && n >= 1 && n <= 5 ? n : 1
+  }, [stepParam])
+
   const { counts, loaded: countsLoaded, refresh: refreshCounts } = useEventCounts(id)
-  const {
-    currentStep,
-    wizardState,
-    groupType,
-    setGroupType,
-    goNext,
-    goBack,
-    goToStep,
-  } = useWizardState(event, counts, countsLoaded)
+  const { wizardState, groupType, setGroupType } = useWizardState(event, counts, countsLoaded)
 
   useEffect(() => {
     async function fetchEvent() {
@@ -49,29 +46,23 @@ export function EventWizard() {
       setLoading(false)
     }
     fetchEvent()
-  }, [id, user, navigate])
+  }, [id, navigate]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sync URL step param → state
+  // Redirect /events/:id (no step param) to last saved step
   useEffect(() => {
-    if (!step) return
-    const stepNum = parseInt(step, 10)
-    if (stepNum >= 1 && stepNum <= 5) {
-      goToStep(stepNum)
-    }
-  }, [step, goToStep])
+    if (!id || loading || !event || stepParam) return
+    const { lastStep } = getWizardPrefs(id)
+    navigate(`/events/${id}/step/${lastStep}`, { replace: true })
+  }, [id, loading, event, stepParam, navigate])
 
-  // Sync state → URL (don't override an explicit URL step until state catches up)
-  useEffect(() => {
-    if (!id || loading) return
-    const urlStep = step ? parseInt(step, 10) : NaN
-    if (!Number.isNaN(urlStep) && urlStep >= 1 && urlStep <= 5 && urlStep !== currentStep) {
-      return
-    }
-    const expectedPath = `/events/${id}/step/${currentStep}`
-    if (window.location.pathname !== expectedPath) {
-      navigate(expectedPath, { replace: true })
-    }
-  }, [currentStep, id, loading, navigate, step])
+  const goToStep = useCallback((s: number) => {
+    const clamped = Math.max(1, Math.min(5, s))
+    if (id) setWizardPrefs(id, { lastStep: clamped })
+    navigate(`/events/${id}/step/${clamped}`, { replace: true })
+  }, [id, navigate])
+
+  const goNext = useCallback(() => goToStep(currentStep + 1), [currentStep, goToStep])
+  const goBack = useCallback(() => goToStep(currentStep - 1), [currentStep, goToStep])
 
   if (loading || !event) return <FullPageLoader />
 

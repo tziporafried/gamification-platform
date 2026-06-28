@@ -10,6 +10,7 @@ import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { ShareEventModal } from '@/components/ShareEventModal'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
+import { getWizardPrefs } from '@/lib/wizard'
 
 export function MyEvents() {
   const { user, isFreePlan } = useAuth()
@@ -209,7 +210,8 @@ function EventRow({ event, isOwner, isFreePlan, onDelete, onShare }: EventRowPro
 
   function handleOpenSettings(e: React.MouseEvent) {
     e.stopPropagation()
-    navigate(`/events/${event.id}/step/1`)
+    const lastStep = getWizardPrefs(event.id).lastStep
+    navigate(`/events/${event.id}/step/${lastStep}`)
   }
 
   function handleDelete(e: React.MouseEvent) {
@@ -228,8 +230,8 @@ function EventRow({ event, isOwner, isFreePlan, onDelete, onShare }: EventRowPro
     <div
       role="button"
       tabIndex={0}
-      onClick={() => isWip ? navigate(`/events/${event.id}/step/1`) : navigate(`/events/${event.id}/control`)}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isWip ? navigate(`/events/${event.id}/step/1`) : navigate(`/events/${event.id}/control`) } }}
+      onClick={() => isWip ? navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`) : navigate(`/events/${event.id}/control`)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isWip ? navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`) : navigate(`/events/${event.id}/control`) } }}
       className="group relative flex w-full cursor-pointer items-center gap-5 px-5 py-4 text-right bg-game-dark hover:bg-white/[0.03] transition-colors rounded-2xl border border-game-border overflow-hidden"
     >
       {/* Brand color left accent bar */}

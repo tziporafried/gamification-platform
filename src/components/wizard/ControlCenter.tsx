@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { ReadinessChecklist } from './ReadinessChecklist'
 import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
-import { calculateReadiness, isEventReady } from '@/lib/wizard'
+import { calculateReadiness, isEventReady, getWizardPrefs } from '@/lib/wizard'
 import type { Event, EventCounts } from '@/types'
 
 interface ControlCenterProps {
@@ -122,7 +122,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
               {copied ? <Check size={14} className="ml-1 text-emerald-400" /> : <LinkIcon size={14} className="ml-1" />}
               {copied ? 'הועתק!' : 'העתק קישור'}
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${event.id}/step/1`)}>
+            <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`)}>
               <Settings size={14} className="ml-1" />
               הגדרות
             </Button>
