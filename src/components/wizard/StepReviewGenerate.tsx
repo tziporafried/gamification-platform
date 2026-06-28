@@ -1,7 +1,10 @@
+import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Printer } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { ReadinessChecklist } from './ReadinessChecklist'
 import { QrCardGenerator } from '@/components/qr-cards/QrCardGenerator'
+import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import type { Event, EventCounts, GroupType } from '@/types'
 import { isEventReady, calculateReadiness } from '@/lib/wizard'
@@ -19,6 +22,22 @@ export function StepReviewGenerate({ event, counts, groupType, onGoToStep, onBac
   const ready = isEventReady(event, counts, groupType)
   const checks = calculateReadiness(event, counts, groupType)
 
+  const [generateFn, setGenerateFn] = useState<(() => void) | null>(null)
+
+  // Wrap in thunk to avoid useState treating the function as a state updater
+  const handleReadyChange = useCallback((fn: (() => void) | null) => {
+    setGenerateFn(() => fn)
+  }, [])
+
+  const footerBar = generateFn ? (
+    <div className="border-t border-game-border bg-game-dark px-4 py-3">
+      <Button onClick={generateFn} className="w-full">
+        <Printer size={16} className="ml-1.5" />הדפס כרטיסים
+      </Button>
+      <p className="text-center text-xs text-gray-500 mt-2">אפשר תמיד לחזור ולהדפיס שוב בהמשך.</p>
+    </div>
+  ) : null
+
   async function handleFinish() {
     if (event.status !== 'active') {
       await supabase.from('events').update({ status: 'active' }).eq('id', event.id)
@@ -35,6 +54,7 @@ export function StepReviewGenerate({ event, counts, groupType, onGoToStep, onBac
       onNext={handleFinish}
       onBack={onBack}
       nextLabel="התחל פעילות"
+      footerBar={footerBar}
     >
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-2">
@@ -56,7 +76,7 @@ export function StepReviewGenerate({ event, counts, groupType, onGoToStep, onBac
               <p className="text-base font-semibold text-emerald-300">🎉 הפעילות מוכנה</p>
               <p className="text-sm text-gray-400">הכל מוכן! אפשר להדפיס את הכרטיסים ולהתחיל את הפעילות.</p>
             </div>
-            <QrCardGenerator event={event} variant="wizard" />
+            <QrCardGenerator event={event} variant="wizard" onReadyChange={handleReadyChange} />
           </>
         )}
       </div>

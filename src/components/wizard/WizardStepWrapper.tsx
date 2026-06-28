@@ -12,6 +12,7 @@ interface WizardStepWrapperProps {
   nextLabel?: string
   backLabel?: string
   children: React.ReactNode
+  footerBar?: React.ReactNode
 }
 
 export function WizardStepWrapper({
@@ -25,6 +26,7 @@ export function WizardStepWrapper({
   nextLabel,
   backLabel = 'חזרה',
   children,
+  footerBar,
 }: WizardStepWrapperProps) {
   const isFirst = currentStep === 1
   const isLast = currentStep === totalSteps
@@ -41,6 +43,8 @@ export function WizardStepWrapper({
       <div className="flex-1 overflow-y-auto min-h-0 pb-4 pl-1 pr-0" style={{ scrollbarGutter: 'stable' }}>
         {children}
       </div>
+
+      {footerBar && <div className="shrink-0">{footerBar}</div>}
 
       {/* Navigation buttons — always at bottom */}
       <div className="shrink-0 flex items-center justify-between border-t border-game-border bg-game-dark py-4">
