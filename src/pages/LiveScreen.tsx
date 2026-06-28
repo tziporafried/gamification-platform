@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Clock, Bell, Activity, Camera, MapPin, HelpCircle,
@@ -227,6 +227,175 @@ function ClockFaceSVG({ now, remaining }: { now: Date; remaining: number }) {
   )
 }
 
+// ─── Memoized panel sub-components ───────────────────────────────────────────
+// These only re-render when their specific data changes, not on every secondNow tick.
+
+type Reminder = { id: string; groupName: string; groupColor: string; isAllGroups: boolean; message: string; isBonus: boolean }
+
+const RemindersPanel = React.memo(function RemindersPanel({
+  reminders, copiedId, onCopy,
+}: { reminders: Reminder[]; copiedId: string | null; onCopy: (msg: string, id: string) => void }) {
+  return (
+    <motion.div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+      <SectionHeader icon={<Bell size={13} />} title="צריך להזכיר?" />
+      {reminders.length === 0 ? (
+        <p className="py-4 text-center text-xs text-gray-600">אין תזכורות כרגע</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {reminders.slice(0, 4).map(r => (
+            <div key={r.id} className="flex flex-col gap-2 rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="flex items-start gap-2">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white"
+                  style={{ background: r.groupColor, boxShadow: `0 0 8px ${r.groupColor}50` }}>
+                  {r.isAllGroups ? '★' : r.groupName.slice(0, 2)}
+                </div>
+                <p className="text-xs leading-relaxed text-gray-300 flex-1">{r.message}</p>
+              </div>
+              <button onClick={() => onCopy(r.message, r.id)}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-bold text-white transition-all hover:opacity-80"
+                style={{ background: 'linear-gradient(135deg, rgba(167,139,250,0.18), rgba(236,72,153,0.18))', border: '1px solid rgba(167,139,250,0.3)' }}>
+                {copiedId === r.id ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                {copiedId === r.id ? 'הועתק!' : 'שלח תזכורת'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  )
+})
+
+type RankedGroup = GroupLeaderboardEntry & { rank: number }
+
+const GroupLeaderboardPanel = React.memo(function GroupLeaderboardPanel({ rankedG }: { rankedG: RankedGroup[] }) {
+  return (
+    <motion.div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+      <SectionHeader icon={<Trophy size={13} />} title="דירוג קבוצות" />
+      {rankedG.length === 0 ? (
+        <p className="py-4 text-center text-xs text-gray-600">אין נתוני קבוצות</p>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          <AnimatePresence initial={false}>
+            {rankedG.slice(0, 5).map((g, idx) => {
+              const maxPts = rankedG[0]?.total_points || 1
+              const pct = Math.round((g.total_points / maxPts) * 100)
+              const RC = ['#eab308', '#a1a1aa', '#ea580c']
+              const rc = RC[g.rank - 1] || 'rgba(99,102,241,0.7)'
+              return (
+                <motion.div key={g.group_id} layout layoutId={`group-lb-${g.group_id}`}
+                  className="flex items-center gap-2"
+                  initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
+                  transition={{ layout: { duration: 0.35, ease: 'easeInOut' }, opacity: { duration: 0.2 }, x: { duration: 0.2, delay: 0.15 + idx * 0.04 } }}>
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-white"
+                    style={{ background: rc, boxShadow: g.rank <= 3 ? `0 0 8px ${rc}60` : 'none' }}>{g.rank}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: g.group_color }} />
+                        <span className="text-xs font-bold text-white truncate">{g.group_name}</span>
+                      </div>
+                      <span className="text-xs font-black text-white shrink-0 mr-1 tabular-nums">{g.total_points.toLocaleString('he-IL')}</span>
+                    </div>
+                    <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                      <motion.div className="h-full rounded-full" style={{ background: g.group_color }}
+                        animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} />
+                    </div>
+                  </div>
+                  {g.rank === 1 && <span className="text-sm">🔥</span>}
+                </motion.div>
+              )
+            })}
+          </AnimatePresence>
+        </div>
+      )}
+    </motion.div>
+  )
+})
+
+const UpcomingMissionsPanel = React.memo(function UpcomingMissionsPanel({ sortedMissions }: { sortedMissions: Action[] }) {
+  return (
+    <motion.div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+      <SectionHeader icon={<Clock size={13} />} title="משימות קרובות" />
+      {sortedMissions.length === 0 ? (
+        <p className="py-4 text-center text-xs text-gray-600">אין משימות</p>
+      ) : (
+        <div className="flex flex-col">
+          {sortedMissions.slice(0, 5).map((m, idx) => {
+            const mStatus = getMissionStatus(m)
+            const mMins = getMinutesLeft(m)
+            const mIcon = MISSION_ICON_SET[idx % MISSION_ICON_SET.length]
+            const startTime = m.start_at ? format(new Date(m.start_at), 'HH:mm') : null
+            return (
+              <div key={m.id} className="flex items-center gap-3 py-2.5 border-b last:border-0" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                {startTime && <span className="shrink-0 text-xs font-mono font-bold text-gray-500 w-10">{startTime}</span>}
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white" style={{ background: mIcon.bg, boxShadow: `0 0 8px ${mIcon.bg}40` }}>
+                  {React.cloneElement(mIcon.icon as React.ReactElement, { size: 16 })}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-white truncate">{m.name}</p>
+                  <p className="text-[10px] text-gray-500">
+                    {mStatus === 'active' ? 'פעילה עכשיו' : mStatus === 'ending' ? `מסתיימת בעוד ${mMins} דק׳` : mStatus === 'upcoming' && mMins !== null ? `מתחילה בעוד ${mMins} דק׳` : 'זמינה'}
+                  </p>
+                </div>
+                {m.speed_bonus_enabled && <Flame size={11} className="text-orange-400 shrink-0" />}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </motion.div>
+  )
+})
+
+const RecentActivityPanel = React.memo(function RecentActivityPanel({
+  transactions, showMore, onToggleMore,
+}: { transactions: TxRow[]; showMore: boolean; onToggleMore: () => void }) {
+  return (
+    <motion.div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+      <SectionHeader icon={<Activity size={13} />} title="פעילויות אחרונות" />
+      {transactions.length === 0 ? (
+        <p className="py-4 text-center text-xs text-gray-600">טרם נרשמה פעילות</p>
+      ) : (
+        <div className="flex flex-col">
+          <AnimatePresence initial={false}>
+            {transactions.slice(0, showMore ? 12 : 6).map((item, idx) => {
+              const basePoints = (item.action as unknown as { points?: number })?.points ?? 0
+              const isItemBonus = basePoints > 0 && item.points > basePoints
+              const initials = (item.participant?.name ?? '?').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+              const iconDef = ACTIVITY_ICON_SET[idx % ACTIVITY_ICON_SET.length]
+              return (
+                <motion.div key={item.id} className="flex items-center gap-2 py-2 border-b last:border-0" style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+                  initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, delay: idx * 0.03 }}>
+                  <span className="shrink-0 text-[10px] font-mono text-gray-600 w-10">{formatTxTime(item.created_at)}</span>
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white" style={{ background: iconDef.bg }}>{initials}</div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-white truncate">{item.participant?.name}</p>
+                    <p className="text-[10px] text-gray-500 truncate">{item.action?.name}</p>
+                  </div>
+                  <div className="shrink-0 rounded-md px-1.5 py-0.5 text-xs font-black"
+                    style={isItemBonus ? { background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)' } : { background: 'rgba(255,255,255,0.07)', color: '#d1d5db' }}>
+                    {isItemBonus ? '×' : ''}{item.points > 0 ? '+' : ''}{item.points}
+                  </div>
+                </motion.div>
+              )
+            })}
+          </AnimatePresence>
+          {transactions.length > 6 && (
+            <button onClick={onToggleMore} className="pt-2 text-center text-xs font-semibold text-gray-500 hover:text-gray-300">
+              {showMore ? 'הצג פחות' : 'הצג עוד'}
+            </button>
+          )}
+        </div>
+      )}
+    </motion.div>
+  )
+})
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 function LiveScreenContent({ event }: { event: Event }) {
@@ -242,13 +411,16 @@ function LiveScreenContent({ event }: { event: Event }) {
   const [now, setNow] = useState(new Date())
   const [secondNow, setSecondNow] = useState(new Date())
 
+  // Track whether the first fetch has completed — background refreshes must never show the spinner
+  const isInitialFetch = useRef(true)
+
   // Tick every minute for mission status recalculation
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(t) }, [])
   // Tick every second for hero countdown
   useEffect(() => { const t = setInterval(() => setSecondNow(new Date()), 1_000); return () => clearInterval(t) }, [])
 
   const fetchAll = useCallback(async () => {
-    setLoading(true)
+    // No setLoading(true) here — only the very first render shows a spinner
     try {
       const [pRes, gRes, txRes, actRes] = await Promise.all([
         supabase.rpc('get_participant_leaderboard', { p_event_id: event.id }),
@@ -261,9 +433,43 @@ function LiveScreenContent({ event }: { event: Event }) {
 
       const pData = (pRes.data ?? []) as ParticipantLeaderboardEntry[]
       const gData = (gRes.data ?? []) as GroupLeaderboardEntry[]
-      setParticipantData(pData); setGroupData(gData)
-      setTransactions((txRes.data ?? []) as unknown as TxRow[])
-      setActions((actRes.data ?? []) as Action[])
+      const newTx = (txRes.data ?? []) as unknown as TxRow[]
+      const newActs = (actRes.data ?? []) as Action[]
+
+      // Only update state if something actually changed — avoids unnecessary re-renders
+      setParticipantData(prev => {
+        if (prev.length !== pData.length) return pData
+        for (let i = 0; i < pData.length; i++) {
+          if (prev[i]?.participant_id !== pData[i]?.participant_id || prev[i]?.total_points !== pData[i]?.total_points) return pData
+        }
+        return prev
+      })
+
+      setGroupData(prev => {
+        if (prev.length !== gData.length) return gData
+        for (let i = 0; i < gData.length; i++) {
+          if (prev[i]?.group_id !== gData[i]?.group_id || prev[i]?.total_points !== gData[i]?.total_points) return gData
+        }
+        return prev
+      })
+
+      setTransactions(prev => {
+        if (prev.length !== newTx.length || prev[0]?.id !== newTx[0]?.id) return newTx
+        return prev
+      })
+
+      setActions(prev => {
+        if (prev.length !== newActs.length) return newActs
+        for (let i = 0; i < newActs.length; i++) {
+          const o = prev[i], n = newActs[i]
+          if (
+            o?.id !== n?.id || o?.is_active !== n?.is_active ||
+            o?.start_at !== n?.start_at || o?.end_at !== n?.end_at ||
+            o?.speed_bonus_enabled !== n?.speed_bonus_enabled
+          ) return newActs
+        }
+        return prev
+      })
 
       // Action → groups mapping
       if (actRes.data && actRes.data.length > 0) {
@@ -284,7 +490,13 @@ function LiveScreenContent({ event }: { event: Event }) {
           }
         } catch { /* action_groups table might not exist */ }
       }
-    } finally { setLoading(false) }
+    } finally {
+      // Only clear the loading spinner once — on the first successful fetch
+      if (isInitialFetch.current) {
+        setLoading(false)
+        isInitialFetch.current = false
+      }
+    }
   }, [event.id])
 
   useEffect(() => { fetchAll() }, [fetchAll])
@@ -327,7 +539,7 @@ function LiveScreenContent({ event }: { event: Event }) {
     const activeMissions = sortedMissions.filter((a) => {
       const s = getMissionStatus(a); return s === 'active' || s === 'upcoming' || s === 'ending'
     })
-    const results: { id: string; groupName: string; groupColor: string; isAllGroups: boolean; message: string; isBonus: boolean }[] = []
+    const results: Reminder[] = []
     for (const mission of activeMissions) {
       const groups = actionGroupsMap.get(mission.id) ?? []
       const status = getMissionStatus(mission)
@@ -358,11 +570,13 @@ function LiveScreenContent({ event }: { event: Event }) {
     return results
   }, [sortedMissions, actionGroupsMap, now]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function copyReminder(message: string, id: string) {
+  const copyReminder = useCallback(async (message: string, id: string) => {
     await navigator.clipboard.writeText(message).catch(() => {})
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
-  }
+  }, [])
+
+  const toggleMoreActivity = useCallback(() => setShowMoreActivity(v => !v), [])
 
   if (loading) return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3" style={{ background: '#0d0b18' }}>
@@ -688,147 +902,10 @@ function LiveScreenContent({ event }: { event: Event }) {
       {/* ══ BOTTOM 4-COL GRID ══ */}
       <div className="mx-auto max-w-7xl px-5 py-4 pb-8">
         <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }}>
-
-          {/* ── REMINDERS (rightmost in RTL = first in DOM) ── */}
-          <motion.div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <SectionHeader icon={<Bell size={13} />} title="צריך להזכיר?" />
-            {reminders.length === 0 ? (
-              <p className="py-4 text-center text-xs text-gray-600">אין תזכורות כרגע</p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {reminders.slice(0, 4).map(r => (
-                  <div key={r.id} className="flex flex-col gap-2 rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div className="flex items-start gap-2">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white"
-                        style={{ background: r.groupColor, boxShadow: `0 0 8px ${r.groupColor}50` }}>
-                        {r.isAllGroups ? '★' : r.groupName.slice(0, 2)}
-                      </div>
-                      <p className="text-xs leading-relaxed text-gray-300 flex-1">{r.message}</p>
-                    </div>
-                    <button onClick={() => copyReminder(r.message, r.id)}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-bold text-white transition-all hover:opacity-80"
-                      style={{ background: 'linear-gradient(135deg, rgba(167,139,250,0.18), rgba(236,72,153,0.18))', border: '1px solid rgba(167,139,250,0.3)' }}>
-                      {copiedId === r.id ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                      {copiedId === r.id ? 'הועתק!' : 'שלח תזכורת'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-
-          {/* ── GROUP LEADERBOARD ── */}
-          <motion.div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <SectionHeader icon={<Trophy size={13} />} title="דירוג קבוצות" />
-            {rankedG.length === 0 ? (
-              <p className="py-4 text-center text-xs text-gray-600">אין נתוני קבוצות</p>
-            ) : (
-              <div className="flex flex-col gap-2.5">
-                {rankedG.slice(0, 5).map((g, idx) => {
-                  const maxPts = rankedG[0]?.total_points || 1
-                  const pct = Math.round((g.total_points / maxPts) * 100)
-                  const RC = ['#eab308', '#a1a1aa', '#ea580c']
-                  const rc = RC[g.rank - 1] || 'rgba(99,102,241,0.7)'
-                  return (
-                    <motion.div key={g.group_id} className="flex items-center gap-2"
-                      initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 + idx * 0.05 }}>
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-white"
-                        style={{ background: rc, boxShadow: g.rank <= 3 ? `0 0 8px ${rc}60` : 'none' }}>{g.rank}</div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between mb-0.5">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: g.group_color }} />
-                            <span className="text-xs font-bold text-white truncate">{g.group_name}</span>
-                          </div>
-                          <span className="text-xs font-black text-white shrink-0 mr-1 tabular-nums">{g.total_points.toLocaleString('he-IL')}</span>
-                        </div>
-                        <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                          <motion.div className="h-full rounded-full" style={{ background: g.group_color }}
-                            initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ delay: 0.3 + idx * 0.05, duration: 0.7 }} />
-                        </div>
-                      </div>
-                      {g.rank === 1 && <span className="text-sm">🔥</span>}
-                    </motion.div>
-                  )
-                })}
-              </div>
-            )}
-          </motion.div>
-
-          {/* ── UPCOMING MISSIONS ── */}
-          <motion.div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <SectionHeader icon={<Clock size={13} />} title="משימות קרובות" />
-            {sortedMissions.length === 0 ? (
-              <p className="py-4 text-center text-xs text-gray-600">אין משימות</p>
-            ) : (
-              <div className="flex flex-col">
-                {sortedMissions.slice(0, 5).map((m, idx) => {
-                  const mStatus = getMissionStatus(m)
-                  const mMins = getMinutesLeft(m)
-                  const mIcon = MISSION_ICON_SET[idx % MISSION_ICON_SET.length]
-                  const startTime = m.start_at ? format(new Date(m.start_at), 'HH:mm') : null
-                  return (
-                    <div key={m.id} className="flex items-center gap-3 py-2.5 border-b last:border-0" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                      {startTime && <span className="shrink-0 text-xs font-mono font-bold text-gray-500 w-10">{startTime}</span>}
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white" style={{ background: mIcon.bg, boxShadow: `0 0 8px ${mIcon.bg}40` }}>
-                        {React.cloneElement(mIcon.icon as React.ReactElement, { size: 16 })}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-white truncate">{m.name}</p>
-                        <p className="text-[10px] text-gray-500">
-                          {mStatus === 'active' ? 'פעילה עכשיו' : mStatus === 'ending' ? `מסתיימת בעוד ${mMins} דק׳` : mStatus === 'upcoming' && mMins !== null ? `מתחילה בעוד ${mMins} דק׳` : 'זמינה'}
-                        </p>
-                      </div>
-                      {m.speed_bonus_enabled && <Flame size={11} className="text-orange-400 shrink-0" />}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </motion.div>
-
-          {/* ── RECENT ACTIVITY (leftmost in RTL = last in DOM) ── */}
-          <motion.div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-            <SectionHeader icon={<Activity size={13} />} title="פעילויות אחרונות" />
-            {transactions.length === 0 ? (
-              <p className="py-4 text-center text-xs text-gray-600">טרם נרשמה פעילות</p>
-            ) : (
-              <div className="flex flex-col">
-                <AnimatePresence initial={false}>
-                  {transactions.slice(0, showMoreActivity ? 12 : 6).map((item, idx) => {
-                    const basePoints = (item.action as unknown as { points?: number })?.points ?? 0
-                    const isItemBonus = basePoints > 0 && item.points > basePoints
-                    const initials = (item.participant?.name ?? '?').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
-                    const iconDef = ACTIVITY_ICON_SET[idx % ACTIVITY_ICON_SET.length]
-                    return (
-                      <motion.div key={item.id} className="flex items-center gap-2 py-2 border-b last:border-0" style={{ borderColor: 'rgba(255,255,255,0.05)' }}
-                        initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.04 }}>
-                        <span className="shrink-0 text-[10px] font-mono text-gray-600 w-10">{formatTxTime(item.created_at)}</span>
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white" style={{ background: iconDef.bg }}>{initials}</div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-white truncate">{item.participant?.name}</p>
-                          <p className="text-[10px] text-gray-500 truncate">{item.action?.name}</p>
-                        </div>
-                        <div className="shrink-0 rounded-md px-1.5 py-0.5 text-xs font-black"
-                          style={isItemBonus ? { background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)' } : { background: 'rgba(255,255,255,0.07)', color: '#d1d5db' }}>
-                          {isItemBonus ? '×' : ''}{item.points > 0 ? '+' : ''}{item.points}
-                        </div>
-                      </motion.div>
-                    )
-                  })}
-                </AnimatePresence>
-                {transactions.length > 6 && (
-                  <button onClick={() => setShowMoreActivity(v => !v)} className="pt-2 text-center text-xs font-semibold text-gray-500 hover:text-gray-300">
-                    {showMoreActivity ? 'הצג פחות' : 'הצג עוד'}
-                  </button>
-                )}
-              </div>
-            )}
-          </motion.div>
+          <RemindersPanel reminders={reminders} copiedId={copiedId} onCopy={copyReminder} />
+          <GroupLeaderboardPanel rankedG={rankedG} />
+          <UpcomingMissionsPanel sortedMissions={sortedMissions} />
+          <RecentActivityPanel transactions={transactions} showMore={showMoreActivity} onToggleMore={toggleMoreActivity} />
         </div>
       </div>
     </div>

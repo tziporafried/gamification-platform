@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { QrCode, Trophy, Link as LinkIcon, Check, Settings, Crown, Zap, Sparkles, Radio } from 'lucide-react'
+import { Trophy, Link as LinkIcon, Check, Settings, Crown, Zap, Sparkles, LayoutDashboard } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { ReadinessChecklist } from './ReadinessChecklist'
@@ -174,50 +174,47 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
           )}
 
           {/* ═══ GAME CARDS ═══ */}
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {/* SCAN MODE */}
-            <motion.button onClick={() => handleAction('scan')} className="group relative text-right"
-              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+          <div className="grid gap-6 sm:grid-cols-2">
+            {/* OPS CONSOLE — unified scoring + live */}
+            <motion.button onClick={() => handleAction('ops')} className="group relative text-right"
+              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
               whileHover={{ scale: 1.03, y: -4 }} whileTap={{ scale: 0.98 }}>
-              <div className="relative overflow-hidden rounded-3xl border-2 border-brand-500/25 p-8 transition-shadow duration-300 group-hover:shadow-[0_0_50px_rgba(139,92,246,0.2)]"
-                style={{ background: 'linear-gradient(135deg, rgba(26,16,64,0.95) 0%, rgba(15,11,30,0.98) 100%)' }}>
-                {/* Animated glow overlay */}
+              <div className="relative overflow-hidden rounded-3xl border-2 border-violet-500/30 p-8 transition-shadow duration-300 group-hover:shadow-[0_0_50px_rgba(139,92,246,0.25)]"
+                style={{ background: 'linear-gradient(135deg, rgba(20,10,50,0.97) 0%, rgba(30,8,10,0.97) 50%, rgba(10,18,30,0.97) 100%)' }}>
                 <div className="absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                  style={{ background: 'radial-gradient(circle at 50% 30%, rgba(139,92,246,0.12), transparent 70%)' }} />
-                {/* Scan beam animation */}
+                  style={{ background: 'radial-gradient(circle at 50% 30%, rgba(139,92,246,0.1), transparent 50%), radial-gradient(circle at 80% 70%, rgba(249,115,22,0.08), transparent 50%)' }} />
+                {/* Dual-color scan beam */}
                 <motion.div className="pointer-events-none absolute left-6 right-6 h-[1px] z-10"
-                  style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.5) 30%, rgba(168,85,247,0.7) 50%, rgba(139,92,246,0.5) 70%, transparent 100%)', boxShadow: '0 0 10px rgba(139,92,246,0.3)' }}
+                  style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.5) 30%, rgba(249,115,22,0.7) 50%, rgba(139,92,246,0.5) 70%, transparent 100%)', boxShadow: '0 0 10px rgba(139,92,246,0.3)' }}
                   animate={{ top: ['15%', '85%', '15%'] }}
-                  transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }} />
-                {/* Pulsing border glow */}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} />
                 <motion.div className="pointer-events-none absolute inset-0 rounded-3xl"
                   style={{ border: '2px solid rgba(139,92,246,0.2)' }}
-                  animate={{ boxShadow: ['0 0 15px rgba(139,92,246,0.05)', '0 0 30px rgba(139,92,246,0.15)', '0 0 15px rgba(139,92,246,0.05)'] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} />
-
+                  animate={{ boxShadow: ['0 0 15px rgba(139,92,246,0.05)', '0 0 30px rgba(249,115,22,0.15)', '0 0 15px rgba(139,92,246,0.05)'] }}
+                  transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }} />
                 <div className="relative flex flex-col items-center gap-4 text-center">
-                  <motion.div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-500/15"
-                    style={{ boxShadow: '0 0 20px rgba(139,92,246,0.15)' }}
-                    animate={{ boxShadow: ['0 0 20px rgba(139,92,246,0.1)', '0 0 30px rgba(139,92,246,0.25)', '0 0 20px rgba(139,92,246,0.1)'] }}
+                  <motion.div className="flex h-16 w-16 items-center justify-center rounded-2xl"
+                    style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(249,115,22,0.15))', boxShadow: '0 0 20px rgba(139,92,246,0.15)' }}
+                    animate={{ boxShadow: ['0 0 20px rgba(139,92,246,0.1)', '0 0 30px rgba(249,115,22,0.2)', '0 0 20px rgba(139,92,246,0.1)'] }}
                     transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}>
-                    <QrCode size={30} className="text-brand-400" style={{ filter: 'drop-shadow(0 0 6px rgba(139,92,246,0.4))' }} />
+                    <LayoutDashboard size={30} className="text-violet-400" style={{ filter: 'drop-shadow(0 0 6px rgba(139,92,246,0.5))' }} />
                   </motion.div>
                   <div>
                     <div className="flex items-center justify-center gap-2 mb-1.5">
-                      <Zap size={16} className="text-brand-400" />
-                      <h3 className="text-xl font-black text-white">מצב סריקה</h3>
+                      <Zap size={16} className="text-orange-400" />
+                      <h3 className="text-xl font-black text-white">התחרות</h3>
                     </div>
                     <p className="text-sm text-gray-400 leading-relaxed">
-                      סרקו משימות, העניקו נקודות וחלקו פרסים
+                      סריקה + ניהול בזמן אמת — הכל במסך אחד
                     </p>
                   </div>
-                  <div className="mt-2 rounded-xl bg-brand-500/10 px-5 py-2 text-sm font-bold text-brand-300 transition-all group-hover:bg-brand-500/20">
-                    התחילו לסרוק ←
+                  <div className="mt-2 rounded-xl px-5 py-2 text-sm font-bold text-violet-300 transition-all group-hover:opacity-80"
+                    style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(249,115,22,0.1))', border: '1px solid rgba(139,92,246,0.25)' }}>
+                    פתח ←
                   </div>
                 </div>
               </div>
             </motion.button>
-
             {/* LIVE LEADERBOARD */}
             <motion.button onClick={() => handleAction('display')} className="group relative text-right"
               initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
@@ -252,49 +249,6 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                   </div>
                   <div className="mt-2 rounded-xl bg-amber-500/10 px-5 py-2 text-sm font-bold text-amber-300 transition-all group-hover:bg-amber-500/20">
                     צפו בדירוג ←
-                  </div>
-                </div>
-              </div>
-            </motion.button>
-            {/* LIVE SCREEN */}
-            <motion.button onClick={() => handleAction('live')} className="group relative text-right"
-              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
-              whileHover={{ scale: 1.03, y: -4 }} whileTap={{ scale: 0.98 }}>
-              <div className="relative overflow-hidden rounded-3xl border-2 border-emerald-500/25 p-8 transition-shadow duration-300 group-hover:shadow-[0_0_50px_rgba(52,211,153,0.18)]"
-                style={{ background: 'linear-gradient(135deg, rgba(10,28,22,0.95) 0%, rgba(8,18,16,0.98) 100%)' }}>
-                <div className="absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                  style={{ background: 'radial-gradient(circle at 50% 30%, rgba(52,211,153,0.1), transparent 70%)' }} />
-                {/* Live pulse lines */}
-                {[0, 1, 2].map((i) => (
-                  <motion.div key={i} className="pointer-events-none absolute left-6 right-6 h-[1px] z-10"
-                    style={{ background: `linear-gradient(90deg, transparent, rgba(52,211,153,${0.2 + i * 0.15}), transparent)` }}
-                    animate={{ top: ['20%', '80%', '20%'], opacity: [0.4, 0.9, 0.4] }}
-                    transition={{ duration: 2 + i * 0.7, repeat: Infinity, ease: 'easeInOut', delay: i * 0.4 }} />
-                ))}
-                <motion.div className="pointer-events-none absolute inset-0 rounded-3xl"
-                  style={{ border: '2px solid rgba(52,211,153,0.2)' }}
-                  animate={{ boxShadow: ['0 0 15px rgba(52,211,153,0.05)', '0 0 30px rgba(52,211,153,0.18)', '0 0 15px rgba(52,211,153,0.05)'] }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }} />
-                <div className="relative flex flex-col items-center gap-4 text-center">
-                  <motion.div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/15"
-                    animate={{ boxShadow: ['0 0 20px rgba(52,211,153,0.08)', '0 0 30px rgba(52,211,153,0.25)', '0 0 20px rgba(52,211,153,0.08)'] }}
-                    transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}>
-                    <Radio size={30} className="text-emerald-400" style={{ filter: 'drop-shadow(0 0 6px rgba(52,211,153,0.5))' }} />
-                  </motion.div>
-                  <div>
-                    <div className="flex items-center justify-center gap-2 mb-1.5">
-                      <span className="relative flex h-2 w-2">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-                      </span>
-                      <h3 className="text-xl font-black text-white">מסך חי</h3>
-                    </div>
-                    <p className="text-sm text-gray-400 leading-relaxed">
-                      חדר בקרה בזמן אמת עם דירוג, פעילות ונקודות
-                    </p>
-                  </div>
-                  <div className="mt-2 rounded-xl bg-emerald-500/10 px-5 py-2 text-sm font-bold text-emerald-300 transition-all group-hover:bg-emerald-500/20">
-                    פתח מסך חי ←
                   </div>
                 </div>
               </div>
