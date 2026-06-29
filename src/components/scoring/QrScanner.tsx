@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
 import { Camera, X, CheckCircle, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import type { QrScoringMode } from '@/types'
+import { parseQrPayload } from '@/lib/qrPayload'
 
 interface QrScanResult {
   participantCode?: string
@@ -10,11 +10,10 @@ interface QrScanResult {
 }
 
 interface QrScannerProps {
-  mode: QrScoringMode
   onScan: (data: QrScanResult) => void
 }
 
-export function QrScanner({ mode, onScan }: QrScannerProps) {
+export function QrScanner({ onScan }: QrScannerProps) {
   const [active, setActive] = useState(false)
   const [error, setError] = useState('')
   const [scannedParticipant, setScannedParticipant] = useState<string | null>(null)
@@ -47,62 +46,26 @@ export function QrScanner({ mode, onScan }: QrScannerProps) {
   const processQrPayload = useCallback((decodedText: string) => {
     setError('')
 
-    let parsed: Record<string, unknown>
-    try {
-      parsed = JSON.parse(decodedText)
-    } catch {
-      setError('קוד QR לא תקין — לא ניתן לקרוא את התוכן.')
+    const result = parseQrPayload(decodedText)
+    if (!result.ok) {
+      setError(result.error)
       return
     }
 
-    if (typeof parsed !== 'object' || parsed === null) {
-      setError('קוד QR לא תקין — פורמט לא מזוהה.')
+    const { participantCode, actionCode } = result.data
+
+    if (participantCode && actionCode) {
+      onScan({ participantCode, actionCode })
+      stopScanner()
+      setActive(false)
+      setScannedParticipant(null)
+      setScannedAction(null)
       return
     }
 
-    const type = parsed.type as string | undefined
-
-    if (mode === 'combined') {
-      // Combined mode: expect combined_score type, or legacy (no type) with both fields
-      if (type === 'combined_score' || (!type && parsed.participantCode && parsed.actionCode)) {
-        const participantCode = parsed.participantCode as string
-        const actionCode = parsed.actionCode as string
-        if (!participantCode || !actionCode) {
-          setError('קוד QR חסר — חסר קוד משתתף או קוד משימה.')
-          return
-        }
-        onScan({ participantCode, actionCode })
-        stopScanner()
-        setActive(false)
-        setScannedParticipant(null)
-        setScannedAction(null)
-        return
-      }
-
-      if (type === 'participant' || type === 'action') {
-        setError('קוד QR זה מיועד למצב נפרד. האירוע מוגדר למצב משולב.')
-        return
-      }
-
-      setError('קוד QR לא מזוהה — לא תואם למצב משולב.')
-      return
-    }
-
-    // Separate mode
-    if (type === 'combined_score' || (!type && parsed.participantCode && parsed.actionCode)) {
-      setError('קוד QR זה מיועד למצב משולב. האירוע מוגדר למצב נפרד.')
-      return
-    }
-
-    if (type === 'participant') {
-      const participantCode = parsed.participantCode as string
-      if (!participantCode) {
-        setError('קוד QR חסר — חסר קוד משתתף.')
-        return
-      }
+    if (participantCode) {
       setScannedParticipant(participantCode)
       onScan({ participantCode })
-
       if (scannedAction) {
         stopScanner()
         setActive(false)
@@ -112,26 +75,17 @@ export function QrScanner({ mode, onScan }: QrScannerProps) {
       return
     }
 
-    if (type === 'action') {
-      const actionCode = parsed.actionCode as string
-      if (!actionCode) {
-        setError('קוד QR חסר — חסר קוד משימה.')
-        return
-      }
+    if (actionCode) {
       setScannedAction(actionCode)
       onScan({ actionCode })
-
       if (scannedParticipant) {
         stopScanner()
         setActive(false)
         setScannedParticipant(null)
         setScannedAction(null)
       }
-      return
     }
-
-    setError('קוד QR לא מזוהה — סוג לא נתמך.')
-  }, [mode, onScan, scannedParticipant, scannedAction, stopScanner])
+  }, [onScan, scannedParticipant, scannedAction, stopScanner])
 
   useEffect(() => {
     if (!active) return
@@ -175,6 +129,8 @@ export function QrScanner({ mode, onScan }: QrScannerProps) {
     }
   }, [active, processQrPayload])
 
+  const hasPartialScan = scannedParticipant || scannedAction
+
   if (!active) {
     return (
       <Button
@@ -194,16 +150,15 @@ export function QrScanner({ mode, onScan }: QrScannerProps) {
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-gray-400">סורק QR</span>
-          {mode === 'separate' && (
+          {hasPartialScan && (
             <span className="text-[10px] text-gray-500">
-              {!scannedParticipant && !scannedAction && '— סרקו משתתף או משימה'}
               {scannedParticipant && !scannedAction && '— כעת סרקו משימה'}
               {!scannedParticipant && scannedAction && '— כעת סרקו משתתף'}
             </span>
           )}
         </div>
         <div className="flex items-center gap-1">
-          {mode === 'separate' && (scannedParticipant || scannedAction) && (
+          {hasPartialScan && (
             <button
               onClick={handleReset}
               className="rounded-lg p-1 text-gray-500 hover:bg-white/10 hover:text-gray-300"
@@ -221,7 +176,7 @@ export function QrScanner({ mode, onScan }: QrScannerProps) {
         </div>
       </div>
 
-      {mode === 'separate' && (
+      {hasPartialScan && (
         <div className="mb-2 flex gap-2">
           <div className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium ${
             scannedParticipant ? 'bg-emerald-500/20 text-emerald-400' : 'bg-game-card text-gray-500'

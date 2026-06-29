@@ -1,7 +1,6 @@
-import { forwardRef, useImperativeHandle, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
-import type { QrScoringMode } from '@/types'
 import type { AccentRgb } from '@/lib/accentColor'
 import { rgba } from '@/lib/accentColor'
 
@@ -24,22 +23,11 @@ const CORNER_CLASSES = [
 ]
 
 interface Props {
-  mode: QrScoringMode
   successFlash: boolean
   accent: AccentRgb
 }
 
-export interface ScannerZoneRef { resetSeparateState: () => void }
-
-export const ScannerZone = forwardRef<ScannerZoneRef, Props>(
-  function ScannerZone({ mode, successFlash, accent }, ref) {
-    const [scannedParticipant, setScannedParticipant] = useState<string | null>(null)
-    const [scannedAction,      setScannedAction]      = useState<string | null>(null)
-
-    useImperativeHandle(ref, () => ({
-      resetSeparateState() { setScannedParticipant(null); setScannedAction(null) },
-    }))
-
+export function ScannerZone({ successFlash, accent }: Props) {
     const a = accent
     const ac = `rgba(${a.r},${a.g},${a.b}`  // partial rgba — append ,opacity)
 
@@ -287,7 +275,7 @@ export const ScannerZone = forwardRef<ScannerZoneRef, Props>(
                     animate={{ opacity: [0.35, 0.7, 0.35] }}
                     transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
                   >
-                    לקוד QR של המשתתף
+                    לקוד QR
                   </motion.p>
                 </motion.div>
               )}
@@ -308,19 +296,6 @@ export const ScannerZone = forwardRef<ScannerZoneRef, Props>(
             transition={{ duration: 4.2, repeat: Infinity, ease: 'easeOut', delay: 1.1 }}
           />
         </motion.div>
-
-        {/* Separate mode: scanned item badges */}
-        {mode === 'separate' && (scannedParticipant || scannedAction) && (
-          <motion.div className="mt-5 flex gap-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <div className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium ${scannedParticipant ? 'bg-emerald-500/20 text-emerald-400' : 'bg-game-card text-gray-500'}`}>
-              {scannedParticipant && <Check size={12} />} משתתף {scannedParticipant ? `(${scannedParticipant})` : ''}
-            </div>
-            <div className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium ${scannedAction ? 'bg-emerald-500/20 text-emerald-400' : 'bg-game-card text-gray-500'}`}>
-              {scannedAction && <Check size={12} />} משימה {scannedAction ? `(${scannedAction})` : ''}
-            </div>
-          </motion.div>
-        )}
       </div>
     )
-  }
-)
+}
