@@ -9,6 +9,7 @@ import { StepEventDetails } from '@/components/wizard/StepEventDetails'
 import { StepParticipants } from '@/components/wizard/StepParticipants'
 import { StepGroups } from '@/components/wizard/StepGroups'
 import { StepTasks } from '@/components/wizard/StepTasks'
+import { StepRewards } from '@/components/wizard/StepRewards'
 import { StepReviewGenerate } from '@/components/wizard/StepReviewGenerate'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
@@ -22,7 +23,7 @@ export function EventWizard() {
   // currentStep is derived directly from the URL — no state, no sync effects
   const currentStep = useMemo(() => {
     const n = parseInt(stepParam ?? '', 10)
-    return Number.isFinite(n) && n >= 1 && n <= 5 ? n : 1
+    return Number.isFinite(n) && n >= 1 && n <= 6 ? n : 1
   }, [stepParam])
 
   const { counts, loaded: countsLoaded, refresh: refreshCounts } = useEventCounts(id)
@@ -56,7 +57,7 @@ export function EventWizard() {
   }, [id, loading, event, stepParam, navigate])
 
   const goToStep = useCallback((s: number) => {
-    const clamped = Math.max(1, Math.min(5, s))
+    const clamped = Math.max(1, Math.min(6, s))
     if (id) setWizardPrefs(id, { lastStep: clamped })
     navigate(`/events/${id}/step/${clamped}`, { replace: true })
   }, [id, navigate])
@@ -115,6 +116,16 @@ export function EventWizard() {
       )}
 
       {currentStep === 5 && (
+        <StepRewards
+          eventId={event.id}
+          counts={counts}
+          onCountsRefresh={refreshCounts}
+          onNext={goNext}
+          onBack={goBack}
+        />
+      )}
+
+      {currentStep === 6 && (
         <StepReviewGenerate
           event={event}
           counts={counts}

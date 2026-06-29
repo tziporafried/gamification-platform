@@ -21,12 +21,14 @@ export function computeWizardState(event: Event, counts: EventCounts, groupType:
   const groupsResolved = groupType === 'none' || counts.groups > 0
   const hasParticipants = counts.participants > 0
   const hasTasks = counts.tasks > 0
+  const hasRewards = counts.rewards > 0
 
   return {
     details: hasDetails ? 'completed' : 'not_started',
     groups: groupType === null ? 'not_started' : (groupsResolved ? 'completed' : 'in_progress'),
     participants: hasParticipants ? 'completed' : (groupsResolved || groupType === null ? 'in_progress' : 'not_started'),
     tasks: hasTasks ? 'completed' : (hasParticipants ? 'in_progress' : 'not_started'),
+    rewards: hasRewards ? 'completed' : (hasTasks ? 'in_progress' : 'not_started'),
     review: hasTasks ? 'in_progress' : 'not_started',
   }
 }
@@ -106,7 +108,8 @@ export function getStepNumber(stepId: WizardStepId): number {
     groups: 2,
     participants: 3,
     tasks: 4,
-    review: 5,
+    rewards: 5,
+    review: 6,
   }
   return map[stepId]
 }
@@ -117,7 +120,8 @@ export function getStepId(stepNumber: number): WizardStepId {
     2: 'groups',
     3: 'participants',
     4: 'tasks',
-    5: 'review',
+    5: 'rewards',
+    6: 'review',
   }
   return map[stepNumber] || 'details'
 }

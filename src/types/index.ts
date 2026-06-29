@@ -16,7 +16,7 @@ export interface UserProfile {
 }
 
 export type StepStatus = 'not_started' | 'in_progress' | 'completed';
-export type WizardStepId = 'details' | 'groups' | 'participants' | 'tasks' | 'review';
+export type WizardStepId = 'details' | 'groups' | 'participants' | 'tasks' | 'rewards' | 'review';
 export type GroupType = 'none' | 'custom';
 
 export interface WizardState {
@@ -24,6 +24,7 @@ export interface WizardState {
   groups: StepStatus;
   participants: StepStatus;
   tasks: StepStatus;
+  rewards: StepStatus;
   review: StepStatus;
 }
 
@@ -201,12 +202,11 @@ export interface DevTodoWithAssignee extends DevTodo {
   assignee?: { display_name: string | null; email: string; avatar_url: string | null };
 }
 
-export type DashboardTab = 'home' | 'event' | 'participants' | 'groups' | 'actions' | 'rewards' | 'score' | 'leaderboard' | 'qr-cards';
-
 export const WIZARD_STEPS: { id: WizardStepId; label: string; step: number }[] = [
   { id: 'details', label: 'פרטי הפעילות', step: 1 },
   { id: 'groups', label: 'חלוקה לקבוצות', step: 2 },
   { id: 'participants', label: 'מי משתתף?', step: 3 },
   { id: 'tasks', label: 'צבירת נקודות', step: 4 },
-  { id: 'review', label: 'מוכנים להתחיל?', step: 5 },
+  { id: 'rewards', label: 'פרסים', step: 5 },
+  { id: 'review', label: 'מוכנים להתחיל?', step: 6 },
 ];

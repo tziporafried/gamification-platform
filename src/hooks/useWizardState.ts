@@ -24,7 +24,7 @@ export function useWizardState(event: Event | null, counts: EventCounts, countsL
   }, [countsLoaded, counts.groups, event?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const wizardState: WizardState = useMemo(() => {
-    if (!event) return { details: 'not_started', groups: 'not_started', participants: 'not_started', tasks: 'not_started', review: 'not_started' }
+    if (!event) return { details: 'not_started', groups: 'not_started', participants: 'not_started', tasks: 'not_started', rewards: 'not_started', review: 'not_started' }
     return computeWizardState(event, counts, groupType)
   }, [event, counts, groupType])
 

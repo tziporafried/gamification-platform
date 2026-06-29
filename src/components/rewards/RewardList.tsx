@@ -12,6 +12,7 @@ import type { RewardWithGroups, Reward, Group } from '@/types'
 interface RewardListProps {
   eventId: string
   onCountChange: (count: number) => void
+  variant?: 'default' | 'wizard'
 }
 
 interface RewardGroupJoin {
@@ -19,7 +20,8 @@ interface RewardGroupJoin {
   groups: Group
 }
 
-export function RewardList({ eventId, onCountChange }: RewardListProps) {
+export function RewardList({ eventId, onCountChange, variant = 'default' }: RewardListProps) {
+  const isWizard = variant === 'wizard'
   const [rewards, setRewards] = useState<RewardWithGroups[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -90,52 +92,59 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
     )
   }
 
-  return (
-    <div className="-mx-4 -mt-6 md:-mt-8">
-      <div className="bg-game-radial px-4 pt-6 pb-6 md:pt-8">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
-                <Trophy size={22} className="text-amber-400" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">ארון הפרסים</h2>
-                <p className="text-xs text-gray-400">הישגים לאיסוף</p>
-              </div>
+  const content = (
+    <div className={isWizard ? '' : 'mx-auto max-w-5xl'}>
+      {!isWizard && (
+        <div className="mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
+              <Trophy size={22} className="text-amber-400" />
             </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">ארון הפרסים</h2>
+              <p className="text-xs text-gray-400">הישגים לאיסוף</p>
+            </div>
+          </div>
+          <Button size="sm" variant="gradient" onClick={handleCreate}>הוספת פרס</Button>
+        </div>
+      )}
+
+      {error && <ErrorAlert message={error} className="mb-4" />}
+
+      {rewards.length === 0 ? (
+        <div className="rounded-2xl border border-game-border bg-game-card/50 px-6 py-12 text-center">
+          <Trophy size={32} className="mx-auto mb-3 text-gray-600" />
+          <p className="text-sm font-medium text-gray-400">אין פרסים עדיין</p>
+          <p className="mt-1 text-xs text-gray-500">צרו הפתעות שהשחקנים שלכם יוכלו לקבל.</p>
+          <div className="mt-4">
             <Button size="sm" variant="gradient" onClick={handleCreate}>הוספת פרס</Button>
           </div>
-
-          {error && (
-            <ErrorAlert message={error} className="mb-4" />
-          )}
-
-          {rewards.length === 0 ? (
-            <div className="rounded-2xl border border-game-border bg-game-card/50 px-6 py-12 text-center">
-              <Trophy size={32} className="mx-auto mb-3 text-gray-600" />
-              <p className="text-sm font-medium text-gray-400">אין פרסים עדיין</p>
-              <p className="mt-1 text-xs text-gray-500">צרו הישגים שהשחקנים שלכם יוכלו לפתוח.</p>
-              <div className="mt-4">
-                <Button size="sm" variant="gradient" onClick={handleCreate}>הוספת פרס</Button>
-              </div>
-            </div>
-          ) : (
-            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-              {rewards.map((reward) => (
-                <RewardRow
-                  key={reward.id}
-                  reward={reward}
-                  onEdit={() => handleEdit(reward)}
-                  onToggleActive={() => handleToggleActive(reward)}
-                  onManageGroups={() => setAssigningReward(reward)}
-                />
-              ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+            {rewards.map((reward) => (
+              <RewardRow
+                key={reward.id}
+                reward={reward}
+                onEdit={() => handleEdit(reward)}
+                onToggleActive={() => handleToggleActive(reward)}
+                onManageGroups={() => setAssigningReward(reward)}
+              />
+            ))}
+          </div>
+          {isWizard && (
+            <div className="flex justify-center pt-1">
+              <Button size="sm" variant="outline" onClick={handleCreate}>הוספת פרס נוסף</Button>
             </div>
           )}
         </div>
-      </div>
+      )}
+    </div>
+  )
 
+  const modals = (
+    <>
       {formOpen && (
         <RewardForm
           eventId={eventId}
@@ -146,7 +155,6 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
           onPlanLimit={() => setUpgradeOpen(true)}
         />
       )}
-
       {assigningReward && (
         <RewardGroupAssignment
           eventId={eventId}
@@ -157,8 +165,25 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
           onChanged={fetchRewards}
         />
       )}
-
       <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} limitType="rewards" />
+    </>
+  )
+
+  if (isWizard) {
+    return (
+      <>
+        {content}
+        {modals}
+      </>
+    )
+  }
+
+  return (
+    <div className="-mx-4 -mt-6 md:-mt-8">
+      <div className="bg-game-radial px-4 pt-6 pb-6 md:pt-8">
+        {content}
+      </div>
+      {modals}
     </div>
   )
 }

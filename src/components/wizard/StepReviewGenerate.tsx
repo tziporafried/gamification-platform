@@ -49,7 +49,7 @@ export function StepReviewGenerate({ event, counts, groupType, onGoToStep, onBac
     <WizardStepWrapper
       title="מוכנים להתחיל?"
       subtitle="בדקו שהכל מוכן לפני תחילת הפעילות"
-      currentStep={5}
+      currentStep={6}
       canAdvance={ready}
       onNext={handleFinish}
       onBack={onBack}
