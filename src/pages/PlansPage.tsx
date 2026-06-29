@@ -31,7 +31,6 @@ const INDEPENDENT_EXCLUDES = ['סריקת QR', 'ציוד']
 const FULL_EXTRAS = [
   'מערכת סריקה',
   'השאלת סורק QR ליום האירוע',
-  'הדפסת קבלות',
 ]
 
 export function PlansPage() {
@@ -189,6 +188,7 @@ export function PlansPage() {
                 <span className="mb-0.5 text-sm text-gray-400">₪ לאירוע</span>
               </div>
               <p className="mt-1 text-xs text-gray-500">יום פעילות נוסף: 15 ₪</p>
+              <p className="mt-1 text-xs text-gray-500">עד 50 משתתפים</p>
               <p className="mt-2 text-xs text-gray-500 leading-relaxed">
                 הפתרון המלא להפעלת המשחק.
               </p>

@@ -2,7 +2,7 @@ export type EventStatus = 'editing' | 'active' | 'archived';
 export type QrScoringMode = 'combined' | 'separate';
 
 export type UserRole = 'super_admin' | 'user';
-export type UserPlan = 'free' | 'paid';
+export type UserPlan = 'free' | 'independent' | 'full' | 'organizations';
 
 export interface UserProfile {
   id: string;

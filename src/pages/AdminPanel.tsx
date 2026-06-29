@@ -45,12 +45,22 @@ const STATUS_OPTIONS = [
   { value: 'closed', label: 'נסגר', color: 'text-gray-400 bg-gray-400/10' },
 ]
 
+const PLAN_OPTIONS: { value: string; label: string; color: string }[] = [
+  { value: 'free', label: 'חינמי', color: 'text-gray-400 bg-gray-400/10' },
+  { value: 'independent', label: 'עצמאי', color: 'text-blue-400 bg-blue-400/10' },
+  { value: 'full', label: 'מלא', color: 'text-brand-400 bg-brand-400/10' },
+  { value: 'organizations', label: 'ארגוני', color: 'text-amber-400 bg-amber-400/10' },
+]
+
 const LIMIT_LABELS: Record<string, string> = {
   participants: 'משתתפים',
   groups: 'קבוצות',
   actions: 'משימות',
   rewards: 'פרסים',
   general: 'כללי',
+  'plan-independent': 'משחק עצמאי',
+  'plan-full': 'חוויה מלאה',
+  'plan-organizations': 'פתרון לארגונים',
 }
 
 export function AdminPanel() {
@@ -77,9 +87,8 @@ export function AdminPanel() {
 
   useEffect(() => { fetchUsers(); fetchRequests() }, [fetchUsers, fetchRequests])
 
-  async function togglePlan(userId: string, currentPlan: string) {
+  async function updatePlan(userId: string, newPlan: string) {
     setUpdatingId(userId)
-    const newPlan = currentPlan === 'paid' ? 'free' : 'paid'
     const { error } = await supabase.rpc('update_user_plan', {
       target_user_id: userId,
       new_plan: newPlan,
@@ -180,22 +189,24 @@ export function AdminPanel() {
                   </div>
 
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className={cn(
-                      'text-xs font-medium px-2 py-0.5 rounded-full',
-                      user.plan === 'paid'
-                        ? 'text-emerald-400 bg-emerald-400/10'
-                        : 'text-gray-400 bg-gray-400/10'
-                    )}>
-                      {user.plan === 'paid' ? 'בתשלום' : 'חינמי'}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      loading={updatingId === user.user_id}
-                      onClick={() => togglePlan(user.user_id, user.plan)}
+                    {(() => {
+                      const planOpt = PLAN_OPTIONS.find(p => p.value === user.plan) || PLAN_OPTIONS[0]
+                      return (
+                        <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', planOpt.color)}>
+                          {planOpt.label}
+                        </span>
+                      )
+                    })()}
+                    <select
+                      value={user.plan}
+                      disabled={updatingId === user.user_id}
+                      onChange={e => updatePlan(user.user_id, e.target.value)}
+                      className="rounded-lg border border-game-border bg-game-dark px-2 py-1.5 text-xs text-white focus:border-brand-500 focus:outline-none disabled:opacity-50"
                     >
-                      {user.plan === 'paid' ? 'הורד לחינמי' : 'שדרג לבתשלום'}
-                    </Button>
+                      {PLAN_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </Card>

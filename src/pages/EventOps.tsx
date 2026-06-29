@@ -1,16 +1,19 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, X } from 'lucide-react'
+import { ArrowRight, X, Camera, Lock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useScoreSubmit } from '@/hooks/useScoreSubmit'
 import { useOperationsData } from '@/hooks/useOperationsData'
 import { useOpsSound } from '@/hooks/useOpsSound'
+import { usePlanPermissions } from '@/hooks/usePlanPermissions'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { Toast } from '@/components/ui/Toast'
 import { CelebrationModal } from '@/components/scoring/CelebrationModal'
+import { UpgradeModal } from '@/components/UpgradeModal'
 import { ScannerZone } from '@/components/scoring/ScannerZone'
 import type { ScannerZoneRef } from '@/components/scoring/ScannerZone'
+import { QrScanner } from '@/components/scoring/QrScanner'
 import { MissionIntelPanel } from '@/components/ops/MissionIntelPanel'
 import { LiveActivityFeed } from '@/components/ops/LiveActivityFeed'
 import type { LatestScoreInfo } from '@/components/ops/LiveActivityFeed'
@@ -53,7 +56,10 @@ function EventOpsContent({ event }: { event: Event }) {
   const opsData = useOperationsData(event.id)
   const { submit, submitting, lastError } = useScoreSubmit(event.id)
   const opsSound = useOpsSound()
+  const { canScanQR } = usePlanPermissions()
   const scannerZoneRef = useRef<ScannerZoneRef>(null)
+  // Accumulates partial QR scan results in separate mode until both codes are ready
+  const qrPartialRef = useRef<{ participantCode?: string; actionCode?: string }>({})
 
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
   const [celebrationRewards, setCelebrationRewards] = useState<NewlyAwardedReward[]>([])
@@ -64,7 +70,8 @@ function EventOpsContent({ event }: { event: Event }) {
   const [confirmation, setConfirmation] = useState<ConfirmationData | null>(null)
   const [celebrationOverlay, setCelebrationOverlay] = useState<CelebrationOverlayData | null>(null)
   const [latestScore, setLatestScore] = useState<LatestScoreInfo | null>(null)
-  const [showManualEntry, setShowManualEntry] = useState(false)
+  const [showManualEntry, setShowManualEntry] = useState(!canScanQR)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([])
   useEffect(() => () => { pendingTimers.current.forEach(clearTimeout) }, [])
@@ -130,6 +137,16 @@ function EventOpsContent({ event }: { event: Event }) {
       setCelebrationRewards(result.celebrationRewards)
     }
   }, [submit, opsData, opsSound])
+
+  const handleQrScan = useCallback(({ participantCode, actionCode }: { participantCode?: string; actionCode?: string }) => {
+    if (participantCode) qrPartialRef.current.participantCode = participantCode
+    if (actionCode) qrPartialRef.current.actionCode = actionCode
+    const { participantCode: p, actionCode: a } = qrPartialRef.current
+    if (p && a) {
+      qrPartialRef.current = {}
+      handleSubmit(p, a)
+    }
+  }, [handleSubmit])
 
   if (opsData.loading) return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3" style={{ background: '#0a0814' }}>
@@ -200,13 +217,41 @@ function EventOpsContent({ event }: { event: Event }) {
               secondNow={opsData.secondNow} />
           </div>
 
-          {/* Scanner zone — hero, fills available width */}
-          <div className="w-full shrink-0">
-            <ScannerZone
-              ref={scannerZoneRef}
-              mode={event.qr_scoring_mode}
-              successFlash={successFlash}
-              accent={accent} />
+          {/* Scanner zone */}
+          <div className="relative w-full shrink-0">
+            <div className={canScanQR ? undefined : 'opacity-30 pointer-events-none'}>
+              <ScannerZone
+                ref={scannerZoneRef}
+                mode={event.qr_scoring_mode}
+                successFlash={successFlash}
+                accent={accent} />
+            </div>
+            {!canScanQR && (
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl"
+              >
+                <Lock size={22} className="text-gray-300" />
+                <span className="text-sm font-semibold text-white">סריקת QR</span>
+                <span className="text-xs text-gray-400">זמין בתוכניות מלאה וארגונים</span>
+              </button>
+            )}
+          </div>
+
+          {/* QR scanner button */}
+          <div className="shrink-0">
+            {canScanQR ? (
+              <QrScanner mode={event.qr_scoring_mode} onScan={handleQrScan} />
+            ) : (
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-game-border px-3 py-1.5 text-xs text-gray-500 transition-colors hover:border-gray-500 hover:text-gray-300"
+              >
+                <Lock size={11} />
+                <Camera size={14} />
+                סריקת QR
+              </button>
+            )}
           </div>
 
           {/* Confirmation banner (secondary) */}
@@ -291,6 +336,9 @@ function EventOpsContent({ event }: { event: Event }) {
           participantName={celebratingParticipantName}
           onComplete={() => { setCelebrationRewards([]); setCelebratingParticipantName('') }} />
       )}
+
+      {/* Upgrade modal — triggered when restricted user taps scanner */}
+      <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
 
       {/* Error toast */}
       <AnimatePresence>
