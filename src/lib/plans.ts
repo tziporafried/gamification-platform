@@ -25,7 +25,7 @@ export const FREE_PLAN_LIMIT_LABELS: Record<LimitableEntity, string> = {
 }
 
 export function formatFreePlanLimitHelper(entity: LimitableEntity, limit: number): string {
-  return `עד ${limit} ${FREE_PLAN_LIMIT_LABELS[entity]} בתוכנית החינמית`
+  return `עד ${limit} ${FREE_PLAN_LIMIT_LABELS[entity]} באירוע ההתנסות`
 }
 
 export function isPlanLimitError(message: string): LimitableEntity | null {

@@ -5,10 +5,11 @@ interface ModalProps {
   isOpen: boolean
   onClose: () => void
   title: string
+  titleClassName?: string
   children: ReactNode
 }
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, titleClassName, children }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     >
       <div className="w-full max-w-md rounded-2xl border border-game-border bg-game-dark shadow-xl animate-scale-in">
         <div className="flex items-center justify-between border-b border-game-border px-6 py-4">
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
+          <h2 className={titleClassName ?? 'text-lg font-semibold text-white'}>{title}</h2>
           <button
             onClick={onClose}
             className="rounded-lg p-1 text-gray-500 hover:bg-white/10 hover:text-gray-300"

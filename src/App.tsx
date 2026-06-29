@@ -13,6 +13,7 @@ import { EventOpsPage } from '@/pages/EventOps'
 import { AdminPanel } from '@/pages/AdminPanel'
 import { EventBySlugControl } from '@/pages/EventBySlug'
 import { AuthCallback } from '@/pages/AuthCallback'
+import { PlansPage } from '@/pages/PlansPage'
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/events/:id/ops" element={<ProtectedRoute><EventOpsPage /></ProtectedRoute>} />
           <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell><EventBySlugControl /></AppShell></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />
+          <Route path="/plans" element={<ProtectedRoute><AppShell><PlansPage /></AppShell></ProtectedRoute>} />
 
           {/* Backward compat */}
           <Route path="/dashboard" element={<Navigate to="/events" replace />} />
