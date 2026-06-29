@@ -324,7 +324,8 @@ export function MissionSpotlight({ sortedMissions, bonusMissions, rankedGroups, 
   )
 
   const showTimed   = timedMissions.length > 0
-  const totalGroups = rankedGroups.length
+  const scoredGroups = rankedGroups.filter(g => g.total_points > 0)
+  const totalGroups = scoredGroups.length
   const totalItems  = totalGroups > 0 ? totalGroups : GENERIC_PROMPTS.length
 
   // Rotation timer — only runs when showing group/prompt cards
@@ -403,7 +404,7 @@ export function MissionSpotlight({ sortedMissions, bonusMissions, rankedGroups, 
                   transition={SLIDE_TRANSITION}
                 >
                   <GroupSpotlightCard
-                    group={rankedGroups[rotIdx % totalGroups]}
+                    group={scoredGroups[rotIdx % totalGroups]}
                     availableMissions={availableMissions}
                   />
                 </motion.div>

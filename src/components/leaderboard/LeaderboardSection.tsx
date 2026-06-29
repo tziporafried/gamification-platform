@@ -366,7 +366,9 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} onClick={() => setExpanded('participants')}>
                   <div className="flex items-center gap-2.5 border-b border-white/[0.06] px-5 py-4"><Users size={18} className="text-brand-400" style={{ filter: 'drop-shadow(0 0 4px rgba(139,92,246,0.4))' }} /><h3 className="text-sm font-black text-white">שיאנים לפי משתתפים</h3></div>
                   <div>
-                    {rankedP.slice(0, 4).map((p, idx) => { const g = pgMap.get(p.participant_id); const tc = taskCountByP.get(p.participant_id) || 0; const rg = RANK_GLOW[p.rank]; const rbg = RANK_ROW_BG[p.rank]; return (
+                    {rankedP.filter(p => p.total_points > 0).slice(0, 4).length === 0 ? (
+                      <p className="px-5 py-6 text-center text-sm text-gray-500">אין ניקוד עדיין</p>
+                    ) : rankedP.filter(p => p.total_points > 0).slice(0, 4).map((p, idx) => { const g = pgMap.get(p.participant_id); const tc = taskCountByP.get(p.participant_id) || 0; const rg = RANK_GLOW[p.rank]; const rbg = RANK_ROW_BG[p.rank]; return (
                       <motion.div key={p.participant_id} className="flex items-center gap-3 border-b border-white/[0.04] px-5 py-3.5 transition-all hover:bg-white/[0.04]"
                         style={{ boxShadow: rg || 'none', borderInlineStartWidth: p.rank <= 3 ? 3 : 0, borderInlineStartStyle: 'solid', borderInlineStartColor: RANK_BG[p.rank] || 'transparent', backgroundColor: rbg || 'transparent' }}
                         initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 + idx * 0.07 }}>
@@ -383,7 +385,9 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} onClick={() => setExpanded('groups')}>
                     <div className="flex items-center gap-2.5 border-b border-white/[0.06] px-5 py-4"><Trophy size={18} className="text-amber-400" style={{ filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.4))' }} /><h3 className="text-sm font-black text-white">שיאנים לפי קבוצות</h3></div>
                     <div>
-                      {rankedG.slice(0, 4).map((g, idx) => { const tc = groupTaskCounts.get(g.group_id) || 0; const ch = topPByGroup.get(g.group_id); const rg = RANK_GLOW[g.rank]; const rbg = RANK_ROW_BG[g.rank]; return (
+                      {rankedG.filter(g => g.total_points > 0).slice(0, 4).length === 0 ? (
+                        <p className="px-5 py-6 text-center text-sm text-gray-500">אין ניקוד עדיין</p>
+                      ) : rankedG.filter(g => g.total_points > 0).slice(0, 4).map((g, idx) => { const tc = groupTaskCounts.get(g.group_id) || 0; const ch = topPByGroup.get(g.group_id); const rg = RANK_GLOW[g.rank]; const rbg = RANK_ROW_BG[g.rank]; return (
                         <motion.div key={g.group_id} className="border-b border-white/[0.04] px-5 py-3.5 transition-all hover:bg-white/[0.04]"
                           style={{ boxShadow: rg || 'none', borderInlineStartWidth: g.rank <= 3 ? 3 : 0, borderInlineStartStyle: 'solid' as const, borderInlineStartColor: RANK_BG[g.rank] || 'transparent', backgroundColor: rbg || 'transparent' }}
                           initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + idx * 0.07 }}>
@@ -455,7 +459,7 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
       {/* ═══ MODALS ═══ */}
       {expanded === 'participants' && (
         <DetailModal title="דירוג משתתפים" onClose={() => setExpanded(null)}>
-          <div className="space-y-1.5">{rankedP.map((p) => { const g = pgMap.get(p.participant_id); const tc = taskCountByP.get(p.participant_id) || 0; return (
+          <div className="space-y-1.5">{rankedP.filter(p => p.total_points > 0).length === 0 ? (<p className="py-6 text-center text-sm text-gray-500">אין ניקוד עדיין</p>) : rankedP.filter(p => p.total_points > 0).map((p) => { const g = pgMap.get(p.participant_id); const tc = taskCountByP.get(p.participant_id) || 0; return (
             <div key={p.participant_id} className="flex items-center gap-2.5 rounded-xl px-3.5 py-3 transition-colors hover:bg-white/[0.06]"
               style={{ backgroundColor: RANK_ROW_BG[p.rank] || 'rgba(255,255,255,0.02)', borderInlineStartWidth: p.rank <= 3 ? 3 : 0, borderInlineStartColor: RANK_BG[p.rank] || 'transparent', borderInlineStartStyle: 'solid' }}>
               <RankCircle rank={p.rank} /><AvatarCircle name={p.participant_name} size="sm" ringColor={g?.color} />
@@ -466,7 +470,7 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
       )}
       {expanded === 'groups' && (
         <DetailModal title="דירוג קבוצות" onClose={() => setExpanded(null)}>
-          <div className="space-y-1.5">{rankedG.map((g) => { const tc = groupTaskCounts.get(g.group_id) || 0; const ch = topPByGroup.get(g.group_id); return (
+          <div className="space-y-1.5">{rankedG.filter(g => g.total_points > 0).length === 0 ? (<p className="py-6 text-center text-sm text-gray-500">אין ניקוד עדיין</p>) : rankedG.filter(g => g.total_points > 0).map((g) => { const tc = groupTaskCounts.get(g.group_id) || 0; const ch = topPByGroup.get(g.group_id); return (
             <div key={g.group_id} className="rounded-xl px-3.5 py-3 transition-colors hover:bg-white/[0.06]"
               style={{ backgroundColor: RANK_ROW_BG[g.rank] || 'rgba(255,255,255,0.02)', borderInlineStartWidth: g.rank <= 3 ? 3 : 0, borderInlineStartColor: RANK_BG[g.rank] || 'transparent', borderInlineStartStyle: 'solid' }}>
               <div className="flex items-center gap-2.5"><RankCircle rank={g.rank} /><span className="h-4 w-4 rounded-full shadow-sm" style={{ backgroundColor: g.group_color, boxShadow: `0 0 6px ${g.group_color}40` }} /><div className="min-w-0 flex-1"><p className="text-sm font-bold text-white">{g.group_name}</p><div className="flex items-center gap-2 text-[10px] text-gray-400">{tc > 0 && <span>{tc} משימות</span>}{ch && <span>שיאן: {ch.name}</span>}</div></div><span className="text-sm font-black text-white tabular-nums">{g.total_points.toLocaleString('he-IL')}</span></div>
