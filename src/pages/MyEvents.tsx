@@ -71,7 +71,6 @@ export function MyEvents() {
         name: '',
         slug,
         status: 'editing',
-        qr_scoring_mode: 'separate',
       })
       .select()
       .single()

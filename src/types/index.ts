@@ -1,5 +1,4 @@
 export type EventStatus = 'editing' | 'active' | 'archived';
-export type QrScoringMode = 'combined' | 'separate';
 
 export type UserRole = 'super_admin' | 'user';
 export type UserPlan = 'free' | 'independent' | 'full' | 'organizations';
@@ -59,7 +58,6 @@ export interface Event {
   logo_url: string | null;
   theme_color?: string;
   status: EventStatus;
-  qr_scoring_mode: QrScoringMode;
   created_at: string;
   updated_at: string;
 }

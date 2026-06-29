@@ -12,7 +12,6 @@ import { Toast } from '@/components/ui/Toast'
 import { CelebrationModal } from '@/components/scoring/CelebrationModal'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { ScannerZone } from '@/components/scoring/ScannerZone'
-import type { ScannerZoneRef } from '@/components/scoring/ScannerZone'
 import { QrScanner } from '@/components/scoring/QrScanner'
 import { MissionIntelPanel } from '@/components/ops/MissionIntelPanel'
 import { LiveActivityFeed } from '@/components/ops/LiveActivityFeed'
@@ -57,8 +56,7 @@ function EventOpsContent({ event }: { event: Event }) {
   const { submit, submitting, lastError } = useScoreSubmit(event.id)
   const opsSound = useOpsSound()
   const { canScanQR } = usePlanPermissions()
-  const scannerZoneRef = useRef<ScannerZoneRef>(null)
-  // Accumulates partial QR scan results in separate mode until both codes are ready
+  // Accumulates partial QR scan results until both codes are ready
   const qrPartialRef = useRef<{ participantCode?: string; actionCode?: string }>({})
 
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
@@ -94,7 +92,7 @@ function EventOpsContent({ event }: { event: Event }) {
 
     // Scanner flash
     setSuccessFlash(true)
-    pendingTimers.current.push(setTimeout(() => { setSuccessFlash(false); scannerZoneRef.current?.resetSeparateState() }, 1500))
+    pendingTimers.current.push(setTimeout(() => setSuccessFlash(false), 1500))
 
     // Leaderboard title bounce
     setTitlePulse(true)
@@ -221,8 +219,6 @@ function EventOpsContent({ event }: { event: Event }) {
           <div className="relative w-full shrink-0">
             <div className={canScanQR ? undefined : 'opacity-30 pointer-events-none'}>
               <ScannerZone
-                ref={scannerZoneRef}
-                mode={event.qr_scoring_mode}
                 successFlash={successFlash}
                 accent={accent} />
             </div>
@@ -241,7 +237,7 @@ function EventOpsContent({ event }: { event: Event }) {
           {/* QR scanner button */}
           <div className="shrink-0">
             {canScanQR ? (
-              <QrScanner mode={event.qr_scoring_mode} onScan={handleQrScan} />
+              <QrScanner onScan={handleQrScan} />
             ) : (
               <button
                 onClick={() => setShowUpgradeModal(true)}
