@@ -11,8 +11,9 @@ import { StepGroups } from '@/components/wizard/StepGroups'
 import { StepTasks } from '@/components/wizard/StepTasks'
 import { StepRewards } from '@/components/wizard/StepRewards'
 import { StepReviewGenerate } from '@/components/wizard/StepReviewGenerate'
+import { TemplatePickerModal } from '@/components/wizard/TemplatePickerModal'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
-import type { Event } from '@/types'
+import type { Event, GroupType } from '@/types'
 
 export function EventWizard() {
   const { id, step: stepParam } = useParams<{ id: string; step?: string }>()
@@ -25,6 +26,10 @@ export function EventWizard() {
     const n = parseInt(stepParam ?? '', 10)
     return Number.isFinite(n) && n >= 1 && n <= 6 ? n : 1
   }, [stepParam])
+
+  const [startMethod, setStartMethod] = useState<'scratch' | 'template' | null>(
+    () => (id ? (getWizardPrefs(id).startMethod ?? null) : null),
+  )
 
   const { counts, loaded: countsLoaded, refresh: refreshCounts } = useEventCounts(id)
   const { wizardState, groupType, setGroupType } = useWizardState(event, counts, countsLoaded)
@@ -64,6 +69,26 @@ export function EventWizard() {
 
   const goNext = useCallback(() => goToStep(currentStep + 1), [currentStep, goToStep])
   const goBack = useCallback(() => goToStep(currentStep - 1), [currentStep, goToStep])
+
+  const showTemplatePicker =
+    currentStep === 1 &&
+    startMethod === null &&
+    !event?.name &&
+    counts.tasks === 0 &&
+    counts.groups === 0 &&
+    countsLoaded
+
+  function handleChooseScratch() {
+    if (id) setWizardPrefs(id, { startMethod: 'scratch' })
+    setStartMethod('scratch')
+  }
+
+  function handleTemplateApplied(groupType: GroupType) {
+    setGroupType(groupType)
+    if (id) setWizardPrefs(id, { startMethod: 'template' })
+    setStartMethod('template')
+    refreshCounts()
+  }
 
   if (loading || !event) return <FullPageLoader />
 
@@ -134,6 +159,13 @@ export function EventWizard() {
           onBack={goBack}
         />
       )}
+
+      <TemplatePickerModal
+        eventId={event.id}
+        isOpen={showTemplatePicker}
+        onChooseScratch={handleChooseScratch}
+        onTemplateApplied={handleTemplateApplied}
+      />
     </WizardLayout>
   )
 }

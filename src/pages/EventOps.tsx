@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, X, Camera, Lock } from 'lucide-react'
+import { ArrowRight, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useScoreSubmit } from '@/hooks/useScoreSubmit'
 import { useOperationsData } from '@/hooks/useOperationsData'
@@ -10,7 +10,6 @@ import { usePlanPermissions } from '@/hooks/usePlanPermissions'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { Toast } from '@/components/ui/Toast'
 import { CelebrationModal } from '@/components/scoring/CelebrationModal'
-import { UpgradeModal } from '@/components/UpgradeModal'
 import { ScannerZone } from '@/components/scoring/ScannerZone'
 import { QrScanner } from '@/components/scoring/QrScanner'
 import { MissionIntelPanel } from '@/components/ops/MissionIntelPanel'
@@ -68,8 +67,7 @@ function EventOpsContent({ event }: { event: Event }) {
   const [confirmation, setConfirmation] = useState<ConfirmationData | null>(null)
   const [celebrationOverlay, setCelebrationOverlay] = useState<CelebrationOverlayData | null>(null)
   const [latestScore, setLatestScore] = useState<LatestScoreInfo | null>(null)
-  const [showManualEntry, setShowManualEntry] = useState(!canScanQR)
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [showManualEntry, setShowManualEntry] = useState(false)
 
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([])
   useEffect(() => () => { pendingTimers.current.forEach(clearTimeout) }, [])
@@ -215,40 +213,21 @@ function EventOpsContent({ event }: { event: Event }) {
               secondNow={opsData.secondNow} />
           </div>
 
-          {/* Scanner zone */}
-          <div className="relative w-full shrink-0">
-            <div className={canScanQR ? undefined : 'opacity-30 pointer-events-none'}>
+          {/* Scanner zone — QR-enabled plans only */}
+          {canScanQR && (
+            <div className="relative w-full shrink-0">
               <ScannerZone
                 successFlash={successFlash}
                 accent={accent} />
             </div>
-            {!canScanQR && (
-              <button
-                onClick={() => setShowUpgradeModal(true)}
-                className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl"
-              >
-                <Lock size={22} className="text-gray-300" />
-                <span className="text-sm font-semibold text-white">סריקת QR</span>
-                <span className="text-xs text-gray-400">זמין בתוכניות מלאה וארגונים</span>
-              </button>
-            )}
-          </div>
+          )}
 
-          {/* QR scanner button */}
-          <div className="shrink-0">
-            {canScanQR ? (
+          {/* QR scanner button — QR-enabled plans only */}
+          {canScanQR && (
+            <div className="shrink-0">
               <QrScanner onScan={handleQrScan} />
-            ) : (
-              <button
-                onClick={() => setShowUpgradeModal(true)}
-                className="flex items-center gap-1.5 rounded-lg border border-game-border px-3 py-1.5 text-xs text-gray-500 transition-colors hover:border-gray-500 hover:text-gray-300"
-              >
-                <Lock size={11} />
-                <Camera size={14} />
-                סריקת QR
-              </button>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Confirmation banner (secondary) */}
           <AnimatePresence>
@@ -257,43 +236,56 @@ function EventOpsContent({ event }: { event: Event }) {
             )}
           </AnimatePresence>
 
-          {/* Manual entry — hidden by default, toggle to open */}
-          {!showManualEntry && (
-            <button
-              type="button"
-              className="shrink-0 text-xs text-gray-500 underline-offset-2 transition-colors hover:text-gray-300 hover:underline"
-              onClick={() => setShowManualEntry(true)}
-            >
-              הזנה ידנית
-            </button>
-          )}
-          <AnimatePresence>
-            {showManualEntry && (
-              <motion.div
-                key="manual-entry"
-                className="relative w-full max-w-sm shrink-0"
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2 }}
-              >
+          {/* Manual entry */}
+          {canScanQR ? (
+            <>
+              {!showManualEntry && (
                 <button
                   type="button"
-                  onClick={() => setShowManualEntry(false)}
-                  className="absolute left-3 top-3 z-10 rounded p-0.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
-                  aria-label="סגור"
+                  className="shrink-0 text-xs text-gray-500 underline-offset-2 transition-colors hover:text-gray-300 hover:underline"
+                  onClick={() => setShowManualEntry(true)}
                 >
-                  <X size={14} />
+                  הזנה ידנית
                 </button>
-                <ManualEntryForm
-                  eventId={event.id}
-                  accent={accent}
-                  bonusMissions={opsData.bonusMissions}
-                  submitting={submitting}
-                  onSubmit={handleSubmit} />
-              </motion.div>
-            )}
-          </AnimatePresence>
+              )}
+              <AnimatePresence>
+                {showManualEntry && (
+                  <motion.div
+                    key="manual-entry"
+                    className="relative w-full max-w-sm shrink-0"
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setShowManualEntry(false)}
+                      className="absolute left-3 top-3 z-10 rounded p-0.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
+                      aria-label="סגור"
+                    >
+                      <X size={14} />
+                    </button>
+                    <ManualEntryForm
+                      eventId={event.id}
+                      accent={accent}
+                      bonusMissions={opsData.bonusMissions}
+                      submitting={submitting}
+                      onSubmit={handleSubmit} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </>
+          ) : (
+            <div className="w-full max-w-sm shrink-0">
+              <ManualEntryForm
+                eventId={event.id}
+                accent={accent}
+                bonusMissions={opsData.bonusMissions}
+                submitting={submitting}
+                onSubmit={handleSubmit} />
+            </div>
+          )}
 
           {/* Mobile leaderboard (visible only on < lg) */}
           <div className="lg:hidden w-full max-w-sm pb-4">
@@ -332,9 +324,6 @@ function EventOpsContent({ event }: { event: Event }) {
           participantName={celebratingParticipantName}
           onComplete={() => { setCelebrationRewards([]); setCelebratingParticipantName('') }} />
       )}
-
-      {/* Upgrade modal — triggered when restricted user taps scanner */}
-      <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
 
       {/* Error toast */}
       <AnimatePresence>

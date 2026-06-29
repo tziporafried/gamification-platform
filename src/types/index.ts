@@ -48,6 +48,48 @@ export interface EventCounts {
 export interface WizardPrefs {
   lastStep: number;
   groupType: GroupType | null;
+  startMethod: 'scratch' | 'template' | null;
+}
+
+export interface ActivityTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  group_type: 'none' | 'custom';
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ActivityTemplateGroup {
+  id: string;
+  activity_template_id: string;
+  name: string;
+  color: string;
+  sort_order: number;
+}
+
+export interface TemplateTask {
+  id: string;
+  name: string;
+  points: number;
+  description: string | null;
+  max_completions: number | null;
+  sort_order: number;
+  eligible_group_names: string[];
+}
+
+export interface TemplateReward {
+  id: string;
+  name: string;
+  required_points: number;
+  sort_order: number;
+}
+
+export interface ActivityTemplateWithContent extends ActivityTemplate {
+  groups: ActivityTemplateGroup[];
+  tasks: TemplateTask[];
+  rewards: TemplateReward[];
 }
 
 export interface Event {

@@ -7,7 +7,7 @@ export function getWizardPrefs(eventId: string): WizardPrefs {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${eventId}`)
     if (raw) return JSON.parse(raw)
   } catch {}
-  return { lastStep: 1, groupType: null }
+  return { lastStep: 1, groupType: null, startMethod: null }
 }
 
 export function setWizardPrefs(eventId: string, prefs: Partial<WizardPrefs>): void {
