@@ -48,7 +48,6 @@ export interface EventCounts {
 export interface WizardPrefs {
   lastStep: number;
   groupType: GroupType | null;
-  startMethod: 'scratch' | 'template' | null;
 }
 
 export interface ActivityTemplate {

@@ -204,7 +204,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                       <h3 className="text-xl font-black text-white">🔥 שחקו בלי להפסיק</h3>
                     </div>
                     <p className="text-sm text-gray-400 leading-relaxed">
-                      נשמח לעזור לכם ליצור תוכנית בלתי נשכחת.
+                      סרקו משימות וצברו נקודות
                     </p>
                   </div>
                   <div className="mt-2 rounded-xl px-5 py-2 text-sm font-bold text-violet-300 transition-all group-hover:opacity-80"

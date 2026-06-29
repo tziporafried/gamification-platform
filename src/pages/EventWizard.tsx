@@ -27,9 +27,7 @@ export function EventWizard() {
     return Number.isFinite(n) && n >= 1 && n <= 6 ? n : 1
   }, [stepParam])
 
-  const [startMethod, setStartMethod] = useState<'scratch' | 'template' | null>(
-    () => (id ? (getWizardPrefs(id).startMethod ?? null) : null),
-  )
+  const [startMethod, setStartMethod] = useState<'scratch' | 'template' | null>(null)
 
   const { counts, loaded: countsLoaded, refresh: refreshCounts } = useEventCounts(id)
   const { wizardState, groupType, setGroupType } = useWizardState(event, counts, countsLoaded)
@@ -79,13 +77,11 @@ export function EventWizard() {
     countsLoaded
 
   function handleChooseScratch() {
-    if (id) setWizardPrefs(id, { startMethod: 'scratch' })
     setStartMethod('scratch')
   }
 
   function handleTemplateApplied(groupType: GroupType) {
     setGroupType(groupType)
-    if (id) setWizardPrefs(id, { startMethod: 'template' })
     setStartMethod('template')
     refreshCounts()
   }

@@ -56,12 +56,6 @@ export function MyEvents() {
 
   async function handleCreateEvent() {
     setError('')
-    const existingDraft = events.find(e => e.status === 'editing' && !e.name && e.owner_admin_id === user!.id)
-    if (existingDraft) {
-      navigate(`/events/${existingDraft.id}/step/1`)
-      return
-    }
-
     setCreating(true)
     const slug = `event-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const { data, error: insertError } = await supabase
