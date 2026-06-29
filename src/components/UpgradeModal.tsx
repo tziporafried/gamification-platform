@@ -27,12 +27,12 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
       <div className="flex flex-col gap-6 pt-1 pb-1">
         <div className="space-y-3 text-center">
           <p className="text-[15px] text-gray-200 leading-[1.75]">
-            אירוע ההתנסות נועד לתת לכם טעימה מהחוויה.
+            משחק ההתנסות נועד לתת לכם טעימה מהחוויה.
           </p>
           <p className="text-sm text-gray-400 leading-[1.75]">
-            רוצים להפעיל את אותו המשחק באירוע שלכם?
+            רוצים להפעיל את אותו המשחק בתוכנית שלכם?
             <br />
-            נשמח לעזור לכם ליצור אירוע בלתי נשכח.
+            נשמח לעזור לכם ליצור תוכנית בלתי נשכחת.
           </p>
         </div>
 

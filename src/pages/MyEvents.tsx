@@ -252,7 +252,7 @@ function EventRow({ event, isOwner, isFreePlan, onDelete, onShare }: EventRowPro
           <p className="text-base font-bold text-white truncate leading-snug">
             {event.name || 'אירוע ללא שם'}
           </p>
-          {isFreePlan && <Badge label="אירוע התנסות" color="#a78bfa" />}
+          {isFreePlan && <Badge label="משחק התנסות" color="#a78bfa" />}
         </div>
         <p className="text-xs text-gray-500 mt-0.5">
           נוצר {new Date(event.created_at).toLocaleDateString('he-IL')}

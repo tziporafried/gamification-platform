@@ -18,7 +18,7 @@ export function PlanLimitsCard({ limits, isFreePlan }: PlanLimitsCardProps) {
 
   return (
     <Card className="p-5 space-y-4">
-      <h3 className="text-sm font-medium text-white">אירוע התנסות</h3>
+      <h3 className="text-sm font-medium text-white">משחק התנסות</h3>
 
       <div className="space-y-3">
         {ENTITIES.map(entity => (
