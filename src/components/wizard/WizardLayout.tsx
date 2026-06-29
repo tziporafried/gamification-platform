@@ -16,8 +16,8 @@ export function WizardLayout({ event, currentStep, wizardState, onStepClick, chi
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 56px)' }}>
       {/* Progress bar only */}
-      <div className="shrink-0 border-b border-game-border px-4 py-2">
-        <div className="mx-auto max-w-5xl">
+      <div className="shrink-0 border-b border-game-border py-1.5">
+        <div className="mx-auto max-w-3xl px-4">
           <WizardProgress
             currentStep={currentStep}
             wizardState={wizardState}

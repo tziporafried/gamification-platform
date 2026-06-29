@@ -12,8 +12,8 @@ interface WizardProgressProps {
 export function WizardProgress({ currentStep, wizardState, onStepClick }: WizardProgressProps) {
   return (
     <div className="w-full">
-      {/* Desktop: horizontal stepper */}
-      <nav className="hidden sm:flex items-center justify-center gap-1" aria-label="Wizard progress">
+      {/* Desktop stepper — three visual tiers */}
+      <nav className="hidden sm:flex items-center justify-between" aria-label="Wizard progress">
         {WIZARD_STEPS.map((step, idx) => {
           const status = wizardState[step.id as WizardStepId]
           const isCurrent = step.step === currentStep
@@ -21,33 +21,46 @@ export function WizardProgress({ currentStep, wizardState, onStepClick }: Wizard
 
           return (
             <div key={step.id} className="flex items-center">
-              <button
-                onClick={() => onStepClick(step.step)}
-                className={cn(
-                  'flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all hover:bg-white/5',
-                  isCurrent && 'bg-brand-600/20 text-white ring-1 ring-brand-500/50',
-                  isCompleted && !isCurrent && 'text-emerald-400',
-                  !isCompleted && !isCurrent && 'text-gray-400',
-                )}
-              >
-                <span
-                  className={cn(
-                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all',
-                    isCurrent && 'bg-brand-600 text-white',
-                    isCompleted && !isCurrent && 'bg-emerald-500/20 text-emerald-400',
-                    !isCompleted && !isCurrent && 'bg-white/10 text-gray-500',
-                  )}
+              {isCompleted ? (
+                /* Completed: green check + label */
+                <button
+                  onClick={() => onStepClick(step.step)}
+                  className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-500 transition-colors hover:bg-emerald-500/10"
                 >
-                  {isCompleted ? <Check size={14} /> : step.step}
-                </span>
-                <span className="hidden lg:inline">{step.label}</span>
-              </button>
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
+                    <Check size={9} />
+                  </span>
+                  {step.label}
+                </button>
+              ) : isCurrent ? (
+                /* Current: brand pill with number + label */
+                <button
+                  onClick={() => onStepClick(step.step)}
+                  className="flex items-center gap-1.5 rounded-full bg-brand-600/20 px-3 py-1 text-xs font-semibold text-white ring-1 ring-brand-500/40"
+                >
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold">
+                    {step.step}
+                  </span>
+                  {step.label}
+                </button>
+              ) : (
+                /* Upcoming: muted number + label */
+                <button
+                  onClick={() => onStepClick(step.step)}
+                  className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-400"
+                >
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white/5 text-[10px] font-bold">
+                    {step.step}
+                  </span>
+                  {step.label}
+                </button>
+              )}
 
               {idx < WIZARD_STEPS.length - 1 && (
                 <div
                   className={cn(
-                    'mx-1 h-px w-6 transition-colors',
-                    isCompleted ? 'bg-emerald-500/40' : 'bg-game-border',
+                    'mx-1 h-px w-3 shrink-0 transition-colors',
+                    isCompleted ? 'bg-emerald-500/30' : 'bg-white/10',
                   )}
                 />
               )}
@@ -56,8 +69,8 @@ export function WizardProgress({ currentStep, wizardState, onStepClick }: Wizard
         })}
       </nav>
 
-      {/* Mobile: compact dots */}
-      <nav className="flex sm:hidden items-center justify-center gap-2 py-2" aria-label="Wizard progress">
+      {/* Mobile: dots + current label */}
+      <nav className="flex sm:hidden items-center justify-center gap-1.5 py-1" aria-label="Wizard progress">
         {WIZARD_STEPS.map((step) => {
           const status = wizardState[step.id as WizardStepId]
           const isCurrent = step.step === currentStep
@@ -68,10 +81,10 @@ export function WizardProgress({ currentStep, wizardState, onStepClick }: Wizard
               key={step.id}
               onClick={() => onStepClick(step.step)}
               className={cn(
-                'h-2.5 rounded-full transition-all',
-                isCurrent && 'w-8 bg-brand-500',
-                isCompleted && !isCurrent && 'w-2.5 bg-emerald-500',
-                !isCompleted && !isCurrent && 'w-2.5 bg-gray-600',
+                'h-1.5 rounded-full transition-all',
+                isCurrent && 'w-6 bg-brand-500',
+                isCompleted && !isCurrent && 'w-1.5 bg-white/30',
+                !isCompleted && !isCurrent && 'w-1.5 bg-white/10',
               )}
               aria-label={step.label}
             />
@@ -79,8 +92,7 @@ export function WizardProgress({ currentStep, wizardState, onStepClick }: Wizard
         })}
       </nav>
 
-      {/* Mobile: current step label */}
-      <p className="sm:hidden text-center text-sm text-gray-400 mt-1">
+      <p className="sm:hidden text-center text-xs text-gray-500 mt-0.5">
         {WIZARD_STEPS.find(s => s.step === currentStep)?.label}
       </p>
     </div>
