@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trophy, Link as LinkIcon, Check, Settings, Crown, Zap, Sparkles, LayoutDashboard } from 'lucide-react'
+import { Trophy, Link as LinkIcon, Check, Settings, Crown, Sparkles, LayoutDashboard } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { ReadinessChecklist } from './ReadinessChecklist'
@@ -201,11 +201,10 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                   </motion.div>
                   <div>
                     <div className="flex items-center justify-center gap-2 mb-1.5">
-                      <Zap size={16} className="text-orange-400" />
-                      <h3 className="text-xl font-black text-white">התחרות</h3>
+                      <h3 className="text-xl font-black text-white">🔥 שחקו בלי להפסיק</h3>
                     </div>
                     <p className="text-sm text-gray-400 leading-relaxed">
-                      סריקה + ניהול בזמן אמת — הכל במסך אחד
+                      סרקו משימות, צברו נקודות
                     </p>
                   </div>
                   <div className="mt-2 rounded-xl px-5 py-2 text-sm font-bold text-violet-300 transition-all group-hover:opacity-80"
