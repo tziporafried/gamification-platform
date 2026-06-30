@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Layers } from 'lucide-react'
+import { Layers, Lock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
@@ -9,15 +9,36 @@ import { UpgradeModal } from '@/components/UpgradeModal'
 import { GroupForm } from './GroupForm'
 import { GroupCard } from './GroupCard'
 import { InlineAddGroup } from './InlineAddGroup'
-import type { GroupWithCount } from '@/types'
+import { getLockedTemplate, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
+import type { ActivityTemplateGroup, GroupWithCount } from '@/types'
 
 interface GroupListProps {
   eventId: string
   onCountChange: (count: number) => void
 }
 
+function LockedGroupCard({ group }: { group: ActivityTemplateGroup }) {
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-white/5 bg-game-card/50 opacity-50 select-none">
+      <div className="h-1.5 w-full bg-white/10" />
+      <div className="p-4">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/5">
+            <Lock size={12} className="text-zinc-500" />
+          </div>
+          <span className="flex-1 truncate text-sm font-semibold text-zinc-500">{group.name}</span>
+          <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-500/60">
+            פרמיום
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function GroupList({ eventId, onCountChange }: GroupListProps) {
   const [groups, setGroups] = useState<GroupWithCount[]>([])
+  const [lockedGroups, setLockedGroups] = useState<ActivityTemplateGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [formOpen, setFormOpen] = useState(false)
@@ -28,6 +49,15 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
   const [refreshKey, setRefreshKey] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const prevCountRef = useRef(0)
+
+  useEffect(() => {
+    function syncLocked() {
+      setLockedGroups(getLockedTemplate(eventId)?.groups ?? [])
+    }
+    syncLocked()
+    window.addEventListener(LOCKED_TEMPLATE_CHANGED, syncLocked)
+    return () => window.removeEventListener(LOCKED_TEMPLATE_CHANGED, syncLocked)
+  }, [eventId])
 
   useEffect(() => {
     let cancelled = false
@@ -108,6 +138,8 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
     )
   }
 
+  const hasLocked = lockedGroups.length > 0
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="shrink-0 mb-4 flex items-center">
@@ -123,23 +155,43 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
         <ErrorAlert message={error} className="mb-4" />
       )}
 
-      {groups.length === 0 ? (
+      {groups.length === 0 && !hasLocked ? (
         <EmptyState
           title="אין קבוצות עדיין"
           description="הקלד שם קבוצה למטה ולחץ Enter"
         />
       ) : (
         <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {groups.map((group) => (
-              <GroupCard
-                key={group.id}
-                group={group}
-                onEdit={() => handleEdit(group)}
-                onDelete={() => setDeletingGroup(group)}
-              />
-            ))}
-          </div>
+          {groups.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {groups.map((group) => (
+                <GroupCard
+                  key={group.id}
+                  group={group}
+                  onEdit={() => handleEdit(group)}
+                  onDelete={() => setDeletingGroup(group)}
+                />
+              ))}
+            </div>
+          )}
+
+          {hasLocked && (
+            <>
+              <div className="flex items-center gap-2 py-1">
+                <div className="h-px flex-1 bg-white/10" />
+                <span className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
+                  <Lock size={10} />
+                  פרמיום
+                </span>
+                <div className="h-px flex-1 bg-white/10" />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {lockedGroups.map((group) => (
+                  <LockedGroupCard key={group.id} group={group} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 

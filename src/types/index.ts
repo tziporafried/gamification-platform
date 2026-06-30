@@ -91,6 +91,24 @@ export interface ActivityTemplateWithContent extends ActivityTemplate {
   rewards: TemplateReward[];
 }
 
+export interface LockedTemplateStore {
+  templateId: string;
+  templateName: string;
+  groups: ActivityTemplateGroup[];
+  tasks: TemplateTask[];
+  rewards: TemplateReward[];
+}
+
+export interface TemplateImportResult {
+  templateName: string;
+  groupType: GroupType;
+  imported: { groups: number; tasks: number; rewards: number };
+  total: { groups: number; tasks: number; rewards: number };
+  importedNames: { groups: string[]; tasks: string[]; rewards: string[] };
+  lockedNames: { groups: string[]; tasks: string[]; rewards: string[] };
+  isPartial: boolean;
+}
+
 export interface Event {
   id: string;
   owner_admin_id: string;

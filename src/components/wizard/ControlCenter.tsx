@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trophy, Link as LinkIcon, Check, Settings, Crown, Sparkles, LayoutDashboard } from 'lucide-react'
+import { Trophy, Link as LinkIcon, Check, Settings, Crown, Sparkles, LayoutDashboard, Lock, Zap } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { ReadinessChecklist } from './ReadinessChecklist'
 import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
+import { useAuth } from '@/contexts/AuthContext'
 import { calculateReadiness, isEventReady, getWizardPrefs } from '@/lib/wizard'
-import type { Event, EventCounts } from '@/types'
+import { getLockedTemplate, clearLockedTemplate, completeTemplateImport, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
+import type { Event, EventCounts, LockedTemplateStore } from '@/types'
 
 interface ControlCenterProps {
   event: Event
@@ -31,8 +33,31 @@ function createParticle(): Particle {
 
 export function ControlCenter({ event, counts }: ControlCenterProps) {
   const navigate = useNavigate()
+  const { isFreePlan } = useAuth()
   const [copied, setCopied] = useState(false)
+  const [lockedTemplate, setLockedTemplate] = useState<LockedTemplateStore | null>(null)
+  const [completing, setCompleting] = useState(false)
   useEventHeaderBreadcrumb(event.name)
+
+  useEffect(() => {
+    function syncLocked() {
+      setLockedTemplate(getLockedTemplate(event.id))
+    }
+    syncLocked()
+    window.addEventListener(LOCKED_TEMPLATE_CHANGED, syncLocked)
+    return () => window.removeEventListener(LOCKED_TEMPLATE_CHANGED, syncLocked)
+  }, [event.id])
+
+  async function handleCompleteImport() {
+    setCompleting(true)
+    try {
+      await completeTemplateImport(event.id)
+    } catch {
+      // silently ignore — user can retry
+    } finally {
+      setCompleting(false)
+    }
+  }
   const ready = isEventReady(event, counts)
   const checks = calculateReadiness(event, counts)
 
@@ -170,6 +195,50 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
           {!ready && (
             <motion.div className="mb-10" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
               <ReadinessChecklist checks={checks} eventId={event.id} />
+            </motion.div>
+          )}
+
+          {/* Upgrade — complete locked template import */}
+          {!isFreePlan && lockedTemplate && (
+            <motion.div
+              className="mb-8 rounded-2xl border border-amber-500/25 bg-amber-500/5 p-5"
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+            >
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15">
+                  <Lock size={18} className="text-amber-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-amber-300">
+                    תוכן פרמיום ממתין מהתבנית "{lockedTemplate.templateName}"
+                  </p>
+                  <p className="mt-0.5 text-xs text-amber-400/60">
+                    {[
+                      lockedTemplate.groups.length > 0 && `${lockedTemplate.groups.length} קבוצות`,
+                      lockedTemplate.tasks.length > 0 && `${lockedTemplate.tasks.length} משימות`,
+                      lockedTemplate.rewards.length > 0 && `${lockedTemplate.rewards.length} פרסים`,
+                    ].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button
+                    size="sm"
+                    loading={completing}
+                    onClick={handleCompleteImport}
+                    className="bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/30"
+                  >
+                    <Zap size={13} className="ml-1" />
+                    ייבא הכל
+                  </Button>
+                  <button
+                    onClick={() => clearLockedTemplate(event.id)}
+                    className="text-xs text-amber-500/40 hover:text-amber-400/60 transition-colors"
+                    title="הסתר"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
             </motion.div>
           )}
 

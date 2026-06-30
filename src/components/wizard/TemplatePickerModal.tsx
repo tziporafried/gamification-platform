@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { Sparkles, PenLine, Layers, Users, CheckSquare, Gift, Loader2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { useAuth } from '@/contexts/AuthContext'
 import { fetchActivityTemplates, applyActivityTemplate, templateGroupType } from '@/lib/templates'
+import { saveLockedTemplate } from '@/lib/lockedTemplate'
 import type { ActivityTemplateWithContent, GroupType } from '@/types'
 
 interface TemplatePickerModalProps {
@@ -20,6 +22,7 @@ export function TemplatePickerModal({
   onChooseScratch,
   onTemplateApplied,
 }: TemplatePickerModalProps) {
+  const { isFreePlan } = useAuth()
   const [screen, setScreen] = useState<Screen>('choose')
   const [templates, setTemplates] = useState<ActivityTemplateWithContent[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(false)
@@ -51,7 +54,23 @@ export function TemplatePickerModal({
     setApplying(template.id)
     setError('')
     try {
-      await applyActivityTemplate(eventId, template)
+      const result = await applyActivityTemplate(eventId, template, isFreePlan)
+
+      if (result.isPartial) {
+        const importedGroupNames = new Set(result.importedNames.groups)
+        const importedTaskNames = new Set(result.importedNames.tasks)
+        const importedRewardNames = new Set(result.importedNames.rewards)
+        const dedup = <T extends { name: string }>(arr: T[]) =>
+          [...new Map(arr.map((x) => [x.name, x])).values()]
+        saveLockedTemplate(eventId, {
+          templateId: template.id,
+          templateName: template.name,
+          groups: dedup(template.groups.filter((g) => !importedGroupNames.has(g.name))),
+          tasks: dedup(template.tasks.filter((t) => !importedTaskNames.has(t.name))),
+          rewards: dedup(template.rewards.filter((r) => !importedRewardNames.has(r.name))),
+        })
+      }
+
       onTemplateApplied(templateGroupType(template))
     } catch {
       setError('שגיאה ביישום התבנית. נסו שוב.')
