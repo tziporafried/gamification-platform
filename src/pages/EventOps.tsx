@@ -16,13 +16,10 @@ import { useHardwareScanner } from '@/hooks/useHardwareScanner'
 import { useHebrewKeyboardWarning } from '@/hooks/useHebrewKeyboardWarning'
 import { parseQrPayload } from '@/lib/qrPayload'
 import { looksLikeHebrewLayoutScan } from '@/lib/keyboardLayout'
-import { MissionIntelPanel } from '@/components/ops/MissionIntelPanel'
-import { LiveActivityFeed } from '@/components/ops/LiveActivityFeed'
-import type { LatestScoreInfo } from '@/components/ops/LiveActivityFeed'
 import { ManualEntryForm } from '@/components/ops/ManualEntryForm'
-import { OpsLeaderboard } from '@/components/ops/OpsLeaderboard'
-import { MissionSpotlight } from '@/components/ops/MissionSpotlight'
 import { ConfirmationBanner } from '@/components/ops/ConfirmationBanner'
+import { CompetitionPanel } from '@/components/ops/CompetitionPanel'
+import { HeroCard } from '@/components/ops/HeroCard'
 import type { ConfirmationData } from '@/components/ops/ConfirmationBanner'
 import { ScoreCelebrationOverlay } from '@/components/ops/ScoreCelebrationOverlay'
 import type { CelebrationOverlayData } from '@/components/ops/ScoreCelebrationOverlay'
@@ -66,10 +63,8 @@ function EventOpsContent({ event }: { event: Event }) {
   const [celebratingParticipantName, setCelebratingParticipantName] = useState('')
   const [successFlash, setSuccessFlash] = useState(false)
   const [successPulse, setSuccessPulse] = useState(false)
-  const [titlePulse, setTitlePulse] = useState(false)
   const [confirmation, setConfirmation] = useState<ConfirmationData | null>(null)
   const [celebrationOverlay, setCelebrationOverlay] = useState<CelebrationOverlayData | null>(null)
-  const [latestScore, setLatestScore] = useState<LatestScoreInfo | null>(null)
   const [showManualEntry, setShowManualEntry] = useState(false)
 
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -103,19 +98,6 @@ function EventOpsContent({ event }: { event: Event }) {
     // Scanner flash
     setSuccessFlash(true)
     pendingTimers.current.push(setTimeout(() => setSuccessFlash(false), 1500))
-
-    // Leaderboard title bounce
-    setTitlePulse(true)
-    pendingTimers.current.push(setTimeout(() => setTitlePulse(false), 400))
-
-    // Feed card for Live Activity Feed
-    setLatestScore({
-      id: Date.now().toString(),
-      name: result.participantName,
-      points: result.points,
-      bonus: result.speedBonusApplied,
-      mult: result.speedBonusLabel,
-    })
 
     // Full-screen celebration overlay (1.2s auto-dismiss)
     const overlayData: CelebrationOverlayData = {
@@ -228,31 +210,21 @@ function EventOpsContent({ event }: { event: Event }) {
       {/* ═══ BODY — 3 COLUMNS ═══ */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
 
-        {/* Column 1 — Live Activity Feed (rightmost in RTL) */}
-        <div className="hidden lg:flex w-[28%] border-l flex-col p-4 shrink-0 overflow-hidden"
+        {/* Column 1 — Hero Card: what's happening now (rightmost in RTL) */}
+        <div className="hidden lg:flex w-[28%] border-l flex-col p-5 shrink-0 overflow-hidden"
           style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-          <LiveActivityFeed
-            rankedGroups={opsData.rankedGroups}
-            transactions={opsData.transactions}
+          <HeroCard
             sortedMissions={opsData.sortedMissions}
             bonusMissions={opsData.bonusMissions}
+            transactions={opsData.transactions}
+            rankedGroups={opsData.rankedGroups}
             secondNow={opsData.secondNow}
-            accent={accent}
-            latestScore={latestScore} />
+            accent={accent} />
         </div>
 
         {/* Column 2 — Scanner (center) */}
         <div className="flex flex-1 flex-col items-center justify-center overflow-hidden px-4 py-3 gap-3 border-l"
           style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-
-          {/* Mobile mission intel (visible only on < lg) */}
-          <div className="lg:hidden w-full max-w-sm">
-            <MissionIntelPanel
-              primaryMission={opsData.primaryMission}
-              bonusMissions={opsData.bonusMissions}
-              sortedMissions={opsData.sortedMissions}
-              secondNow={opsData.secondNow} />
-          </div>
 
           {/* Scanner zone — QR-enabled plans only */}
           {canScanQR && (
@@ -325,19 +297,20 @@ function EventOpsContent({ event }: { event: Event }) {
             </div>
           )}
 
-          {/* Mobile leaderboard (visible only on < lg) */}
-          <div className="lg:hidden w-full max-w-sm pb-4">
-            <OpsLeaderboard rankedGroups={opsData.rankedGroups} titlePulse={titlePulse} />
+          {/* Mobile competition panel (visible only on < lg) */}
+          <div className="lg:hidden w-full max-w-sm pb-4" style={{ height: 320 }}>
+            <CompetitionPanel
+              rankedGroups={opsData.rankedGroups}
+              transactions={opsData.transactions}
+              accent={accent} />
           </div>
         </div>
 
-        {/* Column 3 — Mission Spotlight (leftmost in RTL) */}
-        <div className="hidden lg:flex w-[28%] flex-col p-4 shrink-0 overflow-hidden">
-          <MissionSpotlight
-            sortedMissions={opsData.sortedMissions}
-            bonusMissions={opsData.bonusMissions}
+        {/* Column 3 — Competition Panel: who's winning (leftmost in RTL) */}
+        <div className="hidden lg:flex w-[28%] flex-col p-5 shrink-0 overflow-hidden">
+          <CompetitionPanel
             rankedGroups={opsData.rankedGroups}
-            secondNow={opsData.secondNow}
+            transactions={opsData.transactions}
             accent={accent} />
         </div>
       </div>
