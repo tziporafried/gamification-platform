@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react'
 import { Sparkles, PenLine, Layers, Users, CheckSquare, Gift, Loader2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { fetchActivityTemplates, applyActivityTemplate, templateGroupType } from '@/lib/templates'
+import { fetchActivityTemplates, applyActivityTemplateById, templateGroupType, formatTemplateError } from '@/lib/templates'
 import type { ActivityTemplateWithContent, GroupType } from '@/types'
 
 interface TemplatePickerModalProps {
   eventId: string
   isOpen: boolean
   onChooseScratch: () => void
-  onTemplateApplied: (groupType: GroupType) => void
+  onTemplateApplied: (groupType: GroupType, eventName: string) => void
 }
 
 type Screen = 'choose' | 'templates'
@@ -35,8 +35,8 @@ export function TemplatePickerModal({
 
   async function handleShowTemplates() {
     setScreen('templates')
-    if (templates.length > 0) return
     setLoadingTemplates(true)
+    setError('')
     try {
       const data = await fetchActivityTemplates()
       setTemplates(data)
@@ -51,10 +51,10 @@ export function TemplatePickerModal({
     setApplying(template.id)
     setError('')
     try {
-      await applyActivityTemplate(eventId, template)
-      onTemplateApplied(templateGroupType(template))
-    } catch {
-      setError('שגיאה ביישום התבנית. נסו שוב.')
+      const applied = await applyActivityTemplateById(eventId, template.id)
+      onTemplateApplied(templateGroupType(applied), applied.name.trim())
+    } catch (err) {
+      setError(formatTemplateError(err, 'שגיאה ביישום התבנית.'))
       setApplying(null)
     }
   }

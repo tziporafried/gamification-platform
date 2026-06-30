@@ -11,6 +11,7 @@ import { ShareEventModal } from '@/components/ShareEventModal'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
 import { getWizardPrefs } from '@/lib/wizard'
+import { fetchTemplateDraftEventIds } from '@/lib/templates'
 
 export function MyEvents() {
   const { user, isFreePlan } = useAuth()
@@ -26,7 +27,7 @@ export function MyEvents() {
 
   useEffect(() => {
     async function fetchEvents() {
-      const [owned, shared] = await Promise.all([
+      const [owned, shared, draftEventIds] = await Promise.all([
         supabase
           .from('events')
           .select('*')
@@ -44,9 +45,12 @@ export function MyEvents() {
               .in('id', collabs.map(c => c.event_id))
               .neq('status', 'archived')
           }),
+        fetchTemplateDraftEventIds(),
       ])
 
+      const draftIds = new Set(draftEventIds)
       const all = [...(owned.data || []), ...(shared.data || [])]
+        .filter((event) => !draftIds.has(event.id))
       all.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       setEvents(all)
       setLoading(false)

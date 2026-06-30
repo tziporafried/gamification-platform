@@ -57,6 +57,7 @@ export interface ActivityTemplate {
   group_type: 'none' | 'custom';
   sort_order: number;
   is_active: boolean;
+  draft_event_id: string | null;
   created_at: string;
 }
 

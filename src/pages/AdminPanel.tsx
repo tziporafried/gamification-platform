@@ -1,16 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Crown, Users, ListTodo, MessageSquare } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { DevTodoList } from '@/components/dev-todos/DevTodoList'
+import { TemplateAdminList } from '@/components/admin/TemplateAdminList'
 import { cn } from '@/lib/utils'
 
-type AdminTab = 'todos' | 'customers' | 'upgrade-requests'
+type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates'
 
 const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
   { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },
+  { id: 'templates', label: 'תבניות', icon: Sparkles },
   { id: 'customers', label: 'לקוחות', icon: Users },
   { id: 'upgrade-requests', label: 'פניות שדרוג', icon: MessageSquare },
 ]
@@ -64,6 +67,7 @@ const LIMIT_LABELS: Record<string, string> = {
 }
 
 export function AdminPanel() {
+  const location = useLocation()
   const [tab, setTab] = useState<AdminTab>('todos')
   const [users, setUsers] = useState<AdminUser[]>([])
   const [requests, setRequests] = useState<UpgradeRequest[]>([])
@@ -104,6 +108,11 @@ export function AdminPanel() {
       .eq('status', 'new')
       .then(({ count }) => setNewRequestCount(count ?? 0))
   }, [])
+
+  useEffect(() => {
+    const requestedTab = (location.state as { tab?: AdminTab } | null)?.tab
+    if (requestedTab) setTab(requestedTab)
+  }, [location.state])
 
   useEffect(() => {
     if (tab === 'customers' && !usersLoaded) fetchUsers()
@@ -173,6 +182,8 @@ export function AdminPanel() {
 
       {/* Tab content */}
       {tab === 'todos' && <DevTodoList />}
+
+      {tab === 'templates' && <TemplateAdminList />}
 
       {tab === 'customers' && (
         <>

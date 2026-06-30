@@ -1,8 +1,13 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { getWizardPrefs, setWizardPrefs, computeWizardState, resolveGroupType } from '@/lib/wizard'
+import { getWizardPrefs, setWizardPrefs, computeWizardState, computeTemplateWizardState, resolveGroupType } from '@/lib/wizard'
 import type { Event, EventCounts, WizardState, GroupType } from '@/types'
 
-export function useWizardState(event: Event | null, counts: EventCounts, countsLoaded: boolean) {
+export function useWizardState(
+  event: Event | null,
+  counts: EventCounts,
+  countsLoaded: boolean,
+  isTemplateMode = false,
+) {
   const [groupType, setGroupTypeRaw] = useState<GroupType | null>(
     () => event ? getWizardPrefs(event.id).groupType : null
   )
@@ -19,8 +24,10 @@ export function useWizardState(event: Event | null, counts: EventCounts, countsL
 
   const wizardState: WizardState = useMemo(() => {
     if (!event) return { details: 'not_started', groups: 'not_started', participants: 'not_started', tasks: 'not_started', rewards: 'not_started', review: 'not_started' }
-    return computeWizardState(event, counts, groupType)
-  }, [event, counts, groupType])
+    return isTemplateMode
+      ? computeTemplateWizardState(event, counts, groupType)
+      : computeWizardState(event, counts, groupType)
+  }, [event, counts, groupType, isTemplateMode])
 
   const setGroupType = useCallback((type: GroupType) => {
     setGroupTypeRaw(type)
