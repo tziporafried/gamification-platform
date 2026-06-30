@@ -16,6 +16,7 @@ interface StepGroupsProps {
   groupType: GroupType | null
   counts: EventCounts
   onGroupTypeSelect: (type: GroupType) => void
+  onCountsPatch: (patch: Partial<EventCounts>) => void
   onCountsRefresh: () => void
   onNext: () => void
   onBack: () => void
@@ -31,6 +32,7 @@ export function StepGroups({
   groupType,
   counts,
   onGroupTypeSelect,
+  onCountsPatch,
   onCountsRefresh,
   onNext,
   onBack,
@@ -39,16 +41,14 @@ export function StepGroups({
   const [deleting, setDeleting] = useState(false)
   const [localGroupCount, setLocalGroupCount] = useState(counts.groups)
   const planLimits = usePlanLimitsFromCounts(counts, onCountsRefresh)
-  const refreshPlanLimits = planLimits.refresh
 
   const showGroupSetup = groupType === 'custom'
   const canAdvance = groupType === 'none' || localGroupCount > 0
 
   const handleCountChange = useCallback((count: number) => {
     setLocalGroupCount(count)
-    onCountsRefresh()
-    refreshPlanLimits()
-  }, [onCountsRefresh, refreshPlanLimits])
+    onCountsPatch({ groups: count })
+  }, [onCountsPatch])
 
   function handleOptionClick(type: GroupType) {
     if (type === 'none' && localGroupCount > 0) {
@@ -76,8 +76,7 @@ export function StepGroups({
     setConfirmDelete(false)
     onGroupTypeSelect('none')
     setLocalGroupCount(0)
-    onCountsRefresh()
-    refreshPlanLimits()
+    onCountsPatch({ groups: 0 })
   }
 
   return (

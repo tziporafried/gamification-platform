@@ -8,20 +8,20 @@ import type { EventCounts } from '@/types'
 interface StepTasksProps {
   eventId: string
   counts: EventCounts
+  onCountsPatch: (patch: Partial<EventCounts>) => void
   onCountsRefresh: () => void
   onNext: () => void
   onBack: () => void
 }
 
-export function StepTasks({ eventId, counts, onCountsRefresh, onNext, onBack }: StepTasksProps) {
+export function StepTasks({ eventId, counts, onCountsPatch, onCountsRefresh, onNext, onBack }: StepTasksProps) {
   const [localTaskCount, setLocalTaskCount] = useState(counts.tasks)
   const canAdvance = localTaskCount > 0
   const planLimits = usePlanLimitsFromCounts(counts, onCountsRefresh)
 
   function handleCountChange(count: number) {
     setLocalTaskCount(count)
-    onCountsRefresh()
-    planLimits.refresh()
+    onCountsPatch({ tasks: count })
   }
 
   return (

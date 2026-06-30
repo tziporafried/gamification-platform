@@ -28,7 +28,6 @@ export function DevTodoList() {
   const [todos, setTodos] = useState<DevTodo[]>([])
   const [admins, setAdmins] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
-  const [refreshKey, setRefreshKey] = useState(0)
 
   const [newTitle, setNewTitle] = useState('')
   const [adding, setAdding] = useState(false)
@@ -51,31 +50,36 @@ export function DevTodoList() {
       setLoading(false)
     }
     fetchData()
-  }, [refreshKey])
-
-  function triggerRefresh() { setRefreshKey(k => k + 1) }
+  }, [])
 
   async function addTodo() {
     const trimmed = newTitle.trim()
     if (!trimmed || adding || !user) return
     setAdding(true)
-    await supabase.from('dev_todos').insert({
-      title: trimmed,
-      created_by: user.id,
-    })
+    const { data, error } = await supabase
+      .from('dev_todos')
+      .insert({ title: trimmed, created_by: user.id })
+      .select()
+      .single()
+    if (data && !error) {
+      setTodos((prev) => [...prev, data as DevTodo])
+    }
     setNewTitle('')
     setAdding(false)
-    triggerRefresh()
   }
 
-  async function updateField(id: string, field: string, value: any) {
-    await supabase.from('dev_todos').update({ [field]: value }).eq('id', id)
-    triggerRefresh()
+  async function updateField(id: string, field: string, value: unknown) {
+    const prev = todos
+    setTodos((items) => items.map((t) => (t.id === id ? { ...t, [field]: value } : t)))
+    const { error } = await supabase.from('dev_todos').update({ [field]: value }).eq('id', id)
+    if (error) setTodos(prev)
   }
 
   async function deleteTodo(id: string) {
-    await supabase.from('dev_todos').delete().eq('id', id)
-    triggerRefresh()
+    const prev = todos
+    setTodos((items) => items.filter((t) => t.id !== id))
+    const { error } = await supabase.from('dev_todos').delete().eq('id', id)
+    if (error) setTodos(prev)
   }
 
   function getAssigneeName(userId: string | null) {
@@ -98,7 +102,6 @@ export function DevTodoList() {
 
   return (
     <div className="space-y-6">
-      {/* Add new todo */}
       <div className="flex items-center gap-2 rounded-xl border border-dashed border-game-border bg-game-card/50 p-3 transition-colors focus-within:border-brand-500/50">
         <Plus size={18} className="shrink-0 text-gray-500" />
         <input
@@ -124,7 +127,6 @@ export function DevTodoList() {
         )}
       </div>
 
-      {/* Sections */}
       {todoItems.length > 0 && (
         <TodoSection title="לביצוע" count={todoItems.length} color="text-gray-400">
           {todoItems.map(todo => (
@@ -179,7 +181,7 @@ function TodoRow({
 }: {
   todo: DevTodo
   admins: AdminUser[]
-  onUpdate: (id: string, field: string, value: any) => void
+  onUpdate: (id: string, field: string, value: unknown) => void
   onDelete: (id: string) => void
   getAssigneeName: (userId: string | null) => string | null
 }) {
@@ -212,7 +214,6 @@ function TodoRow({
       'flex items-center gap-2 rounded-xl border border-game-border bg-game-card px-3 py-2.5 transition-all hover:border-brand-700/50 group/todo',
       todo.status === 'done' && 'opacity-60',
     )}>
-      {/* Status toggle */}
       <button
         onClick={() => {
           const next: DevTodoStatus = todo.status === 'todo' ? 'in_progress' : todo.status === 'in_progress' ? 'done' : 'todo'
@@ -224,7 +225,6 @@ function TodoRow({
         <StatusIcon size={18} />
       </button>
 
-      {/* Title */}
       <div className="min-w-0 flex-1" onClick={() => !editing && setEditing(true)} role="button" tabIndex={-1}>
         {editing ? (
           <input
@@ -246,7 +246,6 @@ function TodoRow({
         )}
       </div>
 
-      {/* Priority dropdown */}
       <div className="relative shrink-0">
         <button
           onClick={() => { setPriorityOpen(!priorityOpen); setStatusOpen(false); setAssigneeOpen(false) }}
@@ -279,7 +278,6 @@ function TodoRow({
         )}
       </div>
 
-      {/* Assignee dropdown */}
       <div className="relative shrink-0">
         <button
           onClick={() => { setAssigneeOpen(!assigneeOpen); setStatusOpen(false); setPriorityOpen(false) }}
@@ -322,7 +320,6 @@ function TodoRow({
         )}
       </div>
 
-      {/* Status dropdown */}
       <div className="relative shrink-0">
         <button
           onClick={() => { setStatusOpen(!statusOpen); setAssigneeOpen(false); setPriorityOpen(false) }}
@@ -359,7 +356,6 @@ function TodoRow({
         )}
       </div>
 
-      {/* Delete */}
       <button
         onClick={() => onDelete(todo.id)}
         className="shrink-0 p-1 rounded-lg text-gray-600 opacity-0 group-hover/todo:opacity-100 hover:bg-red-500/10 hover:text-red-400 transition-all"

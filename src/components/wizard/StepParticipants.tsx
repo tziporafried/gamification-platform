@@ -9,12 +9,13 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
 import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
-import type { EventCounts, GroupType, ParticipantWithGroups, Group } from '@/types'
+import type { EventCounts, GroupType, Participant, ParticipantWithGroups, Group } from '@/types'
 
 interface StepParticipantsProps {
   eventId: string
   counts: EventCounts
   groupType: GroupType | null
+  onCountsPatch: (patch: Partial<EventCounts>) => void
   onCountsRefresh: () => void
   onNext: () => void
   onBack: () => void
@@ -25,52 +26,66 @@ interface ParticipantGroupJoin {
   groups: Group
 }
 
-export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, onNext, onBack }: StepParticipantsProps) {
+export function StepParticipants({ eventId, counts, groupType, onCountsPatch, onCountsRefresh, onNext, onBack }: StepParticipantsProps) {
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [error, setError] = useState('')
-  const [refreshKey, setRefreshKey] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const prevCountRef = useRef(0)
-  const needsCountRefresh = useRef(false)
   const planLimits = usePlanLimitsFromCounts(counts, onCountsRefresh)
 
   const hasGroups = groupType === 'custom'
 
+  const loadParticipants = useCallback(async () => {
+    const { data, error: fetchError } = await supabase
+      .from('participants')
+      .select('*, participant_groups(group_id, groups(*))')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: true })
+
+    if (fetchError) {
+      setError('שגיאה בטעינת משתתפים.')
+      return false
+    }
+
+    const mapped: ParticipantWithGroups[] = (data ?? []).map((p) => ({
+      ...p,
+      groups: ((p.participant_groups as unknown as ParticipantGroupJoin[]) ?? []).map((pg) => pg.groups),
+    }))
+
+    setParticipants(mapped)
+    setError('')
+    return true
+  }, [eventId])
+
   useEffect(() => {
     let cancelled = false
-    async function load() {
-      const [pRes, gRes] = await Promise.all([
-        supabase
-          .from('participants')
-          .select('*, participant_groups(group_id, groups(*))')
-          .eq('event_id', eventId)
-          .order('created_at', { ascending: true }),
-        hasGroups
-          ? supabase.from('groups').select('*').eq('event_id', eventId).order('created_at', { ascending: true })
-          : Promise.resolve({ data: [] }),
-      ])
-      if (cancelled) return
-
-      const mapped: ParticipantWithGroups[] = (pRes.data ?? []).map((p) => ({
-        ...p,
-        groups: ((p.participant_groups as unknown as ParticipantGroupJoin[]) ?? []).map((pg) => pg.groups),
-      }))
-
-      setParticipants(mapped)
-      setGroups((gRes.data as Group[]) ?? [])
-      setError('')
-      if (needsCountRefresh.current) {
-        onCountsRefresh()
-        needsCountRefresh.current = false
-      }
-      setLoading(false)
+    async function init() {
+      const ok = await loadParticipants()
+      if (!cancelled && ok) setLoading(false)
     }
-    load()
+    init()
     return () => { cancelled = true }
-  }, [eventId, hasGroups, refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadParticipants])
+
+  useEffect(() => {
+    if (!hasGroups) {
+      setGroups([])
+      return
+    }
+    let cancelled = false
+    supabase
+      .from('groups')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        if (!cancelled) setGroups((data as Group[]) ?? [])
+      })
+    return () => { cancelled = true }
+  }, [eventId, hasGroups])
 
   useEffect(() => {
     if (participants.length > prevCountRef.current && listRef.current) {
@@ -79,19 +94,24 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
     prevCountRef.current = participants.length
   }, [participants.length])
 
-  function refreshData() {
-    setRefreshKey(k => k + 1)
-  }
-
-  function refreshDataWithCounts() {
-    needsCountRefresh.current = true
-    setRefreshKey(k => k + 1)
-  }
+  const handleAdded = useCallback((participant: Participant) => {
+    setParticipants((prev) => {
+      onCountsPatch({ participants: prev.length + 1 })
+      return [...prev, { ...participant, groups: [] }]
+    })
+  }, [onCountsPatch])
 
   const handleDelete = useCallback(async (id: string) => {
-    await supabase.from('participants').delete().eq('id', id)
-    refreshDataWithCounts()
-  }, [])
+    const { error: deleteError } = await supabase.from('participants').delete().eq('id', id)
+    if (deleteError) {
+      setError('שגיאה במחיקת משתתף.')
+      return
+    }
+    setParticipants((prev) => {
+      onCountsPatch({ participants: Math.max(0, prev.length - 1) })
+      return prev.filter((p) => p.id !== id)
+    })
+  }, [onCountsPatch])
 
   const handleToggleGroup = useCallback((participantId: string, groupId: string, isMember: boolean) => {
     setParticipants(prev => prev.map(p => {
@@ -109,10 +129,10 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
     mutation.then(({ error: err }) => {
       if (err) {
         setError('שגיאה בעדכון קבוצה. הנתונים רועננו.')
-        refreshData()
+        loadParticipants()
       }
     })
-  }, [groups])
+  }, [groups, loadParticipants])
 
   const handleSelectAllGroups = useCallback((participantId: string, currentGroupIds: Set<string>, allGroups: Group[]) => {
     const isAllSelected = allGroups.length > 0 && allGroups.every(g => currentGroupIds.has(g.id))
@@ -135,10 +155,10 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
     mutation.then(({ error: err }: { error: unknown }) => {
       if (err) {
         setError('שגיאה בעדכון קבוצות. הנתונים רועננו.')
-        refreshData()
+        loadParticipants()
       }
     })
-  }, [])
+  }, [loadParticipants])
 
   if (loading) {
     return (
@@ -158,7 +178,6 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
       onBack={onBack}
     >
       <div className="flex h-full flex-col min-h-0">
-        {/* Pinned top: counter + usage bar */}
         <div className="shrink-0 space-y-3 pb-3">
           {participants.length > 0 && (
             <p className="text-xs text-gray-400 text-center">
@@ -180,7 +199,6 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
           </div>
         )}
 
-        {/* Scrollable list */}
         <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-2 pb-2 pl-1" style={{ scrollbarGutter: 'stable' }}>
           {participants.length === 0 ? (
             <EmptyState
@@ -202,11 +220,10 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
           )}
         </div>
 
-        {/* Pinned bottom: add input */}
         <div className="shrink-0 pt-2">
           <InlineAddParticipant
             eventId={eventId}
-            onAdded={refreshDataWithCounts}
+            onAdded={handleAdded}
             onPlanLimit={() => setUpgradeOpen(true)}
             placeholder="הקלידו שם משתתף ולחצו Enter"
           />

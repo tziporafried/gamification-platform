@@ -28,7 +28,7 @@ interface ActionRowProps {
   groups: Group[]
   onEdit: () => void
   onDeleted?: () => void
-  onUpdated?: () => void
+  onUpdated?: (patch: Partial<ActionWithGroups>) => void
   onError?: (msg: string) => void
   variant?: ActionCopyVariant
   siblingNames?: string[]
@@ -101,7 +101,7 @@ export const ActionRow = memo(function ActionRow({
     await supabase.from('actions').update({ name: trimmed }).eq('id', action.id)
     setSaving(false)
     setEditingName(false)
-    onUpdated?.()
+    onUpdated?.({ name: trimmed })
   }
 
   async function savePoints() {
@@ -121,7 +121,7 @@ export const ActionRow = memo(function ActionRow({
     await supabase.from('actions').update({ points: num }).eq('id', action.id)
     setSaving(false)
     setEditingPoints(false)
-    onUpdated?.()
+    onUpdated?.({ points: num })
   }
 
   function handleNameKey(e: KeyboardEvent<HTMLInputElement>) {
@@ -139,7 +139,7 @@ export const ActionRow = memo(function ActionRow({
     setLimitMode(mode)
     if (mode === 'limited' && limit) setCustomLimit(limit)
     await supabase.from('actions').update({ max_completions: val }).eq('id', action.id)
-    if (onUpdated) onUpdated()
+    if (onUpdated) onUpdated({ max_completions: val })
     else onEdit()
   }
 
@@ -279,7 +279,7 @@ export const ActionRow = memo(function ActionRow({
       </div>
       <ActionTimeSettings
         action={action}
-        onUpdated={onUpdated ?? onEdit}
+        onUpdated={(patch) => (onUpdated ? onUpdated(patch) : onEdit())}
       />
     </div>
   )

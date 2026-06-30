@@ -5,6 +5,7 @@ import { ArrowRight, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useScoreSubmit } from '@/hooks/useScoreSubmit'
 import { useOperationsData } from '@/hooks/useOperationsData'
+import { useEventCatalog } from '@/hooks/useEventCatalog'
 import { useOpsSound } from '@/hooks/useOpsSound'
 import { usePlanPermissions } from '@/hooks/usePlanPermissions'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
@@ -55,6 +56,7 @@ function EventOpsContent({ event }: { event: Event }) {
   const navigate = useNavigate()
   const accent = useMemo(() => hexToRgb('#7c3aed'), [])
   const opsData = useOperationsData(event.id)
+  const catalog = useEventCatalog(event.id)
   const { submit, submitting, lastError } = useScoreSubmit(event.id)
   const opsSound = useOpsSound()
   const { canScanQR } = usePlanPermissions()
@@ -82,8 +84,17 @@ function EventOpsContent({ event }: { event: Event }) {
     const result = await submit(participantCode, actionCode)
     if (!result) return
 
-    // Immediate refresh — leaderboard re-ranks
-    opsData.refresh()
+    opsData.applyScore({
+      participantId: result.participantId,
+      participantName: result.participantName,
+      participantExternalId: result.participantExternalId,
+      participantGroupIds: result.participantGroupIds,
+      actionId: result.actionId,
+      actionName: result.actionName,
+      actionCode: result.actionCode,
+      actionBasePoints: result.basePoints,
+      points: result.points,
+    })
 
     // Global screen pulse
     setSuccessPulse(true)
@@ -282,33 +293,25 @@ function EventOpsContent({ event }: { event: Event }) {
                   הזנה ידנית
                 </button>
               )}
-              <AnimatePresence>
+              <div className={showManualEntry ? 'relative w-full max-w-sm shrink-0' : 'hidden'} aria-hidden={!showManualEntry}>
                 {showManualEntry && (
-                  <motion.div
-                    key="manual-entry"
-                    className="relative w-full max-w-sm shrink-0"
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.2 }}
+                  <button
+                    type="button"
+                    onClick={() => setShowManualEntry(false)}
+                    className="absolute left-3 top-3 z-10 rounded p-0.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
+                    aria-label="סגור"
                   >
-                    <button
-                      type="button"
-                      onClick={() => setShowManualEntry(false)}
-                      className="absolute left-3 top-3 z-10 rounded p-0.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
-                      aria-label="סגור"
-                    >
-                      <X size={14} />
-                    </button>
-                    <ManualEntryForm
-                      eventId={event.id}
-                      accent={accent}
-                      bonusMissions={opsData.bonusMissions}
-                      submitting={submitting}
-                      onSubmit={handleSubmit} />
-                  </motion.div>
+                    <X size={14} />
+                  </button>
                 )}
-              </AnimatePresence>
+                <ManualEntryForm
+                  eventId={event.id}
+                  accent={accent}
+                  bonusMissions={opsData.bonusMissions}
+                  submitting={submitting}
+                  catalog={catalog}
+                  onSubmit={handleSubmit} />
+              </div>
             </>
           ) : (
             <div className="w-full max-w-sm shrink-0">
@@ -317,6 +320,7 @@ function EventOpsContent({ event }: { event: Event }) {
                 accent={accent}
                 bonusMissions={opsData.bonusMissions}
                 submitting={submitting}
+                catalog={catalog}
                 onSubmit={handleSubmit} />
             </div>
           )}

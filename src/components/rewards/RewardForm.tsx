@@ -12,7 +12,7 @@ interface RewardFormProps {
   reward?: Reward
   isOpen: boolean
   onClose: () => void
-  onSaved: () => void
+  onSaved: (reward: Reward) => void
   onPlanLimit?: () => void
 }
 
@@ -44,7 +44,7 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved, onPlanLi
 
     try {
       if (isEdit) {
-        const { error: updateError } = await supabase
+        const { data, error: updateError } = await supabase
           .from('rewards')
           .update({
             name: name.trim(),
@@ -53,6 +53,8 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved, onPlanLi
             is_active: isActive,
           })
           .eq('id', reward.id)
+          .select()
+          .single()
 
         if (updateError) {
           if (updateError.code === '23505') {
@@ -60,8 +62,9 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved, onPlanLi
           }
           throw updateError
         }
+        onSaved(data as Reward)
       } else {
-        const { error: insertError } = await supabase
+        const { data, error: insertError } = await supabase
           .from('rewards')
           .insert({
             event_id: eventId,
@@ -69,6 +72,8 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved, onPlanLi
             required_points: pointsNum,
             description: description.trim() || null,
           })
+          .select()
+          .single()
 
         if (insertError) {
           if (insertError.code === '23505') {
@@ -76,8 +81,8 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved, onPlanLi
           }
           throw insertError
         }
+        onSaved(data as Reward)
       }
-      onSaved()
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'משהו השתבש.'
       if (isPlanLimitError(msg) && onPlanLimit) {

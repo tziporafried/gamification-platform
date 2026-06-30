@@ -101,14 +101,34 @@ export function ActionList({ eventId, onCountChange, variant = 'default' }: Acti
     setEditingAction(null)
   }, [])
 
-  const handleDeleted = useCallback(() => {
-    triggerRefresh()
-  }, [triggerRefresh])
+  const handleAdded = useCallback((action: Action) => {
+    setActions((prev) => {
+      const next = [...prev, { ...action, groups: [] }]
+      onCountChange(next.length)
+      return next
+    })
+  }, [onCountChange])
 
-  const handleUpdated = useCallback(() => {
+  const handleWizardDeleted = useCallback((actionId: string) => {
+    setActions((prev) => {
+      const next = prev.filter((a) => a.id !== actionId)
+      onCountChange(next.length)
+      return next
+    })
+  }, [onCountChange])
+
+  const handleActionPatched = useCallback((actionId: string, patch: Partial<ActionWithGroups>) => {
+    setActions((prev) => prev.map((a) => (a.id === actionId ? { ...a, ...patch } : a)))
     showFeedback('הפעילות עודכנה', 'success')
-    triggerRefresh()
-  }, [showFeedback, triggerRefresh])
+  }, [showFeedback])
+
+  const handleInlineAdded = useCallback((action: Action) => {
+    if (isWizard) {
+      handleAdded(action)
+    } else {
+      triggerRefresh()
+    }
+  }, [isWizard, handleAdded, triggerRefresh])
 
   if (loading) {
     return (
@@ -161,7 +181,7 @@ export function ActionList({ eventId, onCountChange, variant = 'default' }: Acti
           <div className="shrink-0">
             <InlineAddAction
               eventId={eventId}
-              onAdded={triggerRefresh}
+              onAdded={handleInlineAdded}
               onPlanLimit={() => setUpgradeOpen(true)}
               variant={variant}
               existingNames={existingNames}
@@ -179,8 +199,8 @@ export function ActionList({ eventId, onCountChange, variant = 'default' }: Acti
                 action={action}
                 groups={groups}
                 onEdit={triggerRefresh}
-                onDeleted={isWizard ? handleDeleted : triggerRefresh}
-                onUpdated={isWizard ? handleUpdated : undefined}
+                onDeleted={isWizard ? () => handleWizardDeleted(action.id) : triggerRefresh}
+                onUpdated={isWizard ? (patch) => handleActionPatched(action.id, patch) : undefined}
                 onError={setError}
                 variant={variant}
                 siblingNames={existingNames.filter((n) => n !== action.name)}
@@ -190,7 +210,7 @@ export function ActionList({ eventId, onCountChange, variant = 'default' }: Acti
           <div className="shrink-0 pt-2">
             <InlineAddAction
               eventId={eventId}
-              onAdded={triggerRefresh}
+              onAdded={handleInlineAdded}
               onPlanLimit={() => setUpgradeOpen(true)}
               variant={variant}
               existingNames={existingNames}

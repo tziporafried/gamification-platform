@@ -9,10 +9,9 @@ interface RewardGroupAssignmentProps {
   rewardName: string
   isOpen: boolean
   onClose: () => void
-  onChanged: () => void
 }
 
-export function RewardGroupAssignment({ eventId, rewardId, rewardName, isOpen, onClose, onChanged }: RewardGroupAssignmentProps) {
+export function RewardGroupAssignment({ eventId, rewardId, rewardName, isOpen, onClose }: RewardGroupAssignmentProps) {
   const [groups, setGroups] = useState<Group[]>([])
   const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
@@ -72,8 +71,6 @@ export function RewardGroupAssignment({ eventId, rewardId, rewardName, isOpen, o
         next.delete(groupId)
       }
       setAssignedIds(new Set(next))
-    } else {
-      onChanged()
     }
 
     setToggling(null)

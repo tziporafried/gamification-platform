@@ -5,6 +5,7 @@ import { useEventCounts } from '@/hooks/useEventCounts'
 import { useWizardState } from '@/hooks/useWizardState'
 import { getWizardPrefs, setWizardPrefs } from '@/lib/wizard'
 import { WizardLayout } from '@/components/wizard/WizardLayout'
+import { WizardStepPanel } from '@/components/wizard/WizardStepPanel'
 import { StepEventDetails } from '@/components/wizard/StepEventDetails'
 import { StepParticipants } from '@/components/wizard/StepParticipants'
 import { StepGroups } from '@/components/wizard/StepGroups'
@@ -21,16 +22,25 @@ export function EventWizard() {
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // currentStep is derived directly from the URL — no state, no sync effects
   const currentStep = useMemo(() => {
     const n = parseInt(stepParam ?? '', 10)
     return Number.isFinite(n) && n >= 1 && n <= 6 ? n : 1
   }, [stepParam])
 
+  const [visitedSteps, setVisitedSteps] = useState<Set<number>>(() => new Set([currentStep]))
   const [startMethod, setStartMethod] = useState<'scratch' | 'template' | null>(null)
 
-  const { counts, loaded: countsLoaded, refresh: refreshCounts } = useEventCounts(id)
+  const { counts, loaded: countsLoaded, refresh: refreshCounts, patchCounts } = useEventCounts(id)
   const { wizardState, groupType, setGroupType } = useWizardState(event, counts, countsLoaded)
+
+  useEffect(() => {
+    setVisitedSteps((prev) => {
+      if (prev.has(currentStep)) return prev
+      const next = new Set(prev)
+      next.add(currentStep)
+      return next
+    })
+  }, [currentStep])
 
   useEffect(() => {
     async function fetchEvent() {
@@ -52,7 +62,6 @@ export function EventWizard() {
     fetchEvent()
   }, [id, navigate]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Redirect /events/:id (no step param) to last saved step
   useEffect(() => {
     if (!id || loading || !event || stepParam) return
     const { lastStep } = getWizardPrefs(id)
@@ -80,8 +89,8 @@ export function EventWizard() {
     setStartMethod('scratch')
   }
 
-  function handleTemplateApplied(groupType: GroupType) {
-    setGroupType(groupType)
+  function handleTemplateApplied(appliedGroupType: GroupType) {
+    setGroupType(appliedGroupType)
     setStartMethod('template')
     refreshCounts()
   }
@@ -103,57 +112,71 @@ export function EventWizard() {
         />
       )}
 
-      {currentStep === 2 && (
-        <StepGroups
-          eventId={event.id}
-          groupType={groupType}
-          counts={counts}
-          onGroupTypeSelect={setGroupType}
-          onCountsRefresh={refreshCounts}
-          onNext={goNext}
-          onBack={goBack}
-        />
+      {visitedSteps.has(2) && (
+        <WizardStepPanel active={currentStep === 2}>
+          <StepGroups
+            eventId={event.id}
+            groupType={groupType}
+            counts={counts}
+            onGroupTypeSelect={setGroupType}
+            onCountsPatch={patchCounts}
+            onCountsRefresh={refreshCounts}
+            onNext={goNext}
+            onBack={goBack}
+          />
+        </WizardStepPanel>
       )}
 
-      {currentStep === 3 && (
-        <StepParticipants
-          eventId={event.id}
-          counts={counts}
-          groupType={groupType}
-          onCountsRefresh={refreshCounts}
-          onNext={goNext}
-          onBack={goBack}
-        />
+      {visitedSteps.has(3) && (
+        <WizardStepPanel active={currentStep === 3}>
+          <StepParticipants
+            eventId={event.id}
+            counts={counts}
+            groupType={groupType}
+            onCountsPatch={patchCounts}
+            onCountsRefresh={refreshCounts}
+            onNext={goNext}
+            onBack={goBack}
+          />
+        </WizardStepPanel>
       )}
 
-      {currentStep === 4 && (
-        <StepTasks
-          eventId={event.id}
-          counts={counts}
-          onCountsRefresh={refreshCounts}
-          onNext={goNext}
-          onBack={goBack}
-        />
+      {visitedSteps.has(4) && (
+        <WizardStepPanel active={currentStep === 4}>
+          <StepTasks
+            eventId={event.id}
+            counts={counts}
+            onCountsPatch={patchCounts}
+            onCountsRefresh={refreshCounts}
+            onNext={goNext}
+            onBack={goBack}
+          />
+        </WizardStepPanel>
       )}
 
-      {currentStep === 5 && (
-        <StepRewards
-          eventId={event.id}
-          counts={counts}
-          onCountsRefresh={refreshCounts}
-          onNext={goNext}
-          onBack={goBack}
-        />
+      {visitedSteps.has(5) && (
+        <WizardStepPanel active={currentStep === 5}>
+          <StepRewards
+            eventId={event.id}
+            counts={counts}
+            onCountsPatch={patchCounts}
+            onCountsRefresh={refreshCounts}
+            onNext={goNext}
+            onBack={goBack}
+          />
+        </WizardStepPanel>
       )}
 
-      {currentStep === 6 && (
-        <StepReviewGenerate
-          event={event}
-          counts={counts}
-          groupType={groupType}
-          onGoToStep={goToStep}
-          onBack={goBack}
-        />
+      {visitedSteps.has(6) && (
+        <WizardStepPanel active={currentStep === 6}>
+          <StepReviewGenerate
+            event={event}
+            counts={counts}
+            groupType={groupType}
+            onGoToStep={goToStep}
+            onBack={goBack}
+          />
+        </WizardStepPanel>
       )}
 
       <TemplatePickerModal

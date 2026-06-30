@@ -6,17 +6,18 @@ import type { EventCounts } from '@/types'
 interface StepRewardsProps {
   eventId: string
   counts: EventCounts
+  onCountsPatch: (patch: Partial<EventCounts>) => void
   onCountsRefresh: () => void
   onNext: () => void
   onBack: () => void
 }
 
-export function StepRewards({ eventId, counts, onCountsRefresh, onNext, onBack }: StepRewardsProps) {
+export function StepRewards({ eventId, counts, onCountsPatch, onNext, onBack }: StepRewardsProps) {
   const [localRewardCount, setLocalRewardCount] = useState(counts.rewards)
 
   function handleCountChange(count: number) {
     setLocalRewardCount(count)
-    onCountsRefresh()
+    onCountsPatch({ rewards: count })
   }
 
   return (

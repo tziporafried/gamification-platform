@@ -9,7 +9,7 @@ import { UpgradeModal } from '@/components/UpgradeModal'
 import { GroupForm } from './GroupForm'
 import { GroupCard } from './GroupCard'
 import { InlineAddGroup } from './InlineAddGroup'
-import type { GroupWithCount } from '@/types'
+import type { Group, GroupWithCount } from '@/types'
 
 interface GroupListProps {
   eventId: string
@@ -25,7 +25,6 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
   const [deletingGroup, setDeletingGroup] = useState<GroupWithCount | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
-  const [refreshKey, setRefreshKey] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const prevCountRef = useRef(0)
 
@@ -56,7 +55,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
     }
     load()
     return () => { cancelled = true }
-  }, [eventId, refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [eventId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (groups.length > prevCountRef.current && listRef.current) {
@@ -65,8 +64,27 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
     prevCountRef.current = groups.length
   }, [groups.length])
 
-  function triggerRefresh() {
-    setRefreshKey(k => k + 1)
+  function handleAdded(group: Group) {
+    setGroups((prev) => {
+      const next = [...prev, { ...group, member_count: 0 }]
+      onCountChange(next.length)
+      return next
+    })
+  }
+
+  function handleSaved(saved: Group) {
+    handleFormClose()
+    setGroups((prev) => {
+      const exists = prev.some((g) => g.id === saved.id)
+      if (exists) {
+        return prev.map((g) => (
+          g.id === saved.id ? { ...g, ...saved } : g
+        ))
+      }
+      const next = [...prev, { ...saved, member_count: 0 }]
+      onCountChange(next.length)
+      return next
+    })
   }
 
   function handleEdit(group: GroupWithCount) {
@@ -81,12 +99,13 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
 
   async function handleDelete() {
     if (!deletingGroup) return
+    const deletedId = deletingGroup.id
     setDeleting(true)
 
     const { error: deleteError } = await supabase
       .from('groups')
       .delete()
-      .eq('id', deletingGroup.id)
+      .eq('id', deletedId)
 
     setDeleting(false)
 
@@ -97,7 +116,11 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
     }
 
     setDeletingGroup(null)
-    triggerRefresh()
+    setGroups((prev) => {
+      const next = prev.filter((g) => g.id !== deletedId)
+      onCountChange(next.length)
+      return next
+    })
   }
 
   if (loading) {
@@ -144,7 +167,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
       )}
 
       <div className="shrink-0 pt-3">
-        <InlineAddGroup eventId={eventId} onAdded={triggerRefresh} onPlanLimit={() => setUpgradeOpen(true)} />
+        <InlineAddGroup eventId={eventId} onAdded={handleAdded} onPlanLimit={() => setUpgradeOpen(true)} />
       </div>
 
       {formOpen && (
@@ -153,7 +176,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
           group={editingGroup ?? undefined}
           isOpen={formOpen}
           onClose={handleFormClose}
-          onSaved={() => { handleFormClose(); triggerRefresh() }}
+          onSaved={handleSaved}
         />
       )}
 

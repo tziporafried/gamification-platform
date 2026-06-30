@@ -1,43 +1,67 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { EventCounts } from '@/types'
 
-export function useEventCounts(eventId: string | undefined) {
-  const [counts, setCounts] = useState<EventCounts>({
-    participants: 0,
-    groups: 0,
-    tasks: 0,
-    transactions: 0,
-    rewards: 0,
-  })
+const COUNT_QUERIES: Record<keyof EventCounts, { table: string }> = {
+  participants: { table: 'participants' },
+  groups: { table: 'groups' },
+  tasks: { table: 'actions' },
+  transactions: { table: 'point_transactions' },
+  rewards: { table: 'rewards' },
+}
+
+const ALL_COUNT_KEYS = Object.keys(COUNT_QUERIES) as (keyof EventCounts)[]
+
+const EMPTY_COUNTS: EventCounts = {
+  participants: 0,
+  groups: 0,
+  tasks: 0,
+  transactions: 0,
+  rewards: 0,
+}
+
+export function useEventCounts(
+  eventId: string | undefined,
+  countKeys: (keyof EventCounts)[] = ALL_COUNT_KEYS,
+) {
+  const [counts, setCounts] = useState<EventCounts>(EMPTY_COUNTS)
   const [loading, setLoading] = useState(true)
   const [loaded, setLoaded] = useState(false)
 
-  const refresh = useCallback(async () => {
+  const keys = useMemo(
+    () => (countKeys.length > 0 ? countKeys : ALL_COUNT_KEYS),
+    [countKeys],
+  )
+
+  const patchCounts = useCallback((patch: Partial<EventCounts>) => {
+    setCounts((prev) => ({ ...prev, ...patch }))
+  }, [])
+
+  const refresh = useCallback(async (overrideKeys?: (keyof EventCounts)[]) => {
     if (!eventId) return
 
-    const [participantsRes, groupsRes, tasksRes, transactionsRes, rewardsRes] = await Promise.all([
-      supabase.from('participants').select('id', { count: 'exact', head: true }).eq('event_id', eventId),
-      supabase.from('groups').select('id', { count: 'exact', head: true }).eq('event_id', eventId),
-      supabase.from('actions').select('id', { count: 'exact', head: true }).eq('event_id', eventId),
-      supabase.from('point_transactions').select('id', { count: 'exact', head: true }).eq('event_id', eventId),
-      supabase.from('rewards').select('id', { count: 'exact', head: true }).eq('event_id', eventId),
-    ])
+    const fields = overrideKeys ?? keys
+    const results = await Promise.all(
+      fields.map((key) =>
+        supabase
+          .from(COUNT_QUERIES[key].table)
+          .select('id', { count: 'exact', head: true })
+          .eq('event_id', eventId),
+      ),
+    )
 
-    setCounts({
-      participants: participantsRes.count ?? 0,
-      groups: groupsRes.count ?? 0,
-      tasks: tasksRes.count ?? 0,
-      transactions: transactionsRes.count ?? 0,
-      rewards: rewardsRes.count ?? 0,
-    })
+    const patch = Object.fromEntries(
+      fields.map((key, i) => [key, results[i].count ?? 0]),
+    ) as Partial<EventCounts>
+
+    setCounts((prev) => ({ ...prev, ...patch }))
     setLoading(false)
     setLoaded(true)
-  }, [eventId])
+  }, [eventId, keys])
 
   useEffect(() => {
     refresh()
   }, [refresh])
 
-  return { counts, loading, loaded, refresh }
+  return { counts, loading, loaded, refresh, patchCounts }
 }
