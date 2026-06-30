@@ -1,12 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { type LimitableEntity } from '@/lib/plans'
 
 interface UpgradeModalProps {
   isOpen: boolean
   onClose: () => void
-  limitType?: LimitableEntity
 }
 
 export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {

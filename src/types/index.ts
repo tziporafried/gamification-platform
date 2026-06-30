@@ -97,7 +97,6 @@ export interface Event {
   name: string;
   slug: string;
   logo_url: string | null;
-  theme_color?: string;
   status: EventStatus;
   created_at: string;
   updated_at: string;

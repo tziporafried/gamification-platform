@@ -176,7 +176,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
         </div>
       </Modal>
 
-      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} limitType="groups" />
+      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </div>
   )
 }

@@ -213,7 +213,7 @@ export function StepParticipants({ eventId, counts, groupType, onCountsRefresh, 
         </div>
       </div>
 
-      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} limitType="participants" />
+      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </WizardStepWrapper>
   )
 }

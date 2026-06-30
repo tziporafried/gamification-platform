@@ -165,7 +165,7 @@ export function RewardList({ eventId, onCountChange, variant = 'default' }: Rewa
           onChanged={fetchRewards}
         />
       )}
-      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} limitType="rewards" />
+      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </>
   )
 

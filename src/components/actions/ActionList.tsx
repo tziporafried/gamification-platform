@@ -211,7 +211,7 @@ export function ActionList({ eventId, onCountChange, variant = 'default' }: Acti
         />
       )}
 
-      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} limitType="actions" />
+      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
 
       {toast && (
         <Toast

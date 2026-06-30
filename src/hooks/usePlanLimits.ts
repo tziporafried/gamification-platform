@@ -1,5 +1,4 @@
 import { useAuth } from '@/contexts/AuthContext'
-import { useEventCounts } from './useEventCounts'
 import { FREE_PLAN_LIMITS, type LimitableEntity } from '@/lib/plans'
 import type { EventCounts, UserPlan } from '@/types'
 
@@ -39,13 +38,6 @@ function buildPlanLimits(counts: EventCounts, plan: UserPlan, isFreePlan: boolea
     isFreePlan,
     refresh,
   }
-}
-
-export function usePlanLimits(eventId: string): PlanLimits {
-  const { isFreePlan, profile } = useAuth()
-  const plan = profile?.plan ?? 'free'
-  const { counts, refresh } = useEventCounts(eventId)
-  return buildPlanLimits(counts, plan, isFreePlan, refresh)
 }
 
 export function usePlanLimitsFromCounts(counts: EventCounts, refresh: () => void): PlanLimits {

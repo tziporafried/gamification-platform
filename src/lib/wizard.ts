@@ -1,4 +1,4 @@
-import type { Event, EventCounts, WizardState, ReadinessCheck, WizardPrefs, GroupType, WizardStepId } from '@/types'
+import type { Event, EventCounts, WizardState, ReadinessCheck, WizardPrefs, GroupType } from '@/types'
 
 const STORAGE_PREFIX = 'wizard_prefs_'
 
@@ -100,28 +100,4 @@ export function isEventReady(
   groupType: GroupType | null = getWizardPrefs(event.id).groupType,
 ): boolean {
   return calculateReadiness(event, counts, groupType).filter(c => c.required).every(c => c.passed)
-}
-
-export function getStepNumber(stepId: WizardStepId): number {
-  const map: Record<WizardStepId, number> = {
-    details: 1,
-    groups: 2,
-    participants: 3,
-    tasks: 4,
-    rewards: 5,
-    review: 6,
-  }
-  return map[stepId]
-}
-
-export function getStepId(stepNumber: number): WizardStepId {
-  const map: Record<number, WizardStepId> = {
-    1: 'details',
-    2: 'groups',
-    3: 'participants',
-    4: 'tasks',
-    5: 'rewards',
-    6: 'review',
-  }
-  return map[stepNumber] || 'details'
 }

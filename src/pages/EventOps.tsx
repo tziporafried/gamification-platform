@@ -135,10 +135,6 @@ function EventOpsContent({ event }: { event: Event }) {
     }
   }, [submit, opsData, opsSound])
 
-  const handleQrScan = useCallback(({ participantCode, actionCode }: { participantCode?: string; actionCode?: string }) => {
-    if (participantCode && actionCode) handleSubmit(participantCode, actionCode)
-  }, [handleSubmit])
-
   const keyboardWarningEnabled = !opsData.loading
   const { showWarning: hebrewKeyboardWarning, flagHebrewInText, onScanStart } = useHebrewKeyboardWarning(keyboardWarningEnabled)
   const hebrewKeyboardWarningRef = useRef(hebrewKeyboardWarning)
@@ -149,7 +145,7 @@ function EventOpsContent({ event }: { event: Event }) {
   const handleRawScan = useCallback((raw: string) => {
     const parsed = parseQrPayload(raw)
     if (parsed.ok) {
-      handleQrScan(parsed.data)
+      handleSubmit(parsed.data.participantCode, parsed.data.actionCode)
       return
     }
 
@@ -163,7 +159,7 @@ function EventOpsContent({ event }: { event: Event }) {
     }
 
     setToast({ message: parsed.error, variant: 'error' })
-  }, [handleQrScan, flagHebrewInText])
+  }, [handleSubmit, flagHebrewInText])
 
   const scannerInputRef = useHardwareScanner(scannerEnabled, handleRawScan, onScanStart)
 
