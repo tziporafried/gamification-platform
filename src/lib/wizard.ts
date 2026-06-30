@@ -16,6 +16,12 @@ export function setWizardPrefs(eventId: string, prefs: Partial<WizardPrefs>): vo
   localStorage.setItem(`${STORAGE_PREFIX}${eventId}`, JSON.stringify(updated))
 }
 
+/** DB groups imply custom mode; otherwise fall back to the wizard step-2 choice in localStorage. */
+export function resolveGroupType(eventId: string, counts: EventCounts): GroupType | null {
+  if (counts.groups > 0) return 'custom'
+  return getWizardPrefs(eventId).groupType
+}
+
 export function computeWizardState(event: Event, counts: EventCounts, groupType: GroupType | null): WizardState {
   const hasDetails = !!event.name
   const groupsResolved = groupType === 'none' || counts.groups > 0
@@ -36,8 +42,10 @@ export function computeWizardState(event: Event, counts: EventCounts, groupType:
 export function calculateReadiness(
   event: Event,
   counts: EventCounts,
-  groupType: GroupType | null = getWizardPrefs(event.id).groupType,
+  groupType?: GroupType | null,
 ): ReadinessCheck[] {
+  const resolvedGroupType = groupType ?? resolveGroupType(event.id, counts)
+
   return [
     {
       id: 'event_name',
@@ -50,10 +58,10 @@ export function calculateReadiness(
     },
     {
       id: 'groups_decided',
-      label: 'נבחרה חלוקה לקבוצות',
+      label: 'נבחר אופן השחק (כולם יחד / קבוצות)',
       wizardPassedLabel: 'בחרתם איך לשחק',
-      wizardFailedLabel: 'יש לבחור איך לשחק',
-      passed: groupType !== null,
+      wizardFailedLabel: 'יש לבחור בשלב «חלוקה לקבוצות»: כולם יחד או קבוצות',
+      passed: resolvedGroupType !== null,
       required: true,
       stepNumber: 2,
     },
@@ -62,7 +70,7 @@ export function calculateReadiness(
       label: 'הוגדרה לפחות קבוצה אחת',
       wizardPassedLabel: 'נוספה לפחות קבוצה אחת',
       wizardFailedLabel: 'יש להוסיף לפחות קבוצה אחת',
-      passed: groupType !== 'custom' || counts.groups > 0,
+      passed: resolvedGroupType !== 'custom' || counts.groups > 0,
       required: true,
       stepNumber: 2,
     },
@@ -97,7 +105,7 @@ export function getFirstIncompleteStep(checks: ReadinessCheck[]): number | null 
 export function isEventReady(
   event: Event,
   counts: EventCounts,
-  groupType: GroupType | null = getWizardPrefs(event.id).groupType,
+  groupType?: GroupType | null,
 ): boolean {
   return calculateReadiness(event, counts, groupType).filter(c => c.required).every(c => c.passed)
 }

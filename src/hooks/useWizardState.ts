@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { getWizardPrefs, setWizardPrefs, computeWizardState } from '@/lib/wizard'
+import { getWizardPrefs, setWizardPrefs, computeWizardState, resolveGroupType } from '@/lib/wizard'
 import type { Event, EventCounts, WizardState, GroupType } from '@/types'
 
 export function useWizardState(event: Event | null, counts: EventCounts, countsLoaded: boolean) {
@@ -7,19 +7,13 @@ export function useWizardState(event: Event | null, counts: EventCounts, countsL
     () => event ? getWizardPrefs(event.id).groupType : null
   )
 
-  // Resolve groupType: DB groups > 0 always wins, then localStorage, then default
   useEffect(() => {
     if (!countsLoaded || !event) return
 
-    if (counts.groups > 0) {
-      setGroupTypeRaw('custom')
-      setWizardPrefs(event.id, { groupType: 'custom' })
-      return
-    }
-
-    const saved = getWizardPrefs(event.id)
-    if (saved.groupType !== null) {
-      setGroupTypeRaw(saved.groupType)
+    const resolved = resolveGroupType(event.id, counts)
+    setGroupTypeRaw(resolved)
+    if (resolved !== null && getWizardPrefs(event.id).groupType !== resolved) {
+      setWizardPrefs(event.id, { groupType: resolved })
     }
   }, [countsLoaded, counts.groups, event?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
