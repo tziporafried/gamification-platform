@@ -8,6 +8,7 @@ import type { AccentRgb } from '@/lib/accentColor'
 import { rgba } from '@/lib/accentColor'
 import type { Action } from '@/types'
 import { getMissionStatus } from '@/lib/missionUtils'
+import type { CatalogAction, CatalogParticipant } from '@/hooks/useEventCatalog'
 
 interface ParticipantOption { id: string; name: string; externalId: string }
 interface ActionOption { id: string; name: string; code: string; points: number }
@@ -18,29 +19,58 @@ interface Props {
   bonusMissions: Action[]
   submitting: boolean
   onSubmit: (participantExternalId: string, actionCode: string) => Promise<void>
+  catalog?: {
+    participants: CatalogParticipant[]
+    actions: CatalogAction[]
+    loading: boolean
+  }
 }
 
-export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, onSubmit }: Props) {
+function filterByQuery<T extends { name: string }>(items: T[], query: string, limit = 8): T[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return []
+  return items.filter((item) => item.name.toLowerCase().includes(q)).slice(0, limit)
+}
+
+export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, onSubmit, catalog }: Props) {
   const [participantQuery, setParticipantQuery] = useState('')
   const [actionQuery, setActionQuery] = useState('')
   const [selectedParticipant, setSelectedParticipant] = useState<ParticipantOption | null>(null)
   const [selectedAction, setSelectedAction] = useState<ActionOption | null>(null)
-  const [participantSuggestions, setParticipantSuggestions] = useState<ParticipantOption[]>([])
-  const [actionSuggestions, setActionSuggestions] = useState<ActionOption[]>([])
+  const [localParticipants, setLocalParticipants] = useState<ParticipantOption[]>([])
+  const [localActions, setLocalActions] = useState<ActionOption[]>([])
+  const [localCatalogLoading, setLocalCatalogLoading] = useState(!catalog)
   const [showParticipantDropdown, setShowParticipantDropdown] = useState(false)
   const [showActionDropdown, setShowActionDropdown] = useState(false)
-  const [participantSearching, setParticipantSearching] = useState(false)
-  const [actionSearching, setActionSearching] = useState(false)
   const [participantBlurred, setParticipantBlurred] = useState(false)
   const [actionBlurred, setActionBlurred] = useState(false)
 
   const participantInputRef = useRef<HTMLInputElement>(null)
   const participantDropdownRef = useRef<HTMLDivElement>(null)
   const actionDropdownRef = useRef<HTMLDivElement>(null)
-  const pSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const aSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Close dropdowns on outside click
+  useEffect(() => {
+    if (catalog) return
+    let cancelled = false
+    async function loadCatalog() {
+      setLocalCatalogLoading(true)
+      const [pRes, aRes] = await Promise.all([
+        supabase.from('participants').select('id, name, external_id').eq('event_id', eventId).order('name'),
+        supabase.from('actions').select('id, name, code, points').eq('event_id', eventId).eq('is_active', true).order('name'),
+      ])
+      if (cancelled) return
+      setLocalParticipants((pRes.data ?? []).map((p) => ({ id: p.id, name: p.name, externalId: p.external_id })))
+      setLocalActions((aRes.data ?? []).map((a) => ({ id: a.id, name: a.name, code: a.code, points: a.points })))
+      setLocalCatalogLoading(false)
+    }
+    loadCatalog()
+    return () => { cancelled = true }
+  }, [eventId, catalog])
+
+  const allParticipants = catalog?.participants ?? localParticipants
+  const allActions = catalog?.actions ?? localActions
+  const catalogLoading = catalog?.loading ?? localCatalogLoading
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (participantDropdownRef.current && !participantDropdownRef.current.contains(e.target as Node))
@@ -52,35 +82,28 @@ export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, on
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  // Participant search
-  useEffect(() => {
-    if (pSearchRef.current) clearTimeout(pSearchRef.current)
-    if (selectedParticipant) return
-    const q = participantQuery.trim()
-    if (!q) { setParticipantSuggestions([]); setShowParticipantDropdown(false); setParticipantSearching(false); return }
-    setParticipantSearching(true); setShowParticipantDropdown(true)
-    pSearchRef.current = setTimeout(async () => {
-      const { data } = await supabase.from('participants').select('id, name, external_id').eq('event_id', eventId).ilike('name', `%${q}%`).limit(8)
-      setParticipantSuggestions((data ?? []).map(p => ({ id: p.id, name: p.name, externalId: p.external_id })))
-      setParticipantSearching(false); setShowParticipantDropdown(true)
-    }, 300)
-    return () => { if (pSearchRef.current) clearTimeout(pSearchRef.current) }
-  }, [participantQuery, selectedParticipant, eventId])
+  const participantSuggestions = useMemo(() => {
+    if (selectedParticipant) return []
+    return filterByQuery(allParticipants, participantQuery)
+  }, [allParticipants, participantQuery, selectedParticipant])
 
-  // Action search
+  const actionSuggestions = useMemo(() => {
+    if (selectedAction) return []
+    return filterByQuery(allActions, actionQuery)
+  }, [allActions, actionQuery, selectedAction])
+
+  const participantSearching = catalogLoading && !selectedParticipant && participantQuery.trim().length > 0
+  const actionSearching = catalogLoading && !selectedAction && actionQuery.trim().length > 0
+
   useEffect(() => {
-    if (aSearchRef.current) clearTimeout(aSearchRef.current)
+    if (selectedParticipant) return
+    setShowParticipantDropdown(participantQuery.trim().length > 0 && participantSuggestions.length > 0)
+  }, [participantQuery, participantSuggestions, selectedParticipant])
+
+  useEffect(() => {
     if (selectedAction) return
-    const q = actionQuery.trim()
-    if (!q) { setActionSuggestions([]); setShowActionDropdown(false); setActionSearching(false); return }
-    setActionSearching(true); setShowActionDropdown(true)
-    aSearchRef.current = setTimeout(async () => {
-      const { data } = await supabase.from('actions').select('id, name, code, points, is_active').eq('event_id', eventId).eq('is_active', true).ilike('name', `%${q}%`).limit(8)
-      setActionSuggestions((data ?? []).map(a => ({ id: a.id, name: a.name, code: a.code, points: a.points })))
-      setActionSearching(false); setShowActionDropdown(true)
-    }, 300)
-    return () => { if (aSearchRef.current) clearTimeout(aSearchRef.current) }
-  }, [actionQuery, selectedAction, eventId])
+    setShowActionDropdown(actionQuery.trim().length > 0 && actionSuggestions.length > 0)
+  }, [actionQuery, actionSuggestions, selectedAction])
 
   function selectParticipant(p: ParticipantOption) {
     setSelectedParticipant(p); setParticipantQuery(p.name); setShowParticipantDropdown(false); setParticipantBlurred(false)
@@ -93,7 +116,6 @@ export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, on
   }
   function clearAction() { setSelectedAction(null); setActionQuery(''); setActionBlurred(false) }
 
-  // Bonus detection
   const activeBonus = useMemo(() => {
     if (!selectedAction) return null
     const bm = bonusMissions.find(b => b.id === selectedAction.id && getMissionStatus(b) === 'active')
@@ -192,7 +214,6 @@ export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, on
         )}
       />
 
-      {/* Points preview */}
       {selectedAction && (
         <motion.div
           className="text-right text-xs"
@@ -211,7 +232,6 @@ export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, on
         </motion.div>
       )}
 
-      {/* Submit button with optional bonus badge */}
       <div className="relative">
         <Button
           type="submit"

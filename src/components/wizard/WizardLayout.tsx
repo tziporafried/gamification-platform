@@ -7,11 +7,21 @@ interface WizardLayoutProps {
   currentStep: number
   wizardState: WizardState
   onStepClick: (step: number) => void
+  hiddenSteps?: number[]
+  headerSuffix?: string
   children: React.ReactNode
 }
 
-export function WizardLayout({ event, currentStep, wizardState, onStepClick, children }: WizardLayoutProps) {
-  useEventHeaderBreadcrumb(event.name)
+export function WizardLayout({
+  event,
+  currentStep,
+  wizardState,
+  onStepClick,
+  hiddenSteps,
+  headerSuffix,
+  children,
+}: WizardLayoutProps) {
+  useEventHeaderBreadcrumb(event.name, headerSuffix)
 
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 56px)' }}>
@@ -22,6 +32,7 @@ export function WizardLayout({ event, currentStep, wizardState, onStepClick, chi
             currentStep={currentStep}
             wizardState={wizardState}
             onStepClick={onStepClick}
+            hiddenSteps={hiddenSteps}
           />
         </div>
       </div>

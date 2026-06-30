@@ -1,16 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Crown, Users, ListTodo, MessageSquare } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { DevTodoList } from '@/components/dev-todos/DevTodoList'
+import { TemplateAdminList } from '@/components/admin/TemplateAdminList'
 import { cn } from '@/lib/utils'
 
-type AdminTab = 'todos' | 'customers' | 'upgrade-requests'
+type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates'
 
 const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
   { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },
+  { id: 'templates', label: 'תבניות', icon: Sparkles },
   { id: 'customers', label: 'לקוחות', icon: Users },
   { id: 'upgrade-requests', label: 'פניות שדרוג', icon: MessageSquare },
 ]
@@ -64,28 +67,57 @@ const LIMIT_LABELS: Record<string, string> = {
 }
 
 export function AdminPanel() {
+  const location = useLocation()
   const [tab, setTab] = useState<AdminTab>('todos')
   const [users, setUsers] = useState<AdminUser[]>([])
   const [requests, setRequests] = useState<UpgradeRequest[]>([])
-  const [loading, setLoading] = useState(true)
+  const [usersLoaded, setUsersLoaded] = useState(false)
+  const [requestsLoaded, setRequestsLoaded] = useState(false)
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [loadingRequests, setLoadingRequests] = useState(false)
+  const [newRequestCount, setNewRequestCount] = useState(0)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [updatingRequestId, setUpdatingRequestId] = useState<string | null>(null)
 
   const fetchUsers = useCallback(async () => {
+    setLoadingUsers(true)
     const { data, error } = await supabase.rpc('get_all_users_admin')
     if (!error && data) setUsers(data as AdminUser[])
-    setLoading(false)
+    setUsersLoaded(true)
+    setLoadingUsers(false)
   }, [])
 
   const fetchRequests = useCallback(async () => {
+    setLoadingRequests(true)
     const { data } = await supabase
       .from('contact_upgrade_requests')
       .select('*')
       .order('created_at', { ascending: false })
-    if (data) setRequests(data as UpgradeRequest[])
+    if (data) {
+      setRequests(data as UpgradeRequest[])
+      setNewRequestCount(data.filter((r) => r.status === 'new').length)
+    }
+    setRequestsLoaded(true)
+    setLoadingRequests(false)
   }, [])
 
-  useEffect(() => { fetchUsers(); fetchRequests() }, [fetchUsers, fetchRequests])
+  useEffect(() => {
+    supabase
+      .from('contact_upgrade_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'new')
+      .then(({ count }) => setNewRequestCount(count ?? 0))
+  }, [])
+
+  useEffect(() => {
+    const requestedTab = (location.state as { tab?: AdminTab } | null)?.tab
+    if (requestedTab) setTab(requestedTab)
+  }, [location.state])
+
+  useEffect(() => {
+    if (tab === 'customers' && !usersLoaded) fetchUsers()
+    if (tab === 'upgrade-requests' && !requestsLoaded) fetchRequests()
+  }, [tab, usersLoaded, requestsLoaded, fetchUsers, fetchRequests])
 
   async function updatePlan(userId: string, newPlan: string) {
     setUpdatingId(userId)
@@ -111,13 +143,16 @@ export function AdminPanel() {
       setRequests(prev => prev.map(r =>
         r.id === requestId ? { ...r, status: newStatus } : r
       ))
+      setNewRequestCount((prev) => {
+        const req = requests.find((r) => r.id === requestId)
+        if (!req) return prev
+        if (req.status === 'new' && newStatus !== 'new') return Math.max(0, prev - 1)
+        if (req.status !== 'new' && newStatus === 'new') return prev + 1
+        return prev
+      })
     }
     setUpdatingRequestId(null)
   }
-
-  const newRequestCount = requests.filter(r => r.status === 'new').length
-
-  if (loading) return <FullPageLoader />
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6">
@@ -148,8 +183,14 @@ export function AdminPanel() {
       {/* Tab content */}
       {tab === 'todos' && <DevTodoList />}
 
+      {tab === 'templates' && <TemplateAdminList />}
+
       {tab === 'customers' && (
         <>
+          {loadingUsers ? (
+            <FullPageLoader />
+          ) : (
+          <>
           <div className="flex items-center gap-2 mb-6">
             <Users size={18} className="text-gray-400" />
             <h2 className="text-sm font-medium text-gray-400">
@@ -212,11 +253,17 @@ export function AdminPanel() {
               </Card>
             ))}
           </div>
+          </>
+          )}
         </>
       )}
 
       {tab === 'upgrade-requests' && (
         <>
+          {loadingRequests ? (
+            <FullPageLoader />
+          ) : (
+          <>
           <div className="flex items-center gap-2 mb-6">
             <MessageSquare size={18} className="text-gray-400" />
             <h2 className="text-sm font-medium text-gray-400">
@@ -275,6 +322,8 @@ export function AdminPanel() {
                 )
               })}
             </div>
+          )}
+          </>
           )}
         </>
       )}

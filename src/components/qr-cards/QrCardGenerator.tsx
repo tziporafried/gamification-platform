@@ -283,7 +283,7 @@ function ParticipantPage({ sheet, event }: { sheet: ParticipantSheet; event: Eve
             {/* QR side */}
             <div className="qr-side" style={{ flexShrink: 0, width: '120px', padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', background: `linear-gradient(135deg, ${c}08 0%, ${c}03 100%)`, borderLeft: `3px solid ${c}` }}>
               <QRCodeSVG
-                value={JSON.stringify({ type: 'combined_score', participantCode: participant.external_id, actionCode: action.code })}
+                value={JSON.stringify({ participantCode: participant.external_id, actionCode: action.code })}
                 size={90} level="M" fgColor="#111"
               />
               <span className="scan-text" style={{ fontSize: '7px', color: '#999', textAlign: 'center', direction: 'rtl', letterSpacing: '0.3px' }}>סרקו לקבלת הנקודות</span>

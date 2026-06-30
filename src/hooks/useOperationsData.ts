@@ -15,6 +15,18 @@ export interface TxRow {
 
 export type RankedGroup = GroupLeaderboardEntry & { rank: number }
 
+export interface ScorePatch {
+  participantId: string
+  participantName: string
+  participantExternalId: string
+  participantGroupIds: string[]
+  actionId: string
+  actionName: string
+  actionCode: string
+  actionBasePoints: number
+  points: number
+}
+
 export interface OperationsData {
   rankedGroups: RankedGroup[]
   sortedMissions: Action[]
@@ -25,6 +37,7 @@ export interface OperationsData {
   secondNow: Date
   loading: boolean
   refresh: () => void
+  applyScore: (patch: ScorePatch) => void
 }
 
 export function useOperationsData(eventId: string): OperationsData {
@@ -34,8 +47,14 @@ export function useOperationsData(eventId: string): OperationsData {
   const [loading, setLoading] = useState(true)
   const [secondNow, setSecondNow] = useState(new Date())
   const isInitialFetch = useRef(true)
+  const leaderboardRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { const t = setInterval(() => setSecondNow(new Date()), 1_000); return () => clearInterval(t) }, [])
+
+  const refreshLeaderboard = useCallback(async () => {
+    const { data } = await supabase.rpc('get_group_leaderboard', { p_event_id: eventId })
+    if (data) setGroupData(data as GroupLeaderboardEntry[])
+  }, [eventId])
 
   const fetchAll = useCallback(async () => {
     try {
@@ -87,11 +106,45 @@ export function useOperationsData(eventId: string): OperationsData {
     }
   }, [eventId])
 
+  const applyScore = useCallback((patch: ScorePatch) => {
+    const newTx: TxRow = {
+      id: `local-${Date.now()}`,
+      participant_id: patch.participantId,
+      action_id: patch.actionId,
+      points: patch.points,
+      created_at: new Date().toISOString(),
+      participant: { name: patch.participantName, external_id: patch.participantExternalId },
+      action: { name: patch.actionName, code: patch.actionCode, points: patch.actionBasePoints },
+    }
+
+    setTransactions(prev => [newTx, ...prev.filter(tx => !tx.id.startsWith('local-'))].slice(0, 25))
+
+    if (patch.participantGroupIds.length > 0) {
+      const groupIds = new Set(patch.participantGroupIds)
+      setGroupData(prev => {
+        const updated = prev.map((g) => (
+          groupIds.has(g.group_id)
+            ? { ...g, total_points: g.total_points + patch.points }
+            : g
+        ))
+        return [...updated].sort((a, b) => b.total_points - a.total_points)
+      })
+    }
+
+    if (leaderboardRefreshRef.current) clearTimeout(leaderboardRefreshRef.current)
+    leaderboardRefreshRef.current = setTimeout(() => {
+      void refreshLeaderboard()
+    }, 400)
+  }, [refreshLeaderboard])
+
   useEffect(() => { fetchAll() }, [fetchAll])
   useEffect(() => {
-    const t = setInterval(() => fetchAll(), 30_000)
+    const t = setInterval(() => fetchAll(), 60_000)
     return () => clearInterval(t)
   }, [fetchAll])
+  useEffect(() => () => {
+    if (leaderboardRefreshRef.current) clearTimeout(leaderboardRefreshRef.current)
+  }, [])
 
   const rankedGroups = useMemo(() => computeRanks(groupData), [groupData])
 
@@ -128,5 +181,6 @@ export function useOperationsData(eventId: string): OperationsData {
     secondNow,
     loading,
     refresh: fetchAll,
+    applyScore,
   }
 }

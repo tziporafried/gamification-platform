@@ -1,19 +1,26 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { useEventCounts } from '@/hooks/useEventCounts'
 import { ControlCenter } from '@/components/wizard/ControlCenter'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
-import type { Event } from '@/types'
+import type { Event, EventCounts } from '@/types'
+
+const CONTROL_CENTER_COUNT_KEYS: (keyof EventCounts)[] = [
+  'participants',
+  'groups',
+  'tasks',
+  'transactions',
+  'rewards',
+]
 
 export function EventControlCenterPage() {
   const { id } = useParams<{ id: string }>()
-  const { user } = useAuth()
   const navigate = useNavigate()
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
-  const { counts } = useEventCounts(id)
+  const countKeys = useMemo(() => CONTROL_CENTER_COUNT_KEYS, [])
+  const { counts } = useEventCounts(id, countKeys)
 
   useEffect(() => {
     async function fetchEvent() {
@@ -33,7 +40,7 @@ export function EventControlCenterPage() {
       setLoading(false)
     }
     fetchEvent()
-  }, [id, user, navigate])
+  }, [id, navigate])
 
   if (loading || !event) return <FullPageLoader />
 

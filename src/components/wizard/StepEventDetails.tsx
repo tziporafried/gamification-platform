@@ -1,21 +1,28 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Upload, X, Image as ImageIcon } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { Input } from '@/components/ui/Input'
 import type { Event } from '@/types'
 import { supabase } from '@/lib/supabase'
+import { updateTemplateMetadata } from '@/lib/templates'
 
 interface StepEventDetailsProps {
   event: Event
   onEventUpdated: (event: Event) => void
   onNext: () => void
+  templateMode?: {
+    templateId: string
+    description: string | null
+    onDescriptionUpdated: (description: string | null) => void
+  }
 }
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024 // 2 MB
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
 
-export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDetailsProps) {
+export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }: StepEventDetailsProps) {
   const [name, setName] = useState(event.name || '')
+  const [description, setDescription] = useState(templateMode?.description ?? '')
   const [logoUrl, setLogoUrl] = useState<string | null>(event.logo_url)
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(event.logo_url)
@@ -24,6 +31,10 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const canAdvance = name.trim().length > 0
+
+  useEffect(() => {
+    if (event.name) setName(event.name)
+  }, [event.name])
 
   function handleFileSelect(file: File) {
     setUploadError(null)
@@ -78,6 +89,25 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
     if (!canAdvance) return
     setSaving(true)
 
+    if (templateMode) {
+      try {
+        await updateTemplateMetadata(
+          templateMode.templateId,
+          event.id,
+          name,
+          description.trim() || null,
+        )
+        templateMode.onDescriptionUpdated(description.trim() || null)
+        onEventUpdated({ ...event, name: name.trim() })
+      } catch {
+        setSaving(false)
+        return
+      }
+      setSaving(false)
+      onNext()
+      return
+    }
+
     const hasChanges =
       name !== event.name ||
       logoFile !== null ||
@@ -113,8 +143,10 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
 
   return (
     <WizardStepWrapper
-      title="פרטי הפעילות"
-      subtitle="תנו שם לפעילות וסמל שילוו את המשתתפים לאורך כל המשחק"
+      title={templateMode ? 'פרטי התבנית' : 'פרטי הפעילות'}
+      subtitle={templateMode
+        ? 'תנו שם ותיאור קצר שיעזרו למשתמשים לבחור את התבנית'
+        : 'תנו שם לפעילות וסמל שילוו את המשתתפים לאורך כל המשחק'}
       currentStep={1}
       canAdvance={canAdvance && !saving}
       onNext={handleNext}
@@ -122,18 +154,37 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
       <div className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            שם הפעילות
+            {templateMode ? 'שם התבנית' : 'שם הפעילות'}
           </label>
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="נופש משפחתי באילת"
+            placeholder={templateMode ? 'נופש משפחתי' : 'נופש משפחתי באילת'}
             className="text-lg"
             autoFocus
             disabled={saving}
           />
         </div>
 
+        {templateMode && (
+          <div>
+            <label htmlFor="template-description" className="block text-sm font-medium text-gray-300 mb-2">
+              תיאור התבנית
+            </label>
+            <textarea
+              id="template-description"
+              className="block w-full rounded-xl border border-game-border bg-game-dark px-3 py-2 text-sm text-white placeholder-gray-500 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-brand-500 focus:ring-brand-500/30"
+              rows={3}
+              placeholder="תבנית מוכנה לנופש משפחתי הכוללת קבוצות, משימות ופרסי ניקוד."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={saving}
+            />
+          </div>
+        )}
+
+        {!templateMode && (
+        <>
         {/* Logo upload */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -221,6 +272,22 @@ export function StepEventDetails({ event, onEventUpdated, onNext }: StepEventDet
             </div>
           </div>
         </div>
+        </>
+        )}
+
+        {templateMode && (
+          <div className="rounded-xl border border-game-border bg-game-card/50 p-4">
+            <p className="text-xs text-gray-500 mb-3">כך התבנית תוצג</p>
+            <div>
+              <p className="text-white font-semibold text-sm leading-tight">
+                {name || 'שם התבנית'}
+              </p>
+              {description && (
+                <p className="text-xs text-gray-400 mt-1">{description}</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </WizardStepWrapper>
   )

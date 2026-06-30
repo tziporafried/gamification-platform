@@ -5,6 +5,11 @@ import { canPerformAction } from '@/lib/canPerformAction'
 import type { NewlyAwardedReward } from '@/types'
 
 export interface ScoreSubmitResult {
+  participantId: string
+  participantExternalId: string
+  participantGroupIds: string[]
+  actionId: string
+  actionCode: string
   participantName: string
   actionName: string
   points: number
@@ -68,7 +73,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
 
       if (pError) throw pError
       if (!participant) {
-        setLastError(`משתתף "${pCode}" לא נמצא.`)
+        setLastError('קוד לא תקין')
         setSubmitting(false)
         return null
       }
@@ -177,6 +182,11 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
 
       setSubmitting(false)
       return {
+        participantId: participant.id,
+        participantExternalId: pCode,
+        participantGroupIds,
+        actionId: action.id,
+        actionCode: action.code,
         participantName: participant.name,
         actionName: action.name,
         points: finalPoints,

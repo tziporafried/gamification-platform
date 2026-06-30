@@ -68,8 +68,8 @@ export function ReadinessChecklist({ checks, eventId, variant = 'default', onGoT
 }
 
 function getCheckLabel(check: ReadinessCheck, isWizard: boolean): string {
-  if (!isWizard) return check.label
-  return check.passed
-    ? (check.wizardPassedLabel ?? check.label)
-    : (check.wizardFailedLabel ?? check.label)
+  if (check.passed) {
+    return isWizard ? (check.wizardPassedLabel ?? check.label) : check.label
+  }
+  return check.wizardFailedLabel ?? check.label
 }

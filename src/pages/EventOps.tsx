@@ -5,13 +5,17 @@ import { ArrowRight, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useScoreSubmit } from '@/hooks/useScoreSubmit'
 import { useOperationsData } from '@/hooks/useOperationsData'
+import { useEventCatalog } from '@/hooks/useEventCatalog'
 import { useOpsSound } from '@/hooks/useOpsSound'
 import { usePlanPermissions } from '@/hooks/usePlanPermissions'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { Toast } from '@/components/ui/Toast'
 import { CelebrationModal } from '@/components/scoring/CelebrationModal'
 import { ScannerZone } from '@/components/scoring/ScannerZone'
-import { QrScanner } from '@/components/scoring/QrScanner'
+import { useHardwareScanner } from '@/hooks/useHardwareScanner'
+import { useHebrewKeyboardWarning } from '@/hooks/useHebrewKeyboardWarning'
+import { parseQrPayload } from '@/lib/qrPayload'
+import { looksLikeHebrewLayoutScan } from '@/lib/keyboardLayout'
 import { MissionIntelPanel } from '@/components/ops/MissionIntelPanel'
 import { LiveActivityFeed } from '@/components/ops/LiveActivityFeed'
 import type { LatestScoreInfo } from '@/components/ops/LiveActivityFeed'
@@ -52,11 +56,10 @@ function EventOpsContent({ event }: { event: Event }) {
   const navigate = useNavigate()
   const accent = useMemo(() => hexToRgb('#7c3aed'), [])
   const opsData = useOperationsData(event.id)
+  const catalog = useEventCatalog(event.id)
   const { submit, submitting, lastError } = useScoreSubmit(event.id)
   const opsSound = useOpsSound()
   const { canScanQR } = usePlanPermissions()
-  // Accumulates partial QR scan results until both codes are ready
-  const qrPartialRef = useRef<{ participantCode?: string; actionCode?: string }>({})
 
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
   const [celebrationRewards, setCelebrationRewards] = useState<NewlyAwardedReward[]>([])
@@ -81,8 +84,17 @@ function EventOpsContent({ event }: { event: Event }) {
     const result = await submit(participantCode, actionCode)
     if (!result) return
 
-    // Immediate refresh — leaderboard re-ranks
-    opsData.refresh()
+    opsData.applyScore({
+      participantId: result.participantId,
+      participantName: result.participantName,
+      participantExternalId: result.participantExternalId,
+      participantGroupIds: result.participantGroupIds,
+      actionId: result.actionId,
+      actionName: result.actionName,
+      actionCode: result.actionCode,
+      actionBasePoints: result.basePoints,
+      points: result.points,
+    })
 
     // Global screen pulse
     setSuccessPulse(true)
@@ -134,15 +146,33 @@ function EventOpsContent({ event }: { event: Event }) {
     }
   }, [submit, opsData, opsSound])
 
-  const handleQrScan = useCallback(({ participantCode, actionCode }: { participantCode?: string; actionCode?: string }) => {
-    if (participantCode) qrPartialRef.current.participantCode = participantCode
-    if (actionCode) qrPartialRef.current.actionCode = actionCode
-    const { participantCode: p, actionCode: a } = qrPartialRef.current
-    if (p && a) {
-      qrPartialRef.current = {}
-      handleSubmit(p, a)
+  const keyboardWarningEnabled = !opsData.loading
+  const { showWarning: hebrewKeyboardWarning, flagHebrewInText, onScanStart } = useHebrewKeyboardWarning(keyboardWarningEnabled)
+  const hebrewKeyboardWarningRef = useRef(hebrewKeyboardWarning)
+  hebrewKeyboardWarningRef.current = hebrewKeyboardWarning
+
+  const scannerEnabled = canScanQR && !showManualEntry && !opsData.loading && !submitting
+
+  const handleRawScan = useCallback((raw: string) => {
+    const parsed = parseQrPayload(raw)
+    if (parsed.ok) {
+      handleSubmit(parsed.data.participantCode, parsed.data.actionCode)
+      return
     }
-  }, [handleSubmit])
+
+    const hebrewLayout =
+      hebrewKeyboardWarningRef.current ||
+      looksLikeHebrewLayoutScan(raw)
+
+    if (hebrewLayout) {
+      flagHebrewInText(raw)
+      return
+    }
+
+    setToast({ message: parsed.error, variant: 'error' })
+  }, [handleSubmit, flagHebrewInText])
+
+  const scannerInputRef = useHardwareScanner(scannerEnabled, handleRawScan, onScanStart)
 
   if (opsData.loading) return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3" style={{ background: '#0a0814' }}>
@@ -184,6 +214,17 @@ function EventOpsContent({ event }: { event: Event }) {
         </button>
       </div>
 
+      {hebrewKeyboardWarning && (
+        <div
+          role="alert"
+          className="relative z-20 shrink-0 border-b border-amber-500/40 bg-amber-600/25 px-4 py-2.5"
+        >
+          <p className="text-center text-sm font-semibold text-amber-50">
+            המקלדת מוגדרת על עברית — עברו ל-<span className="font-black underline">ENG</span> לפני סריקה
+          </p>
+        </div>
+      )}
+
       {/* ═══ BODY — 3 COLUMNS ═══ */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
 
@@ -218,14 +259,18 @@ function EventOpsContent({ event }: { event: Event }) {
             <div className="relative w-full shrink-0">
               <ScannerZone
                 successFlash={successFlash}
+                processing={submitting}
                 accent={accent} />
-            </div>
-          )}
-
-          {/* QR scanner button — QR-enabled plans only */}
-          {canScanQR && (
-            <div className="shrink-0">
-              <QrScanner onScan={handleQrScan} />
+              <input
+                ref={scannerInputRef}
+                type="text"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                aria-label="קלט סורק QR"
+                className="sr-only"
+              />
             </div>
           )}
 
@@ -248,33 +293,25 @@ function EventOpsContent({ event }: { event: Event }) {
                   הזנה ידנית
                 </button>
               )}
-              <AnimatePresence>
+              <div className={showManualEntry ? 'relative w-full max-w-sm shrink-0' : 'hidden'} aria-hidden={!showManualEntry}>
                 {showManualEntry && (
-                  <motion.div
-                    key="manual-entry"
-                    className="relative w-full max-w-sm shrink-0"
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.2 }}
+                  <button
+                    type="button"
+                    onClick={() => setShowManualEntry(false)}
+                    className="absolute left-3 top-3 z-10 rounded p-0.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
+                    aria-label="סגור"
                   >
-                    <button
-                      type="button"
-                      onClick={() => setShowManualEntry(false)}
-                      className="absolute left-3 top-3 z-10 rounded p-0.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
-                      aria-label="סגור"
-                    >
-                      <X size={14} />
-                    </button>
-                    <ManualEntryForm
-                      eventId={event.id}
-                      accent={accent}
-                      bonusMissions={opsData.bonusMissions}
-                      submitting={submitting}
-                      onSubmit={handleSubmit} />
-                  </motion.div>
+                    <X size={14} />
+                  </button>
                 )}
-              </AnimatePresence>
+                <ManualEntryForm
+                  eventId={event.id}
+                  accent={accent}
+                  bonusMissions={opsData.bonusMissions}
+                  submitting={submitting}
+                  catalog={catalog}
+                  onSubmit={handleSubmit} />
+              </div>
             </>
           ) : (
             <div className="w-full max-w-sm shrink-0">
@@ -283,6 +320,7 @@ function EventOpsContent({ event }: { event: Event }) {
                 accent={accent}
                 bonusMissions={opsData.bonusMissions}
                 submitting={submitting}
+                catalog={catalog}
                 onSubmit={handleSubmit} />
             </div>
           )}

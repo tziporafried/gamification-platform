@@ -84,10 +84,15 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [refreshKey, setRefreshKey] = useState(0)
   const [phase, setPhase] = useState<RevealPhase>('loading')
   const [showConfetti, setShowConfetti] = useState(false)
   const { play, playApplause, muted, toggleMute } = useSound()
+  const mutedRef = useRef(muted)
+  mutedRef.current = muted
+  const playRef = useRef(play)
+  playRef.current = play
+  const playApplauseRef = useRef(playApplause)
+  playApplauseRef.current = playApplause
 
   const confettiPieces = useMemo(() => Array.from({ length: 60 }, () => ({
     left: `${Math.random() * 100}%`, delay: `${Math.random() * 1.8}s`,
@@ -100,8 +105,13 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
     duration: 1.5 + Math.random() * 2, delay: Math.random() * 3, size: 1.5 + Math.random() * 2.5,
   })), [])
 
-  const fetchAll = useCallback(async () => {
-    setError(''); setLoading(true); setPhase('loading')
+  const fetchAll = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false
+    if (!silent) {
+      setError('')
+      setLoading(true)
+      setPhase('loading')
+    }
     try {
       const [pRes, gRes, txRes] = await Promise.all([
         supabase.rpc('get_participant_leaderboard', { p_event_id: eventId }), supabase.rpc('get_group_leaderboard', { p_event_id: eventId }),
@@ -116,17 +126,18 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
         const map = new Map<string, { id: string; name: string; color: string }>(); for (const m of allPg) { if (m.groups) map.set(m.participant_id, m.groups) }; setPgMap(map)
       }
       setLoading(false)
+      if (silent) return
       if (pData.length > 0) {
         setPhase('suspense')
-        setTimeout(() => { setPhase('counting'); if (!muted) play() }, 1500)
-        setTimeout(() => { setPhase('revealed'); setShowConfetti(true); if (!muted) { play(); setTimeout(() => playApplause(1), 200) }; setTimeout(() => setShowConfetti(false), 3500) }, 4000)
+        setTimeout(() => { setPhase('counting'); if (!mutedRef.current) playRef.current() }, 1500)
+        setTimeout(() => { setPhase('revealed'); setShowConfetti(true); if (!mutedRef.current) { playRef.current(); setTimeout(() => playApplauseRef.current(1), 200) }; setTimeout(() => setShowConfetti(false), 3500) }, 4000)
         setTimeout(() => setPhase('complete'), 5500)
       } else { setPhase('complete') }
     } catch { setError('שגיאה בטעינת הנתונים.'); setLoading(false) }
-  }, [eventId, play, playApplause, muted])
+  }, [eventId])
 
   useEffect(() => { fetchAll() }, [fetchAll])
-  function handleRefresh() { setRefreshKey((k) => k + 1); fetchAll() }
+  function handleRefresh() { fetchAll({ silent: phase === 'complete' }) }
   function handleSkip() { setPhase('complete'); setShowConfetti(false) }
   function handleSoundToggle() { toggleMute(); if (muted) play() }
 
@@ -152,7 +163,7 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
   const isRevealed = phase === 'revealed' || phase === 'complete'
 
   return (
-    <motion.div className="-mx-4 -mt-6 md:-mt-8" key={refreshKey} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
+    <motion.div className="-mx-4 -mt-6 md:-mt-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
       {showConfetti && (<div className="pointer-events-none fixed inset-0 z-40 overflow-hidden">{confettiPieces.map((p, i) => (<div key={i} className="absolute opacity-0 animate-confetti-fall" style={{ left: p.left, top: 0, width: p.size, height: p.size, backgroundColor: p.color, animationDelay: p.delay, transform: `rotate(${p.rotation}deg)`, borderRadius: p.isCircle ? '50%' : '2px' }} />))}</div>)}
       <AnimatePresence>{phase === 'revealed' && (<motion.div className="pointer-events-none fixed inset-0 z-30 bg-amber-400/15" initial={{ opacity: 0 }} animate={{ opacity: [0, 0.4, 0] }} exit={{ opacity: 0 }} transition={{ duration: 0.8 }} />)}</AnimatePresence>
 

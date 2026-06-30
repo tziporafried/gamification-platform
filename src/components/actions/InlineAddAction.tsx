@@ -4,11 +4,13 @@ import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { isPlanLimitError } from '@/lib/plans'
 
+import type { Action } from '@/types'
+
 type ActionCopyVariant = 'default' | 'wizard'
 
 interface InlineAddActionProps {
   eventId: string
-  onAdded: () => void
+  onAdded: (action: Action) => void
   onPlanLimit?: () => void
   variant?: ActionCopyVariant
   existingNames?: string[]
@@ -55,9 +57,11 @@ export function InlineAddAction({
     }
 
     setSaving(true)
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('actions')
       .insert({ name: trimmed, event_id: eventId, points: pointsNum })
+      .select('id, event_id, code, name, points, description, is_active, max_completions, created_at, updated_at, time_enabled, start_at, end_at, duration_minutes, speed_bonus_enabled, speed_bonus_minutes, speed_bonus_flat_points, speed_multiplier')
+      .single()
 
     setSaving(false)
 
@@ -65,9 +69,11 @@ export function InlineAddAction({
       if (isPlanLimitError(error.message) && onPlanLimit) onPlanLimit()
       return
     }
+    if (!data) return
+
     setName('')
     setPoints('10')
-    onAdded()
+    onAdded(data)
     setTimeout(() => nameRef.current?.focus(), 0)
   }
 

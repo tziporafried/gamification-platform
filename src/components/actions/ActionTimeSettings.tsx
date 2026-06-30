@@ -54,7 +54,7 @@ function inferDurationMode(action: ActionWithGroups): DurationMode {
 
 interface ActionTimeSettingsProps {
   action: ActionWithGroups
-  onUpdated: () => void
+  onUpdated: (patch: Partial<ActionWithGroups>) => void
 }
 
 export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProps) {
@@ -131,7 +131,16 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
         .eq('id', action.id)
       setSaving(false)
       if (error) { setFormError(error.message); return }
-      onUpdated()
+      onUpdated({
+        time_enabled: false,
+        start_at: null,
+        end_at: null,
+        duration_minutes: null,
+        speed_bonus_enabled: false,
+        speed_bonus_minutes: null,
+        speed_bonus_flat_points: null,
+        speed_multiplier: 2,
+      })
       setOpen(false)
       return
     }
@@ -188,7 +197,16 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
     setSaving(false)
 
     if (error) { setFormError(error.message); return }
-    onUpdated()
+    onUpdated({
+      time_enabled: true,
+      start_at: startAt,
+      end_at: endAt,
+      duration_minutes: durationMinutes,
+      speed_bonus_enabled: speedBonusEnabled,
+      speed_bonus_minutes: speedBonusEnabled ? speedBonusMinutes : null,
+      speed_bonus_flat_points: speedBonusEnabled ? bonusFlatPoints : null,
+      speed_multiplier: speedBonusEnabled && bonusFlatPoints == null ? speedMultiplier : 2,
+    })
     setOpen(false)
   }
 

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { LeaderboardSection } from '@/components/leaderboard/LeaderboardSection'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
@@ -9,7 +8,6 @@ import type { Event } from '@/types'
 
 export function EventDisplayPage() {
   const { id } = useParams<{ id: string }>()
-  const { user } = useAuth()
   const navigate = useNavigate()
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
@@ -32,7 +30,7 @@ export function EventDisplayPage() {
       setLoading(false)
     }
     fetchEvent()
-  }, [id, user, navigate])
+  }, [id, navigate])
 
   if (loading || !event) return <FullPageLoader />
 

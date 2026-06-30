@@ -3,7 +3,7 @@ import { Sparkles, PenLine, Layers, Users, CheckSquare, Gift, Loader2 } from 'lu
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/contexts/AuthContext'
-import { fetchActivityTemplates, applyActivityTemplate, templateGroupType } from '@/lib/templates'
+import { fetchActivityTemplates, applyActivityTemplate, templateGroupType, formatTemplateError } from '@/lib/templates'
 import { saveLockedTemplate } from '@/lib/lockedTemplate'
 import type { ActivityTemplateWithContent, GroupType } from '@/types'
 
@@ -11,7 +11,7 @@ interface TemplatePickerModalProps {
   eventId: string
   isOpen: boolean
   onChooseScratch: () => void
-  onTemplateApplied: (groupType: GroupType) => void
+  onTemplateApplied: (groupType: GroupType, eventName: string) => void
 }
 
 type Screen = 'choose' | 'templates'
@@ -38,8 +38,8 @@ export function TemplatePickerModal({
 
   async function handleShowTemplates() {
     setScreen('templates')
-    if (templates.length > 0) return
     setLoadingTemplates(true)
+    setError('')
     try {
       const data = await fetchActivityTemplates()
       setTemplates(data)
@@ -71,9 +71,9 @@ export function TemplatePickerModal({
         })
       }
 
-      onTemplateApplied(templateGroupType(template))
-    } catch {
-      setError('שגיאה ביישום התבנית. נסו שוב.')
+      onTemplateApplied(templateGroupType(template), template.name.trim())
+    } catch (err) {
+      setError(formatTemplateError(err, 'שגיאה ביישום התבנית.'))
       setApplying(null)
     }
   }

@@ -57,6 +57,7 @@ export interface ActivityTemplate {
   group_type: 'none' | 'custom';
   sort_order: number;
   is_active: boolean;
+  draft_event_id: string | null;
   created_at: string;
 }
 
@@ -115,7 +116,6 @@ export interface Event {
   name: string;
   slug: string;
   logo_url: string | null;
-  theme_color?: string;
   status: EventStatus;
   created_at: string;
   updated_at: string;

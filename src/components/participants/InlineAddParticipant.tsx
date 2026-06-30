@@ -3,10 +3,11 @@ import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { isPlanLimitError } from '@/lib/plans'
+import type { Participant } from '@/types'
 
 interface InlineAddParticipantProps {
   eventId: string
-  onAdded: () => void
+  onAdded: (participant: Participant) => void
   onPlanLimit?: () => void
   placeholder?: string
 }
@@ -26,9 +27,11 @@ export function InlineAddParticipant({
     if (!trimmed || saving) return
 
     setSaving(true)
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('participants')
       .insert({ name: trimmed, event_id: eventId })
+      .select('id, event_id, external_id, name, created_at, updated_at')
+      .single()
 
     setSaving(false)
 
@@ -36,8 +39,10 @@ export function InlineAddParticipant({
       if (isPlanLimitError(error.message) && onPlanLimit) onPlanLimit()
       return
     }
+    if (!data) return
+
     setName('')
-    onAdded()
+    onAdded(data)
     setTimeout(() => inputRef.current?.focus(), 0)
   }
 

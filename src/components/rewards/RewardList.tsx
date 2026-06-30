@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Trophy, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -53,6 +53,9 @@ export function RewardList({ eventId, onCountChange, variant = 'default' }: Rewa
   const [editingReward, setEditingReward] = useState<Reward | null>(null)
   const [assigningReward, setAssigningReward] = useState<RewardWithGroups | null>(null)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const onCountChangeRef = useRef(onCountChange)
+  const lastReportedCountRef = useRef<number | null>(null)
+  onCountChangeRef.current = onCountChange
 
   useEffect(() => {
     function syncLocked() {
@@ -63,30 +66,54 @@ export function RewardList({ eventId, onCountChange, variant = 'default' }: Rewa
     return () => window.removeEventListener(LOCKED_TEMPLATE_CHANGED, syncLocked)
   }, [eventId])
 
-  const fetchRewards = useCallback(async () => {
-    const { data, error: fetchError } = await supabase
-      .from('rewards')
-      .select('*, reward_groups(group_id, groups(*))')
-      .eq('event_id', eventId)
-      .order('required_points', { ascending: true })
+  useEffect(() => {
+    let cancelled = false
 
-    if (fetchError) {
-      setError(fetchError.message)
+    async function load() {
+      const { data, error: fetchError } = await supabase
+        .from('rewards')
+        .select('*, reward_groups(group_id, groups(*))')
+        .eq('event_id', eventId)
+        .order('required_points', { ascending: true })
+
+      if (cancelled) return
+
+      if (fetchError) {
+        setError(fetchError.message)
+        setLoading(false)
+        return
+      }
+
+      const mapped: RewardWithGroups[] = (data ?? []).map((r) => ({
+        ...r,
+        groups: ((r.reward_groups as unknown as RewardGroupJoin[]) ?? []).map((rg) => rg.groups),
+      }))
+
+      setRewards(mapped)
+      if (lastReportedCountRef.current !== mapped.length) {
+        lastReportedCountRef.current = mapped.length
+        onCountChangeRef.current(mapped.length)
+      }
       setLoading(false)
-      return
     }
 
-    const mapped: RewardWithGroups[] = (data ?? []).map((r) => ({
-      ...r,
-      groups: ((r.reward_groups as unknown as RewardGroupJoin[]) ?? []).map((rg) => rg.groups),
-    }))
+    load()
+    return () => { cancelled = true }
+  }, [eventId])
 
-    setRewards(mapped)
-    onCountChange(mapped.length)
-    setLoading(false)
-  }, [eventId, onCountChange])
-
-  useEffect(() => { fetchRewards() }, [fetchRewards])
+  const handleSaved = useCallback((saved: Reward) => {
+    handleFormClose()
+    setRewards((prev) => {
+      const exists = prev.some((r) => r.id === saved.id)
+      if (exists) {
+        return prev.map((r) => (r.id === saved.id ? { ...r, ...saved } : r))
+      }
+      const next = [...prev, { ...saved, groups: [] }]
+      lastReportedCountRef.current = next.length
+      onCountChangeRef.current(next.length)
+      return next
+    })
+  }, [])
 
   function handleCreate() {
     setEditingReward(null)
@@ -104,9 +131,10 @@ export function RewardList({ eventId, onCountChange, variant = 'default' }: Rewa
   }
 
   async function handleToggleActive(reward: RewardWithGroups) {
+    const nextActive = !reward.is_active
     const { error: updateError } = await supabase
       .from('rewards')
-      .update({ is_active: !reward.is_active })
+      .update({ is_active: nextActive })
       .eq('id', reward.id)
 
     if (updateError) {
@@ -114,7 +142,9 @@ export function RewardList({ eventId, onCountChange, variant = 'default' }: Rewa
       return
     }
 
-    fetchRewards()
+    setRewards((prev) => prev.map((r) => (
+      r.id === reward.id ? { ...r, is_active: nextActive } : r
+    )))
   }
 
   if (loading) {
@@ -237,7 +267,7 @@ export function RewardList({ eventId, onCountChange, variant = 'default' }: Rewa
           reward={editingReward ?? undefined}
           isOpen={formOpen}
           onClose={handleFormClose}
-          onSaved={() => { handleFormClose(); fetchRewards() }}
+          onSaved={handleSaved}
           onPlanLimit={() => setUpgradeOpen(true)}
         />
       )}
@@ -248,10 +278,9 @@ export function RewardList({ eventId, onCountChange, variant = 'default' }: Rewa
           rewardName={assigningReward.name}
           isOpen={!!assigningReward}
           onClose={() => setAssigningReward(null)}
-          onChanged={fetchRewards}
         />
       )}
-      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} limitType="rewards" />
+      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </>
   )
 

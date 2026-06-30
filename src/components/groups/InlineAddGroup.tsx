@@ -3,10 +3,11 @@ import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { isPlanLimitError } from '@/lib/plans'
+import type { Group } from '@/types'
 
 interface InlineAddGroupProps {
   eventId: string
-  onAdded: () => void
+  onAdded: (group: Group) => void
   onPlanLimit?: () => void
 }
 
@@ -26,9 +27,11 @@ export function InlineAddGroup({ eventId, onAdded, onPlanLimit }: InlineAddGroup
     if (!trimmed || saving) return
 
     setSaving(true)
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('groups')
       .insert({ name: trimmed, event_id: eventId, color: getRandomColor() })
+      .select('id, event_id, name, color, created_at, updated_at')
+      .single()
 
     setSaving(false)
 
@@ -36,8 +39,10 @@ export function InlineAddGroup({ eventId, onAdded, onPlanLimit }: InlineAddGroup
       if (isPlanLimitError(error.message) && onPlanLimit) onPlanLimit()
       return
     }
+    if (!data) return
+
     setName('')
-    onAdded()
+    onAdded(data)
     setTimeout(() => inputRef.current?.focus(), 0)
   }
 

@@ -7,14 +7,17 @@ interface WizardProgressProps {
   currentStep: number
   wizardState: WizardState
   onStepClick: (step: number) => void
+  hiddenSteps?: number[]
 }
 
-export function WizardProgress({ currentStep, wizardState, onStepClick }: WizardProgressProps) {
+export function WizardProgress({ currentStep, wizardState, onStepClick, hiddenSteps = [] }: WizardProgressProps) {
+  const visibleSteps = WIZARD_STEPS.filter((step) => !hiddenSteps.includes(step.step))
+
   return (
     <div className="w-full">
       {/* Desktop stepper — three visual tiers */}
       <nav className="hidden sm:flex items-center justify-between" aria-label="Wizard progress">
-        {WIZARD_STEPS.map((step, idx) => {
+        {visibleSteps.map((step, idx) => {
           const status = wizardState[step.id as WizardStepId]
           const isCurrent = step.step === currentStep
           const isCompleted = status === 'completed'
@@ -56,7 +59,7 @@ export function WizardProgress({ currentStep, wizardState, onStepClick }: Wizard
                 </button>
               )}
 
-              {idx < WIZARD_STEPS.length - 1 && (
+              {idx < visibleSteps.length - 1 && (
                 <div
                   className={cn(
                     'mx-1 h-px w-3 shrink-0 transition-colors',
@@ -71,7 +74,7 @@ export function WizardProgress({ currentStep, wizardState, onStepClick }: Wizard
 
       {/* Mobile: dots + current label */}
       <nav className="flex sm:hidden items-center justify-center gap-1.5 py-1" aria-label="Wizard progress">
-        {WIZARD_STEPS.map((step) => {
+        {visibleSteps.map((step) => {
           const status = wizardState[step.id as WizardStepId]
           const isCurrent = step.step === currentStep
           const isCompleted = status === 'completed'
@@ -93,7 +96,7 @@ export function WizardProgress({ currentStep, wizardState, onStepClick }: Wizard
       </nav>
 
       <p className="sm:hidden text-center text-xs text-gray-500 mt-0.5">
-        {WIZARD_STEPS.find(s => s.step === currentStep)?.label}
+        {visibleSteps.find(s => s.step === currentStep)?.label ?? WIZARD_STEPS.find(s => s.step === currentStep)?.label}
       </p>
     </div>
   )

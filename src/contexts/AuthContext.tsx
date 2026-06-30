@@ -36,7 +36,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, fetchProfile])
 
   useEffect(() => {
+    let cancelled = false
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return
       const u = session?.user ?? null
       setUser(u)
       if (u) {
@@ -46,7 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION') return
       const u = session?.user ?? null
       setUser(u)
       if (u) {
@@ -56,7 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
   }, [fetchProfile])
 
   const signInWithGoogle = useCallback(async (redirectTo?: string) => {
