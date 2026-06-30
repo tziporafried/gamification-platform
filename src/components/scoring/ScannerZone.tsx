@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check } from 'lucide-react'
+import { Check, Loader2 } from 'lucide-react'
 import type { AccentRgb } from '@/lib/accentColor'
 import { rgba } from '@/lib/accentColor'
 
@@ -24,10 +24,11 @@ const CORNER_CLASSES = [
 
 interface Props {
   successFlash: boolean
+  processing?: boolean
   accent: AccentRgb
 }
 
-export function ScannerZone({ successFlash, accent }: Props) {
+export function ScannerZone({ successFlash, processing = false, accent }: Props) {
     const a = accent
     const ac = `rgba(${a.r},${a.g},${a.b}`  // partial rgba — append ,opacity)
 
@@ -236,6 +237,35 @@ export function ScannerZone({ successFlash, accent }: Props) {
               )}
             </AnimatePresence>
 
+            {/* ── Processing overlay (waiting for network) ── */}
+            <AnimatePresence>
+              {processing && !successFlash && (
+                <motion.div
+                  className="pointer-events-none absolute inset-0 z-[18] flex flex-col items-center justify-center gap-3"
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <motion.div
+                    className="pointer-events-none absolute inset-0"
+                    style={{ background: `radial-gradient(circle, ${ac},0.18) 0%, transparent 70%)` }}
+                    animate={{ opacity: [0.4, 0.75, 0.4] }}
+                    transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                  <Loader2
+                    className="relative z-[1] h-10 w-10 animate-spin"
+                    style={{ color: `${ac},0.85)` }}
+                    strokeWidth={2.5}
+                  />
+                  <p
+                    className="relative z-[1] text-center text-sm font-semibold tracking-wide"
+                    style={{ color: `${ac},0.75)` }}
+                  >
+                    שולח ניקוד...
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* ── Floating dust particles ── */}
             {PARTICLES.map((p, i) => (
               <motion.div
@@ -255,7 +285,7 @@ export function ScannerZone({ successFlash, accent }: Props) {
 
             {/* ── Guidance text (idle state instruction) ── */}
             <AnimatePresence>
-              {!successFlash && (
+              {!successFlash && !processing && (
                 <motion.div
                   className="pointer-events-none absolute inset-x-0 bottom-[8%] z-[11] flex flex-col items-center gap-0.5"
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -267,7 +297,7 @@ export function ScannerZone({ successFlash, accent }: Props) {
                     animate={{ opacity: [0.5, 0.9, 0.5] }}
                     transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
                   >
-                    כוון את המצלמה
+                    כוון את הסורק
                   </motion.p>
                   <motion.p
                     className="text-center font-medium tracking-wider"
@@ -275,7 +305,7 @@ export function ScannerZone({ successFlash, accent }: Props) {
                     animate={{ opacity: [0.35, 0.7, 0.35] }}
                     transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
                   >
-                    לקוד QR
+                    לכרטיס QR של המשתתף
                   </motion.p>
                 </motion.div>
               )}

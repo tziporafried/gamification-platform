@@ -11,7 +11,10 @@ import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { Toast } from '@/components/ui/Toast'
 import { CelebrationModal } from '@/components/scoring/CelebrationModal'
 import { ScannerZone } from '@/components/scoring/ScannerZone'
-import { QrScanner } from '@/components/scoring/QrScanner'
+import { useHardwareScanner } from '@/hooks/useHardwareScanner'
+import { useHebrewKeyboardWarning } from '@/hooks/useHebrewKeyboardWarning'
+import { parseQrPayload } from '@/lib/qrPayload'
+import { looksLikeHebrewLayoutScan } from '@/lib/keyboardLayout'
 import { MissionIntelPanel } from '@/components/ops/MissionIntelPanel'
 import { LiveActivityFeed } from '@/components/ops/LiveActivityFeed'
 import type { LatestScoreInfo } from '@/components/ops/LiveActivityFeed'
@@ -55,8 +58,6 @@ function EventOpsContent({ event }: { event: Event }) {
   const { submit, submitting, lastError } = useScoreSubmit(event.id)
   const opsSound = useOpsSound()
   const { canScanQR } = usePlanPermissions()
-  // Accumulates partial QR scan results until both codes are ready
-  const qrPartialRef = useRef<{ participantCode?: string; actionCode?: string }>({})
 
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
   const [celebrationRewards, setCelebrationRewards] = useState<NewlyAwardedReward[]>([])
@@ -135,14 +136,36 @@ function EventOpsContent({ event }: { event: Event }) {
   }, [submit, opsData, opsSound])
 
   const handleQrScan = useCallback(({ participantCode, actionCode }: { participantCode?: string; actionCode?: string }) => {
-    if (participantCode) qrPartialRef.current.participantCode = participantCode
-    if (actionCode) qrPartialRef.current.actionCode = actionCode
-    const { participantCode: p, actionCode: a } = qrPartialRef.current
-    if (p && a) {
-      qrPartialRef.current = {}
-      handleSubmit(p, a)
-    }
+    if (participantCode && actionCode) handleSubmit(participantCode, actionCode)
   }, [handleSubmit])
+
+  const keyboardWarningEnabled = !opsData.loading
+  const { showWarning: hebrewKeyboardWarning, flagHebrewInText, onScanStart } = useHebrewKeyboardWarning(keyboardWarningEnabled)
+  const hebrewKeyboardWarningRef = useRef(hebrewKeyboardWarning)
+  hebrewKeyboardWarningRef.current = hebrewKeyboardWarning
+
+  const scannerEnabled = canScanQR && !showManualEntry && !opsData.loading && !submitting
+
+  const handleRawScan = useCallback((raw: string) => {
+    const parsed = parseQrPayload(raw)
+    if (parsed.ok) {
+      handleQrScan(parsed.data)
+      return
+    }
+
+    const hebrewLayout =
+      hebrewKeyboardWarningRef.current ||
+      looksLikeHebrewLayoutScan(raw)
+
+    if (hebrewLayout) {
+      flagHebrewInText(raw)
+      return
+    }
+
+    setToast({ message: parsed.error, variant: 'error' })
+  }, [handleQrScan, flagHebrewInText])
+
+  const scannerInputRef = useHardwareScanner(scannerEnabled, handleRawScan, onScanStart)
 
   if (opsData.loading) return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3" style={{ background: '#0a0814' }}>
@@ -184,6 +207,17 @@ function EventOpsContent({ event }: { event: Event }) {
         </button>
       </div>
 
+      {hebrewKeyboardWarning && (
+        <div
+          role="alert"
+          className="relative z-20 shrink-0 border-b border-amber-500/40 bg-amber-600/25 px-4 py-2.5"
+        >
+          <p className="text-center text-sm font-semibold text-amber-50">
+            המקלדת מוגדרת על עברית — עברו ל-<span className="font-black underline">ENG</span> לפני סריקה
+          </p>
+        </div>
+      )}
+
       {/* ═══ BODY — 3 COLUMNS ═══ */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
 
@@ -218,14 +252,18 @@ function EventOpsContent({ event }: { event: Event }) {
             <div className="relative w-full shrink-0">
               <ScannerZone
                 successFlash={successFlash}
+                processing={submitting}
                 accent={accent} />
-            </div>
-          )}
-
-          {/* QR scanner button — QR-enabled plans only */}
-          {canScanQR && (
-            <div className="shrink-0">
-              <QrScanner onScan={handleQrScan} />
+              <input
+                ref={scannerInputRef}
+                type="text"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                aria-label="קלט סורק QR"
+                className="sr-only"
+              />
             </div>
           )}
 

@@ -68,7 +68,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
 
       if (pError) throw pError
       if (!participant) {
-        setLastError(`משתתף "${pCode}" לא נמצא.`)
+        setLastError('קוד לא תקין')
         setSubmitting(false)
         return null
       }
