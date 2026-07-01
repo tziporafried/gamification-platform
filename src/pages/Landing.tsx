@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, ChevronDown, ScanLine, Trophy, Wand2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -36,10 +36,17 @@ const FEATURES = [
   'מרכז בקרה לאירוע',
 ] as const
 
-const FAQ_ITEMS = [
+const FAQ_ITEMS: { question: string; answer: ReactNode }[] = [
   {
     question: 'כמה עולה להשתמש במערכת?',
-    answer: 'יש מסלול התנסות חינמי עם מגבלות (למשל עד 2 משתתפים ו-3 משימות). מסלולים בתשלום — משחק עצמאי, חוויה מלאה ופתרון לארגונים — מפורטים בדף המסלולים, ואפשר גם לשלוח בקשה ונחזור אליכם.',
+    answer: (
+      <>
+        <Link to="/plans" className="font-medium text-primary hover:underline">
+          בדף המחירון
+        </Link>
+        {' '}תמצאו את המסלולים — משחק עצמאי, חוויה מלאה ופתרון לארגונים — ואפשר גם לשלוח בקשה ונחזור אליכם.
+      </>
+    ),
   },
   {
     question: 'כמה זמן לוקח להקים משחק?',
@@ -65,7 +72,7 @@ const FAQ_ITEMS = [
     question: 'לאילו סוגי אירועים המערכת מתאימה?',
     answer: 'ימי גיבוש, פעילויות חינוכיות, משחקי ניווט, אירועי חברה, פעילויות קהילתיות וכל פעילות המבוססת על משימות, ניקוד ותחרות.',
   },
-] as const
+] 
 
 export function Landing() {
   const { signInWithGoogle } = useAuth()
@@ -160,7 +167,7 @@ export function Landing() {
           </h2>
           <Card className="space-y-4 p-6 leading-relaxed text-foreground sm:p-8">
             <p>אין צורך להתחייב לפני שמבינים את המערכת.</p>
-            <p>אחרי ההתחברות אפשר ליצור אירוע התנסות חינמי ולעבור על כל שלבי האשף.</p>
+            <p>אחרי ההתחברות אפשר ליצור אירוע ולעבור על כל שלבי האשף.</p>
             <p>
               האשף מוביל אתכם שלב אחר שלב — מהגדרת פרטי האירוע, דרך משתתפים ומשימות, ועד להדפסת כרטיסי QR ופתיחת מרכז הבקרה.
             </p>
@@ -188,7 +195,7 @@ export function Landing() {
             מוכנים להתחיל?
           </h2>
           <p className="mx-auto mb-8 max-w-2xl leading-relaxed text-muted">
-            צרו אירוע התנסות, עברו את האשף והדפיסו כרטיסים — תוך דקות תוכלו לראות איך נראה משחק אמיתי עם עמדת סריקה ולוח שיאים חי.
+            צרו אירוע, עברו את האשף והדפיסו כרטיסים — תוך דקות תוכלו לראות איך נראה משחק אמיתי עם עמדת סריקה ולוח שיאים חי.
           </p>
           <Button size="lg" variant="gradient" loading={loading} onClick={handleGoogleSignIn}>
             <GoogleIcon className="ml-2 h-5 w-5" />
@@ -227,7 +234,7 @@ function StepCard({
   )
 }
 
-function FaqItem({ question, answer }: { question: string; answer: string }) {
+function FaqItem({ question, answer }: { question: string; answer: ReactNode }) {
   const [open, setOpen] = useState(false)
 
   return (

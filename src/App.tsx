@@ -33,7 +33,7 @@ export default function App() {
           <Route path="/events/:id/ops" element={<ProtectedRoute><EventOpsPage /></ProtectedRoute>} />
           <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell><EventBySlugControl /></AppShell></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />
-          <Route path="/plans" element={<ProtectedRoute><AppShell><PlansPage /></AppShell></ProtectedRoute>} />
+          <Route path="/plans" element={<AppShell><PlansPage /></AppShell>} />
 
           {/* Backward compat */}
           <Route path="/dashboard" element={<Navigate to="/events" replace />} />

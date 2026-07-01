@@ -52,6 +52,11 @@ export function PlansPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (profile?.display_name) setFullName(profile.display_name)
+    if (profile?.email || user?.email) setEmail(profile?.email || user?.email || '')
+  }, [profile, user])
+
+  useEffect(() => {
     if (selectedOption && formRef.current) {
       setTimeout(() => {
         formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -88,7 +93,7 @@ export function PlansPage() {
     const { error: insertError } = await supabase
       .from('contact_upgrade_requests')
       .insert({
-        user_id: user!.id,
+        user_id: user?.id ?? null,
         full_name: trimmedName,
         email: trimmedEmail,
         phone: trimmedPhone,
