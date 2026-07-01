@@ -17,7 +17,7 @@ export const theme = {
   accentText: 'text-accent',
   accentBorder: 'border-accent',
   accentBg: 'bg-surface-elevated',
-  focusRing: 'focus:outline-none focus:ring-1 focus:ring-offset-0 focus:ring-tertiary/40',
+  focusRing: 'focus:outline-none focus-visible:outline-none',
   focusBorder: 'focus:border-tertiary',
   focusWithinBorder: 'focus-within:border-tertiary',
   inputBg: 'bg-surface',
