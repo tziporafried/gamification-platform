@@ -60,9 +60,7 @@ export function WizardProgress({ currentStep, wizardState, onStepClick, hiddenSt
                     'line-clamp-2 w-full text-center leading-tight text-primary',
                     isCurrent
                       ? 'text-xs font-bold sm:text-sm'
-                      : isCompleted
-                        ? 'text-[10px] font-semibold sm:text-[11px]'
-                        : 'text-[10px] font-medium',
+                      : 'text-[10px] font-semibold sm:text-[11px]',
                   )}
                 >
                   {step.label}

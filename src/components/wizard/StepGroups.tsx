@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react'
 import { Users, Layers, AlertTriangle } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
-import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { UsageBar } from '@/components/ui/UsageBar'
@@ -27,16 +26,18 @@ const GROUP_OPTIONS: { type: GroupType; label: string; description: string; icon
   { type: 'custom', label: 'משפחות וקבוצות', description: 'חלקו את המשתתפים למשפחות, צוותים או קבוצות תחרות', icon: Layers },
 ]
 
-const GROUP_OPTION_STYLES: Record<GroupType, { card: string; cardSelected: string }> = {
+const GROUP_OPTION_STYLES: Record<GroupType, { card: string; cardSelected: string; iconSelected: string }> = {
   none: {
     card: 'bg-[color-mix(in_srgb,var(--color-secondary)_22%,var(--color-surface))]',
     cardSelected:
       'bg-[color-mix(in_srgb,var(--color-secondary)_32%,var(--color-surface))] ring-2 ring-secondary border-secondary',
+    iconSelected: 'text-secondary',
   },
   custom: {
     card: 'bg-[color-mix(in_srgb,var(--color-tertiary)_22%,var(--color-surface))]',
     cardSelected:
       'bg-[color-mix(in_srgb,var(--color-tertiary)_32%,var(--color-surface))] ring-2 ring-tertiary border-tertiary',
+    iconSelected: 'text-tertiary',
   },
 }
 
@@ -110,49 +111,51 @@ export function StepGroups({
               const isSelected = groupType === type
 
               return (
-              <button
-                key={type}
-                onClick={() => handleOptionClick(type)}
-                className="h-full w-full text-right"
-              >
-                <Card
-                  variant="default"
-                  className={cn(
-                    'flex h-full w-full cursor-pointer transition-all duration-200 justify-center',
-                    'hover:shadow-card-hover hover:-translate-y-0.5',
-                    optionStyles.card,
-                    showGroupSetup
-                      ? 'p-3 flex-row items-center gap-2 text-right'
-                      : 'p-6 flex-col items-center gap-3 text-center',
-                    isSelected
-                      ? cn(
-                          optionStyles.cardSelected,
-                          type === 'none' ? 'hover:border-secondary' : 'hover:border-tertiary',
-                        )
-                      : 'border-transparent hover:border-transparent',
-                  )}
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => handleOptionClick(type)}
+                  className="h-full w-full text-right"
                 >
-                  <Icon
-                    size={showGroupSetup ? 20 : 32}
+                  <div
                     className={cn(
-                      'shrink-0 transition-colors',
-                      isSelected ? 'text-primary' : 'text-muted',
+                      'rounded-xl border shadow-none',
+                      'flex h-full w-full cursor-pointer transition-all duration-200 justify-center',
+                      'hover:shadow-card-hover hover:-translate-y-0.5',
+                      optionStyles.card,
+                      showGroupSetup
+                        ? 'p-3 flex-row items-center gap-2 text-right'
+                        : 'p-6 flex-col items-center gap-3 text-center',
+                      isSelected
+                        ? cn(
+                            optionStyles.cardSelected,
+                            type === 'none' ? 'hover:border-secondary' : 'hover:border-tertiary',
+                          )
+                        : 'border-transparent hover:border-transparent',
                     )}
-                  />
-                  <div className={cn(!showGroupSetup && 'flex flex-1 flex-col items-center')}>
-                    <span className={cn(
-                      'font-medium text-foreground',
-                      showGroupSetup ? 'text-sm' : 'text-base',
-                    )}>
-                      {label}
-                    </span>
-                    {!showGroupSetup && (
-                      <span className="mt-1 block min-h-[2.75rem] text-xs text-muted">{description}</span>
-                    )}
+                  >
+                    <Icon
+                      size={showGroupSetup ? 20 : 32}
+                      className={cn(
+                        'shrink-0 transition-colors',
+                        isSelected ? optionStyles.iconSelected : 'text-muted',
+                      )}
+                    />
+                    <div className={cn(!showGroupSetup && 'flex flex-1 flex-col items-center')}>
+                      <span className={cn(
+                        'font-medium text-foreground',
+                        showGroupSetup ? 'text-sm' : 'text-base',
+                      )}>
+                        {label}
+                      </span>
+                      {!showGroupSetup && (
+                        <span className="mt-1 block min-h-[2.75rem] text-xs text-muted">{description}</span>
+                      )}
+                    </div>
                   </div>
-                </Card>
-              </button>
-            )})}
+                </button>
+              )
+            })}
           </div>
 
           {showGroupSetup && localGroupCount > 0 && (

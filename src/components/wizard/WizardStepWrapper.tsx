@@ -40,7 +40,18 @@ export function WizardStepWrapper({
   const [playIntro, setPlayIntro] = useState(false)
 
   useLayoutEffect(() => {
-    if (!isActive || !isIncomplete || hasIntroPlayed(currentStep)) {
+    if (!isActive) {
+      setPlayIntro(false)
+      return
+    }
+
+    if (hasIntroPlayed(currentStep)) {
+      setPlayIntro(false)
+      return
+    }
+
+    if (!isIncomplete) {
+      markIntroPlayed(currentStep)
       setPlayIntro(false)
       return
     }
