@@ -83,6 +83,19 @@
     --atmosphere-orb-bottom-right: color-mix(in srgb, var(--palette-secondary) 11%, transparent);
     --atmosphere-orb-bottom-teal-wash: color-mix(in srgb, var(--palette-secondary) 4%, transparent);
   }
+
+  /* Landing — full-strength atmospheric glows */
+  .atmosphere-landing {
+    --atmosphere-orb-top-orange: color-mix(in srgb, var(--palette-brand-accent) 34%, var(--palette-surface-elevated));
+    --atmosphere-orb-top-yellow: color-mix(in srgb, var(--palette-warning) 52%, transparent);
+    --atmosphere-orb-bottom-left: color-mix(in srgb, var(--palette-brand-accent) 36%, transparent);
+    --atmosphere-orb-bottom-right: color-mix(in srgb, var(--palette-secondary) 28%, transparent);
+    --atmosphere-orb-bottom-teal-wash: color-mix(in srgb, var(--palette-secondary) 12%, transparent);
+    --gradient-background:
+      radial-gradient(ellipse 110% 88% at 82% -4%, color-mix(in srgb, var(--palette-brand-accent) 26%, var(--palette-surface-elevated)) 0%, transparent 62%),
+      radial-gradient(ellipse 96% 76% at 18% -4%, color-mix(in srgb, var(--palette-warning) 30%, transparent) 0%, transparent 64%),
+      radial-gradient(ellipse 80% 64% at 50% 54%, color-mix(in srgb, var(--palette-secondary) 10%, var(--palette-background)), transparent 70%);
+  }
   .bg-game {
     background-color: var(--color-background);
     background-image: var(--gradient-background);

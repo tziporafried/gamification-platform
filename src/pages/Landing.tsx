@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { AtmosphericBackground } from '@/components/layout/AtmosphericBackground'
 import { Button } from '@/components/ui/Button'
 import { GoogleIcon } from '@/components/icons/GoogleIcon'
 
@@ -17,8 +18,9 @@ export function Landing() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-app-radial px-4">
-      <div className="text-center">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-app-radial atmosphere-landing px-4">
+      <AtmosphericBackground />
+      <div className="relative z-10 text-center">
         <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl gradient-brand text-2xl font-bold text-foreground shadow-card">
           G
         </div>
