@@ -1,8 +1,7 @@
 import { useState, useRef, KeyboardEvent } from 'react'
-import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { cn } from '@/lib/utils'
 import { isPlanLimitError } from '@/lib/plans'
+import { InlineAddField } from '@/components/ui/InlineAddField'
 import type { Group } from '@/types'
 
 interface InlineAddGroupProps {
@@ -54,30 +53,14 @@ export function InlineAddGroup({ eventId, onAdded, onPlanLimit }: InlineAddGroup
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-dashed border-game-border bg-game-card/50 p-3 transition-colors focus-within:border-brand-500/50">
-      <Plus size={18} className="shrink-0 text-gray-500" />
-      <input
-        ref={inputRef}
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="הקלד שם קבוצה ולחץ Enter..."
-        className={cn(
-          'flex-1 bg-transparent text-sm text-white placeholder-gray-500 outline-none',
-          saving && 'opacity-50',
-        )}
-        disabled={saving}
-      />
-      {name.trim() && (
-        <button
-          onClick={addGroup}
-          disabled={saving}
-          className="shrink-0 text-xs font-medium text-brand-400 hover:text-brand-300 transition-colors disabled:opacity-50"
-        >
-          הוסף
-        </button>
-      )}
-    </div>
+    <InlineAddField
+      value={name}
+      onChange={setName}
+      onKeyDown={handleKeyDown}
+      placeholder="הקלד שם קבוצה ולחץ Enter..."
+      disabled={saving}
+      onSubmit={addGroup}
+      inputRef={inputRef}
+    />
   )
 }

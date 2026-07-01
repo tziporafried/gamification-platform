@@ -2,12 +2,15 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { QrCode, Printer, ChevronDown, ChevronUp, User, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
+import { CenteredLoader } from '@/components/ui/CenteredLoader'
+import { PanelCard } from '@/components/ui/PanelCard'
+import { theme } from '@/lib/theme'
 import type { Action, Group, ParticipantWithGroups, Event } from '@/types'
 
 interface QrCardGeneratorProps {
   event: Event
-  variant?: 'default' | 'wizard'
   onReadyChange?: (fn: (() => void) | null) => void
 }
 
@@ -19,8 +22,7 @@ function formatCardsReadyLabel(count: number): string {
   return count === 1 ? '1 כרטיס מוכן להדפסה' : `${count} כרטיסים מוכנים להדפיסה`
 }
 
-export function QrCardGenerator({ event, variant = 'default', onReadyChange }: QrCardGeneratorProps) {
-  const isWizard = variant === 'wizard'
+export function QrCardGenerator({ event, onReadyChange }: QrCardGeneratorProps) {
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [actions, setActions] = useState<ActionWithGroupIds[]>([])
   const [groups, setGroups] = useState<Group[]>([])
@@ -73,10 +75,10 @@ export function QrCardGenerator({ event, variant = 'default', onReadyChange }: Q
   )
 
   useEffect(() => {
-    if (!onReadyChange || !isWizard) return
+    if (!onReadyChange) return
     onReadyChange(showGenerateButton ? handleGenerate : null)
     return () => { onReadyChange(null) }
-  }, [showGenerateButton, handleGenerate, isWizard, onReadyChange])
+  }, [showGenerateButton, handleGenerate, onReadyChange])
 
   function handlePrint() {
     const content = printRef.current; if (!content) return
@@ -155,38 +157,28 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
   const totalCards = sheets.reduce((sum, s) => sum + s.actions.length, 0)
   const previewTotalCards = participants.reduce((sum, p) => sum + getRelevantActions(p).length, 0)
 
-  if (loading) return <div className="flex justify-center py-12"><div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" /></div>
+  if (loading) return <CenteredLoader />
 
   if (participants.length === 0 || actions.length === 0) {
     return (
-      <div className="rounded-2xl border border-game-border bg-game-card p-6 text-center">
+      <PanelCard size="lg" className="text-center">
         <QrCode size={32} className="mx-auto text-gray-600 mb-3" />
-        <p className="text-sm text-gray-400">
+        <p className={cn('text-sm', theme.textMuted)}>
           {participants.length === 0 ? 'אין משתתפים – הוסיפו משתתפים כדי ליצור כרטיסים' : 'אין משימות פעילות – הוסיפו משימות כדי ליצור כרטיסים'}
         </p>
-      </div>
+      </PanelCard>
     )
   }
 
   return (
     <div>
-      {!isWizard && (
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20"><QrCode size={18} className="text-brand-400" /></div>
-            <h2 className="text-lg font-bold text-white">כרטיסי QR למשתתפים</h2>
-          </div>
-        </div>
-      )}
-
       {!generated ? (
         <div>
-          {/* Card is its own scroll region so nothing can bleed past its bottom edge */}
-          <div className="rounded-2xl border border-game-border bg-game-card p-5 space-y-3 overflow-y-auto max-h-[42vh]" style={{ scrollbarGutter: 'stable' }}>
-            <p className="text-sm text-gray-300">{isWizard ? 'לכל משתתף ייווצר דף כרטיסים אישי עם כל הפעילויות הזמינות עבורו.' : 'לכל משתתף יופק דף נפרד עם כרטיסי QR עבור המשימות הרלוונטיות לקבוצות שלו.'}</p>
+          <PanelCard size="md" className="space-y-3 overflow-y-auto max-h-[42vh]" style={{ scrollbarGutter: 'stable' }}>
+            <p className={cn('text-sm', theme.label)}>לכל משתתף ייווצר דף כרטיסים אישי עם כל הפעילויות הזמינות עבורו.</p>
 
             {groups.length === 0 ? (
-              <div className="rounded-xl border border-game-border bg-game-dark">
+              <div className={theme.surfaceInset}>
                 <button type="button" onClick={() => setExpandedGroup(expandedGroup === '__flat__' ? null : '__flat__')} className="flex w-full items-center gap-2 px-3 py-2 text-right">
                   <User size={14} className="text-gray-500 shrink-0" /><span className="text-sm text-gray-200 flex-1">{participants.length} משתתפים</span>
                   {expandedGroup === '__flat__' ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
@@ -208,7 +200,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
             ) : (
               <div className="space-y-1.5">
                 {getGroupBuckets().map((bucket) => { const isGO = expandedGroup === bucket.id; return (
-                  <div key={bucket.id} className="rounded-xl border border-game-border bg-game-dark">
+                  <div key={bucket.id} className={theme.surfaceInset}>
                     <button type="button" onClick={() => setExpandedGroup(isGO ? null : bucket.id)} className="flex w-full items-center gap-2 px-3 py-2 text-right">
                       <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: bucket.color }} /><span className="text-sm text-gray-200 flex-1 truncate">{bucket.name}</span><span className="text-xs text-gray-500 shrink-0">{bucket.participants.length} משתתפים</span>
                       {isGO ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
@@ -231,23 +223,16 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
               </div>
             )}
 
-            <div className="rounded-xl border border-game-border bg-game-dark/50 p-3 text-center">
-              <p className="text-sm text-gray-400">{isWizard ? formatCardsReadyLabel(previewTotalCards) : (<><span className="font-bold text-white">{participants.length}</span> משתתפים × <span className="font-bold text-white">{actions.length}</span> משימות = סה״כ <span className="font-bold text-white">{previewTotalCards}</span> כרטיסים (לפי קבוצות)</>)}</p>
+            <div className={cn(theme.surfaceInset, 'bg-game-dark/50 p-3 text-center')}>
+              <p className={cn('text-sm', theme.textMuted)}>{formatCardsReadyLabel(previewTotalCards)}</p>
             </div>
-          </div>
-
-          {/* Sticky print button — non-wizard mode only; wizard mode uses footerBar slot */}
-          {!isWizard && (
-            <div className="sticky bottom-0 z-10 pt-10 pb-2 border-t border-game-border" style={{ background: '#0f0b1e' }}>
-              <Button onClick={handleGenerate} className="w-full"><Printer size={16} className="ml-1.5" />יצירת כרטיסים</Button>
-            </div>
-          )}
+          </PanelCard>
         </div>
       ) : (
         <div>
           <div className="mb-4 flex items-center gap-3">
             <button type="button" onClick={() => setGenerated(false)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-game-border text-gray-400 hover:bg-white/5 hover:text-white transition-colors"><X size={16} /></button>
-            <Button onClick={handlePrint}><Printer size={16} className="ml-1.5" />{isWizard ? 'הדפס כרטיסים' : 'הדפסה'}</Button>
+            <Button onClick={handlePrint}><Printer size={16} className="ml-1.5" />הדפס כרטיסים</Button>
             <span className="text-sm text-gray-400">{sheets.length} משתתפים • {totalCards} כרטיסים</span>
           </div>
 

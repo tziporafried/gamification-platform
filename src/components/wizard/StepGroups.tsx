@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { UsageBar } from '@/components/ui/UsageBar'
+import { ScrollContainer } from '@/components/ui/ScrollContainer'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
@@ -60,7 +61,6 @@ export function StepGroups({
 
   async function handleConfirmDeleteGroups() {
     setDeleting(true)
-    // Delete all participant_groups first, then groups
     const { data: groups } = await supabase
       .from('groups')
       .select('id')
@@ -89,7 +89,6 @@ export function StepGroups({
       onBack={onBack}
     >
       <div className="flex h-full flex-col min-h-0">
-        {/* Pinned top: options + counter + usage bar */}
         <div className="shrink-0 space-y-4">
           <div className="grid grid-cols-2 gap-3 p-0.5">
             {GROUP_OPTIONS.map(({ type, label, description, icon: Icon }) => (
@@ -141,15 +140,13 @@ export function StepGroups({
           )}
         </div>
 
-        {/* Scrollable group management */}
         {showGroupSetup && (
-          <div className="flex-1 overflow-y-auto min-h-0 mt-4 pl-1" style={{ scrollbarGutter: 'stable' }}>
+          <ScrollContainer className="flex-1 mt-4 pl-1">
             <GroupList eventId={eventId} onCountChange={handleCountChange} />
-          </div>
+          </ScrollContainer>
         )}
       </div>
 
-      {/* Confirmation modal for deleting all groups */}
       <Modal
         isOpen={confirmDelete}
         onClose={() => setConfirmDelete(false)}

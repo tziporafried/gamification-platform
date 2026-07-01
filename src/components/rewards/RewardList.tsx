@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Trophy, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { CenteredLoader } from '@/components/ui/CenteredLoader'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { RewardForm } from './RewardForm'
@@ -13,7 +15,6 @@ import type { RewardWithGroups, Reward, Group, TemplateReward } from '@/types'
 interface RewardListProps {
   eventId: string
   onCountChange: (count: number) => void
-  variant?: 'default' | 'wizard'
 }
 
 interface RewardGroupJoin {
@@ -43,8 +44,20 @@ function LockedRewardCard({ reward }: { reward: TemplateReward }) {
   )
 }
 
-export function RewardList({ eventId, onCountChange, variant = 'default' }: RewardListProps) {
-  const isWizard = variant === 'wizard'
+function PremiumDivider() {
+  return (
+    <div className="flex items-center gap-2 py-1">
+      <div className="h-px flex-1 bg-white/10" />
+      <span className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
+        <Lock size={10} />
+        פרמיום
+      </span>
+      <div className="h-px flex-1 bg-white/10" />
+    </div>
+  )
+}
+
+export function RewardList({ eventId, onCountChange }: RewardListProps) {
   const [rewards, setRewards] = useState<RewardWithGroups[]>([])
   const [lockedRewards, setLockedRewards] = useState<TemplateReward[]>([])
   const [loading, setLoading] = useState(true)
@@ -148,119 +161,75 @@ export function RewardList({ eventId, onCountChange, variant = 'default' }: Rewa
   }
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
-      </div>
-    )
+    return <CenteredLoader />
   }
 
   const hasLocked = lockedRewards.length > 0
 
-  const rewardGrid = (
-    <div className="space-y-3">
-      {rewards.length > 0 && (
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-          {rewards.map((reward) => (
-            <RewardRow
-              key={reward.id}
-              reward={reward}
-              onEdit={() => handleEdit(reward)}
-              onToggleActive={() => handleToggleActive(reward)}
-              onManageGroups={() => setAssigningReward(reward)}
-            />
-          ))}
-        </div>
-      )}
-
-      {hasLocked && (
-        <>
-          <div className="flex items-center gap-2 py-1">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
-              <Lock size={10} />
-              פרמיום
-            </span>
-            <div className="h-px flex-1 bg-white/10" />
-          </div>
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-            {lockedRewards.map((reward) => (
-              <LockedRewardCard key={reward.id} reward={reward} />
-            ))}
-          </div>
-        </>
-      )}
-
-      {isWizard && (
-        <div className="flex justify-center pt-1">
-          <Button size="sm" variant="outline" onClick={handleCreate}>הוספת פרס נוסף</Button>
-        </div>
-      )}
+  const lockedGrid = (
+    <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+      {lockedRewards.map((reward) => (
+        <LockedRewardCard key={reward.id} reward={reward} />
+      ))}
     </div>
   )
 
-  const emptyState = (
-    <div className="space-y-3">
-      {!hasLocked && (
-        <div className="rounded-2xl border border-game-border bg-game-card/50 px-6 py-12 text-center">
-          <Trophy size={32} className="mx-auto mb-3 text-gray-600" />
-          <p className="text-sm font-medium text-gray-400">אין פרסים עדיין</p>
-          <p className="mt-1 text-xs text-gray-500">צרו הפתעות שהשחקנים שלכם יוכלו לקבל.</p>
-          <div className="mt-4">
-            <Button size="sm" variant="gradient" onClick={handleCreate}>הוספת פרס</Button>
-          </div>
-        </div>
-      )}
-      {hasLocked && (
-        <>
-          <div className="flex items-center gap-2 py-1">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
-              <Lock size={10} />
-              פרמיום
-            </span>
-            <div className="h-px flex-1 bg-white/10" />
-          </div>
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-            {lockedRewards.map((reward) => (
-              <LockedRewardCard key={reward.id} reward={reward} />
-            ))}
-          </div>
-          {isWizard && (
-            <div className="flex justify-center pt-1">
-              <Button size="sm" variant="outline" onClick={handleCreate}>הוספת פרס</Button>
-            </div>
-          )}
-        </>
-      )}
+  const addButton = (
+    <div className="flex justify-center pt-1">
+      <Button size="sm" variant="outline" onClick={handleCreate}>
+        {rewards.length === 0 ? 'הוספת פרס' : 'הוספת פרס נוסף'}
+      </Button>
     </div>
   )
 
   const content = (
-    <div className={isWizard ? '' : 'mx-auto max-w-5xl'}>
-      {!isWizard && (
-        <div className="mb-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
-              <Trophy size={22} className="text-amber-400" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">ארון הפרסים</h2>
-              <p className="text-xs text-gray-400">הישגים לאיסוף</p>
-            </div>
-          </div>
-          <Button size="sm" variant="gradient" onClick={handleCreate}>הוספת פרס</Button>
-        </div>
-      )}
-
+    <div>
       {error && <ErrorAlert message={error} className="mb-4" />}
 
-      {rewards.length === 0 ? emptyState : rewardGrid}
+      {rewards.length === 0 ? (
+        hasLocked ? (
+          <div className="space-y-3">
+            <PremiumDivider />
+            {lockedGrid}
+            {addButton}
+          </div>
+        ) : (
+          <EmptyState
+            variant="solid"
+            icon={<Trophy size={32} className="text-gray-600" />}
+            title="אין פרסים עדיין"
+            description="צרו הפתעות שהשחקנים שלכם יוכלו לקבל."
+            action={<Button size="sm" variant="gradient" onClick={handleCreate}>הוספת פרס</Button>}
+          />
+        )
+      ) : (
+        <div className="space-y-3">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+            {rewards.map((reward) => (
+              <RewardRow
+                key={reward.id}
+                reward={reward}
+                onEdit={() => handleEdit(reward)}
+                onToggleActive={() => handleToggleActive(reward)}
+                onManageGroups={() => setAssigningReward(reward)}
+              />
+            ))}
+          </div>
+          {hasLocked && (
+            <>
+              <PremiumDivider />
+              {lockedGrid}
+            </>
+          )}
+          {addButton}
+        </div>
+      )}
     </div>
   )
 
-  const modals = (
+  return (
     <>
+      {content}
       {formOpen && (
         <RewardForm
           eventId={eventId}
@@ -282,23 +251,5 @@ export function RewardList({ eventId, onCountChange, variant = 'default' }: Rewa
       )}
       <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </>
-  )
-
-  if (isWizard) {
-    return (
-      <>
-        {content}
-        {modals}
-      </>
-    )
-  }
-
-  return (
-    <div className="-mx-4 -mt-6 md:-mt-8">
-      <div className="bg-game-radial px-4 pt-6 pb-6 md:pt-8">
-        {content}
-      </div>
-      {modals}
-    </div>
   )
 }

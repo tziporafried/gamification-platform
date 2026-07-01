@@ -1,22 +1,42 @@
 import { ReactNode } from 'react'
+import { cn } from '@/lib/utils'
+import { theme } from '@/lib/theme'
 
 interface EmptyStateProps {
   icon?: ReactNode
   title: string
   description: string
   action?: ReactNode
+  variant?: 'dashed' | 'solid'
+  className?: string
 }
 
-export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
+export function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+  variant = 'dashed',
+  className,
+}: EmptyStateProps) {
+  const shell =
+    variant === 'dashed'
+      ? theme.surfaceEmpty
+      : cn(theme.surfaceMuted, 'flex flex-col items-center justify-center px-6 py-12 text-center')
+
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-game-border bg-game-card/30 px-6 py-12 text-center">
+    <div className={cn(shell, className)}>
       {icon && (
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-500/15 text-brand-400">
-          {icon}
-        </div>
+        variant === 'dashed' ? (
+          <div className={cn('mb-4', theme.iconBox)}>{icon}</div>
+        ) : (
+          <div className="mb-3">{icon}</div>
+        )
       )}
-      <h3 className="text-sm font-semibold text-gray-300">{title}</h3>
-      <p className="mt-1 max-w-sm text-sm text-gray-500">{description}</p>
+      <h3 className={cn('text-sm font-semibold', variant === 'dashed' ? theme.label : theme.textMuted)}>
+        {title}
+      </h3>
+      <p className={cn('mt-1 max-w-sm text-sm', theme.textSubtle)}>{description}</p>
       {action && <div className="mt-4">{action}</div>}
     </div>
   )

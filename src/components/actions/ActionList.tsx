@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Zap, Lock } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { Button } from '@/components/ui/Button'
+import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Toast } from '@/components/ui/Toast'
@@ -11,12 +13,9 @@ import { InlineAddAction } from './InlineAddAction'
 import { getLockedTemplate, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import type { Action, ActionWithGroups, Group, TemplateTask } from '@/types'
 
-type ActionCopyVariant = 'default' | 'wizard'
-
 interface ActionListProps {
   eventId: string
   onCountChange: (count: number) => void
-  variant?: ActionCopyVariant
 }
 
 interface ActionGroupJoin {
@@ -39,7 +38,7 @@ function LockedActionRow({ task }: { task: TemplateTask }) {
   )
 }
 
-export function ActionList({ eventId, onCountChange, variant = 'default' }: ActionListProps) {
+export function ActionList({ eventId, onCountChange }: ActionListProps) {
   const [actions, setActions] = useState<ActionWithGroups[]>([])
   const [lockedTasks, setLockedTasks] = useState<TemplateTask[]>([])
   const [groups, setGroups] = useState<Group[]>([])
@@ -48,19 +47,14 @@ export function ActionList({ eventId, onCountChange, variant = 'default' }: Acti
   const [formOpen, setFormOpen] = useState(false)
   const [editingAction, setEditingAction] = useState<Action | null>(null)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
-  const [refreshKey, setRefreshKey] = useState(0)
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const prevCountRef = useRef(0)
   const addInputRef = useRef<HTMLInputElement>(null)
 
-  const isWizard = variant === 'wizard'
-
-  const triggerRefresh = useCallback(() => { setRefreshKey((k) => k + 1) }, [])
-
   const showFeedback = useCallback((message: string, feedbackVariant: 'success' | 'error') => {
-    if (isWizard) setToast({ message, variant: feedbackVariant })
-  }, [isWizard])
+    setToast({ message, variant: feedbackVariant })
+  }, [])
 
   useEffect(() => {
     function syncLocked() {
@@ -113,7 +107,7 @@ export function ActionList({ eventId, onCountChange, variant = 'default' }: Acti
       setLoading(false)
     }
     fetchActions()
-  }, [eventId, refreshKey])
+  }, [eventId])
 
   useEffect(() => {
     if (actions.length > prevCountRef.current && listRef.current) {
@@ -135,7 +129,7 @@ export function ActionList({ eventId, onCountChange, variant = 'default' }: Acti
     })
   }, [onCountChange])
 
-  const handleWizardDeleted = useCallback((actionId: string) => {
+  const handleDeleted = useCallback((actionId: string) => {
     setActions((prev) => {
       const next = prev.filter((a) => a.id !== actionId)
       onCountChange(next.length)
@@ -148,20 +142,8 @@ export function ActionList({ eventId, onCountChange, variant = 'default' }: Acti
     showFeedback('הפעילות עודכנה', 'success')
   }, [showFeedback])
 
-  const handleInlineAdded = useCallback((action: Action) => {
-    if (isWizard) {
-      handleAdded(action)
-    } else {
-      triggerRefresh()
-    }
-  }, [isWizard, handleAdded, triggerRefresh])
-
   if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
-      </div>
-    )
+    return <CenteredLoader />
   }
 
   const existingNames = actions.map((a) => a.name)
@@ -169,53 +151,27 @@ export function ActionList({ eventId, onCountChange, variant = 'default' }: Acti
 
   return (
     <div className="flex h-full flex-col">
-      {!isWizard && (
-        <div className="shrink-0 mb-4 flex items-center">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
-              <Zap size={18} className="text-brand-400" />
-            </div>
-            <h2 className="text-lg font-bold text-white">משימות</h2>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <ErrorAlert message={error} className="shrink-0 mb-4" />
-      )}
+      {error && <ErrorAlert message={error} className="shrink-0 mb-4" />}
 
       {actions.length === 0 && !hasLocked ? (
         <div className="space-y-4">
           <EmptyState
-            title={isWizard ? 'עדיין לא נוספו פעילויות' : 'אין משימות עדיין'}
-            description={
-              isWizard
-                ? 'הוסיפו את הפעילות הראשונה שמעניקה נקודות למשתתפים'
-                : 'הקלד שם משימה למטה ולחץ Enter'
-            }
+            title="עדיין לא נוספו פעילויות"
+            description="הוסיפו את הפעילות הראשונה שמעניקה נקודות למשתתפים"
             action={
-              isWizard ? (
-                <button
-                  type="button"
-                  onClick={() => addInputRef.current?.focus()}
-                  className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-500"
-                >
-                  ➕ הוסף פעילות
-                </button>
-              ) : undefined
+              <Button size="sm" onClick={() => addInputRef.current?.focus()}>
+                ➕ הוסף פעילות
+              </Button>
             }
           />
-          <div className="shrink-0">
-            <InlineAddAction
-              eventId={eventId}
-              onAdded={handleInlineAdded}
-              onPlanLimit={() => setUpgradeOpen(true)}
-              variant={variant}
-              existingNames={existingNames}
-              onFeedback={isWizard ? showFeedback : undefined}
-              nameInputRef={addInputRef}
-            />
-          </div>
+          <InlineAddAction
+            eventId={eventId}
+            onAdded={handleAdded}
+            onPlanLimit={() => setUpgradeOpen(true)}
+            existingNames={existingNames}
+            onFeedback={showFeedback}
+            nameInputRef={addInputRef}
+          />
         </div>
       ) : (
         <>
@@ -225,11 +181,10 @@ export function ActionList({ eventId, onCountChange, variant = 'default' }: Acti
                 key={action.id}
                 action={action}
                 groups={groups}
-                onEdit={triggerRefresh}
-                onDeleted={isWizard ? () => handleWizardDeleted(action.id) : triggerRefresh}
-                onUpdated={isWizard ? (patch) => handleActionPatched(action.id, patch) : undefined}
+                onEdit={() => {}}
+                onDeleted={() => handleDeleted(action.id)}
+                onUpdated={(patch) => handleActionPatched(action.id, patch)}
                 onError={setError}
-                variant={variant}
                 siblingNames={existingNames.filter((n) => n !== action.name)}
               />
             ))}
@@ -253,11 +208,10 @@ export function ActionList({ eventId, onCountChange, variant = 'default' }: Acti
           <div className="shrink-0 pt-2">
             <InlineAddAction
               eventId={eventId}
-              onAdded={handleInlineAdded}
+              onAdded={handleAdded}
               onPlanLimit={() => setUpgradeOpen(true)}
-              variant={variant}
               existingNames={existingNames}
-              onFeedback={isWizard ? showFeedback : undefined}
+              onFeedback={showFeedback}
               nameInputRef={addInputRef}
             />
           </div>
@@ -270,7 +224,7 @@ export function ActionList({ eventId, onCountChange, variant = 'default' }: Acti
           action={editingAction ?? undefined}
           isOpen={formOpen}
           onClose={handleFormClose}
-          onSaved={() => { handleFormClose(); triggerRefresh() }}
+          onSaved={handleFormClose}
         />
       )}
 

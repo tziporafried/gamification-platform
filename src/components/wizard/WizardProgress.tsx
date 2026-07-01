@@ -15,7 +15,6 @@ export function WizardProgress({ currentStep, wizardState, onStepClick, hiddenSt
 
   return (
     <div className="w-full">
-      {/* Desktop stepper — three visual tiers */}
       <nav className="hidden sm:flex items-center justify-between" aria-label="Wizard progress">
         {visibleSteps.map((step, idx) => {
           const status = wizardState[step.id as WizardStepId]
@@ -25,7 +24,6 @@ export function WizardProgress({ currentStep, wizardState, onStepClick, hiddenSt
           return (
             <div key={step.id} className="flex items-center">
               {isCompleted ? (
-                /* Completed: green check + label */
                 <button
                   onClick={() => onStepClick(step.step)}
                   className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-500 transition-colors hover:bg-emerald-500/10"
@@ -36,7 +34,6 @@ export function WizardProgress({ currentStep, wizardState, onStepClick, hiddenSt
                   {step.label}
                 </button>
               ) : isCurrent ? (
-                /* Current: brand pill with number + label */
                 <button
                   onClick={() => onStepClick(step.step)}
                   className="flex items-center gap-1.5 rounded-full bg-brand-600/20 px-3 py-1 text-xs font-semibold text-white ring-1 ring-brand-500/40"
@@ -47,7 +44,6 @@ export function WizardProgress({ currentStep, wizardState, onStepClick, hiddenSt
                   {step.label}
                 </button>
               ) : (
-                /* Upcoming: muted number + label */
                 <button
                   onClick={() => onStepClick(step.step)}
                   className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-400"
@@ -72,7 +68,6 @@ export function WizardProgress({ currentStep, wizardState, onStepClick, hiddenSt
         })}
       </nav>
 
-      {/* Mobile: dots + current label */}
       <nav className="flex sm:hidden items-center justify-center gap-1.5 py-1" aria-label="Wizard progress">
         {visibleSteps.map((step) => {
           const status = wizardState[step.id as WizardStepId]

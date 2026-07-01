@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { ActionList } from '@/components/actions/ActionList'
 import { UsageBar } from '@/components/ui/UsageBar'
+import { ScrollContainer } from '@/components/ui/ScrollContainer'
 import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
 import type { EventCounts } from '@/types'
 
@@ -48,9 +49,9 @@ export function StepTasks({ eventId, counts, onCountsPatch, onCountsRefresh, onN
             />
           )}
         </div>
-        <div className="flex-1 overflow-y-auto min-h-0 pl-1" style={{ scrollbarGutter: 'stable' }}>
-          <ActionList eventId={eventId} onCountChange={handleCountChange} variant="wizard" />
-        </div>
+        <ScrollContainer className="flex-1 pl-1">
+          <ActionList eventId={eventId} onCountChange={handleCountChange} />
+        </ScrollContainer>
       </div>
     </WizardStepWrapper>
   )

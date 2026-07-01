@@ -30,7 +30,7 @@ export function StepRewards({ eventId, counts, onCountsPatch, onNext, onBack }: 
       onNext={onNext}
       onBack={onBack}
     >
-      <RewardList eventId={eventId} onCountChange={handleCountChange} variant="wizard" />
+      <RewardList eventId={eventId} onCountChange={handleCountChange} />
     </WizardStepWrapper>
   )
 }

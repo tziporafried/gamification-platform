@@ -7,7 +7,10 @@ interface WizardStepPanelProps {
 
 export function WizardStepPanel({ active, children }: WizardStepPanelProps) {
   return (
-    <div className={cn(!active && 'hidden')} aria-hidden={!active}>
+    <div
+      className={cn('flex min-h-0 flex-1 flex-col', !active && 'hidden')}
+      aria-hidden={!active}
+    >
       {children}
     </div>
   )

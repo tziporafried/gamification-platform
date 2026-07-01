@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Clock, Flame, ChevronDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/Button'
+import { PillButton } from '@/components/ui/PillButton'
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch'
 import type { ActionWithGroups } from '@/types'
 
 type StartMode = 'immediately' | 'specific'
@@ -430,21 +433,12 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
 
                 {/* Actions */}
                 <div className="flex gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-500 disabled:opacity-50"
-                  >
+                  <Button size="xs" loading={saving} onClick={handleSave}>
                     {saving ? 'שומר...' : 'שמירה'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setOpen(false); setFormError('') }}
-                    className="rounded-lg border border-game-border px-3 py-1.5 text-xs font-medium text-gray-400 transition-colors hover:text-gray-200"
-                  >
+                  </Button>
+                  <Button size="xs" variant="outline" onClick={() => { setOpen(false); setFormError('') }}>
                     ביטול
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -455,59 +449,3 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
   )
 }
 
-function ToggleSwitch({
-  checked,
-  onChange,
-  disabled = false,
-}: {
-  checked: boolean
-  onChange: (val: boolean) => void
-  disabled?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => !disabled && onChange(!checked)}
-      disabled={disabled}
-      className={cn(
-        'relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 transition-all duration-200',
-        checked ? 'border-brand-500 bg-brand-500' : 'border-gray-600 bg-gray-700/50',
-        disabled && 'cursor-not-allowed opacity-40',
-      )}
-    >
-      <span
-        className={cn(
-          'absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-all duration-200',
-          checked ? 'right-0.5' : 'left-0.5',
-        )}
-      />
-    </button>
-  )
-}
-
-function PillButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition-all',
-        active
-          ? 'border-brand-500/50 bg-brand-500/15 text-brand-400'
-          : 'border-game-border text-gray-500 hover:border-brand-500/30 hover:text-gray-300',
-      )}
-    >
-      {children}
-    </button>
-  )
-}

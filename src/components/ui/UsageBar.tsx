@@ -1,6 +1,8 @@
 import { cn } from '@/lib/utils'
 import { ENTITY_LABELS, formatFreePlanLimitHelper, type LimitableEntity } from '@/lib/plans'
 import type { PlanLimitInfo } from '@/hooks/usePlanLimits'
+import { ProgressBar } from './ProgressBar'
+import { theme } from '@/lib/theme'
 
 interface UsageBarProps {
   info: PlanLimitInfo
@@ -13,25 +15,19 @@ interface UsageBarProps {
 export function UsageBar({ info, entity, className, showCount = true, helperText }: UsageBarProps) {
   if (info.limit === null) {
     return (
-      <div className={cn('flex items-center gap-2 text-xs text-gray-500', className)}>
+      <div className={cn('flex items-center gap-2 text-xs', theme.textSubtle, className)}>
         <span>{ENTITY_LABELS[entity]}: ללא הגבלה</span>
       </div>
     )
   }
 
-  const pct = Math.min((info.current / info.limit) * 100, 100)
   const limitHelperText = helperText ?? formatFreePlanLimitHelper(entity, info.limit)
 
   if (!showCount) {
     return (
       <div className={cn('space-y-1', className)}>
-        <div className="h-1.5 rounded-full bg-game-border overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500 bg-brand-500"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <p className="text-center text-xs text-gray-500">{limitHelperText}</p>
+        <ProgressBar value={info.current} max={info.limit} />
+        <p className={cn('text-center text-xs', theme.textSubtle)}>{limitHelperText}</p>
       </div>
     )
   }
@@ -39,17 +35,12 @@ export function UsageBar({ info, entity, className, showCount = true, helperText
   return (
     <div className={cn('space-y-1', className)}>
       <div className="flex items-center justify-between text-xs">
-        <span className="text-gray-400">{ENTITY_LABELS[entity]}</span>
-        <span className="font-medium text-gray-400">
+        <span className={theme.textMuted}>{ENTITY_LABELS[entity]}</span>
+        <span className={cn('font-medium', theme.textMuted)}>
           {info.current} מתוך {info.limit}
         </span>
       </div>
-      <div className="h-1.5 rounded-full bg-game-border overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-500 bg-brand-500"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+      <ProgressBar value={info.current} max={info.limit} />
     </div>
   )
 }

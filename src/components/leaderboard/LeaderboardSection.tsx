@@ -8,6 +8,8 @@ import { useSound } from '@/hooks/useSound'
 import { SoundToggle } from './SoundToggle'
 import { LeaderboardEmptyState } from './LeaderboardEmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { CenteredLoader } from '@/components/ui/CenteredLoader'
+import { Spinner } from '@/components/ui/Spinner'
 import { AvatarCircle } from '@/components/ui/AvatarCircle'
 import type { ParticipantLeaderboardEntry, GroupLeaderboardEntry } from '@/types'
 
@@ -151,7 +153,13 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
   const recentActivity = useMemo(() => transactions.slice(0, 5), [transactions])
   const showTasksCol = taskStats.length > 1
 
-  if (loading) return <div className="flex justify-center py-16"><div className="h-9 w-9 animate-spin rounded-full border-4 border-amber-400 border-t-transparent" /></div>
+  if (loading) {
+    return (
+      <CenteredLoader className="py-16">
+        <Spinner size="lg" className="border-amber-400" />
+      </CenteredLoader>
+    )
+  }
   if (error) return <ErrorAlert message={error} />
   if (rankedP.length === 0 && rankedG.length === 0) return <LeaderboardEmptyState />
 

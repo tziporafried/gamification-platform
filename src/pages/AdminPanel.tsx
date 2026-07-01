@@ -4,7 +4,12 @@ import { Crown, Users, ListTodo, MessageSquare, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Select } from '@/components/ui/Select'
+import { Tabs } from '@/components/ui/Tabs'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { SectionHeader } from '@/components/ui/SectionHeader'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
+import { AdminStatusPill, PLAN_BADGE_COLORS } from '@/components/ui/StatusBadge'
 import { DevTodoList } from '@/components/dev-todos/DevTodoList'
 import { TemplateAdminList } from '@/components/admin/TemplateAdminList'
 import { cn } from '@/lib/utils'
@@ -43,16 +48,16 @@ interface UpgradeRequest {
 }
 
 const STATUS_OPTIONS = [
-  { value: 'new', label: 'חדש', color: 'text-amber-400 bg-amber-400/10' },
-  { value: 'contacted', label: 'נוצר קשר', color: 'text-blue-400 bg-blue-400/10' },
-  { value: 'closed', label: 'נסגר', color: 'text-gray-400 bg-gray-400/10' },
+  { value: 'new', label: 'חדש' },
+  { value: 'contacted', label: 'נוצר קשר' },
+  { value: 'closed', label: 'נסגר' },
 ]
 
-const PLAN_OPTIONS: { value: string; label: string; color: string }[] = [
-  { value: 'free', label: 'חינמי', color: 'text-gray-400 bg-gray-400/10' },
-  { value: 'independent', label: 'עצמאי', color: 'text-blue-400 bg-blue-400/10' },
-  { value: 'full', label: 'מלא', color: 'text-brand-400 bg-brand-400/10' },
-  { value: 'organizations', label: 'ארגוני', color: 'text-amber-400 bg-amber-400/10' },
+const PLAN_OPTIONS: { value: string; label: string }[] = [
+  { value: 'free', label: 'חינמי' },
+  { value: 'independent', label: 'עצמאי' },
+  { value: 'full', label: 'מלא' },
+  { value: 'organizations', label: 'ארגוני' },
 ]
 
 const LIMIT_LABELS: Record<string, string> = {
@@ -156,128 +161,120 @@ export function AdminPanel() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6">
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-game-border mb-6">
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={cn(
-              'relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
-              tab === id
-                ? 'border-brand-500 text-white'
-                : 'border-transparent text-gray-500 hover:text-gray-300',
-            )}
-          >
-            <Icon size={16} />
-            {label}
-            {id === 'upgrade-requests' && newRequestCount > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-                {newRequestCount}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={TABS.map(({ id, label, icon: Icon }) => ({
+          id,
+          label,
+          icon: (
+            <>
+              <Icon size={16} />
+              {id === 'upgrade-requests' && newRequestCount > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                  {newRequestCount}
+                </span>
+              )}
+            </>
+          ),
+        }))}
+        activeTab={tab}
+        onChange={(id) => setTab(id as AdminTab)}
+        variant="underline"
+      />
 
-      {/* Tab content */}
       {tab === 'todos' && <DevTodoList />}
 
       {tab === 'templates' && <TemplateAdminList />}
 
       {tab === 'customers' && (
-        <>
-          {loadingUsers ? (
-            <FullPageLoader />
-          ) : (
+        loadingUsers ? (
+          <FullPageLoader />
+        ) : (
           <>
-          <div className="flex items-center gap-2 mb-6">
-            <Users size={18} className="text-gray-400" />
-            <h2 className="text-sm font-medium text-gray-400">
-              {users.length} משתמשים רשומים
-            </h2>
-          </div>
+            <SectionHeader
+              icon={<Users size={18} className="text-brand-400" />}
+              title={`${users.length} משתמשים רשומים`}
+              className="mb-6"
+            />
 
-          <div className="space-y-3">
-            {users.map(user => (
-              <Card key={user.user_id} className="p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    {user.avatar_url ? (
-                      <img src={user.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover shrink-0" />
-                    ) : (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600/20 shrink-0">
-                        <span className="text-sm font-bold text-brand-400">
-                          {(user.display_name || user.email)[0]?.toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-white truncate">
-                          {user.display_name || user.email.split('@')[0]}
-                        </span>
-                        {user.role === 'super_admin' && (
-                          <Crown size={14} className="text-amber-400 shrink-0" />
+            <div className="space-y-3">
+              {users.map(user => {
+                const planColor = PLAN_BADGE_COLORS[user.plan] ?? PLAN_BADGE_COLORS.free
+                const planLabel = PLAN_OPTIONS.find(p => p.value === user.plan)?.label ?? user.plan
+
+                return (
+                  <Card key={user.user_id} className="p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {user.avatar_url ? (
+                          <img src={user.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600/20 shrink-0">
+                            <span className="text-sm font-bold text-brand-400">
+                              {(user.display_name || user.email)[0]?.toUpperCase()}
+                            </span>
+                          </div>
                         )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-white truncate">
+                              {user.display_name || user.email.split('@')[0]}
+                            </span>
+                            {user.role === 'super_admin' && (
+                              <Crown size={14} className="text-amber-400 shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            הצטרף {new Date(user.created_at).toLocaleDateString('he-IL')}
+                            {user.event_count > 0 && <> · {user.event_count} אירועים</>}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                      <p className="text-xs text-gray-600 mt-0.5">
-                        הצטרף {new Date(user.created_at).toLocaleDateString('he-IL')}
-                        {user.event_count > 0 && <> · {user.event_count} אירועים</>}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
-                    {(() => {
-                      const planOpt = PLAN_OPTIONS.find(p => p.value === user.plan) || PLAN_OPTIONS[0]
-                      return (
-                        <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', planOpt.color)}>
-                          {planOpt.label}
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span
+                          className="text-xs font-medium px-2 py-0.5 rounded-full"
+                          style={{ backgroundColor: planColor + '18', color: planColor }}
+                        >
+                          {planLabel}
                         </span>
-                      )
-                    })()}
-                    <select
-                      value={user.plan}
-                      disabled={updatingId === user.user_id}
-                      onChange={e => updatePlan(user.user_id, e.target.value)}
-                      className="rounded-lg border border-game-border bg-game-dark px-2 py-1.5 text-xs text-white focus:border-brand-500 focus:outline-none disabled:opacity-50"
-                    >
-                      {PLAN_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                        <Select
+                          value={user.plan}
+                          disabled={updatingId === user.user_id}
+                          onChange={e => updatePlan(user.user_id, e.target.value)}
+                          className="w-auto py-1.5 text-xs"
+                        >
+                          {PLAN_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </Select>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
           </>
-          )}
-        </>
+        )
       )}
 
       {tab === 'upgrade-requests' && (
-        <>
-          {loadingRequests ? (
-            <FullPageLoader />
-          ) : (
+        loadingRequests ? (
+          <FullPageLoader />
+        ) : requests.length === 0 ? (
+          <EmptyState
+            icon={<MessageSquare size={32} />}
+            title="אין פניות שדרוג"
+            description="פניות שדרוג חדשות יופיעו כאן"
+          />
+        ) : (
           <>
-          <div className="flex items-center gap-2 mb-6">
-            <MessageSquare size={18} className="text-gray-400" />
-            <h2 className="text-sm font-medium text-gray-400">
-              {requests.length} פניות שדרוג
-              {newRequestCount > 0 && <span className="mr-2 text-amber-400">({newRequestCount} חדשות)</span>}
-            </h2>
-          </div>
+            <SectionHeader
+              icon={<MessageSquare size={18} className="text-brand-400" />}
+              title={`${requests.length} פניות שדרוג${newRequestCount > 0 ? ` (${newRequestCount} חדשות)` : ''}`}
+              className="mb-6"
+            />
 
-          {requests.length === 0 ? (
-            <div className="rounded-2xl border border-game-border bg-game-card/50 p-12 text-center">
-              <MessageSquare size={32} className="mx-auto mb-3 text-gray-600" />
-              <p className="text-sm text-gray-500">אין פניות שדרוג עדיין</p>
-            </div>
-          ) : (
             <div className="space-y-3">
               {requests.map(req => {
                 const statusOption = STATUS_OPTIONS.find(s => s.value === req.status) || STATUS_OPTIONS[0]
@@ -287,9 +284,7 @@ export function AdminPanel() {
                       <div className="min-w-0 flex-1 space-y-1.5">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-bold text-white">{req.full_name}</span>
-                          <span className={cn('text-[10px] font-medium px-2 py-0.5 rounded-full', statusOption.color)}>
-                            {statusOption.label}
-                          </span>
+                          <AdminStatusPill status={req.status} label={statusOption.label} />
                         </div>
                         <div className="flex items-center gap-3 text-xs text-gray-400">
                           <span dir="ltr">{req.email}</span>
@@ -322,10 +317,8 @@ export function AdminPanel() {
                 )
               })}
             </div>
-          )}
           </>
-          )}
-        </>
+        )
       )}
     </main>
   )

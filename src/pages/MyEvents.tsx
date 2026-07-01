@@ -7,8 +7,13 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { SuccessAlert } from '@/components/ui/ErrorAlert'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { DashedAddButton } from '@/components/ui/DashedAddButton'
+import { PageTitle } from '@/components/ui/PageTitle'
 import { ShareEventModal } from '@/components/ShareEventModal'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
+import { STATUS_COLORS } from '@/components/ui/StatusBadge'
 import type { Event } from '@/types'
 import { getWizardPrefs } from '@/lib/wizard'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
@@ -101,30 +106,26 @@ export function MyEvents() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       {events.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-brand-600/20 mb-6">
-            <Calendar size={40} className="text-brand-400" />
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">עדיין אין אירועים</h2>
-          <p className="text-gray-400 mb-8 max-w-sm">
-            צרו את האירוע הראשון שלכם והתחילו לנהל משתתפים, קבוצות ומשימות.
-          </p>
-          {error && <ErrorAlert message={error} className="mb-4 max-w-sm" />}
-          <Button variant="gradient" size="lg" loading={creating} onClick={handleCreateEvent}>
-            <Plus size={20} className="ml-2" />
-            צור אירוע ראשון
-          </Button>
-        </div>
+        <EmptyState
+          icon={<Calendar size={40} />}
+          title="עדיין אין אירועים"
+          description="צרו את האירוע הראשון שלכם והתחילו לנהל משתתפים, קבוצות ומשימות."
+          action={
+            <>
+              {error && <ErrorAlert message={error} className="mb-4 max-w-sm" />}
+              <Button variant="gradient" size="lg" loading={creating} onClick={handleCreateEvent}>
+                <Plus size={20} className="ml-2" />
+                צור אירוע ראשון
+              </Button>
+            </>
+          }
+        />
       ) : (
         <div className="space-y-4">
-          <h1 className="text-lg font-bold text-white">האירועים שלי</h1>
+          <PageTitle title="האירועים שלי" size="md" />
 
           {error && <ErrorAlert message={error} />}
-          {successMsg && (
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-              {successMsg}
-            </div>
-          )}
+          {successMsg && <SuccessAlert message={successMsg} />}
 
           <div className="space-y-2">
             {events.map((event) => (
@@ -139,14 +140,10 @@ export function MyEvents() {
             ))}
           </div>
 
-          <button
-            onClick={handleCreateEvent}
-            disabled={creating}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-game-border py-3 text-sm text-gray-500 hover:border-brand-500/50 hover:text-brand-400 transition-colors disabled:opacity-50"
-          >
+          <DashedAddButton onClick={handleCreateEvent} disabled={creating}>
             <Plus size={16} />
             {creating ? 'יוצר...' : 'צור אירוע חדש'}
-          </button>
+          </DashedAddButton>
         </div>
       )}
 
@@ -193,9 +190,9 @@ function EventRow({ event, isOwner, isFreePlan, onDelete, onShare }: EventRowPro
   const navigate = useNavigate()
 
   const statusLabels: Record<string, { label: string; color: string }> = {
-    editing: { label: 'בעריכה', color: '#f59e0b' },
-    active: { label: 'פעיל', color: '#34d399' },
-    archived: { label: 'בארכיון', color: 'text-red-400 bg-red-400/10' },
+    editing: { label: 'בעריכה', color: STATUS_COLORS.editing },
+    active: { label: 'פעיל', color: STATUS_COLORS.active },
+    archived: { label: 'בארכיון', color: STATUS_COLORS.archived },
   }
 
   const status = statusLabels[event.status] || statusLabels.editing
@@ -231,10 +228,8 @@ function EventRow({ event, isOwner, isFreePlan, onDelete, onShare }: EventRowPro
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isWip ? navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`) : navigate(`/events/${event.id}/control`) } }}
       className="group relative flex w-full cursor-pointer items-center gap-5 px-5 py-4 text-right bg-game-dark hover:bg-white/[0.03] transition-colors rounded-2xl border border-game-border overflow-hidden"
     >
-      {/* Brand color left accent bar */}
       <div className="absolute right-0 top-0 h-full w-1 rounded-r-none transition-opacity opacity-60 group-hover:opacity-100 bg-brand-600" />
 
-      {/* Logo / icon */}
       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-600/10 border border-brand-600/25">
         {event.logo_url ? (
           <img src={event.logo_url} alt="" className="h-12 w-12 rounded-xl object-cover" />
@@ -243,7 +238,6 @@ function EventRow({ event, isOwner, isFreePlan, onDelete, onShare }: EventRowPro
         )}
       </div>
 
-      {/* Name + date */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-base font-bold text-white truncate leading-snug">
@@ -256,45 +250,33 @@ function EventRow({ event, isOwner, isFreePlan, onDelete, onShare }: EventRowPro
         </p>
       </div>
 
-      {/* Status badge */}
       <div className="shrink-0">
         <Badge label={status.label} color={status.color} />
       </div>
 
-      {/* Actions */}
       <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-        <button
-          onClick={handleOpenSettings}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-all"
-          title="הגדרות"
-        >
-          <Settings2 size={13} />
+        <Button variant="ghost" size="xs" onClick={handleOpenSettings} title="הגדרות">
+          <Settings2 size={13} className="ml-1" />
           הגדרות
-        </button>
-        <button
-          onClick={handleOpenControl}
-          disabled={isWip}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 hover:bg-white/10 hover:text-white"
-          title={isWip ? 'האירוע עדיין בעריכה' : 'להתחיל לשחק'}
-        >
-          <ExternalLink size={13} />
+        </Button>
+        <Button variant="ghost" size="xs" onClick={handleOpenControl} disabled={isWip} title={isWip ? 'האירוע עדיין בעריכה' : 'להתחיל לשחק'}>
+          <ExternalLink size={13} className="ml-1" />
           להתחיל לשחק
-        </button>
-        <button
-          onClick={handleShare}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-all"
-        >
-          <Share2 size={13} />
+        </Button>
+        <Button variant="ghost" size="xs" onClick={handleShare}>
+          <Share2 size={13} className="ml-1" />
           שיתוף
-        </button>
+        </Button>
         {isOwner && (
-          <button
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={handleDelete}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100"
+            className="opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-400"
           >
-            <Trash2 size={13} />
+            <Trash2 size={13} className="ml-1" />
             מחיקה
-          </button>
+          </Button>
         )}
       </div>
     </div>

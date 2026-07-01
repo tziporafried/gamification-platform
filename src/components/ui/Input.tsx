@@ -1,5 +1,6 @@
 import { InputHTMLAttributes, forwardRef } from 'react'
 import { cn } from '@/lib/utils'
+import { theme } from '@/lib/theme'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string
@@ -10,7 +11,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, id, ...props }, ref) => (
     <div className="w-full">
       {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-gray-300 mb-1">
+        <label htmlFor={id} className={cn('block text-sm font-medium mb-1', theme.label)}>
           {label}
         </label>
       )}
@@ -18,11 +19,14 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         ref={ref}
         id={id}
         className={cn(
-          'block w-full rounded-xl border bg-game-dark px-3 py-2 text-sm text-white placeholder-gray-500 shadow-sm transition-colors',
+          'block w-full rounded-xl border px-3 py-2 text-sm shadow-sm transition-colors',
           'focus:outline-none focus:ring-2 focus:ring-offset-0',
+          theme.inputBg,
+          theme.text,
+          theme.inputPlaceholder,
           error
             ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/30'
-            : 'border-game-border focus:border-brand-500 focus:ring-brand-500/30',
+            : cn(theme.inputBorder, theme.focusBorder, theme.focusRing),
           className,
         )}
         {...props}

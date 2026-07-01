@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Modal } from '@/components/ui/Modal'
+import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import type { Group } from '@/types'
 
 interface RewardGroupAssignmentProps {
@@ -82,9 +83,7 @@ export function RewardGroupAssignment({ eventId, rewardId, rewardName, isOpen, o
         השאירו ריק כדי להפוך פרס זה לזמין לכל המשתתפים.
       </p>
       {loading ? (
-        <div className="flex justify-center py-6">
-          <div className="h-6 w-6 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
-        </div>
+        <CenteredLoader className="py-6" size="sm" />
       ) : groups.length === 0 ? (
         <p className="py-4 text-center text-sm text-gray-500">
           עדיין לא נוצרו קבוצות. פרס זה יהיה זמין לכל המשתתפים.

@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from 'react'
 import { Upload, X, Image as ImageIcon } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { Input } from '@/components/ui/Input'
+import { Textarea } from '@/components/ui/Textarea'
+import { FormLabel } from '@/components/ui/FormLabel'
+import { PanelCard } from '@/components/ui/PanelCard'
 import type { Event } from '@/types'
 import { supabase } from '@/lib/supabase'
 import { updateTemplateMetadata } from '@/lib/templates'
@@ -153,9 +156,9 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
     >
       <div className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <FormLabel>
             {templateMode ? 'שם התבנית' : 'שם הפעילות'}
-          </label>
+          </FormLabel>
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -167,35 +170,25 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
         </div>
 
         {templateMode && (
-          <div>
-            <label htmlFor="template-description" className="block text-sm font-medium text-gray-300 mb-2">
-              תיאור התבנית
-            </label>
-            <textarea
-              id="template-description"
-              className="block w-full rounded-xl border border-game-border bg-game-dark px-3 py-2 text-sm text-white placeholder-gray-500 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-brand-500 focus:ring-brand-500/30"
-              rows={3}
-              placeholder="תבנית מוכנה לנופש משפחתי הכוללת קבוצות, משימות ופרסי ניקוד."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              disabled={saving}
-            />
-          </div>
+          <Textarea
+            id="template-description"
+            label="תיאור התבנית"
+            rows={3}
+            placeholder="תבנית מוכנה לנופש משפחתי הכוללת קבוצות, משימות ופרסי ניקוד."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            disabled={saving}
+          />
         )}
 
         {!templateMode && (
         <>
-        {/* Logo upload */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            סמל הפעילות
-          </label>
+          <FormLabel>סמל הפעילות</FormLabel>
 
           {logoPreview ? (
             <div className="relative inline-block">
-              <div
-                className="w-28 h-28 rounded-xl border-2 border-game-border bg-game-card flex items-center justify-center overflow-hidden"
-              >
+              <div className="w-28 h-28 rounded-xl border-2 border-game-border bg-game-card flex items-center justify-center overflow-hidden">
                 <img
                   src={logoPreview}
                   alt="סמל הפעילות"
@@ -248,20 +241,15 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
           )}
         </div>
 
-        {/* Live preview */}
-        <div className="rounded-xl border border-game-border bg-game-card/50 p-4">
+        <PanelCard size="sm" className="bg-game-card/50">
           <p className="text-xs text-gray-500 mb-3">כך הפעילות תיראה</p>
           <div className="flex items-center gap-3">
             {logoPreview ? (
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden shrink-0 border border-game-border bg-game-card"
-              >
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden shrink-0 border border-game-border bg-game-card">
                 <img src={logoPreview} alt="" className="max-w-full max-h-full object-contain p-0.5" />
               </div>
             ) : (
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-brand-600/20"
-              >
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-brand-600/20">
                 <Upload size={18} className="text-brand-400" />
               </div>
             )}
@@ -271,12 +259,12 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
               </p>
             </div>
           </div>
-        </div>
+        </PanelCard>
         </>
         )}
 
         {templateMode && (
-          <div className="rounded-xl border border-game-border bg-game-card/50 p-4">
+          <PanelCard size="sm" className="bg-game-card/50">
             <p className="text-xs text-gray-500 mb-3">כך התבנית תוצג</p>
             <div>
               <p className="text-white font-semibold text-sm leading-tight">
@@ -286,7 +274,7 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
                 <p className="text-xs text-gray-400 mt-1">{description}</p>
               )}
             </div>
-          </div>
+          </PanelCard>
         )}
       </div>
     </WizardStepWrapper>

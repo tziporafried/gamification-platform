@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { SectionHeader } from '@/components/ui/SectionHeader'
+import { ScrollContainer } from '@/components/ui/ScrollContainer'
+import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { GroupForm } from './GroupForm'
 import { GroupCard } from './GroupCard'
@@ -154,25 +157,18 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
   }
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
-      </div>
-    )
+    return <CenteredLoader />
   }
 
   const hasLocked = lockedGroups.length > 0
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="shrink-0 mb-4 flex items-center">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20">
-            <Layers size={18} className="text-brand-400" />
-          </div>
-          <h2 className="text-lg font-bold text-white">קבוצות</h2>
-        </div>
-      </div>
+      <SectionHeader
+        icon={<Layers size={18} className="text-brand-400" />}
+        title="קבוצות"
+        className="mb-4"
+      />
 
       {error && (
         <ErrorAlert message={error} className="mb-4" />
@@ -184,7 +180,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
           description="הקלד שם קבוצה למטה ולחץ Enter"
         />
       ) : (
-        <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-3">
+        <ScrollContainer ref={listRef} className="flex-1 space-y-3">
           {groups.length > 0 && (
             <div className="grid gap-3 sm:grid-cols-2">
               {groups.map((group) => (
@@ -215,7 +211,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
               </div>
             </>
           )}
-        </div>
+        </ScrollContainer>
       )}
 
       <div className="shrink-0 pt-3">
@@ -238,7 +234,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
         title="מחיקת קבוצה"
       >
         <p className="text-sm text-gray-400">
-          האם אתם בטוחים שברצונכם למחוק את <strong>{deletingGroup?.name}</strong>?
+          האם אתם בטוחים שברצונכם למחוק את <strong className="text-white">{deletingGroup?.name}</strong>?
           כל שיוכי המשתתפים לקבוצה זו יוסרו גם כן. לא ניתן לבטל פעולה זו.
         </p>
         <div className="mt-4 flex gap-3">

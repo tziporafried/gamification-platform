@@ -9,6 +9,9 @@ import { useEventCatalog } from '@/hooks/useEventCatalog'
 import { useOpsSound } from '@/hooks/useOpsSound'
 import { usePlanPermissions } from '@/hooks/usePlanPermissions'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
+import { Spinner } from '@/components/ui/Spinner'
+import { cn } from '@/lib/utils'
+import { theme } from '@/lib/theme'
 import { Toast } from '@/components/ui/Toast'
 import { CelebrationModal } from '@/components/scoring/CelebrationModal'
 import { ScannerZone } from '@/components/scoring/ScannerZone'
@@ -157,9 +160,9 @@ function EventOpsContent({ event }: { event: Event }) {
   const scannerInputRef = useHardwareScanner(scannerEnabled, handleRawScan, onScanStart)
 
   if (opsData.loading) return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-3" style={{ background: '#0a0814' }}>
-      <div className="h-9 w-9 animate-spin rounded-full border-4 border-brand-400 border-t-transparent" />
-      <p className="text-sm text-gray-500">טוען מסוף מבצעים...</p>
+    <div className={cn('flex min-h-screen flex-col items-center justify-center gap-3', theme.pageBg)}>
+      <Spinner size="lg" className="border-brand-400" />
+      <p className={cn('text-sm', theme.textSubtle)}>טוען מסוף מבצעים...</p>
     </div>
   )
 

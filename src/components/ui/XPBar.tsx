@@ -1,4 +1,6 @@
 import { cn } from '@/lib/utils'
+import { theme } from '@/lib/theme'
+import { ProgressBar } from './ProgressBar'
 
 interface XPBarProps {
   current: number
@@ -8,34 +10,24 @@ interface XPBarProps {
 }
 
 export function XPBar({ current, target, label, className }: XPBarProps) {
-  const percentage = target > 0 ? Math.min((current / target) * 100, 100) : 0
-
   return (
     <div className={cn('w-full', className)}>
       {label && (
         <div className="mb-1.5 flex items-center justify-between text-xs">
-          <span className="font-medium text-gray-400">{label}</span>
-          <span className="tabular-nums text-gray-500">
+          <span className={cn('font-medium', theme.textMuted)}>{label}</span>
+          <span className={cn('tabular-nums', theme.textSubtle)}>
             {current.toLocaleString()} / {target.toLocaleString()}
           </span>
         </div>
       )}
-      <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-white/10">
-        <div
-          className="h-full rounded-full transition-all duration-700 ease-out"
-          style={{
-            width: `${percentage}%`,
-            background: 'linear-gradient(90deg, #059669, #34d399)',
-          }}
-        >
-          <div
-            className="absolute inset-0 rounded-full opacity-30 animate-shimmer"
-            style={{
-              backgroundImage: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-              backgroundSize: '200% 100%',
-            }}
-          />
-        </div>
+      <div className="relative overflow-hidden rounded-full bg-white/10">
+        <ProgressBar
+          value={current}
+          max={target}
+          size="md"
+          trackClassName="bg-transparent"
+          fillClassName="bg-gradient-to-l from-emerald-600 to-emerald-400"
+        />
       </div>
     </div>
   )

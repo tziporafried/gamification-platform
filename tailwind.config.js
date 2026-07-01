@@ -31,6 +31,7 @@ export default {
         },
       },
       boxShadow: {
+        'dropdown': '0 8px 24px -4px rgba(37, 25, 20, 0.12), 0 4px 8px -4px rgba(37, 25, 20, 0.06)',
         'card': '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
         'card-hover': '0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -2px rgba(0, 0, 0, 0.04)',
         'podium': '0 8px 24px -4px rgba(0, 0, 0, 0.12), 0 4px 8px -4px rgba(0, 0, 0, 0.06)',
@@ -105,6 +106,14 @@ export default {
         'screen-flash': {
           '0%': { opacity: '0.7' },
           '100%': { opacity: '0' },
+        },
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        'slide-down': {
+          '0%': { opacity: '0', transform: 'translateY(-4px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
       animation: {

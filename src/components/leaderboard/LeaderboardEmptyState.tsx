@@ -1,4 +1,6 @@
 import { Trophy } from 'lucide-react'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { theme } from '@/lib/theme'
 
 interface LeaderboardEmptyStateProps {
   message?: string
@@ -6,19 +8,18 @@ interface LeaderboardEmptyStateProps {
 
 export function LeaderboardEmptyState({ message }: LeaderboardEmptyStateProps) {
   return (
-    <div className="opacity-0 animate-fade-in-up flex flex-col items-center justify-center rounded-2xl border border-game-border bg-game-card/50 px-6 py-16 text-center">
-      <div
-        className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl"
-        style={{ backgroundColor: 'rgba(124,58,237,0.12)' }}
-      >
-        <Trophy size={32} style={{ color: '#7c3aed' }} />
-      </div>
-      <h3 className="text-lg font-bold text-white">
-        הזירה מוכנה
-      </h3>
-      <p className="mt-2 max-w-sm text-sm text-gray-400">
-        {message || 'עדיין לא נרשמו ניקודים. התחילו להעניק ניקוד כדי לראות את הדירוגים הראשונים.'}
-      </p>
-    </div>
+    <EmptyState
+      variant="solid"
+      className="opacity-0 animate-fade-in-up py-16"
+      icon={
+        <div className={theme.iconBox}>
+          <Trophy size={32} />
+        </div>
+      }
+      title="הזירה מוכנה"
+      description={
+        message || 'עדיין לא נרשמו ניקודים. התחילו להעניק ניקוד כדי לראות את הדירוגים הראשונים.'
+      }
+    />
   )
 }

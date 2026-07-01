@@ -107,7 +107,6 @@ export function StepReviewGenerate({
           <ReadinessChecklist
             checks={checks}
             eventId={event.id}
-            variant="wizard"
             onGoToStep={onGoToStep}
           />
         ) : isTemplate ? (
@@ -128,7 +127,7 @@ export function StepReviewGenerate({
               <p className="text-base font-semibold text-emerald-300">🎉 הפעילות מוכנה</p>
               <p className="text-sm text-gray-400">הכל מוכן! אפשר להדפיס את הכרטיסים ולהתחיל את הפעילות.</p>
             </div>
-            <QrCardGenerator event={event} variant="wizard" onReadyChange={handleReadyChange} />
+            <QrCardGenerator event={event} onReadyChange={handleReadyChange} />
           </>
         )}
       </div>

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
-import { Users, Trash2, Palette } from 'lucide-react'
+import { Users, Palette } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
+import { DeleteButton } from '@/components/ui/IconButton'
 import { cn } from '@/lib/utils'
 import { useClickOutside } from '@/hooks/useClickOutside'
 import type { GroupWithCount } from '@/types'
@@ -137,13 +138,7 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
           </div>
 
           {/* Delete */}
-          <button
-            onClick={onDelete}
-            className="shrink-0 p-1.5 rounded-lg text-gray-600 opacity-0 group-hover/card:opacity-100 hover:bg-red-500/10 hover:text-red-400 transition-all"
-            title="מחיקה"
-          >
-            <Trash2 size={14} />
-          </button>
+          <DeleteButton revealOnHover="card" iconSize={14} onClick={onDelete} />
         </div>
       </div>
     </Card>

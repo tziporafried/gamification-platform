@@ -25,7 +25,6 @@ export function WizardLayout({
 
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 56px)' }}>
-      {/* Progress bar only */}
       <div className="shrink-0 border-b border-game-border py-1.5">
         <div className="mx-auto max-w-3xl px-4">
           <WizardProgress
@@ -37,9 +36,8 @@ export function WizardLayout({
         </div>
       </div>
 
-      {/* Step content — fills remaining height */}
-      <main className="flex-1 overflow-hidden">
-        <div className="mx-auto h-full max-w-3xl px-4">
+      <main className="min-h-0 flex-1 overflow-hidden">
+        <div className="mx-auto flex h-full min-h-0 max-w-3xl flex-col px-4">
           {children}
         </div>
       </main>

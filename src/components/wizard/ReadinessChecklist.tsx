@@ -2,20 +2,19 @@ import { CheckCircle2, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
+import { PanelCard } from '@/components/ui/PanelCard'
 import type { ReadinessCheck } from '@/types'
 import { getFirstIncompleteStep } from '@/lib/wizard'
 
 interface ReadinessChecklistProps {
   checks: ReadinessCheck[]
   eventId?: string
-  variant?: 'default' | 'wizard'
   onGoToStep?: (step: number) => void
 }
 
-export function ReadinessChecklist({ checks, eventId, variant = 'default', onGoToStep }: ReadinessChecklistProps) {
+export function ReadinessChecklist({ checks, eventId, onGoToStep }: ReadinessChecklistProps) {
   const navigate = useNavigate()
   const firstMissingStep = getFirstIncompleteStep(checks)
-  const isWizard = variant === 'wizard'
 
   function handleCompleteSetup() {
     if (firstMissingStep == null) return
@@ -29,15 +28,9 @@ export function ReadinessChecklist({ checks, eventId, variant = 'default', onGoT
   }
 
   return (
-    <div className="rounded-2xl border border-game-border bg-game-card p-5 space-y-3">
-      <p className="text-sm font-medium text-white">
-        {isWizard ? 'כמעט מוכנים' : 'האירוע עדיין לא מוכן'}
-      </p>
-      <p className="text-xs text-gray-400">
-        {isWizard
-          ? 'נשארו עוד כמה צעדים קטנים ואפשר לצאת לדרך'
-          : 'השלם את הפריטים הבאים כדי לפתוח את הדפסת הכרטיסים ומרכז הבקרה:'}
-      </p>
+    <PanelCard size="sm" className="space-y-3 bg-game-card/50">
+      <p className="text-sm font-medium text-white">כמעט מוכנים</p>
+      <p className="text-xs text-gray-400">נשארו עוד כמה צעדים קטנים ואפשר לצאת לדרך</p>
       <div className="space-y-2 pt-1">
         {checks.map((check) => (
           <div key={check.id} className="flex items-center gap-3">
@@ -47,29 +40,18 @@ export function ReadinessChecklist({ checks, eventId, variant = 'default', onGoT
               <AlertCircle size={16} className="text-amber-400 shrink-0" />
             )}
             <span className={cn('text-sm', check.passed ? 'text-gray-500' : 'text-gray-200')}>
-              {getCheckLabel(check, isWizard)}
+              {check.passed ? (check.wizardPassedLabel ?? check.label) : (check.wizardFailedLabel ?? check.label)}
             </span>
           </div>
         ))}
       </div>
       {firstMissingStep != null && (eventId || onGoToStep) && (
         <div className="pt-2">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleCompleteSetup}
-          >
-            {isWizard ? 'עבור לשלב החסר' : 'סיים הגדרה'}
+          <Button variant="primary" size="sm" onClick={handleCompleteSetup}>
+            עבור לשלב החסר
           </Button>
         </div>
       )}
-    </div>
+    </PanelCard>
   )
-}
-
-function getCheckLabel(check: ReadinessCheck, isWizard: boolean): string {
-  if (check.passed) {
-    return isWizard ? (check.wizardPassedLabel ?? check.label) : check.label
-  }
-  return check.wizardFailedLabel ?? check.label
 }

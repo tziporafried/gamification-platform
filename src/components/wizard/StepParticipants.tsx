@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback, memo } from 'react'
-import { Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { InlineAddParticipant } from '@/components/participants/InlineAddParticipant'
@@ -7,6 +6,11 @@ import { UpgradeModal } from '@/components/UpgradeModal'
 import { UsageBar } from '@/components/ui/UsageBar'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { ListRow } from '@/components/ui/ListRow'
+import { DeleteButton } from '@/components/ui/IconButton'
+import { InlineEditableText } from '@/components/ui/InlineEditableText'
+import { ScrollContainer } from '@/components/ui/ScrollContainer'
+import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
 import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
 import type { EventCounts, GroupType, Participant, ParticipantWithGroups, Group } from '@/types'
@@ -161,11 +165,7 @@ export function StepParticipants({ eventId, counts, groupType, onCountsPatch, on
   }, [loadParticipants])
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
-      </div>
-    )
+    return <CenteredLoader size="lg" />
   }
 
   return (
@@ -199,7 +199,7 @@ export function StepParticipants({ eventId, counts, groupType, onCountsPatch, on
           </div>
         )}
 
-        <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-2 pb-2 pl-1" style={{ scrollbarGutter: 'stable' }}>
+        <ScrollContainer ref={listRef} className="flex-1 space-y-2 pb-2 pl-1">
           {participants.length === 0 ? (
             <EmptyState
               title="אין משתתפים עדיין"
@@ -218,7 +218,7 @@ export function StepParticipants({ eventId, counts, groupType, onCountsPatch, on
               />
             ))
           )}
-        </div>
+        </ScrollContainer>
 
         <div className="shrink-0 pt-2">
           <InlineAddParticipant
@@ -270,23 +270,16 @@ const MemoParticipantRow = memo(function ParticipantInlineRow({
   const isAllSelected = groups.length > 0 && groups.every(g => memberGroupIds.has(g.id))
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-game-border bg-game-card p-3 transition-all hover:border-brand-700/50 group">
-      <div className="min-w-0 flex-1" onClick={() => !editing && setEditing(true)} role="button" tabIndex={-1}>
-        {editing ? (
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') { setName(participant.name); setEditing(false) } }}
-            onBlur={saveName}
-            autoFocus
-            className="w-full bg-transparent text-sm font-medium text-white outline-none border-b border-brand-500 pb-0.5"
-          />
-        ) : (
-          <span className="block w-full text-sm font-medium text-gray-200 hover:text-white transition-colors cursor-text truncate">
-            {name}
-          </span>
-        )}
+    <ListRow>
+      <div className="min-w-0 flex-1">
+        <InlineEditableText
+          value={name}
+          onChange={setName}
+          isEditing={editing}
+          onStartEdit={() => setEditing(true)}
+          onSave={saveName}
+          onCancel={() => { setName(participant.name); setEditing(false) }}
+        />
       </div>
 
       {groups.length > 0 && (
@@ -303,12 +296,11 @@ const MemoParticipantRow = memo(function ParticipantInlineRow({
         </div>
       )}
 
-      <button
+      <DeleteButton
+        iconSize={14}
+        revealOnHover
         onClick={() => onDelete(participant.id)}
-        className="shrink-0 p-1.5 rounded-lg text-gray-600 opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-400 transition-all"
-      >
-        <Trash2 size={14} />
-      </button>
-    </div>
+      />
+    </ListRow>
   )
 })

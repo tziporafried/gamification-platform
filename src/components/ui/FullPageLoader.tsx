@@ -1,7 +1,11 @@
+import { cn } from '@/lib/utils'
+import { theme } from '@/lib/theme'
+import { Spinner } from './Spinner'
+
 export function FullPageLoader() {
   return (
-    <div className="flex h-screen items-center justify-center bg-game-dark">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
+    <div className={cn('flex h-screen items-center justify-center', theme.pageBg)}>
+      <Spinner />
     </div>
   )
 }

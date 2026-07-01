@@ -3,6 +3,7 @@ import { Plus, CheckCircle2, Circle, Clock, ChevronDown, Trash2 } from 'lucide-r
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
+import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import type { DevTodo, DevTodoStatus, DevTodoPriority } from '@/types'
 
 interface AdminUser {
@@ -93,11 +94,7 @@ export function DevTodoList() {
   const doneItems = todos.filter(t => t.status === 'done')
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
-      </div>
-    )
+    return <CenteredLoader />
   }
 
   return (

@@ -1,22 +1,15 @@
 import { ButtonHTMLAttributes, forwardRef } from 'react'
 import { cn } from '@/lib/utils'
+import { buttonVariants, type ButtonVariant } from '@/lib/theme'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'gradient'
-  size?: 'sm' | 'md' | 'lg'
+  variant?: ButtonVariant
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   loading?: boolean
 }
 
-const variants = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-500',
-  secondary: 'bg-white/10 text-gray-200 hover:bg-white/15 focus:ring-gray-500',
-  outline: 'border border-game-border text-gray-300 hover:bg-white/5 focus:ring-brand-500',
-  ghost: 'text-gray-400 hover:bg-white/10 hover:text-gray-200 focus:ring-gray-500',
-  danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-  gradient: 'gradient-brand text-white hover:opacity-90 focus:ring-brand-500 shadow-sm',
-}
-
 const sizes = {
+  xs: 'px-2.5 py-1 text-[11px] font-semibold',
   sm: 'px-3 py-1.5 text-sm',
   md: 'px-4 py-2 text-sm',
   lg: 'px-6 py-3 text-base',
@@ -31,7 +24,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         'focus:outline-none focus:ring-2 focus:ring-offset-0',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         'active:scale-[0.97]',
-        variants[variant],
+        buttonVariants[variant],
         sizes[size],
         className,
       )}
