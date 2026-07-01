@@ -5,14 +5,15 @@ import { Button } from '@/components/ui/Button'
 interface UpgradeModalProps {
   isOpen: boolean
   onClose: () => void
+  eventId: string
 }
 
-export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
+export function UpgradeModal({ isOpen, onClose, eventId }: UpgradeModalProps) {
   const navigate = useNavigate()
 
   function handleStart() {
     onClose()
-    navigate('/plans')
+    navigate(`/plans?event=${eventId}`)
   }
 
   return (

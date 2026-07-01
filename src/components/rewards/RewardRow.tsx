@@ -11,11 +11,11 @@ interface RewardRowProps {
   onManageGroups: () => void
 }
 
-function getRewardTier(points: number): { icon: typeof Trophy; gradient: string; border: string; label: string } {
-  if (points >= 2000) return { icon: Gem, gradient: 'gradient-diamond', border: 'border-accent/30', label: 'אגדי' }
-  if (points >= 1000) return { icon: Trophy, gradient: 'gradient-gold', border: 'border-warning/30', label: 'זהב' }
-  if (points >= 500) return { icon: Award, gradient: 'gradient-silver', border: 'border-border', label: 'כסף' }
-  return { icon: Star, gradient: 'gradient-bronze', border: 'border-accent/30', label: 'ארד' }
+function getRewardTier(points: number): { icon: typeof Trophy; gradient: string; border: string } {
+  if (points >= 2000) return { icon: Gem, gradient: 'gradient-diamond', border: 'border-accent/30' }
+  if (points >= 1000) return { icon: Trophy, gradient: 'gradient-gold', border: 'border-warning/30' }
+  if (points >= 500) return { icon: Award, gradient: 'gradient-silver', border: 'border-border' }
+  return { icon: Star, gradient: 'gradient-bronze', border: 'border-accent/30' }
 }
 
 export function RewardRow({ reward, onEdit, onToggleActive, onManageGroups }: RewardRowProps) {
@@ -39,10 +39,6 @@ export function RewardRow({ reward, onEdit, onToggleActive, onManageGroups }: Re
           )}
         >
           <TierIcon size={28} />
-        </div>
-
-        <div className="mb-0.5 text-[9px] font-bold uppercase tracking-widest text-muted">
-          {tier.label}
         </div>
 
         <p className="w-full truncate text-sm font-bold text-foreground">{reward.name}</p>

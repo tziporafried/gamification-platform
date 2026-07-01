@@ -19,7 +19,7 @@ import { getWizardPrefs } from '@/lib/wizard'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
 
 export function MyEvents() {
-  const { user, isFreePlan } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
@@ -133,7 +133,6 @@ export function MyEvents() {
                 key={event.id}
                 event={event}
                 isOwner={event.owner_admin_id === user!.id}
-                isFreePlan={isFreePlan}
                 onDelete={() => setDeletingEvent(event)}
                 onShare={() => setSharingEvent(event)}
               />
@@ -181,12 +180,13 @@ export function MyEvents() {
 interface EventRowProps {
   event: Event
   isOwner: boolean
-  isFreePlan: boolean
   onDelete: () => void
   onShare: () => void
 }
 
-function EventRow({ event, isOwner, isFreePlan, onDelete, onShare }: EventRowProps) {
+function EventRow({ event, isOwner, onDelete, onShare }: EventRowProps) {
+  const { isSuperAdmin } = useAuth()
+  const isFreePlan = !isSuperAdmin && event.plan === 'free'
   const navigate = useNavigate()
 
   const statusLabels: Record<string, { label: string; color: string }> = {

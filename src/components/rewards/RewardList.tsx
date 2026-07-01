@@ -254,7 +254,7 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
           onClose={() => setAssigningReward(null)}
         />
       )}
-      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
+      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} eventId={eventId} />
     </>
   )
 }

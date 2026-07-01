@@ -4,10 +4,11 @@ import { ActionList } from '@/components/actions/ActionList'
 import { UsageBar } from '@/components/ui/UsageBar'
 import { ScrollContainer } from '@/components/ui/ScrollContainer'
 import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
-import type { EventCounts } from '@/types'
+import type { EventCounts, UserPlan } from '@/types'
 
 interface StepTasksProps {
   eventId: string
+  plan: UserPlan
   counts: EventCounts
   onCountsPatch: (patch: Partial<EventCounts>) => void
   onCountsRefresh: () => void
@@ -15,10 +16,10 @@ interface StepTasksProps {
   onBack: () => void
 }
 
-export function StepTasks({ eventId, counts, onCountsPatch, onCountsRefresh, onNext, onBack }: StepTasksProps) {
+export function StepTasks({ eventId, plan, counts, onCountsPatch, onCountsRefresh, onNext, onBack }: StepTasksProps) {
   const [localTaskCount, setLocalTaskCount] = useState(counts.tasks)
   const canAdvance = localTaskCount > 0
-  const planLimits = usePlanLimitsFromCounts(counts, onCountsRefresh)
+  const planLimits = usePlanLimitsFromCounts(counts, plan, onCountsRefresh)
 
   function handleCountChange(count: number) {
     setLocalTaskCount(count)
@@ -34,7 +35,7 @@ export function StepTasks({ eventId, counts, onCountsPatch, onCountsRefresh, onN
       onNext={onNext}
       onBack={onBack}
     >
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col min-h-0">
         <div className="shrink-0 space-y-3 pb-3">
           {localTaskCount > 0 && (
             <p className="text-xs text-muted text-center">

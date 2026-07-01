@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { ScrollContainer } from '@/components/ui/ScrollContainer'
+import { UsageBar } from '@/components/ui/UsageBar'
 import { RewardList } from '@/components/rewards/RewardList'
-import type { EventCounts } from '@/types'
+import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
+import type { EventCounts, UserPlan } from '@/types'
 
 interface StepRewardsProps {
   eventId: string
+  plan: UserPlan
   counts: EventCounts
   onCountsPatch: (patch: Partial<EventCounts>) => void
   onCountsRefresh: () => void
@@ -13,8 +16,9 @@ interface StepRewardsProps {
   onBack: () => void
 }
 
-export function StepRewards({ eventId, counts, onCountsPatch, onNext, onBack }: StepRewardsProps) {
+export function StepRewards({ eventId, plan, counts, onCountsPatch, onCountsRefresh, onNext, onBack }: StepRewardsProps) {
   const [localRewardCount, setLocalRewardCount] = useState(counts.rewards)
+  const planLimits = usePlanLimitsFromCounts(counts, plan, onCountsRefresh)
 
   function handleCountChange(count: number) {
     setLocalRewardCount(count)
@@ -31,9 +35,16 @@ export function StepRewards({ eventId, counts, onCountsPatch, onNext, onBack }: 
       onNext={onNext}
       onBack={onBack}
     >
-      <ScrollContainer className="flex-1 py-1">
-        <RewardList eventId={eventId} onCountChange={handleCountChange} />
-      </ScrollContainer>
+      <div className="flex h-full flex-col min-h-0">
+        {planLimits.isFreePlan && planLimits.rewards.limit !== null && (
+          <div className="shrink-0 pb-3">
+            <UsageBar info={planLimits.rewards} entity="rewards" showCount={false} />
+          </div>
+        )}
+        <ScrollContainer className="flex-1 py-1">
+          <RewardList eventId={eventId} onCountChange={handleCountChange} />
+        </ScrollContainer>
+      </div>
     </WizardStepWrapper>
   )
 }

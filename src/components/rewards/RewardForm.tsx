@@ -87,7 +87,9 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved, onPlanLi
         onSaved(data as Reward)
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'משהו השתבש.'
+      const msg = err instanceof Error
+        ? err.message
+        : (err as { message?: string }).message ?? 'משהו השתבש.'
       if (isPlanLimitError(msg) && onPlanLimit) {
         onClose()
         onPlanLimit()
@@ -109,7 +111,7 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved, onPlanLi
         <Input
           id="reward-name"
           label="שם"
-          placeholder="הישג ארד"
+          placeholder=""
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoFocus

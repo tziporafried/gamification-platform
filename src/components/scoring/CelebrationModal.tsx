@@ -50,7 +50,6 @@ function getTierConfig(points: number) {
     border: 'border-accent/40',
     glow: '0 0 40px color-mix(in srgb, var(--color-primary) 40%, transparent), 0 0 80px color-mix(in srgb, var(--color-secondary) 20%, transparent)',
     title: '!פתיחה אגדית',
-    label: 'אגדי',
     confettiCount: 80,
   }
   if (points >= 1000) return {
@@ -59,7 +58,6 @@ function getTierConfig(points: number) {
     border: 'border-warning/40',
     glow: '0 0 40px color-mix(in srgb, var(--color-warning) 40%, transparent)',
     title: '!הישג נפתח',
-    label: 'זהב',
     confettiCount: 60,
   }
   if (points >= 500) return {
@@ -68,7 +66,6 @@ function getTierConfig(points: number) {
     border: 'border-border',
     glow: '0 0 24px color-mix(in srgb, var(--color-muted) 30%, transparent)',
     title: '!הישג חדש',
-    label: 'כסף',
     confettiCount: 45,
   }
   return {
@@ -77,7 +74,6 @@ function getTierConfig(points: number) {
     border: 'border-accent/40',
     glow: '0 0 24px color-mix(in srgb, var(--color-accent) 30%, transparent)',
     title: '!פרס חדש',
-    label: 'ארד',
     confettiCount: 40,
   }
 }
@@ -178,10 +174,6 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
                 style={{ boxShadow: tier.glow }}
               >
                 <tier.Icon size={40} />
-              </div>
-
-              <div className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-accent">
-                {tier.label}
               </div>
 
               <h2 className="mb-3 text-2xl font-black text-foreground">

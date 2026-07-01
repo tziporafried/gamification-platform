@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { useEventCounts } from '@/hooks/useEventCounts'
 import { useWizardState } from '@/hooks/useWizardState'
@@ -27,6 +28,7 @@ import type { ActivityTemplate, Event, GroupType } from '@/types'
 export function EventWizard() {
   const { id, step: stepParam } = useParams<{ id: string; step?: string }>()
   const navigate = useNavigate()
+  const { isSuperAdmin } = useAuth()
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -218,6 +220,7 @@ export function EventWizard() {
         <WizardStepPanel active={currentStep === 2}>
           <StepGroups
             eventId={event.id}
+            plan={isSuperAdmin ? 'full' : event.plan}
             groupType={groupType}
             counts={counts}
             onGroupTypeSelect={setGroupType}
@@ -233,6 +236,7 @@ export function EventWizard() {
         <WizardStepPanel active={currentStep === 3}>
           <StepParticipants
             eventId={event.id}
+            plan={isSuperAdmin ? 'full' : event.plan}
             counts={counts}
             groupType={groupType}
             isActive={currentStep === 3}
@@ -248,6 +252,7 @@ export function EventWizard() {
         <WizardStepPanel active={currentStep === 4}>
           <StepTasks
             eventId={event.id}
+            plan={isSuperAdmin ? 'full' : event.plan}
             counts={counts}
             onCountsPatch={patchCounts}
             onCountsRefresh={refreshCounts}
@@ -261,6 +266,7 @@ export function EventWizard() {
         <WizardStepPanel active={currentStep === 5}>
           <StepRewards
             eventId={event.id}
+            plan={isSuperAdmin ? 'full' : event.plan}
             counts={counts}
             onCountsPatch={patchCounts}
             onCountsRefresh={refreshCounts}

@@ -5,9 +5,9 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { ReadinessChecklist } from './ReadinessChecklist'
 import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
-import { useAuth } from '@/contexts/AuthContext'
 import { calculateReadiness, isEventReady, getWizardPrefs } from '@/lib/wizard'
 import { getLockedTemplate, clearLockedTemplate, completeTemplateImport, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
+import { useAuth } from '@/contexts/AuthContext'
 import type { Event, EventCounts, LockedTemplateStore } from '@/types'
 
 interface ControlCenterProps {
@@ -33,7 +33,8 @@ function createParticle(): Particle {
 
 export function ControlCenter({ event, counts }: ControlCenterProps) {
   const navigate = useNavigate()
-  const { isFreePlan } = useAuth()
+  const { isSuperAdmin } = useAuth()
+  const isFreePlan = !isSuperAdmin && event.plan === 'free'
   const [copied, setCopied] = useState(false)
   const [lockedTemplate, setLockedTemplate] = useState<LockedTemplateStore | null>(null)
   const [completing, setCompleting] = useState(false)

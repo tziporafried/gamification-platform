@@ -1,11 +1,10 @@
-import { useAuth } from '@/contexts/AuthContext'
+import type { UserPlan } from '@/types'
 
 const QR_SCAN_PLANS = ['full', 'organizations'] as const
 
-export function usePlanPermissions() {
-  const { profile } = useAuth()
-  const plan = profile?.plan ?? 'free'
+export function usePlanPermissions(plan: UserPlan) {
   return {
     canScanQR: (QR_SCAN_PLANS as readonly string[]).includes(plan),
+    showLockedScanner: plan === 'free',
   }
 }

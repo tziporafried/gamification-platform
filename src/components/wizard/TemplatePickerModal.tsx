@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { Sparkles, PenLine, Layers, Users, CheckSquare, Gift, Loader2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { useAuth } from '@/contexts/AuthContext'
 import { fetchActivityTemplates, applyActivityTemplate, templateGroupType, formatTemplateError } from '@/lib/templates'
 import { saveLockedTemplate } from '@/lib/lockedTemplate'
+import { useAuth } from '@/contexts/AuthContext'
 import type { ActivityTemplateWithContent, GroupType } from '@/types'
 
 interface TemplatePickerModalProps {
@@ -22,7 +22,8 @@ export function TemplatePickerModal({
   onChooseScratch,
   onTemplateApplied,
 }: TemplatePickerModalProps) {
-  const { isFreePlan } = useAuth()
+  const { isSuperAdmin } = useAuth()
+  const isFreePlan = !isSuperAdmin
   const [screen, setScreen] = useState<Screen>('choose')
   const [templates, setTemplates] = useState<ActivityTemplateWithContent[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(false)

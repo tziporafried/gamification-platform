@@ -9,7 +9,6 @@ export interface UserProfile {
   display_name: string | null;
   avatar_url: string | null;
   role: UserRole;
-  plan: UserPlan;
   created_at: string;
   updated_at: string;
 }
@@ -117,6 +116,7 @@ export interface Event {
   slug: string;
   logo_url: string | null;
   status: EventStatus;
+  plan: UserPlan;
   created_at: string;
   updated_at: string;
 }

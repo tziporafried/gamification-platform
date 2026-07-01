@@ -11,7 +11,6 @@ interface AuthContextType {
   signInWithMagicLink: (email: string, redirectTo?: string) => Promise<{ error?: string }>
   signOut: () => Promise<void>
   isSuperAdmin: boolean
-  isFreePlan: boolean
   refreshProfile: () => Promise<void>
 }
 
@@ -91,10 +90,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const isSuperAdmin = profile?.role === 'super_admin'
-  const isFreePlan = profile ? profile.plan === 'free' : false
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signInWithMagicLink, signOut, isSuperAdmin, isFreePlan, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signInWithMagicLink, signOut, isSuperAdmin, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

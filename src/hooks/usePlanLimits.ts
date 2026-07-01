@@ -1,4 +1,3 @@
-import { useAuth } from '@/contexts/AuthContext'
 import { FREE_PLAN_LIMITS, type LimitableEntity } from '@/lib/plans'
 import type { EventCounts, UserPlan } from '@/types'
 
@@ -29,7 +28,12 @@ function makeLimitInfo(current: number, entity: LimitableEntity, plan: UserPlan)
   }
 }
 
-function buildPlanLimits(counts: EventCounts, plan: UserPlan, isFreePlan: boolean, refresh: () => void): PlanLimits {
+export function usePlanLimitsFromCounts(
+  counts: EventCounts,
+  plan: UserPlan,
+  refresh: () => void,
+): PlanLimits {
+  const isFreePlan = plan === 'free'
   return {
     participants: makeLimitInfo(counts.participants, 'participants', plan),
     groups: makeLimitInfo(counts.groups, 'groups', plan),
@@ -38,10 +42,4 @@ function buildPlanLimits(counts: EventCounts, plan: UserPlan, isFreePlan: boolea
     isFreePlan,
     refresh,
   }
-}
-
-export function usePlanLimitsFromCounts(counts: EventCounts, refresh: () => void): PlanLimits {
-  const { isFreePlan, profile } = useAuth()
-  const plan = profile?.plan ?? 'free'
-  return buildPlanLimits(counts, plan, isFreePlan, refresh)
 }

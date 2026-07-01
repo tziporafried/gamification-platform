@@ -230,7 +230,7 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
         />
       )}
 
-      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
+      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} eventId={eventId} />
 
       {toast && (
         <Toast

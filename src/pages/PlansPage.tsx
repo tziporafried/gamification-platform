@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Check, X, CheckCircle, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/contexts/AuthContext'
@@ -35,6 +35,8 @@ const FULL_EXTRAS = [
 
 export function PlansPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const eventId = searchParams.get('event')
   const { user, profile } = useAuth()
   const formRef = useRef<HTMLDivElement>(null)
 
@@ -92,6 +94,7 @@ export function PlansPage() {
         phone: trimmedPhone,
         notes: combinedNotes,
         limit_type: LIMIT_TYPE_MAP[selectedOption!],
+        event_id: eventId ?? null,
       })
 
     if (insertError) {

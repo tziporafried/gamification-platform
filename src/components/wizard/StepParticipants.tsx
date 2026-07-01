@@ -15,10 +15,11 @@ import { ScrollContainer } from '@/components/ui/ScrollContainer'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
 import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
-import type { EventCounts, GroupType, Participant, ParticipantWithGroups, Group } from '@/types'
+import type { EventCounts, GroupType, Participant, ParticipantWithGroups, Group, UserPlan } from '@/types'
 
 interface StepParticipantsProps {
   eventId: string
+  plan: UserPlan
   counts: EventCounts
   groupType: GroupType | null
   isActive: boolean
@@ -33,7 +34,7 @@ interface ParticipantGroupJoin {
   groups: Group
 }
 
-export function StepParticipants({ eventId, counts, groupType, isActive, onCountsPatch, onCountsRefresh, onNext, onBack }: StepParticipantsProps) {
+export function StepParticipants({ eventId, plan, counts, groupType, isActive, onCountsPatch, onCountsRefresh, onNext, onBack }: StepParticipantsProps) {
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
@@ -42,7 +43,7 @@ export function StepParticipants({ eventId, counts, groupType, isActive, onCount
   const listRef = useRef<HTMLDivElement>(null)
   const addInputRef = useRef<HTMLInputElement>(null)
   const prevCountRef = useRef(0)
-  const planLimits = usePlanLimitsFromCounts(counts, onCountsRefresh)
+  const planLimits = usePlanLimitsFromCounts(counts, plan, onCountsRefresh)
 
   const hasGroups = groupType === 'custom'
 
@@ -258,7 +259,7 @@ export function StepParticipants({ eventId, counts, groupType, isActive, onCount
         )}
       </div>
 
-      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
+      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} eventId={eventId} />
     </WizardStepWrapper>
   )
 }

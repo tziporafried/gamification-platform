@@ -1,18 +1,18 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Crown, Users, ListTodo, MessageSquare, Sparkles } from 'lucide-react'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Select } from '@/components/ui/Select'
 import { Tabs } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
-import { AdminStatusPill, PLAN_BADGE_COLORS } from '@/components/ui/StatusBadge'
+import { AdminStatusPill } from '@/components/ui/StatusBadge'
 import { DevTodoList } from '@/components/dev-todos/DevTodoList'
 import { TemplateAdminList } from '@/components/admin/TemplateAdminList'
 import { cn } from '@/lib/utils'
+import type { UserPlan } from '@/types'
 
 type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates'
 
@@ -29,15 +29,23 @@ interface AdminUser {
   display_name: string | null
   avatar_url: string | null
   role: string
-  plan: string
   created_at: string
   event_count: number
   event_names: string
 }
 
+interface AdminEventRow {
+  event_id: string
+  event_name: string
+  plan: UserPlan
+  status: string
+  created_at: string
+}
+
 interface UpgradeRequest {
   id: string
   user_id: string
+  event_id: string | null
   full_name: string
   email: string
   phone: string
@@ -53,13 +61,6 @@ const STATUS_OPTIONS = [
   { value: 'closed', label: 'נסגר' },
 ]
 
-const PLAN_OPTIONS: { value: string; label: string }[] = [
-  { value: 'free', label: 'חינמי' },
-  { value: 'independent', label: 'עצמאי' },
-  { value: 'full', label: 'מלא' },
-  { value: 'organizations', label: 'ארגוני' },
-]
-
 const LIMIT_LABELS: Record<string, string> = {
   participants: 'משתתפים',
   groups: 'קבוצות',
@@ -69,6 +70,27 @@ const LIMIT_LABELS: Record<string, string> = {
   'plan-independent': 'משחק עצמאי',
   'plan-full': 'חוויה מלאה',
   'plan-organizations': 'פתרון לארגונים',
+}
+
+const LIMIT_TYPE_TO_PLAN: Record<string, string> = {
+  'plan-independent': 'independent',
+  'plan-full': 'full',
+  'plan-organizations': 'organizations',
+}
+
+const PLAN_OPTIONS: { value: UserPlan; label: string; color: string }[] = [
+  { value: 'free',          label: 'חינמי',      color: 'text-gray-400' },
+  { value: 'independent',   label: 'עצמאי',      color: 'text-blue-400' },
+  { value: 'full',          label: 'מלא',        color: 'text-green-400' },
+  { value: 'organizations', label: 'ארגונים',    color: 'text-amber-400' },
+]
+
+function planLabel(plan: UserPlan) {
+  return PLAN_OPTIONS.find(p => p.value === plan)?.label ?? plan
+}
+
+function planColor(plan: UserPlan) {
+  return PLAN_OPTIONS.find(p => p.value === plan)?.color ?? 'text-gray-400'
 }
 
 export function AdminPanel() {
@@ -81,13 +103,25 @@ export function AdminPanel() {
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [loadingRequests, setLoadingRequests] = useState(false)
   const [newRequestCount, setNewRequestCount] = useState(0)
-  const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [updatingRequestId, setUpdatingRequestId] = useState<string | null>(null)
+  const [upgradingEventId, setUpgradingEventId] = useState<string | null>(null)
+  const [usersError, setUsersError] = useState<string | null>(null)
+
+  // Per-user event expansion state
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set())
+  const [loadingEventsFor, setLoadingEventsFor] = useState<Set<string>>(new Set())
+  const [userEvents, setUserEvents] = useState<Map<string, AdminEventRow[]>>(new Map())
+  const [updatingEventPlanId, setUpdatingEventPlanId] = useState<string | null>(null)
 
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true)
+    setUsersError(null)
     const { data, error } = await supabase.rpc('get_all_users_admin')
-    if (!error && data) setUsers(data as AdminUser[])
+    if (error) {
+      setUsersError(error.message)
+    } else if (data) {
+      setUsers(data as AdminUser[])
+    }
     setUsersLoaded(true)
     setLoadingUsers(false)
   }, [])
@@ -124,18 +158,51 @@ export function AdminPanel() {
     if (tab === 'upgrade-requests' && !requestsLoaded) fetchRequests()
   }, [tab, usersLoaded, requestsLoaded, fetchUsers, fetchRequests])
 
-  async function updatePlan(userId: string, newPlan: string) {
-    setUpdatingId(userId)
-    const { error } = await supabase.rpc('update_user_plan', {
-      target_user_id: userId,
-      new_plan: newPlan,
+  async function toggleUserEvents(userId: string) {
+    if (expandedUsers.has(userId)) {
+      setExpandedUsers(prev => { const next = new Set(prev); next.delete(userId); return next })
+      return
+    }
+    setExpandedUsers(prev => new Set(prev).add(userId))
+    if (userEvents.has(userId)) return
+
+    setLoadingEventsFor(prev => new Set(prev).add(userId))
+    const { data } = await supabase.rpc('get_user_events_admin', { p_user_id: userId })
+    if (data) {
+      setUserEvents(prev => new Map(prev).set(userId, data as AdminEventRow[]))
+    }
+    setLoadingEventsFor(prev => { const next = new Set(prev); next.delete(userId); return next })
+  }
+
+  async function changeEventPlan(userId: string, eventId: string, newPlan: UserPlan) {
+    setUpdatingEventPlanId(eventId)
+    const { error } = await supabase.rpc('update_event_plan', {
+      p_event_id: eventId,
+      p_new_plan: newPlan,
     })
     if (!error) {
-      setUsers(prev => prev.map(u =>
-        u.user_id === userId ? { ...u, plan: newPlan } : u
-      ))
+      setUserEvents(prev => {
+        const events = prev.get(userId)
+        if (!events) return prev
+        return new Map(prev).set(
+          userId,
+          events.map(e => e.event_id === eventId ? { ...e, plan: newPlan } : e)
+        )
+      })
     }
-    setUpdatingId(null)
+    setUpdatingEventPlanId(null)
+  }
+
+  async function upgradeEventPlan(requestId: string, eventId: string, newPlan: string) {
+    setUpgradingEventId(requestId)
+    const { error } = await supabase.rpc('update_event_plan', {
+      p_event_id: eventId,
+      p_new_plan: newPlan,
+    })
+    if (!error) {
+      await updateRequestStatus(requestId, 'closed')
+    }
+    setUpgradingEventId(null)
   }
 
   async function updateRequestStatus(requestId: string, newStatus: string) {
@@ -190,70 +257,112 @@ export function AdminPanel() {
           <FullPageLoader />
         ) : (
           <>
-            <SectionHeader
-              icon={<Users size={18} className="text-secondary" />}
-              title={`${users.length} משתמשים רשומים`}
-              className="mb-6"
-            />
+          {usersError && (
+            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              שגיאה בטעינת משתמשים: {usersError}
+            </div>
+          )}
+          <div className="flex items-center gap-2 mb-6">
+            <Users size={18} className="text-gray-400" />
+            <h2 className="text-sm font-medium text-gray-400">
+              {users.length} משתמשים רשומים
+            </h2>
+          </div>
 
-            <div className="space-y-3">
-              {users.map(user => {
-                const planColor = PLAN_BADGE_COLORS[user.plan] ?? PLAN_BADGE_COLORS.free
-                const planLabel = PLAN_OPTIONS.find(p => p.value === user.plan)?.label ?? user.plan
+          <div className="space-y-2">
+            {users.map(user => {
+              const isExpanded = expandedUsers.has(user.user_id)
+              const isLoadingEvents = loadingEventsFor.has(user.user_id)
+              const events = userEvents.get(user.user_id) ?? []
 
-                return (
-                  <Card key={user.user_id} className="p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3 min-w-0">
-                        {user.avatar_url ? (
-                          <img src={user.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover shrink-0" />
-                        ) : (
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-elevated shrink-0">
-                            <span className="text-sm font-bold text-secondary">
-                              {(user.display_name || user.email)[0]?.toUpperCase()}
-                            </span>
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-foreground truncate">
-                              {user.display_name || user.email.split('@')[0]}
-                            </span>
-                            {user.role === 'super_admin' && (
-                              <Crown size={14} className="text-warning shrink-0" />
-                            )}
-                          </div>
-                          <p className="text-xs text-muted truncate">{user.email}</p>
-                          <p className="text-xs text-muted mt-0.5">
-                            הצטרף {new Date(user.created_at).toLocaleDateString('he-IL')}
-                            {user.event_count > 0 && <> · {user.event_count} אירועים</>}
-                          </p>
+              return (
+                <Card key={user.user_id} className="overflow-hidden">
+                  <div className="flex items-center justify-between gap-4 p-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {user.avatar_url ? (
+                        <img src={user.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600/20 shrink-0">
+                          <span className="text-sm font-bold text-brand-400">
+                            {(user.display_name || user.email)[0]?.toUpperCase()}
+                          </span>
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span
-                          className="text-xs font-medium px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: planColor + '18', color: planColor }}
-                        >
-                          {planLabel}
-                        </span>
-                        <Select
-                          value={user.plan}
-                          disabled={updatingId === user.user_id}
-                          onChange={e => updatePlan(user.user_id, e.target.value)}
-                          className="w-auto py-1.5 text-xs"
-                        >
-                          {PLAN_OPTIONS.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
-                        </Select>
+                      )}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-foreground truncate">
+                            {user.display_name || user.email.split('@')[0]}
+                          </span>
+                          {user.role === 'super_admin' && (
+                            <Crown size={14} className="text-warning shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-xs text-muted truncate">{user.email}</p>
+                        <p className="text-xs text-muted mt-0.5">
+                          הצטרף {new Date(user.created_at).toLocaleDateString('he-IL')}
+                          {user.event_count > 0 && <> · {user.event_count} אירועים</>}
+                        </p>
                       </div>
                     </div>
-                  </Card>
-                )
-              })}
-            </div>
+
+                    {user.event_count > 0 && (
+                      <button
+                        onClick={() => toggleUserEvents(user.user_id)}
+                        className="flex items-center gap-1.5 shrink-0 rounded-lg px-2.5 py-1.5 text-xs text-muted hover:bg-white/5 hover:text-foreground transition-colors"
+                      >
+                        {isLoadingEvents ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <ChevronDown
+                            size={14}
+                            className={cn('transition-transform duration-200', isExpanded && 'rotate-180')}
+                          />
+                        )}
+                        אירועים
+                      </button>
+                    )}
+                  </div>
+
+                  {isExpanded && (
+                    <div className="border-t border-game-border divide-y divide-game-border/50">
+                      {events.length === 0 && !isLoadingEvents ? (
+                        <p className="px-4 py-3 text-xs text-muted text-center">אין אירועים פעילים</p>
+                      ) : (
+                        events.map(ev => (
+                          <div key={ev.event_id} className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-white/[0.02]">
+                            <span className="text-sm text-foreground truncate flex-1">
+                              {ev.event_name || <span className="text-muted italic">ללא שם</span>}
+                            </span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className={cn('text-xs font-medium', planColor(ev.plan))}>
+                                {planLabel(ev.plan)}
+                              </span>
+                              <div className="relative">
+                                {updatingEventPlanId === ev.event_id ? (
+                                  <Loader2 size={14} className="animate-spin text-muted" />
+                                ) : (
+                                  <select
+                                    value={ev.plan}
+                                    onChange={e => changeEventPlan(user.user_id, ev.event_id, e.target.value as UserPlan)}
+                                    className="appearance-none bg-white/5 border border-game-border rounded-lg px-2 py-1 text-xs text-foreground cursor-pointer hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                                    dir="rtl"
+                                  >
+                                    {PLAN_OPTIONS.map(p => (
+                                      <option key={p.value} value={p.value}>{p.label}</option>
+                                    ))}
+                                  </select>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </Card>
+              )
+            })}
+          </div>
           </>
         )
       )}
@@ -291,26 +400,41 @@ export function AdminPanel() {
                           <span dir="ltr">{req.phone}</span>
                         </div>
                         <div className="flex items-center gap-3 text-xs text-muted">
-                          <span>מגבלה: <span className="text-foreground">{LIMIT_LABELS[req.limit_type] || req.limit_type}</span></span>
+                          <span>תוכנית: <span className="text-foreground">{LIMIT_LABELS[req.limit_type] || req.limit_type}</span></span>
                           <span>{new Date(req.created_at).toLocaleDateString('he-IL')} {new Date(req.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
+                        {req.event_id && (
+                          <p className="text-xs text-gray-500">אירוע: <span className="font-mono text-gray-400">{req.event_id}</span></p>
+                        )}
                         {req.notes && (
                           <p className="text-xs text-muted bg-surface-elevated rounded-lg px-3 py-2 mt-1">{req.notes}</p>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        {STATUS_OPTIONS.filter(s => s.value !== req.status).map(s => (
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        {req.event_id && LIMIT_TYPE_TO_PLAN[req.limit_type] && req.status !== 'closed' && (
                           <Button
-                            key={s.value}
-                            variant="outline"
+                            variant="gradient"
                             size="sm"
-                            loading={updatingRequestId === req.id}
-                            onClick={() => updateRequestStatus(req.id, s.value)}
+                            loading={upgradingEventId === req.id}
+                            onClick={() => upgradeEventPlan(req.id, req.event_id!, LIMIT_TYPE_TO_PLAN[req.limit_type])}
                           >
-                            {s.label}
+                            שדרג אירוע
                           </Button>
-                        ))}
+                        )}
+                        <div className="flex items-center gap-2">
+                          {STATUS_OPTIONS.filter(s => s.value !== req.status).map(s => (
+                            <Button
+                              key={s.value}
+                              variant="outline"
+                              size="sm"
+                              loading={updatingRequestId === req.id}
+                              onClick={() => updateRequestStatus(req.id, s.value)}
+                            >
+                              {s.label}
+                            </Button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </Card>

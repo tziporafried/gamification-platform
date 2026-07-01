@@ -8,10 +8,11 @@ import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
 import { GroupList } from '@/components/groups/GroupList'
-import type { GroupType, EventCounts } from '@/types'
+import type { GroupType, EventCounts, UserPlan } from '@/types'
 
 interface StepGroupsProps {
   eventId: string
+  plan: UserPlan
   groupType: GroupType | null
   counts: EventCounts
   onGroupTypeSelect: (type: GroupType) => void
@@ -43,6 +44,7 @@ const GROUP_OPTION_STYLES: Record<GroupType, { card: string; cardSelected: strin
 
 export function StepGroups({
   eventId,
+  plan,
   groupType,
   counts,
   onGroupTypeSelect,
@@ -54,7 +56,7 @@ export function StepGroups({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [localGroupCount, setLocalGroupCount] = useState(counts.groups)
-  const planLimits = usePlanLimitsFromCounts(counts, onCountsRefresh)
+  const planLimits = usePlanLimitsFromCounts(counts, plan, onCountsRefresh)
 
   const showGroupSetup = groupType === 'custom'
   const canAdvance = groupType === 'none' || localGroupCount > 0

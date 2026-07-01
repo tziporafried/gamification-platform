@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, X } from 'lucide-react'
+import { ArrowRight, Lock, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useScoreSubmit } from '@/hooks/useScoreSubmit'
 import { useOperationsData } from '@/hooks/useOperationsData'
 import { useEventCatalog } from '@/hooks/useEventCatalog'
 import { useOpsSound } from '@/hooks/useOpsSound'
 import { usePlanPermissions } from '@/hooks/usePlanPermissions'
+import { useAuth } from '@/contexts/AuthContext'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/utils'
@@ -54,6 +55,7 @@ export function EventOpsPage() {
 
 function EventOpsContent({ event }: { event: Event }) {
   const navigate = useNavigate()
+  const { isSuperAdmin } = useAuth()
   const accent = useMemo(() => {
     const primary = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim()
     return hexToRgb(primary)
@@ -62,7 +64,7 @@ function EventOpsContent({ event }: { event: Event }) {
   const catalog = useEventCatalog(event.id)
   const { submit, submitting, lastError } = useScoreSubmit(event.id)
   const opsSound = useOpsSound()
-  const { canScanQR } = usePlanPermissions()
+  const { canScanQR, showLockedScanner } = usePlanPermissions(isSuperAdmin ? 'full' : event.plan)
 
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
   const [celebrationRewards, setCelebrationRewards] = useState<NewlyAwardedReward[]>([])
@@ -229,23 +231,31 @@ function EventOpsContent({ event }: { event: Event }) {
         {/* Column 2 — Scanner (center) */}
         <div className="flex flex-1 flex-col items-center justify-center overflow-hidden px-4 py-3 gap-3 border-l border-border">
 
-          {/* Scanner zone — QR-enabled plans only */}
-          {canScanQR && (
+          {/* Scanner zone — QR plans: active; free: locked overlay; independent: hidden */}
+          {(canScanQR || showLockedScanner) && (
             <div className="relative w-full shrink-0">
               <ScannerZone
                 successFlash={successFlash}
                 processing={submitting}
                 accent={accent} />
-              <input
-                ref={scannerInputRef}
-                type="text"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
-                aria-label="קלט סורק QR"
-                className="sr-only"
-              />
+              {canScanQR && (
+                <input
+                  ref={scannerInputRef}
+                  type="text"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  aria-label="קלט סורק QR"
+                  className="sr-only"
+                />
+              )}
+              {showLockedScanner && (
+                <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 rounded-2xl sm:rounded-3xl backdrop-blur-sm bg-black/60">
+                  <Lock size={36} className="text-muted" />
+                  <p className="text-center text-sm font-semibold text-muted px-4">סריקת QR זמינה מתוכנית עצמאי ומעלה</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -256,7 +266,7 @@ function EventOpsContent({ event }: { event: Event }) {
             )}
           </AnimatePresence>
 
-          {/* Manual entry */}
+          {/* Manual entry — full/org: minimized; free/independent: always visible */}
           {canScanQR ? (
             <>
               {!showManualEntry && (
