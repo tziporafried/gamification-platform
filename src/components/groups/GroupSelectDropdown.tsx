@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useLayoutEffect, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useClickOutside } from '@/hooks/useClickOutside'
 import type { Group } from '@/types'
 
 interface GroupSelectDropdownProps {
@@ -14,6 +14,12 @@ interface GroupSelectDropdownProps {
   onToggleGroup: (groupId: string, isMember: boolean) => void
 }
 
+const PANEL_WIDTH = 192
+
+function clampPanelLeft(triggerLeft: number) {
+  return Math.max(8, Math.min(triggerLeft, window.innerWidth - PANEL_WIDTH - 8))
+}
+
 export function GroupSelectDropdown({
   groups,
   selectedGroupIds,
@@ -24,9 +30,49 @@ export function GroupSelectDropdown({
   onToggleGroup,
 }: GroupSelectDropdownProps) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const closeDropdown = useCallback(() => setOpen(false), [])
-  useClickOutside(ref, closeDropdown)
+  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number } | null>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  const updatePosition = useCallback(() => {
+    const rect = buttonRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setPanelStyle({
+      top: rect.bottom + 4,
+      left: clampPanelLeft(rect.left),
+    })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPanelStyle(null)
+      return
+    }
+    updatePosition()
+  }, [open, updatePosition])
+
+  useEffect(() => {
+    if (!open) return
+
+    function handlePointerDown(e: MouseEvent) {
+      const target = e.target as Node
+      if (buttonRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      setOpen(false)
+    }
+
+    function handleReposition() {
+      updatePosition()
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    window.addEventListener('resize', handleReposition)
+    window.addEventListener('scroll', handleReposition, true)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      window.removeEventListener('resize', handleReposition)
+      window.removeEventListener('scroll', handleReposition, true)
+    }
+  }, [open, updatePosition])
 
   const selectedGroups = groups.filter((g) => selectedGroupIds.has(g.id))
 
@@ -42,9 +88,10 @@ export function GroupSelectDropdown({
   }
 
   return (
-    <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
       <button
-        onClick={() => setOpen(!open)}
+        ref={buttonRef}
+        onClick={() => setOpen((prev) => !prev)}
         title={tooltip}
         className={cn(
           'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all border',
@@ -70,8 +117,12 @@ export function GroupSelectDropdown({
         <ChevronDown size={12} className={cn('transition-transform', open && 'rotate-180')} />
       </button>
 
-      {open && (
-        <div className="absolute z-50 top-full mt-1 right-0 w-48 rounded-xl border border-border bg-surface shadow-xl py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+      {open && panelStyle && createPortal(
+        <div
+          ref={panelRef}
+          style={{ position: 'fixed', top: panelStyle.top, left: panelStyle.left, width: PANEL_WIDTH }}
+          className="z-[100] rounded-xl border border-border bg-surface shadow-xl py-1 animate-in fade-in slide-in-from-top-1 duration-150"
+        >
           <div className="px-3 py-1.5 text-[10px] text-muted">{tooltip}</div>
           <button
             onClick={() => { onSelectAll(); setOpen(false) }}
@@ -116,7 +167,8 @@ export function GroupSelectDropdown({
               </button>
             )
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

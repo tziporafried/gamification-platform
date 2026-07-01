@@ -41,13 +41,10 @@ export function TaskLimitSelect({
     : `${customLimit} פעמים`
 
   const Icon = limitMode === 'unlimited' ? Repeat : limitMode === 'once' ? RotateCcw : Hash
-  const chipColor = limitMode === 'unlimited' ? 'accent' as const
-    : limitMode === 'once' ? 'amber' as const
-    : 'cyan' as const
 
   return (
     <div ref={ref} className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
-      <ChipButton color={chipColor} onClick={() => setOpen(!open)} title={limitTooltip} className="max-w-[9rem]">
+      <ChipButton color="default" onClick={() => setOpen(!open)} title={limitTooltip} className="max-w-[9rem]">
         <Icon size={10} className="shrink-0" />
         <span className="truncate">{label}</span>
         <ChevronDown size={12} className={cn('transition-transform', open && 'rotate-180')} />
@@ -60,7 +57,7 @@ export function TaskLimitSelect({
             onClick={() => { onSaveLimitMode('unlimited'); setOpen(false) }}
             className={cn(
               'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
-              limitMode === 'unlimited' ? 'text-accent' : 'text-muted',
+              limitMode === 'unlimited' ? 'text-foreground' : 'text-muted',
             )}
           >
             <Repeat size={12} className="shrink-0" />
@@ -73,7 +70,7 @@ export function TaskLimitSelect({
             onClick={() => { onSaveLimitMode('once'); setOpen(false) }}
             className={cn(
               'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
-              limitMode === 'once' ? 'text-warning' : 'text-muted',
+              limitMode === 'once' ? 'text-foreground' : 'text-muted',
             )}
           >
             <RotateCcw size={12} className="shrink-0" />
@@ -85,7 +82,7 @@ export function TaskLimitSelect({
           <DropdownDivider />
           {editingLimit ? (
             <div className="flex items-center gap-1.5 px-3 py-2">
-              <Hash size={12} className="shrink-0 text-secondary" />
+              <Hash size={12} className="shrink-0 text-muted" />
               <input
                 ref={limitRef}
                 type="number"
@@ -97,7 +94,7 @@ export function TaskLimitSelect({
                   if (e.key === 'Escape') { onSetEditingLimit(false); onResetLimit() }
                 }}
                 onBlur={() => { onSaveLimitMode('limited', Math.max(2, customLimit)); onSetEditingLimit(false) }}
-                className="w-12 rounded border border-secondary bg-surface-elevated px-1.5 py-0.5 text-xs text-center font-medium text-foreground outline-none"
+                className="w-12 rounded border border-border bg-surface-elevated px-1.5 py-0.5 text-xs text-center font-medium text-foreground outline-none focus:border-tertiary"
                 autoFocus
               />
               <span className="text-xs text-muted">פעמים</span>
@@ -107,7 +104,7 @@ export function TaskLimitSelect({
               onClick={() => { onSaveLimitMode('limited'); onSetEditingLimit(true) }}
               className={cn(
                 'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
-                limitMode === 'limited' ? 'text-secondary' : 'text-muted',
+                limitMode === 'limited' ? 'text-foreground' : 'text-muted',
               )}
             >
               <Hash size={12} className="shrink-0" />
