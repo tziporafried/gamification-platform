@@ -28,18 +28,18 @@ export function ReadinessChecklist({ checks, eventId, onGoToStep }: ReadinessChe
   }
 
   return (
-    <PanelCard size="sm" className="space-y-3 bg-game-card/50">
-      <p className="text-sm font-medium text-white">כמעט מוכנים</p>
-      <p className="text-xs text-gray-400">נשארו עוד כמה צעדים קטנים ואפשר לצאת לדרך</p>
+    <PanelCard size="sm" className="space-y-3 bg-surface-elevated border-border">
+      <p className="text-sm font-medium text-foreground">כמעט מוכנים</p>
+      <p className="text-xs text-muted">נשארו עוד כמה צעדים קטנים ואפשר לצאת לדרך</p>
       <div className="space-y-2 pt-1">
         {checks.map((check) => (
           <div key={check.id} className="flex items-center gap-3">
             {check.passed ? (
-              <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+              <CheckCircle2 size={16} className="text-success shrink-0" />
             ) : (
-              <AlertCircle size={16} className="text-amber-400 shrink-0" />
+              <AlertCircle size={16} className="text-warning shrink-0" />
             )}
-            <span className={cn('text-sm', check.passed ? 'text-gray-500' : 'text-gray-200')}>
+            <span className={cn('text-sm', check.passed ? 'text-muted' : 'text-foreground')}>
               {check.passed ? (check.wizardPassedLabel ?? check.label) : (check.wizardFailedLabel ?? check.label)}
             </span>
           </div>

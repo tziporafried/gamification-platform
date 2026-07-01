@@ -102,7 +102,7 @@ export function InlineAddAction({
           onKeyDown={handlePointsKeyDown}
           placeholder="נק׳"
           className={cn(
-            'w-16 bg-transparent text-sm text-center text-emerald-400 font-bold outline-none border-b border-game-border focus:border-brand-500 placeholder-gray-500',
+            'w-16 bg-transparent text-sm text-center text-success font-bold outline-none border-b border-border focus:border-secondary placeholder-muted',
             saving && 'opacity-50',
           )}
           disabled={saving}

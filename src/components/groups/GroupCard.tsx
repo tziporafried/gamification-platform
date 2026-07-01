@@ -78,15 +78,15 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
             <div className="relative" ref={colorRef}>
               <button
                 onClick={() => setShowColorPicker(!showColorPicker)}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-transparent hover:border-white/30 transition-all"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-transparent hover:border-border transition-all"
                 style={{ backgroundColor: color }}
                 title="שנה צבע"
               >
-                <Palette size={12} className="text-white/70" />
+                <Palette size={12} className="text-foreground/70" />
               </button>
 
               {showColorPicker && (
-                <div className="absolute top-full mt-2 right-0 z-50 rounded-xl border border-game-border bg-game-card p-3 shadow-podium animate-scale-in">
+                <div className="absolute top-full mt-2 right-0 z-50 rounded-xl border border-border bg-surface p-3 shadow-podium animate-scale-in">
                   <div className="flex gap-1.5">
                     {PRESET_COLORS.map((c) => (
                       <button
@@ -94,7 +94,7 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
                         onClick={() => changeColor(c)}
                         className={cn(
                           'w-6 h-6 rounded-full border-2 transition-transform hover:scale-110',
-                          color === c ? 'border-white scale-110' : 'border-transparent',
+                          color === c ? 'border-foreground scale-110' : 'border-transparent',
                         )}
                         style={{ backgroundColor: c }}
                       />
@@ -115,7 +115,7 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
                   onKeyDown={handleKeyDown}
                   onBlur={saveEdit}
                   className={cn(
-                    'w-full bg-transparent text-sm font-semibold text-white outline-none border-b border-brand-500 pb-0.5',
+                    'w-full bg-transparent text-sm font-semibold text-foreground outline-none border-b border-secondary pb-0.5',
                     saving && 'opacity-50',
                   )}
                   disabled={saving}
@@ -123,7 +123,7 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
               ) : (
                 <span
                   onClick={() => setEditing(true)}
-                  className="block w-full font-semibold text-gray-200 hover:text-white transition-colors cursor-text text-right truncate"
+                  className="block w-full font-semibold text-foreground hover:text-secondary transition-colors cursor-text text-right truncate"
                 >
                   {name}
                 </span>
@@ -131,7 +131,7 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
             </div>
 
             {/* Member count */}
-            <div className="flex items-center gap-1 text-xs text-gray-500 shrink-0">
+            <div className="flex items-center gap-1 text-xs text-muted shrink-0">
               <Users size={12} />
               <span>{group.member_count}</span>
             </div>

@@ -26,12 +26,12 @@ export function ToggleSwitch({ checked, onChange, disabled = false, size = 'sm',
       className={cn(
         'relative inline-flex shrink-0 rounded-full border-2 transition-all duration-200',
         s.track,
-        checked ? 'border-brand-500 bg-brand-500' : 'border-gray-600 bg-gray-700/50',
+        checked ? 'border-secondary bg-secondary' : 'border-border bg-surface-elevated',
         disabled && 'cursor-not-allowed opacity-40',
         className,
       )}
     >
-      <span className={cn('absolute rounded-full bg-white shadow-sm transition-all duration-200', s.thumb, checked ? s.onPos : s.offPos)} />
+      <span className={cn('absolute rounded-full bg-background shadow-sm transition-all duration-200', s.thumb, checked ? s.onPos : s.offPos)} />
     </button>
   )
 }

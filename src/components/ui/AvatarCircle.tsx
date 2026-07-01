@@ -13,6 +13,17 @@ const sizes = {
   lg: 'h-12 w-12 text-base',
 }
 
+const AVATAR_COLORS = [
+  'var(--color-primary)',
+  'var(--color-primary-hover)',
+  'var(--color-secondary)',
+  'var(--color-accent)',
+  'var(--color-success)',
+  'var(--color-warning)',
+  'var(--color-danger)',
+  'var(--color-muted)',
+]
+
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/)
   if (parts.length >= 2) {
@@ -26,11 +37,7 @@ function nameToColor(name: string): string {
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash)
   }
-  const colors = [
-    '#6d28d9', '#7c3aed', '#2563eb', '#0891b2',
-    '#059669', '#d97706', '#dc2626', '#db2777',
-  ]
-  return colors[Math.abs(hash) % colors.length]
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
 }
 
 export function AvatarCircle({ name, size = 'md', ringColor, className }: AvatarCircleProps) {
@@ -39,7 +46,7 @@ export function AvatarCircle({ name, size = 'md', ringColor, className }: Avatar
   return (
     <div
       className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white',
+        'inline-flex shrink-0 items-center justify-center rounded-full font-bold text-background',
         sizes[size],
         ringColor && 'ring-2 ring-offset-1',
         className,

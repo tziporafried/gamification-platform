@@ -25,13 +25,13 @@ interface ActionGroupJoin {
 
 function LockedActionRow({ task }: { task: TemplateTask }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-game-card/50 px-4 py-3 opacity-50 select-none">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/5">
-        <Lock size={13} className="text-zinc-500" />
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 opacity-50 select-none">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-elevated">
+        <Lock size={13} className="text-muted" />
       </div>
-      <span className="flex-1 truncate text-sm text-zinc-500">{task.name}</span>
-      <span className="shrink-0 text-sm font-semibold text-zinc-600">+{task.points}</span>
-      <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-500/60">
+      <span className="flex-1 truncate text-sm text-muted">{task.name}</span>
+      <span className="shrink-0 text-sm font-semibold text-muted">+{task.points}</span>
+      <span className="shrink-0 rounded-full border border-warning bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
         פרמיום
       </span>
     </div>
@@ -192,12 +192,12 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
             {hasLocked && (
               <>
                 <div className="flex items-center gap-2 py-1">
-                  <div className="h-px flex-1 bg-white/10" />
-                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted">
                     <Lock size={10} />
                     פרמיום
                   </span>
-                  <div className="h-px flex-1 bg-white/10" />
+                  <div className="h-px flex-1 bg-border" />
                 </div>
                 {lockedTasks.map((task) => (
                   <LockedActionRow key={task.id} task={task} />

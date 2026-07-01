@@ -20,13 +20,13 @@ export function XPBar({ current, target, label, className }: XPBarProps) {
           </span>
         </div>
       )}
-      <div className="relative overflow-hidden rounded-full bg-white/10">
+      <div className="relative overflow-hidden rounded-full bg-border/50">
         <ProgressBar
           value={current}
           max={target}
           size="md"
           trackClassName="bg-transparent"
-          fillClassName="bg-gradient-to-l from-emerald-600 to-emerald-400"
+          fillClassName="bg-success"
         />
       </div>
     </div>

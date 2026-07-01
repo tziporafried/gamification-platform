@@ -226,12 +226,12 @@ export function ScannerZone({ successFlash, processing = false, accent }: Props)
                     transition={{ duration: 1 }}
                   />
                   <motion.div
-                    className="flex h-[22%] w-[22%] min-h-14 min-w-14 max-h-24 max-w-24 items-center justify-center rounded-full bg-emerald-500/25 backdrop-blur-md"
-                    style={{ boxShadow: '0 0 40px rgba(34,197,94,0.45), 0 0 80px rgba(34,197,94,0.18)' }}
+                    className="flex h-[22%] w-[22%] min-h-14 min-w-14 max-h-24 max-w-24 items-center justify-center rounded-full bg-success/25 backdrop-blur-md"
+                    style={{ boxShadow: '0 0 40px color-mix(in srgb, var(--color-success) 45%, transparent), 0 0 80px color-mix(in srgb, var(--color-success) 18%, transparent)' }}
                     initial={{ scale: 0, rotate: -180 }} animate={{ scale: [0, 1.3, 1], rotate: 0 }}
                     transition={{ duration: 0.55, type: 'spring', stiffness: 200 }}
                   >
-                    <Check className="h-[55%] w-[55%] text-emerald-400" strokeWidth={3} />
+                    <Check className="h-[55%] w-[55%] text-success" strokeWidth={3} />
                   </motion.div>
                 </motion.div>
               )}

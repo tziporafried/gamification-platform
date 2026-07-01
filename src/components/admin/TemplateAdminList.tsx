@@ -116,8 +116,8 @@ export function TemplateAdminList() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-gray-400" />
-          <h2 className="text-sm font-medium text-gray-400">
+          <Sparkles size={18} className="text-muted" />
+          <h2 className="text-sm font-medium text-muted">
             {templates.length} תבניות
           </h2>
         </div>
@@ -128,15 +128,15 @@ export function TemplateAdminList() {
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-sm text-red-300">
+        <p className="rounded-lg bg-surface-elevated border border-danger px-3 py-2 text-sm text-danger">
           {error}
         </p>
       )}
 
       {templates.length === 0 ? (
-        <div className="rounded-2xl border border-game-border bg-game-card/50 p-12 text-center">
-          <Sparkles size={32} className="mx-auto mb-3 text-gray-600" />
-          <p className="text-sm text-gray-500 mb-4">אין תבניות עדיין</p>
+        <div className="rounded-2xl border border-border bg-surface p-12 text-center">
+          <Sparkles size={32} className="mx-auto mb-3 text-muted" />
+          <p className="text-sm text-muted mb-4">אין תבניות עדיין</p>
           <Button size="sm" loading={creating} onClick={handleCreate}>
             <Plus size={16} className="ml-1.5" />
             צרו תבנית ראשונה
@@ -149,13 +149,13 @@ export function TemplateAdminList() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-bold text-white">{template.name}</span>
+                    <span className="text-sm font-bold text-foreground">{template.name}</span>
                     <span
                       className={cn(
                         'text-[10px] font-medium px-2 py-0.5 rounded-full',
                         template.is_active
-                          ? 'text-emerald-400 bg-emerald-400/10'
-                          : 'text-gray-400 bg-gray-400/10',
+                          ? 'text-success bg-surface-elevated border border-success'
+                          : 'text-muted bg-surface-elevated border border-border',
                       )}
                     >
                       {template.is_active ? 'פעילה' : 'מוסתרת'}
@@ -163,10 +163,10 @@ export function TemplateAdminList() {
                   </div>
 
                   {template.description && (
-                    <p className="text-xs text-gray-400">{template.description}</p>
+                    <p className="text-xs text-muted">{template.description}</p>
                   )}
 
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                  <div className="flex items-center gap-4 text-xs text-muted">
                     {template.group_type === 'custom' ? (
                       <span className="flex items-center gap-1">
                         <Layers size={12} />
@@ -224,7 +224,7 @@ export function TemplateAdminList() {
                     variant="outline"
                     loading={busyId === template.id}
                     onClick={() => setDeletingTemplate(template)}
-                    className="text-red-400 hover:text-red-300"
+                    className="text-danger hover:text-danger"
                   >
                     <Trash2 size={14} className="ml-1" />
                     מחק
@@ -242,9 +242,9 @@ export function TemplateAdminList() {
         title="מחיקת תבנית"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-muted">
             האם למחוק את התבנית{' '}
-            <strong className="text-white">{deletingTemplate?.name}</strong>?
+            <strong className="text-foreground">{deletingTemplate?.name}</strong>?
             {' '}הפעולה לא ניתנת לביטול.
           </p>
           <div className="flex gap-3">

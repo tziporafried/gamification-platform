@@ -88,30 +88,30 @@ export function TemplatePickerModal({
         <div className="space-y-3 pt-1">
           <button
             onClick={handleShowTemplates}
-            className="w-full text-right rounded-xl border border-game-border bg-game-card p-4 transition-colors hover:border-brand-500/50 hover:bg-brand-500/5 group"
+            className="w-full text-right rounded-xl border border-border bg-surface p-4 transition-colors hover:border-accent hover:bg-surface-elevated group"
           >
             <div className="flex items-start gap-3">
-              <div className="shrink-0 rounded-lg bg-brand-500/10 p-2 group-hover:bg-brand-500/20 transition-colors">
-                <Sparkles size={20} className="text-brand-400" />
+              <div className="shrink-0 rounded-lg bg-surface-elevated p-2 group-hover:bg-surface-elevated transition-colors">
+                <Sparkles size={20} className="text-accent" />
               </div>
               <div>
-                <p className="font-medium text-white">התחל מתבנית</p>
-                <p className="mt-0.5 text-xs text-gray-400">קבוצות ומשימות מוכנות — התאימו אחר כך</p>
+                <p className="font-medium text-foreground">התחל מתבנית</p>
+                <p className="mt-0.5 text-xs text-muted">קבוצות ומשימות מוכנות — התאימו אחר כך</p>
               </div>
             </div>
           </button>
 
           <button
             onClick={onChooseScratch}
-            className="w-full text-right rounded-xl border border-game-border bg-game-card p-4 transition-colors hover:border-white/20 hover:bg-white/5 group"
+            className="w-full text-right rounded-xl border border-border bg-surface p-4 transition-colors hover:border-border hover:bg-surface-elevated group"
           >
             <div className="flex items-start gap-3">
-              <div className="shrink-0 rounded-lg bg-white/5 p-2 group-hover:bg-white/10 transition-colors">
-                <PenLine size={20} className="text-gray-400" />
+              <div className="shrink-0 rounded-lg bg-surface-elevated p-2 group-hover:bg-surface-elevated transition-colors">
+                <PenLine size={20} className="text-muted" />
               </div>
               <div>
-                <p className="font-medium text-white">התחל מאפס</p>
-                <p className="mt-0.5 text-xs text-gray-400">בנו את האירוע צעד אחר צעד לפי הצורך שלכם</p>
+                <p className="font-medium text-foreground">התחל מאפס</p>
+                <p className="mt-0.5 text-xs text-muted">בנו את האירוע צעד אחר צעד לפי הצורך שלכם</p>
               </div>
             </div>
           </button>
@@ -119,29 +119,29 @@ export function TemplatePickerModal({
       ) : (
         <div className="space-y-3 pt-1">
           {error && (
-            <p className="rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-sm text-red-300">
+            <p className="rounded-lg bg-surface-elevated border border-danger px-3 py-2 text-sm text-danger">
               {error}
             </p>
           )}
 
           {loadingTemplates ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 size={24} className="animate-spin text-gray-400" />
+              <Loader2 size={24} className="animate-spin text-muted" />
             </div>
           ) : (
             templates.map((tmpl) => (
               <div
                 key={tmpl.id}
-                className="rounded-xl border border-game-border bg-game-card p-4 space-y-3"
+                className="rounded-xl border border-border bg-surface p-4 space-y-3"
               >
                 <div>
-                  <p className="font-medium text-white">{tmpl.name}</p>
+                  <p className="font-medium text-foreground">{tmpl.name}</p>
                   {tmpl.description && (
-                    <p className="mt-0.5 text-xs text-gray-400">{tmpl.description}</p>
+                    <p className="mt-0.5 text-xs text-muted">{tmpl.description}</p>
                   )}
                 </div>
 
-                <div className="flex items-center gap-4 text-xs text-gray-500">
+                <div className="flex items-center gap-4 text-xs text-muted">
                   {tmpl.group_type === 'custom' ? (
                     <span className="flex items-center gap-1">
                       <Layers size={12} />
@@ -180,7 +180,7 @@ export function TemplatePickerModal({
 
           <button
             onClick={() => setScreen('choose')}
-            className="w-full text-center text-xs text-gray-500 hover:text-gray-300 transition-colors py-1"
+            className="w-full text-center text-xs text-muted hover:text-foreground transition-colors py-1"
           >
             חזרה
           </button>

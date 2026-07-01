@@ -19,7 +19,7 @@ export function PillButton({ active = false, size = 'xs', className, children, .
         SIZES[size],
         active
           ? cn(theme.accentBorder, theme.accentBg, theme.accentText)
-          : cn(theme.border, theme.textSubtle, 'hover:border-brand-500/30 hover:text-gray-300'),
+          : cn(theme.border, theme.textSubtle, 'hover:border-secondary hover:text-secondary'),
         className,
       )}
       {...props}

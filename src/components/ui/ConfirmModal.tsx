@@ -1,6 +1,8 @@
 import { ReactNode } from 'react'
 import { Modal } from './Modal'
 import { Button } from './Button'
+import { cn } from '@/lib/utils'
+import { theme } from '@/lib/theme'
 
 interface ConfirmModalProps {
   isOpen: boolean
@@ -30,9 +32,9 @@ export function ConfirmModal({
       <div className="space-y-4">
         {description && (
           typeof description === 'string' ? (
-            <p className="text-sm text-gray-400">{description}</p>
+            <p className={cn('text-sm', theme.textMuted)}>{description}</p>
           ) : (
-            <div className="text-sm text-gray-400">{description}</div>
+            <div className={cn('text-sm', theme.textMuted)}>{description}</div>
           )
         )}
         {children}

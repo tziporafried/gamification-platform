@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { theme } from '@/lib/theme'
 
 interface ColorPickerProps {
   label?: string
@@ -8,15 +9,21 @@ interface ColorPickerProps {
 }
 
 const PRESET_COLORS = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
-  '#f97316', '#eab308', '#22c55e', '#06b6d4',
+  'var(--color-primary)',
+  'var(--color-primary-hover)',
+  'var(--color-secondary)',
+  'var(--color-accent)',
+  'var(--color-success)',
+  'var(--color-warning)',
+  'var(--color-danger)',
+  'var(--color-muted)',
 ]
 
 export function ColorPicker({ label, value, onChange, error }: ColorPickerProps) {
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-gray-300 mb-1">{label}</label>
+        <label className={cn('block text-sm font-medium mb-1', theme.label)}>{label}</label>
       )}
       <div className="flex items-center gap-3">
         <div className="flex gap-1.5">
@@ -27,7 +34,7 @@ export function ColorPicker({ label, value, onChange, error }: ColorPickerProps)
               onClick={() => onChange(color)}
               className={cn(
                 'w-7 h-7 rounded-full border-2 transition-transform hover:scale-110',
-                value === color ? 'border-white scale-110' : 'border-transparent',
+                value === color ? 'border-foreground scale-110' : 'border-transparent',
               )}
               style={{ backgroundColor: color }}
             />
@@ -37,10 +44,10 @@ export function ColorPicker({ label, value, onChange, error }: ColorPickerProps)
           type="color"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-8 w-8 cursor-pointer rounded border border-game-border bg-game-dark"
+          className={cn('h-8 w-8 cursor-pointer rounded border', theme.inputBorder, theme.inputBg)}
         />
       </div>
-      {error && <p className="mt-1 text-sm text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-sm text-danger">{error}</p>}
     </div>
   )
 }

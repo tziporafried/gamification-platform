@@ -4,8 +4,7 @@ import type { AccentRgb } from '@/lib/accentColor'
 import type { Action } from '@/types'
 import type { RankedGroup } from '@/hooks/useOperationsData'
 import { getMissionStatus, getSecondsLeft, formatCountdown } from '@/lib/missionUtils'
-
-// ─── Props ────────────────────────────────────────────────────────────────────
+import { cn } from '@/lib/utils'
 
 interface Props {
   sortedMissions: Action[]
@@ -14,8 +13,6 @@ interface Props {
   secondNow: Date
   accent: AccentRgb
 }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const ROTATION_MS = 4800
 
@@ -27,8 +24,6 @@ const GENERIC_PROMPTS = [
   { id: 'p4', icon: '🏆', title: 'מי יגיע ראשון?', sub: 'המתח בשיאו — הכל פתוח' },
 ]
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function statusLabel(status: ReturnType<typeof getMissionStatus>, secsLeft: number | null): string {
   if (status === 'active')   return 'פעילה עכשיו'
   if (status === 'ending')   return secsLeft != null ? `מסתיימת בעוד ${formatCountdown(secsLeft)}` : 'מסתיימת בקרוב'
@@ -36,24 +31,21 @@ function statusLabel(status: ReturnType<typeof getMissionStatus>, secsLeft: numb
   return ''
 }
 
-function statusColors(status: ReturnType<typeof getMissionStatus>): { border: string; glow: string; badge: string; badgeText: string; icon: string } {
+function statusClasses(status: ReturnType<typeof getMissionStatus>) {
   switch (status) {
-    case 'ending':   return { border: '#ef4444', glow: 'rgba(239,68,68,0.22)', badge: 'rgba(239,68,68,0.18)', badgeText: '#fca5a5', icon: '⏰' }
-    case 'active':   return { border: '#22c55e', glow: 'rgba(34,197,94,0.20)',  badge: 'rgba(34,197,94,0.16)',  badgeText: '#86efac', icon: '✅' }
-    case 'upcoming': return { border: '#a78bfa', glow: 'rgba(167,139,250,0.20)',badge: 'rgba(139,92,246,0.16)', badgeText: '#c4b5fd', icon: '🔜' }
-    default:         return { border: '#64748b', glow: 'rgba(100,116,139,0.15)',badge: 'rgba(100,116,139,0.12)',badgeText: '#94a3b8', icon: '🎯' }
+    case 'ending':   return { card: 'border-danger', badge: 'border-danger bg-surface-elevated text-danger', icon: '⏰' }
+    case 'active':   return { card: 'border-success', badge: 'border-success bg-surface-elevated text-success', icon: '✅' }
+    case 'upcoming': return { card: 'border-accent', badge: 'border-accent bg-surface-elevated text-accent', icon: '🔜' }
+    default:         return { card: 'border-border', badge: 'border-border bg-surface-elevated text-muted', icon: '🎯' }
   }
 }
 
-const RANK_MEDALS = ['🥇', '🥈', '🥉']
-const RANK_COLORS = [
-  { border: '#eab308', glow: 'rgba(234,179,8,0.22)',    bg: 'rgba(234,179,8,0.10)'    },
-  { border: '#94a3b8', glow: 'rgba(148,163,184,0.20)',  bg: 'rgba(148,163,184,0.08)'  },
-  { border: '#cd7f32', glow: 'rgba(205,127,50,0.20)',   bg: 'rgba(205,127,50,0.08)'   },
-]
-const DEFAULT_RANK_COLOR = { border: '#6366f1', glow: 'rgba(99,102,241,0.18)', bg: 'rgba(99,102,241,0.07)' }
-
-function rankColor(rank: number) { return RANK_COLORS[rank - 1] ?? DEFAULT_RANK_COLOR }
+function rankClasses(rank: number) {
+  if (rank === 1) return { card: 'border-warning', badge: 'border-warning bg-surface-elevated text-warning', score: 'text-warning' }
+  if (rank === 2) return { card: 'border-border', badge: 'border-border bg-surface-elevated text-muted', score: 'text-foreground' }
+  if (rank === 3) return { card: 'border-accent', badge: 'border-accent bg-surface-elevated text-accent', score: 'text-accent' }
+  return { card: 'border-secondary', badge: 'border-secondary bg-surface-elevated text-secondary', score: 'text-secondary' }
+}
 
 function groupPrompt(group: RankedGroup, rank: number): string {
   if (rank === 1) return 'מובילים בדירוג! המשיכו לסרוק'
@@ -63,16 +55,12 @@ function groupPrompt(group: RankedGroup, rank: number): string {
   return 'המשיכו לצבור נקודות עכשיו'
 }
 
-// ─── Slide animation ──────────────────────────────────────────────────────────
-
 const SLIDE = {
   enter:  { x: 52, opacity: 0, scale: 0.96 },
   center: { x: 0,  opacity: 1, scale: 1    },
   exit:   { x: -52, opacity: 0, scale: 0.96 },
 }
 const SLIDE_TRANSITION = { duration: 0.35, ease: [0.4, 0, 0.2, 1] as const }
-
-// ─── Timed mission card ───────────────────────────────────────────────────────
 
 function TimedMissionCard({
   mission, bonusMissions, secondNow, primary,
@@ -84,25 +72,19 @@ function TimedMissionCard({
 }) {
   const status = getMissionStatus(mission)
   const secs   = getSecondsLeft(mission, secondNow)
-  const col    = statusColors(status)
+  const col    = statusClasses(status)
   const bonus  = bonusMissions.find(b => b.id === mission.id && (getMissionStatus(b) === 'active' || getMissionStatus(b) === 'ending'))
   const mult   = bonus ? Math.max(2, bonus.speed_multiplier ?? 2) : null
 
   return (
     <div
-      className="relative overflow-hidden rounded-2xl"
-      style={{
-        background: `linear-gradient(135deg, rgba(6,4,14,0.92) 0%, rgba(6,4,14,0.80) 100%)`,
-        border: `1.5px solid ${col.border}`,
-        boxShadow: `0 0 20px ${col.glow}, 0 2px 12px rgba(0,0,0,0.40)`,
-        padding: primary ? '18px 18px' : '12px 16px',
-      }}
+      className={cn(
+        'relative overflow-hidden rounded-2xl border-2 bg-surface shadow-card',
+        col.card,
+        primary ? 'p-[18px_18px]' : 'p-[12px_16px]',
+      )}
     >
-      {/* Inner glow */}
-      <div className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(ellipse at 90% 50%, ${col.glow}, transparent 60%)` }} />
-
       <div className="relative flex items-start gap-3">
-        {/* Icon */}
         <motion.span
           className="shrink-0 select-none leading-none"
           style={{ fontSize: primary ? 38 : 28 }}
@@ -113,18 +95,13 @@ function TimedMissionCard({
         </motion.span>
 
         <div className="min-w-0 flex-1">
-          {/* Status badge row */}
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-            <span
-              className="rounded-full px-2 py-0.5 text-[11px] font-black"
-              style={{ background: col.badge, color: col.badgeText }}
-            >
+            <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-black', col.badge)}>
               {statusLabel(status, secs)}
             </span>
             {mult && (
               <motion.span
-                className="rounded-full px-2 py-0.5 text-[11px] font-black"
-                style={{ background: 'rgba(249,115,22,0.20)', color: '#fdba74' }}
+                className="rounded-full border border-warning bg-surface-elevated px-2 py-0.5 text-[11px] font-black text-warning"
                 animate={{ scale: [1, 1.08, 1] }}
                 transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
               >
@@ -133,17 +110,20 @@ function TimedMissionCard({
             )}
           </div>
 
-          {/* Mission name */}
           <p
-            className="font-black leading-tight text-white"
+            className="font-black leading-tight text-foreground"
             style={{ fontSize: primary ? 17 : 14 }}
           >
             {mission.name}
           </p>
 
-          {/* Points */}
           {primary && (
-            <p className="mt-1 text-xs font-bold" style={{ color: col.badgeText }}>
+            <p className={cn(
+              'mt-1 text-xs font-bold',
+              status === 'ending' ? 'text-danger' :
+              status === 'active' ? 'text-success' :
+              status === 'upcoming' ? 'text-accent' : 'text-muted',
+            )}>
               {mission.points > 0 ? `+${mission.points} נקודות` : ''}
               {mult && mission.points > 0 ? ` → +${Math.round(mission.points * mult)} עם בונוס` : ''}
             </p>
@@ -151,11 +131,9 @@ function TimedMissionCard({
         </div>
       </div>
 
-      {/* Countdown bar for 'ending' */}
       {status === 'ending' && secs != null && mission.end_at && (
         <motion.div
-          className="absolute bottom-0 left-0 h-[3px] rounded-b-2xl"
-          style={{ background: col.border }}
+          className="absolute bottom-0 left-0 h-[3px] rounded-b-2xl bg-danger"
           animate={{ opacity: [0.6, 1, 0.6] }}
           transition={{ duration: 0.9, repeat: Infinity }}
         />
@@ -164,8 +142,6 @@ function TimedMissionCard({
   )
 }
 
-// ─── Group spotlight card ─────────────────────────────────────────────────────
-
 function GroupSpotlightCard({
   group, availableMissions,
 }: {
@@ -173,74 +149,48 @@ function GroupSpotlightCard({
   availableMissions: Action[]
 }) {
   const rank  = group.rank
-  const col   = rankColor(rank)
-  const medal = RANK_MEDALS[rank - 1] ?? '⭐'
+  const col   = rankClasses(rank)
+  const medal = ['🥇', '🥈', '🥉'][rank - 1] ?? '⭐'
 
   return (
-    <div
-      className="relative flex flex-1 flex-col overflow-hidden rounded-2xl"
-      style={{
-        background: `linear-gradient(150deg, ${col.bg} 0%, rgba(4,3,12,0.92) 60%)`,
-        border: `1.5px solid ${col.border}`,
-        boxShadow: `0 0 32px ${col.glow}, 0 4px 20px rgba(0,0,0,0.50)`,
-        padding: '20px 20px 20px',
-      }}
-    >
-      {/* Background glow */}
-      <div className="pointer-events-none absolute inset-0"
-        style={{ background: `radial-gradient(ellipse at 15% 15%, ${col.glow}, transparent 50%)` }} />
-
+    <div className={cn('relative flex flex-1 flex-col overflow-hidden rounded-2xl border-2 bg-surface p-5 shadow-card', col.card)}>
       <div className="relative flex flex-col gap-4">
-
-        {/* ── Identity: medal + rank badge + group name ── */}
         <div className="flex items-start gap-3">
           <span className="shrink-0 select-none leading-none" style={{ fontSize: 52 }}>{medal}</span>
           <div className="min-w-0 flex-1 pt-0.5">
-            {/* Rank badge — prominent pill */}
-            <div
-              className="mb-1.5 inline-flex items-center rounded-lg px-2.5 py-1"
-              style={{ background: col.bg, border: `1px solid ${col.border}` }}
-            >
-              <span className="text-[15px] font-black leading-none" style={{ color: col.border }}>
+            <div className={cn('mb-1.5 inline-flex items-center rounded-lg border px-2.5 py-1', col.badge)}>
+              <span className="text-[15px] font-black leading-none">
                 מקום #{rank}
               </span>
             </div>
-            {/* Group name — primary label */}
-            <p className="text-[28px] font-black leading-tight text-white">{group.group_name}</p>
+            <p className="text-[28px] font-black leading-tight text-foreground">{group.group_name}</p>
           </div>
         </div>
 
-        {/* ── Score — dominant numeric element ── */}
         <div>
-          <p
-            className="font-black leading-none tabular-nums"
-            style={{ fontSize: 54, color: col.border }}
-          >
+          <p className={cn('font-black leading-none tabular-nums', col.score)} style={{ fontSize: 54 }}>
             {group.total_points.toLocaleString('he-IL')}
           </p>
-          <p className="mt-1 text-[12px] font-bold uppercase tracking-widest text-gray-500">נקודות</p>
+          <p className="mt-1 text-[12px] font-bold uppercase tracking-widest text-muted">נקודות</p>
         </div>
 
-        {/* ── Supporting message ── */}
-        <p className="text-[15px] font-semibold leading-snug text-gray-200">
+        <p className="text-[15px] font-semibold leading-snug text-foreground">
           {groupPrompt(group, rank)}
         </p>
 
-        {/* ── Available missions ── */}
         {availableMissions.length > 0 && (
           <div className="flex flex-col gap-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted">
               משימות פתוחות
             </p>
             {availableMissions.slice(0, 3).map(m => (
               <div
                 key={m.id}
-                className="flex items-center gap-3 rounded-xl px-4 py-3"
-                style={{ background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.09)' }}
+                className="flex items-center gap-3 rounded-xl border border-border bg-surface-elevated px-4 py-3"
               >
                 <span className="shrink-0 select-none text-xl">🎯</span>
-                <p className="min-w-0 flex-1 truncate text-[13px] font-bold text-white">{m.name}</p>
-                <span className="shrink-0 text-[13px] font-black text-emerald-400">+{m.points}</span>
+                <p className="min-w-0 flex-1 truncate text-[13px] font-bold text-foreground">{m.name}</p>
+                <span className="shrink-0 text-[13px] font-black text-success">+{m.points}</span>
               </div>
             ))}
           </div>
@@ -250,29 +200,15 @@ function GroupSpotlightCard({
   )
 }
 
-// ─── Generic prompt card ──────────────────────────────────────────────────────
-
 function PromptCard({
-  icon, title, sub, accent,
+  icon, title, sub,
 }: {
   icon: string
   title: string
   sub: string
-  accent: AccentRgb
 }) {
-  const { r, g, b } = accent
   return (
-    <div
-      className="relative flex flex-1 flex-col items-center justify-center overflow-hidden rounded-2xl text-center"
-      style={{
-        background: `linear-gradient(145deg, rgba(${r},${g},${b},0.08) 0%, rgba(6,4,14,0.88) 100%)`,
-        border: `1.5px solid rgba(${r},${g},${b},0.30)`,
-        boxShadow: `0 0 24px rgba(${r},${g},${b},0.16), 0 4px 16px rgba(0,0,0,0.40)`,
-        padding: '32px 24px',
-        minHeight: 180,
-      }}
-    >
-      <div className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(ellipse at 50% 30%, rgba(${r},${g},${b},0.12), transparent 60%)` }} />
+    <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-accent bg-surface p-8 text-center shadow-card min-h-[180px]">
       <motion.span
         className="relative mb-4 text-6xl leading-none select-none"
         animate={{ scale: [1, 1.08, 1] }}
@@ -280,13 +216,11 @@ function PromptCard({
       >
         {icon}
       </motion.span>
-      <p className="relative text-[18px] font-black leading-snug text-white">{title}</p>
-      <p className="relative mt-1 text-[13px] font-medium text-gray-400">{sub}</p>
+      <p className="relative text-[18px] font-black leading-snug text-foreground">{title}</p>
+      <p className="relative mt-1 text-[13px] font-medium text-muted">{sub}</p>
     </div>
   )
 }
-
-// ─── Dot indicators ───────────────────────────────────────────────────────────
 
 function Dots({ total, active, accent }: { total: number; active: number; accent: AccentRgb }) {
   if (total <= 1) return null
@@ -299,25 +233,21 @@ function Dots({ total, active, accent }: { total: number; active: number; accent
           className="rounded-full"
           animate={{ width: i === active ? 16 : 6, opacity: i === active ? 1 : 0.3 }}
           transition={{ duration: 0.3 }}
-          style={{ height: 6, background: `rgb(${r},${g},${b})` }}
+          style={{ height: 6, background: i === active ? `rgb(${r},${g},${b})` : 'var(--color-border)' }}
         />
       ))}
     </div>
   )
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
-
 export function MissionSpotlight({ sortedMissions, bonusMissions, rankedGroups, secondNow, accent }: Props) {
   const [rotIdx, setRotIdx] = useState(0)
 
-  // Time-relevant missions: active, ending, upcoming (time_enabled only)
   const timedMissions = useMemo(
     () => sortedMissions.filter(m => m.time_enabled && ['active', 'ending', 'upcoming'].includes(getMissionStatus(m))),
     [sortedMissions, secondNow], // eslint-disable-line react-hooks/exhaustive-deps
   )
 
-  // Missions without time constraints (always open)
   const availableMissions = useMemo(
     () => sortedMissions.filter(m => getMissionStatus(m) === 'available'),
     [sortedMissions],
@@ -328,24 +258,16 @@ export function MissionSpotlight({ sortedMissions, bonusMissions, rankedGroups, 
   const totalGroups = scoredGroups.length
   const totalItems  = totalGroups > 0 ? totalGroups : GENERIC_PROMPTS.length
 
-  // Rotation timer — only runs when showing group/prompt cards
   useEffect(() => {
     if (showTimed || totalItems <= 1) return
     const t = setInterval(() => setRotIdx(prev => (prev + 1) % totalItems), ROTATION_MS)
     return () => clearInterval(t)
   }, [showTimed, totalItems])
 
-  // Reset rotation index when mode changes
   useEffect(() => { setRotIdx(0) }, [showTimed])
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-hidden" style={{ direction: 'rtl' }}>
-
-
-      {/* ══════════════════════════════════════════
-          MODE A — Timed missions exist
-          Show them stacked, most urgent at top
-      ═══════════════════════════════════════════ */}
       {showTimed && (
         <div className="flex flex-col gap-3 overflow-hidden">
           {timedMissions.slice(0, 4).map((m, i) => (
@@ -364,19 +286,17 @@ export function MissionSpotlight({ sortedMissions, bonusMissions, rankedGroups, 
             </motion.div>
           ))}
 
-          {/* Below timed missions: show available missions hint */}
           {availableMissions.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-[10px] font-black uppercase tracking-widest text-gray-600">גם זמינות</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted">גם זמינות</p>
               {availableMissions.slice(0, 2).map(m => (
                 <div
                   key={m.id}
-                  className="flex items-center gap-2 rounded-xl px-3 py-2"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+                  className="flex items-center gap-2 rounded-xl border border-border bg-surface-elevated px-3 py-2"
                 >
                   <span className="text-sm select-none">🎯</span>
-                  <p className="min-w-0 flex-1 truncate text-[12px] font-medium text-gray-300">{m.name}</p>
-                  <span className="shrink-0 text-[11px] font-black text-emerald-400">+{m.points}</span>
+                  <p className="min-w-0 flex-1 truncate text-[12px] font-medium text-foreground">{m.name}</p>
+                  <span className="shrink-0 text-[11px] font-black text-success">+{m.points}</span>
                 </div>
               ))}
             </div>
@@ -384,13 +304,8 @@ export function MissionSpotlight({ sortedMissions, bonusMissions, rankedGroups, 
         </div>
       )}
 
-      {/* ══════════════════════════════════════════
-          MODE B — No timed missions: group / prompt rotation
-          Cards slide in from right, exit to left
-      ═══════════════════════════════════════════ */}
       {!showTimed && (
         <div className="flex flex-1 flex-col gap-3 overflow-hidden">
-          {/* Rotation card */}
           <div className="relative flex-1">
             <AnimatePresence mode="wait">
               {totalGroups > 0 ? (
@@ -420,14 +335,12 @@ export function MissionSpotlight({ sortedMissions, bonusMissions, rankedGroups, 
                 >
                   <PromptCard
                     {...GENERIC_PROMPTS[rotIdx % GENERIC_PROMPTS.length]}
-                    accent={accent}
                   />
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Dot indicators */}
           <div className="shrink-0">
             <Dots total={totalItems} active={rotIdx} accent={accent} />
           </div>

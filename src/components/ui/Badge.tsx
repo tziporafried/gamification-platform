@@ -14,12 +14,12 @@ export function Badge({ label, color, variant = 'subtle', size = 'sm', icon }: B
 
   const variantStyles: Record<string, { bg: string; textColor: string; border?: string }> = {
     subtle: {
-      bg: color + '18',
+      bg: `color-mix(in srgb, ${color} 10%, transparent)`,
       textColor: color,
     },
     solid: {
       bg: color,
-      textColor: '#ffffff',
+      textColor: 'var(--color-foreground)',
     },
     outline: {
       bg: 'transparent',

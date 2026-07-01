@@ -32,7 +32,7 @@ export function Modal({ isOpen, onClose, title, titleClassName, children }: Moda
   return createPortal(
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
     >
       <div className={cn('w-full max-w-md rounded-2xl border shadow-xl animate-scale-in', theme.bgInset, theme.border)}>

@@ -159,9 +159,9 @@ export function MyEvents() {
         title="מחיקת אירוע"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-muted">
             האם את בטוחה שברצונך למחוק את האירוע{' '}
-            <strong className="text-white">{deletingEvent?.name || 'ללא שם'}</strong>?
+            <strong className="text-foreground">{deletingEvent?.name || 'ללא שם'}</strong>?
             {' '}האירוע יועבר לארכיון ולא יוצג במערכת.
           </p>
           <div className="flex gap-3">
@@ -226,26 +226,26 @@ function EventRow({ event, isOwner, isFreePlan, onDelete, onShare }: EventRowPro
       tabIndex={0}
       onClick={() => isWip ? navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`) : navigate(`/events/${event.id}/control`)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isWip ? navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`) : navigate(`/events/${event.id}/control`) } }}
-      className="group relative flex w-full cursor-pointer items-center gap-5 px-5 py-4 text-right bg-game-dark hover:bg-white/[0.03] transition-colors rounded-2xl border border-game-border overflow-hidden"
+      className="group relative flex w-full cursor-pointer items-center gap-5 px-5 py-4 text-right bg-surface hover:bg-surface-elevated transition-colors rounded-2xl border border-border overflow-hidden"
     >
-      <div className="absolute right-0 top-0 h-full w-1 rounded-r-none transition-opacity opacity-60 group-hover:opacity-100 bg-brand-600" />
+      <div className="absolute right-0 top-0 h-full w-1 rounded-r-none transition-opacity opacity-60 group-hover:opacity-100 bg-accent" />
 
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-600/10 border border-brand-600/25">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-elevated border border-secondary/25">
         {event.logo_url ? (
           <img src={event.logo_url} alt="" className="h-12 w-12 rounded-xl object-cover" />
         ) : (
-          <Calendar size={22} className="text-brand-400" />
+          <Calendar size={22} className="text-secondary" />
         )}
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-base font-bold text-white truncate leading-snug">
+          <p className="text-base font-bold text-foreground truncate leading-snug">
             {event.name || 'אירוע ללא שם'}
           </p>
-          {isFreePlan && <Badge label="משחק התנסות" color="#a78bfa" />}
+          {isFreePlan && <Badge label="משחק התנסות" color="var(--color-primary)" />}
         </div>
-        <p className="text-xs text-gray-500 mt-0.5">
+        <p className="text-xs text-muted mt-0.5">
           נוצר {new Date(event.created_at).toLocaleDateString('he-IL')}
         </p>
       </div>
@@ -272,7 +272,7 @@ function EventRow({ event, isOwner, isFreePlan, onDelete, onShare }: EventRowPro
             variant="ghost"
             size="xs"
             onClick={handleDelete}
-            className="opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-400"
+            className="opacity-0 group-hover:opacity-100 hover:bg-surface-elevated hover:text-danger"
           >
             <Trash2 size={13} className="ml-1" />
             מחיקה

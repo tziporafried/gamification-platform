@@ -9,6 +9,7 @@ import { rgba } from '@/lib/accentColor'
 import type { Action } from '@/types'
 import { getMissionStatus } from '@/lib/missionUtils'
 import type { CatalogAction, CatalogParticipant } from '@/hooks/useEventCatalog'
+import { cn } from '@/lib/utils'
 
 interface ParticipantOption { id: string; name: string; externalId: string }
 interface ActionOption { id: string; name: string; code: string; points: number }
@@ -139,14 +140,12 @@ export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, on
 
   return (
     <form onSubmit={handleSubmit}
-      className="w-full max-w-sm rounded-2xl border p-4 space-y-3"
-      style={{
-        background: 'rgba(255,255,255,0.03)',
-        borderColor: activeBonus ? 'rgba(249,115,22,0.35)' : 'rgba(255,255,255,0.08)',
-        transition: 'border-color 0.4s ease',
-      }}>
+      className={cn(
+        'w-full max-w-sm rounded-2xl border bg-surface p-4 space-y-3 transition-colors duration-400',
+        activeBonus ? 'border-warning' : 'border-border',
+      )}>
 
-      <p className="text-xs font-black text-gray-400 text-right">הזנה ידנית</p>
+      <p className="text-xs font-black text-muted text-right">הזנה ידנית</p>
 
       <AutocompleteField
         label="שחקן"
@@ -166,15 +165,15 @@ export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, on
         dropdownRef={participantDropdownRef}
         inputRef={participantInputRef}
         getKey={p => p.id}
-        renderSelected={p => <span className="truncate text-sm font-medium text-white">{p.name}</span>}
+        renderSelected={p => <span className="truncate text-sm font-medium text-foreground">{p.name}</span>}
         renderOption={p => (
           <>
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-foreground"
               style={{ backgroundColor: rgba(accent, 0.22) }}>
               {p.name.slice(0, 2)}
             </div>
             <span className="truncate">{p.name}</span>
-            <span className="mr-auto font-mono text-[10px] text-gray-500">{p.externalId}</span>
+            <span className="mr-auto font-mono text-[10px] text-muted">{p.externalId}</span>
           </>
         )}
       />
@@ -198,8 +197,8 @@ export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, on
         getKey={a => a.id}
         renderSelected={a => (
           <>
-            <span className="truncate text-sm font-medium text-white">{a.name}</span>
-            <span className={`text-[10px] font-bold ${a.points >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            <span className="truncate text-sm font-medium text-foreground">{a.name}</span>
+            <span className={cn('text-[10px] font-bold', a.points >= 0 ? 'text-success' : 'text-danger')}>
               {a.points >= 0 ? '+' : ''}{a.points}
             </span>
           </>
@@ -207,7 +206,7 @@ export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, on
         renderOption={a => (
           <div className="flex w-full items-center justify-between gap-2">
             <span className="truncate">{a.name}</span>
-            <span className={`shrink-0 text-xs font-bold ${a.points >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            <span className={cn('shrink-0 text-xs font-bold', a.points >= 0 ? 'text-success' : 'text-danger')}>
               {a.points >= 0 ? '+' : ''}{a.points}
             </span>
           </div>
@@ -220,8 +219,8 @@ export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, on
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}>
           {activeBonus ? (
-            <span className="text-orange-300 font-bold">
-              <span className="line-through text-gray-500 mr-1">+{selectedAction.points}</span>
+            <span className="text-warning font-bold">
+              <span className="line-through text-muted mr-1">+{selectedAction.points}</span>
               🔥 +{activeBonus.boostedPoints} נק׳ ({activeBonus.label} בונוס!)
             </span>
           ) : (
@@ -245,8 +244,7 @@ export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, on
         </Button>
         {activeBonus && (
           <motion.div
-            className="absolute -top-2.5 -right-2 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black"
-            style={{ background: 'rgba(249,115,22,0.9)', color: '#fff' }}
+            className="absolute -top-2.5 -right-2 flex items-center gap-1 rounded-full bg-warning px-2 py-0.5 text-[10px] font-black text-foreground"
             animate={{ scale: [1, 1.08, 1] }}
             transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}>
             <Flame size={9} />

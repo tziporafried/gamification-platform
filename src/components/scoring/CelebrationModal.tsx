@@ -12,7 +12,16 @@ interface CelebrationModalProps {
   onComplete: () => void
 }
 
-const CONFETTI_COLORS = ['#7c3aed', '#a855f7', '#ec4899', '#f97316', '#fbbf24', '#22c55e', '#06b6d4', '#8b5cf6']
+const CONFETTI_COLORS = [
+  'var(--color-primary)',
+  'var(--color-primary-hover)',
+  'var(--color-accent)',
+  'var(--color-warning)',
+  'var(--color-success)',
+  'var(--color-secondary)',
+  'var(--color-danger)',
+  'var(--color-muted)',
+]
 
 interface ConfettiPiece {
   left: string
@@ -38,8 +47,8 @@ function getTierConfig(points: number) {
   if (points >= 2000) return {
     Icon: Gem,
     gradient: 'gradient-diamond',
-    border: 'border-purple-500/40',
-    glow: '0 0 40px rgba(139, 92, 246, 0.4), 0 0 80px rgba(6, 182, 212, 0.2)',
+    border: 'border-accent/40',
+    glow: '0 0 40px color-mix(in srgb, var(--color-primary) 40%, transparent), 0 0 80px color-mix(in srgb, var(--color-secondary) 20%, transparent)',
     title: '!פתיחה אגדית',
     label: 'אגדי',
     confettiCount: 80,
@@ -47,8 +56,8 @@ function getTierConfig(points: number) {
   if (points >= 1000) return {
     Icon: Trophy,
     gradient: 'gradient-gold',
-    border: 'border-amber-500/40',
-    glow: '0 0 40px rgba(251, 191, 36, 0.4)',
+    border: 'border-warning/40',
+    glow: '0 0 40px color-mix(in srgb, var(--color-warning) 40%, transparent)',
     title: '!הישג נפתח',
     label: 'זהב',
     confettiCount: 60,
@@ -56,8 +65,8 @@ function getTierConfig(points: number) {
   if (points >= 500) return {
     Icon: Award,
     gradient: 'gradient-silver',
-    border: 'border-gray-400/40',
-    glow: '0 0 24px rgba(156, 163, 175, 0.3)',
+    border: 'border-border',
+    glow: '0 0 24px color-mix(in srgb, var(--color-muted) 30%, transparent)',
     title: '!הישג חדש',
     label: 'כסף',
     confettiCount: 45,
@@ -65,8 +74,8 @@ function getTierConfig(points: number) {
   return {
     Icon: Star,
     gradient: 'gradient-bronze',
-    border: 'border-orange-500/40',
-    glow: '0 0 24px rgba(217, 119, 6, 0.3)',
+    border: 'border-accent/40',
+    glow: '0 0 24px color-mix(in srgb, var(--color-accent) 30%, transparent)',
     title: '!פרס חדש',
     label: 'ארד',
     confettiCount: 40,
@@ -125,10 +134,10 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
       className="fixed inset-0 z-50 flex items-center justify-center"
       onKeyDown={handleKeyDown}
     >
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-md" />
+      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-md" />
 
       {showFlash && (
-        <div className="fixed inset-0 bg-white animate-screen-flash pointer-events-none z-20" />
+        <div className="fixed inset-0 bg-background animate-screen-flash pointer-events-none z-20" />
       )}
 
       {confetti.map((piece, i) => (
@@ -150,9 +159,8 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
 
       {showContent && (
         <div
-          className="relative z-10 w-full max-w-sm mx-4 overflow-hidden rounded-3xl border bg-game-dark animate-scale-in"
+          className="relative z-10 w-full max-w-sm mx-4 overflow-hidden rounded-3xl border border-accent/30 bg-surface animate-scale-in"
           style={{
-            borderColor: 'rgba(139, 92, 246, 0.3)',
             boxShadow: tier.glow,
           }}
         >
@@ -160,39 +168,39 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
             <div
               className="absolute inset-0 opacity-30"
               style={{
-                background: `radial-gradient(circle at 50% 0%, ${CONFETTI_COLORS[0]}40 0%, transparent 70%)`,
+                background: 'radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--color-primary) 25%, transparent) 0%, transparent 70%)',
               }}
             />
 
             <div className="relative p-8 text-center">
               <div
-                className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl text-white animate-celebration-bounce ${tier.gradient}`}
+                className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl text-foreground animate-celebration-bounce ${tier.gradient}`}
                 style={{ boxShadow: tier.glow }}
               >
                 <tier.Icon size={40} />
               </div>
 
-              <div className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-brand-400">
+              <div className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-accent">
                 {tier.label}
               </div>
 
-              <h2 className="mb-3 text-2xl font-black text-white">
+              <h2 className="mb-3 text-2xl font-black text-foreground">
                 {tier.title}
               </h2>
 
-              <p className="mb-1 text-sm text-gray-400">
-                {participantName} הגיע ל-<span className="font-bold text-white">{reward.out_total_points.toLocaleString()}</span> נקודות
+              <p className="mb-1 text-sm text-muted">
+                {participantName} הגיע ל-<span className="font-bold text-foreground">{reward.out_total_points.toLocaleString()}</span> נקודות
               </p>
 
-              <div className="my-5 rounded-2xl border border-game-border bg-game-card p-4">
-                <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-gray-500">
+              <div className="my-5 rounded-2xl border border-border bg-surface-elevated p-4">
+                <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-muted">
                   פרס
                 </div>
-                <p className="text-xl font-black text-white">
+                <p className="text-xl font-black text-foreground">
                   {reward.out_reward_name}
                 </p>
                 {reward.out_reward_description && (
-                  <p className="mt-1 text-sm text-gray-500">{reward.out_reward_description}</p>
+                  <p className="mt-1 text-sm text-muted">{reward.out_reward_description}</p>
                 )}
               </div>
 
@@ -219,7 +227,7 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
                     <div
                       key={i}
                       className={`h-2 w-2 rounded-full transition-colors ${
-                        i === currentIndex ? 'bg-brand-400' : 'bg-gray-700'
+                        i === currentIndex ? 'bg-accent' : 'bg-border'
                       }`}
                     />
                   ))}

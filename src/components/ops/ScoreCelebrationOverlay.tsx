@@ -4,6 +4,7 @@ import { Flame } from 'lucide-react'
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
 import type { AccentRgb } from '@/lib/accentColor'
 import { rgba } from '@/lib/accentColor'
+import { cn } from '@/lib/utils'
 
 export interface CelebrationOverlayData {
   name: string
@@ -17,7 +18,15 @@ interface Props extends CelebrationOverlayData {
   onDismiss: () => void
 }
 
-const CONFETTI_COLORS = ['#fbbf24', '#f97316', '#a855f7', '#22c55e', '#06b6d4', '#ec4899', '#8b5cf6']
+const CONFETTI_COLORS = [
+  'var(--color-warning)',
+  'var(--color-accent)',
+  'var(--color-primary)',
+  'var(--color-success)',
+  'var(--color-secondary)',
+  'var(--color-primary-hover)',
+  'var(--color-danger)',
+]
 
 export function ScoreCelebrationOverlay({ name, points, bonus, mult, accent, onDismiss }: Props) {
   useEffect(() => {
@@ -44,8 +53,7 @@ export function ScoreCelebrationOverlay({ name, points, bonus, mult, accent, onD
 
   return (
     <motion.div
-      className="fixed inset-0 z-[200] flex items-center justify-center"
-      style={{ backdropFilter: 'blur(6px)', backgroundColor: 'rgba(0,0,0,0.8)' }}
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -67,19 +75,16 @@ export function ScoreCelebrationOverlay({ name, points, bonus, mult, accent, onD
       ))}
 
       <motion.div
-        className="relative z-[202] flex flex-col items-center gap-5 rounded-3xl p-8 text-center mx-4"
+        className={cn(
+          'relative z-[202] flex flex-col items-center gap-5 rounded-3xl border bg-surface-elevated p-8 text-center mx-4 shadow-podium',
+          bonus ? 'border-warning' : 'border-secondary',
+        )}
         style={{
-          background: bonus
-            ? 'linear-gradient(135deg, rgba(17,10,5,0.98) 0%, rgba(30,12,0,0.98) 100%)'
-            : 'linear-gradient(135deg, rgba(13,8,28,0.98) 0%, rgba(18,10,38,0.98) 100%)',
-          border: bonus
-            ? '1px solid rgba(249,115,22,0.55)'
-            : `1px solid ${rgba(accent, 0.55)}`,
-          boxShadow: bonus
-            ? '0 0 60px rgba(249,115,22,0.3), 0 0 120px rgba(249,115,22,0.12)'
-            : `0 0 60px ${rgba(accent, 0.3)}, 0 0 120px ${rgba(accent, 0.12)}`,
           minWidth: 280,
           maxWidth: 380,
+          boxShadow: bonus
+            ? '0 0 40px color-mix(in srgb, var(--color-warning) 20%, transparent)'
+            : `0 0 40px ${rgba(accent, 0.2)}`,
         }}
         initial={{ scale: 0.85, y: 24, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
@@ -89,11 +94,12 @@ export function ScoreCelebrationOverlay({ name, points, bonus, mult, accent, onD
         <span className="text-5xl leading-none">🎉</span>
 
         <div>
-          <p className="text-xl font-black text-white leading-snug">{name}</p>
-          <p className="text-sm text-gray-400 mt-1">צבר נקודות</p>
+          <p className="text-xl font-black text-foreground leading-snug">{name}</p>
+          <p className="text-sm text-muted mt-1">צבר נקודות</p>
         </div>
 
-        <div className="flex items-baseline gap-1.5" style={{ color: bonus ? '#fb923c' : rgba(accent, 1) }}>
+        <div className={cn('flex items-baseline gap-1.5', bonus ? 'text-warning' : 'text-secondary')}
+          style={bonus ? undefined : { color: rgba(accent, 1) }}>
           <span className="text-3xl font-black">+</span>
           <AnimatedCounter
             value={points}
@@ -101,21 +107,17 @@ export function ScoreCelebrationOverlay({ name, points, bonus, mult, accent, onD
             className="text-8xl font-black leading-none"
           />
         </div>
-        <span className="text-xl font-bold text-white/70 -mt-3">נקודות</span>
+        <span className="text-xl font-bold text-muted -mt-3">נקודות</span>
 
         <AnimatePresence>
           {bonus && (
             <motion.div
-              className="flex items-center gap-2.5 rounded-2xl px-5 py-2.5"
-              style={{
-                background: 'rgba(249,115,22,0.18)',
-                border: '1px solid rgba(249,115,22,0.45)',
-              }}
+              className="flex items-center gap-2.5 rounded-2xl border border-warning bg-surface px-5 py-2.5"
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: [1, 1.05, 1], opacity: 1 }}
               transition={{ scale: { duration: 1.2, repeat: Infinity, ease: 'easeInOut' }, opacity: { duration: 0.3 } }}>
-              <Flame size={20} className="text-orange-400" />
-              <span className="text-xl font-black text-orange-300">{mult} בונוס!</span>
+              <Flame size={20} className="text-warning" />
+              <span className="text-xl font-black text-warning">{mult} בונוס!</span>
             </motion.div>
           )}
         </AnimatePresence>

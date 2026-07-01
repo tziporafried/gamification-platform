@@ -41,7 +41,7 @@ export function TaskLimitSelect({
     : `${customLimit} פעמים`
 
   const Icon = limitMode === 'unlimited' ? Repeat : limitMode === 'once' ? RotateCcw : Hash
-  const chipColor = limitMode === 'unlimited' ? 'brand' as const
+  const chipColor = limitMode === 'unlimited' ? 'accent' as const
     : limitMode === 'once' ? 'amber' as const
     : 'cyan' as const
 
@@ -59,33 +59,33 @@ export function TaskLimitSelect({
           <button
             onClick={() => { onSaveLimitMode('unlimited'); setOpen(false) }}
             className={cn(
-              'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-white/5',
-              limitMode === 'unlimited' ? 'text-brand-400' : 'text-gray-400',
+              'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
+              limitMode === 'unlimited' ? 'text-accent' : 'text-muted',
             )}
           >
             <Repeat size={12} className="shrink-0" />
             <div className="text-right">
               <div>{unlimitedLabel}</div>
-              <div className="text-[10px] font-normal text-gray-500">ניתן לבצע כמה פעמים שרוצים</div>
+              <div className="text-[10px] font-normal text-muted">ניתן לבצע כמה פעמים שרוצים</div>
             </div>
           </button>
           <button
             onClick={() => { onSaveLimitMode('once'); setOpen(false) }}
             className={cn(
-              'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-white/5',
-              limitMode === 'once' ? 'text-amber-400' : 'text-gray-400',
+              'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
+              limitMode === 'once' ? 'text-warning' : 'text-muted',
             )}
           >
             <RotateCcw size={12} className="shrink-0" />
             <div className="text-right">
               <div>פעם אחת</div>
-              <div className="text-[10px] font-normal text-gray-500">כל משתתף יכול לבצע פעם אחת בלבד</div>
+              <div className="text-[10px] font-normal text-muted">כל משתתף יכול לבצע פעם אחת בלבד</div>
             </div>
           </button>
           <DropdownDivider />
           {editingLimit ? (
             <div className="flex items-center gap-1.5 px-3 py-2">
-              <Hash size={12} className="shrink-0 text-cyan-400" />
+              <Hash size={12} className="shrink-0 text-secondary" />
               <input
                 ref={limitRef}
                 type="number"
@@ -97,23 +97,23 @@ export function TaskLimitSelect({
                   if (e.key === 'Escape') { onSetEditingLimit(false); onResetLimit() }
                 }}
                 onBlur={() => { onSaveLimitMode('limited', Math.max(2, customLimit)); onSetEditingLimit(false) }}
-                className="w-12 rounded border border-brand-500 bg-game-dark px-1.5 py-0.5 text-xs text-center font-medium text-white outline-none"
+                className="w-12 rounded border border-secondary bg-surface-elevated px-1.5 py-0.5 text-xs text-center font-medium text-foreground outline-none"
                 autoFocus
               />
-              <span className="text-xs text-gray-400">פעמים</span>
+              <span className="text-xs text-muted">פעמים</span>
             </div>
           ) : (
             <button
               onClick={() => { onSaveLimitMode('limited'); onSetEditingLimit(true) }}
               className={cn(
-                'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-white/5',
-                limitMode === 'limited' ? 'text-cyan-400' : 'text-gray-400',
+                'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
+                limitMode === 'limited' ? 'text-secondary' : 'text-muted',
               )}
             >
               <Hash size={12} className="shrink-0" />
               <div className="text-right">
                 <div>{limitMode === 'limited' ? `${customLimit} פעמים` : 'מוגבל...'}</div>
-                <div className="text-[10px] font-normal text-gray-500">הגדר מספר מרבי של ביצועים</div>
+                <div className="text-[10px] font-normal text-muted">הגדר מספר מרבי של ביצועים</div>
               </div>
             </button>
           )}

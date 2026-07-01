@@ -169,7 +169,7 @@ export function AdminPanel() {
             <>
               <Icon size={16} />
               {id === 'upgrade-requests' && newRequestCount > 0 && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-[10px] font-bold text-foreground">
                   {newRequestCount}
                 </span>
               )}
@@ -191,7 +191,7 @@ export function AdminPanel() {
         ) : (
           <>
             <SectionHeader
-              icon={<Users size={18} className="text-brand-400" />}
+              icon={<Users size={18} className="text-secondary" />}
               title={`${users.length} משתמשים רשומים`}
               className="mb-6"
             />
@@ -208,23 +208,23 @@ export function AdminPanel() {
                         {user.avatar_url ? (
                           <img src={user.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover shrink-0" />
                         ) : (
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600/20 shrink-0">
-                            <span className="text-sm font-bold text-brand-400">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-elevated shrink-0">
+                            <span className="text-sm font-bold text-secondary">
                               {(user.display_name || user.email)[0]?.toUpperCase()}
                             </span>
                           </div>
                         )}
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-white truncate">
+                            <span className="text-sm font-medium text-foreground truncate">
                               {user.display_name || user.email.split('@')[0]}
                             </span>
                             {user.role === 'super_admin' && (
-                              <Crown size={14} className="text-amber-400 shrink-0" />
+                              <Crown size={14} className="text-warning shrink-0" />
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                          <p className="text-xs text-gray-600 mt-0.5">
+                          <p className="text-xs text-muted truncate">{user.email}</p>
+                          <p className="text-xs text-muted mt-0.5">
                             הצטרף {new Date(user.created_at).toLocaleDateString('he-IL')}
                             {user.event_count > 0 && <> · {user.event_count} אירועים</>}
                           </p>
@@ -270,7 +270,7 @@ export function AdminPanel() {
         ) : (
           <>
             <SectionHeader
-              icon={<MessageSquare size={18} className="text-brand-400" />}
+              icon={<MessageSquare size={18} className="text-accent" />}
               title={`${requests.length} פניות שדרוג${newRequestCount > 0 ? ` (${newRequestCount} חדשות)` : ''}`}
               className="mb-6"
             />
@@ -279,23 +279,23 @@ export function AdminPanel() {
               {requests.map(req => {
                 const statusOption = STATUS_OPTIONS.find(s => s.value === req.status) || STATUS_OPTIONS[0]
                 return (
-                  <Card key={req.id} className={cn('p-4', req.status === 'new' && 'border-amber-500/20')}>
+                  <Card key={req.id} className={cn('p-4', req.status === 'new' && 'border-warning')}>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0 flex-1 space-y-1.5">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-bold text-white">{req.full_name}</span>
+                          <span className="text-sm font-bold text-foreground">{req.full_name}</span>
                           <AdminStatusPill status={req.status} label={statusOption.label} />
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-gray-400">
+                        <div className="flex items-center gap-3 text-xs text-muted">
                           <span dir="ltr">{req.email}</span>
                           <span dir="ltr">{req.phone}</span>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-gray-500">
-                          <span>מגבלה: <span className="text-gray-300">{LIMIT_LABELS[req.limit_type] || req.limit_type}</span></span>
+                        <div className="flex items-center gap-3 text-xs text-muted">
+                          <span>מגבלה: <span className="text-foreground">{LIMIT_LABELS[req.limit_type] || req.limit_type}</span></span>
                           <span>{new Date(req.created_at).toLocaleDateString('he-IL')} {new Date(req.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                         {req.notes && (
-                          <p className="text-xs text-gray-400 bg-white/[0.03] rounded-lg px-3 py-2 mt-1">{req.notes}</p>
+                          <p className="text-xs text-muted bg-surface-elevated rounded-lg px-3 py-2 mt-1">{req.notes}</p>
                         )}
                       </div>
 

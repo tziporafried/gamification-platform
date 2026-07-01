@@ -22,9 +22,9 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
         type="range"
         value={value}
         className={cn(
-          'w-full h-2 appearance-none rounded-full cursor-pointer bg-game-border accent-brand-500',
+          'w-full h-2 appearance-none rounded-full cursor-pointer bg-border accent-primary',
           '[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4',
-          '[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md',
+          '[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-background [&::-webkit-slider-thumb]:shadow-md',
           className,
         )}
         {...props}

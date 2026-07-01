@@ -54,7 +54,10 @@ export function EventOpsPage() {
 
 function EventOpsContent({ event }: { event: Event }) {
   const navigate = useNavigate()
-  const accent = useMemo(() => hexToRgb('#7c3aed'), [])
+  const accent = useMemo(() => {
+    const primary = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim()
+    return hexToRgb(primary)
+  }, [])
   const opsData = useOperationsData(event.id)
   const catalog = useEventCatalog(event.id)
   const { submit, submitting, lastError } = useScoreSubmit(event.id)
@@ -161,13 +164,13 @@ function EventOpsContent({ event }: { event: Event }) {
 
   if (opsData.loading) return (
     <div className={cn('flex min-h-screen flex-col items-center justify-center gap-3', theme.pageBg)}>
-      <Spinner size="lg" className="border-brand-400" />
+      <Spinner size="lg" className="border-secondary" />
       <p className={cn('text-sm', theme.textSubtle)}>טוען מסוף מבצעים...</p>
     </div>
   )
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden" style={{ background: '#0a0814', direction: 'rtl' }}>
+    <div className="relative flex h-screen flex-col overflow-hidden bg-app-radial" dir="rtl">
 
       {/* Global background glow pulse on score */}
       <motion.div
@@ -177,23 +180,22 @@ function EventOpsContent({ event }: { event: Event }) {
         style={{ background: `radial-gradient(circle at center, ${rgba(accent, 1)}, transparent 70%)` }} />
 
       {/* ═══ HEADER ═══ */}
-      <div className="relative z-10 shrink-0 border-b px-4 py-2.5 flex items-center gap-3"
-        style={{ borderColor: 'rgba(255,255,255,0.07)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+      <div className="relative z-10 shrink-0 border-b border-border bg-surface px-4 py-2.5 flex items-center gap-3">
         {/* Event info */}
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           {event.logo_url && (
             <img src={event.logo_url} className="h-7 w-7 rounded-lg object-cover shrink-0" alt="" />
           )}
           <div className="min-w-0">
-            <p className="text-sm font-black text-white truncate leading-none">{event.name}</p>
-            <p className="text-[10px] text-gray-500 leading-none mt-0.5">התחרות</p>
+            <p className="text-sm font-black text-foreground truncate leading-none">{event.name}</p>
+            <p className="text-[10px] text-muted leading-none mt-0.5">התחרות</p>
           </div>
         </div>
 
         {/* Actions */}
         <button
           onClick={() => navigate(`/events/${event.id}/control`)}
-          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-gray-400 transition-all hover:bg-white/[0.07] hover:text-white">
+          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-muted transition-all hover:bg-surface-elevated hover:text-foreground">
           <ArrowRight size={12} />
           <span className="hidden sm:inline">חזרה</span>
         </button>
@@ -202,9 +204,9 @@ function EventOpsContent({ event }: { event: Event }) {
       {hebrewKeyboardWarning && (
         <div
           role="alert"
-          className="relative z-20 shrink-0 border-b border-amber-500/40 bg-amber-600/25 px-4 py-2.5"
+          className="relative z-20 shrink-0 border-b border-warning bg-surface-elevated px-4 py-2.5"
         >
-          <p className="text-center text-sm font-semibold text-amber-50">
+          <p className="text-center text-sm font-semibold text-warning">
             המקלדת מוגדרת על עברית — עברו ל-<span className="font-black underline">ENG</span> לפני סריקה
           </p>
         </div>
@@ -214,8 +216,7 @@ function EventOpsContent({ event }: { event: Event }) {
       <div className="relative z-10 flex flex-1 overflow-hidden">
 
         {/* Column 1 — Hero Card: what's happening now (rightmost in RTL) */}
-        <div className="hidden lg:flex w-[28%] border-l flex-col p-5 shrink-0 overflow-hidden"
-          style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+        <div className="hidden lg:flex w-[28%] border-l border-border flex-col p-5 shrink-0 overflow-hidden">
           <HeroCard
             sortedMissions={opsData.sortedMissions}
             bonusMissions={opsData.bonusMissions}
@@ -226,8 +227,7 @@ function EventOpsContent({ event }: { event: Event }) {
         </div>
 
         {/* Column 2 — Scanner (center) */}
-        <div className="flex flex-1 flex-col items-center justify-center overflow-hidden px-4 py-3 gap-3 border-l"
-          style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+        <div className="flex flex-1 flex-col items-center justify-center overflow-hidden px-4 py-3 gap-3 border-l border-border">
 
           {/* Scanner zone — QR-enabled plans only */}
           {canScanQR && (
@@ -262,7 +262,7 @@ function EventOpsContent({ event }: { event: Event }) {
               {!showManualEntry && (
                 <button
                   type="button"
-                  className="shrink-0 text-xs text-gray-500 underline-offset-2 transition-colors hover:text-gray-300 hover:underline"
+                  className="shrink-0 text-xs text-muted underline-offset-2 transition-colors hover:text-foreground hover:underline"
                   onClick={() => setShowManualEntry(true)}
                 >
                   הזנה ידנית
@@ -273,7 +273,7 @@ function EventOpsContent({ event }: { event: Event }) {
                   <button
                     type="button"
                     onClick={() => setShowManualEntry(false)}
-                    className="absolute left-3 top-3 z-10 rounded p-0.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
+                    className="absolute left-3 top-3 z-10 rounded p-0.5 text-muted transition-colors hover:bg-surface-elevated hover:text-foreground"
                     aria-label="סגור"
                   >
                     <X size={14} />

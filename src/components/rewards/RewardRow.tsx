@@ -12,10 +12,10 @@ interface RewardRowProps {
 }
 
 function getRewardTier(points: number): { icon: typeof Trophy; gradient: string; border: string; label: string } {
-  if (points >= 2000) return { icon: Gem, gradient: 'gradient-diamond', border: 'border-purple-500/30', label: 'אגדי' }
-  if (points >= 1000) return { icon: Trophy, gradient: 'gradient-gold', border: 'border-amber-500/30', label: 'זהב' }
-  if (points >= 500) return { icon: Award, gradient: 'gradient-silver', border: 'border-gray-400/30', label: 'כסף' }
-  return { icon: Star, gradient: 'gradient-bronze', border: 'border-orange-500/30', label: 'ארד' }
+  if (points >= 2000) return { icon: Gem, gradient: 'gradient-diamond', border: 'border-accent/30', label: 'אגדי' }
+  if (points >= 1000) return { icon: Trophy, gradient: 'gradient-gold', border: 'border-warning/30', label: 'זהב' }
+  if (points >= 500) return { icon: Award, gradient: 'gradient-silver', border: 'border-border', label: 'כסף' }
+  return { icon: Star, gradient: 'gradient-bronze', border: 'border-accent/30', label: 'ארד' }
 }
 
 export function RewardRow({ reward, onEdit, onToggleActive, onManageGroups }: RewardRowProps) {
@@ -26,7 +26,7 @@ export function RewardRow({ reward, onEdit, onToggleActive, onManageGroups }: Re
   return (
     <div
       className={cn(
-        'group relative overflow-hidden rounded-2xl border bg-game-card transition-all duration-200 hover:-translate-y-0.5',
+        'group relative overflow-hidden rounded-2xl border bg-surface transition-all duration-200 hover:-translate-y-0.5',
         tier.border,
         !reward.is_active && 'opacity-50',
       )}
@@ -34,24 +34,24 @@ export function RewardRow({ reward, onEdit, onToggleActive, onManageGroups }: Re
       <div className="flex flex-col items-center p-5 text-center">
         <div
           className={cn(
-            'flex h-14 w-14 items-center justify-center rounded-2xl text-white mb-3',
+            'flex h-14 w-14 items-center justify-center rounded-2xl text-foreground mb-3',
             tier.gradient,
           )}
         >
           <TierIcon size={28} />
         </div>
 
-        <div className="mb-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-500">
+        <div className="mb-0.5 text-[9px] font-bold uppercase tracking-widest text-muted">
           {tier.label}
         </div>
 
-        <p className="w-full truncate text-sm font-bold text-white">{reward.name}</p>
+        <p className="w-full truncate text-sm font-bold text-foreground">{reward.name}</p>
 
         {reward.description && (
-          <p className="mt-1 w-full truncate text-xs text-gray-500">{reward.description}</p>
+          <p className="mt-1 w-full truncate text-xs text-muted">{reward.description}</p>
         )}
 
-        <div className="mt-3 inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-brand-300">
+        <div className="mt-3 inline-flex items-center rounded-full bg-surface-elevated px-3 py-1 text-xs font-bold text-accent">
           {reward.required_points.toLocaleString()} נק׳
         </div>
 
@@ -67,7 +67,7 @@ export function RewardRow({ reward, onEdit, onToggleActive, onManageGroups }: Re
       <div className="absolute left-2 top-2">
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="rounded-lg p-1.5 text-gray-500 hover:bg-white/10 hover:text-gray-300"
+          className="rounded-lg p-1.5 text-muted hover:bg-surface-elevated hover:text-foreground"
         >
           <MoreVertical size={16} />
         </button>
@@ -75,24 +75,24 @@ export function RewardRow({ reward, onEdit, onToggleActive, onManageGroups }: Re
         {menuOpen && (
           <>
             <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-            <div className="absolute left-0 top-8 z-20 w-36 rounded-xl border border-game-border bg-game-dark p-1 shadow-podium">
+            <div className="absolute left-0 top-8 z-20 w-36 rounded-xl border border-border bg-surface-elevated p-1 shadow-podium">
               <button
                 onClick={() => { onEdit(); setMenuOpen(false) }}
-                className="w-full rounded-lg px-3 py-2 text-right text-sm text-gray-300 hover:bg-white/5"
+                className="w-full rounded-lg px-3 py-2 text-right text-sm text-foreground hover:bg-surface"
               >
                 עריכה
               </button>
               <button
                 onClick={() => { onManageGroups(); setMenuOpen(false) }}
-                className="w-full rounded-lg px-3 py-2 text-right text-sm text-gray-300 hover:bg-white/5"
+                className="w-full rounded-lg px-3 py-2 text-right text-sm text-foreground hover:bg-surface"
               >
                 קבוצות
               </button>
               <button
                 onClick={() => { onToggleActive(); setMenuOpen(false) }}
                 className={cn(
-                  'w-full rounded-lg px-3 py-2 text-right text-sm hover:bg-white/5',
-                  reward.is_active ? 'text-amber-400' : 'text-emerald-400',
+                  'w-full rounded-lg px-3 py-2 text-right text-sm hover:bg-surface',
+                  reward.is_active ? 'text-warning' : 'text-success',
                 )}
               >
                 {reward.is_active ? 'השבתה' : 'הפעלה'}
@@ -104,7 +104,7 @@ export function RewardRow({ reward, onEdit, onToggleActive, onManageGroups }: Re
 
       {!reward.is_active && (
         <div className="absolute right-2 top-2">
-          <span className="rounded-full bg-gray-600/50 px-2 py-0.5 text-[10px] font-medium text-gray-400">
+          <span className="rounded-full bg-surface-elevated px-2 py-0.5 text-[10px] font-medium text-muted">
             לא פעיל
           </span>
         </div>

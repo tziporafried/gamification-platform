@@ -7,8 +7,6 @@ import type { RankedGroup, TxRow } from '@/hooks/useOperationsData'
 import type { Action } from '@/types'
 import { getMissionStatus } from '@/lib/missionUtils'
 
-// ─── Public types ─────────────────────────────────────────────────────────────
-
 export interface LatestScoreInfo {
   id: string
   name: string
@@ -27,8 +25,6 @@ interface Props {
   latestScore: LatestScoreInfo | null
 }
 
-// ─── Event data ───────────────────────────────────────────────────────────────
-
 type EventData =
   | { kind: 'score';            name: string; points: number; bonus: boolean; mult: string }
   | { kind: 'bonus';            missionName: string; mult: number }
@@ -46,39 +42,35 @@ interface QueuedEvent {
   data: EventData
 }
 
-// ─── Queue constants ──────────────────────────────────────────────────────────
-
-const MAX_VISIBLE  = 6      // maximum events shown simultaneously
-const DELAY_MIN    = 2200   // ms between ambient events
+const MAX_VISIBLE  = 6
+const DELAY_MIN    = 2200
 const DELAY_MAX    = 5000
 const MILESTONES   = [500, 1000, 2500, 5000, 10_000, 25_000, 50_000]
-
-// Opacity by slot index — newest (0) is most visible, oldest (5) fades out
 const SLOT_OPACITY = [1, 0.80, 0.60, 0.44, 0.30, 0.18]
-
-// ─── Event display mapper ─────────────────────────────────────────────────────
 
 interface EventDisplay {
   icon:   string
-  color:  string   // accent color for text + border
-  glow:   string   // rgba for box-shadow
-  bg:     string   // card background gradient
+  color:  string
+  glow:   string
+  bg:     string
   line1:  string
   line2:  string
+}
+
+function surfaceGradient(token: string): string {
+  return `linear-gradient(135deg, color-mix(in srgb, ${token} 14%, transparent) 0%, var(--color-surface) 100%)`
 }
 
 function getDisplay(data: EventData, accent: AccentRgb, secondNow: Date): EventDisplay {
   switch (data.kind) {
 
     case 'score': {
-      const c = data.bonus
-        ? { hex: '#f97316', r: 249, g: 115, b: 22 }
-        : { hex: '#22c55e', r: 34,  g: 197, b: 94 }
+      const token = data.bonus ? 'var(--color-warning)' : 'var(--color-success)'
       return {
         icon:  data.bonus ? '🔥' : '🎉',
-        color: c.hex,
-        glow:  `rgba(${c.r},${c.g},${c.b},0.25)`,
-        bg:    `linear-gradient(135deg,rgba(${c.r},${c.g},${c.b},0.14) 0%,rgba(6,4,14,0.90) 100%)`,
+        color: token,
+        glow:  `color-mix(in srgb, ${token} 25%, transparent)`,
+        bg:    surfaceGradient(token),
         line1: data.name,
         line2: `+${data.points}${data.bonus ? ` ${data.mult}` : ''} נקודות`,
       }
@@ -87,9 +79,9 @@ function getDisplay(data: EventData, accent: AccentRgb, secondNow: Date): EventD
     case 'bonus':
       return {
         icon:  '🔥',
-        color: '#f97316',
-        glow:  'rgba(249,115,22,0.25)',
-        bg:    'linear-gradient(135deg,rgba(249,115,22,0.16) 0%,rgba(6,4,14,0.90) 100%)',
+        color: 'var(--color-warning)',
+        glow:  'color-mix(in srgb, var(--color-warning) 25%, transparent)',
+        bg:    surfaceGradient('var(--color-warning)'),
         line1: data.missionName,
         line2: `×${data.mult} בונוס פעיל!`,
       }
@@ -97,9 +89,9 @@ function getDisplay(data: EventData, accent: AccentRgb, secondNow: Date): EventD
     case 'new_leader':
       return {
         icon:  '👑',
-        color: '#eab308',
-        glow:  'rgba(234,179,8,0.25)',
-        bg:    'linear-gradient(135deg,rgba(234,179,8,0.14) 0%,rgba(6,4,14,0.90) 100%)',
+        color: 'var(--color-warning)',
+        glow:  'color-mix(in srgb, var(--color-warning) 25%, transparent)',
+        bg:    surfaceGradient('var(--color-warning)'),
         line1: data.groupName,
         line2: 'עלתה למקום ראשון!',
       }
@@ -107,11 +99,16 @@ function getDisplay(data: EventData, accent: AccentRgb, secondNow: Date): EventD
     case 'rank_up': {
       const medals = ['🥇', '🥈', '🥉']
       const labels = ['מקום ראשון', 'מקום שני', 'מקום שלישי']
+      const token = data.newRank === 1
+        ? 'var(--color-warning)'
+        : data.newRank === 2
+          ? 'var(--color-muted)'
+          : 'var(--color-accent)'
       return {
         icon:  medals[data.newRank - 1] ?? '🚀',
-        color: data.newRank === 1 ? '#eab308' : data.newRank === 2 ? '#94a3b8' : '#cd7f32',
-        glow:  'rgba(234,179,8,0.20)',
-        bg:    'linear-gradient(135deg,rgba(234,179,8,0.11) 0%,rgba(6,4,14,0.90) 100%)',
+        color: token,
+        glow:  `color-mix(in srgb, ${token} 20%, transparent)`,
+        bg:    surfaceGradient(token),
         line1: data.groupName,
         line2: labels[data.newRank - 1] ?? `מקום #${data.newRank}`,
       }
@@ -122,11 +119,12 @@ function getDisplay(data: EventData, accent: AccentRgb, secondNow: Date): EventD
       const urgent  = secs < 60
       const mm      = String(Math.floor(secs / 60)).padStart(2, '0')
       const ss      = String(secs % 60).padStart(2, '0')
+      const token   = urgent ? 'var(--color-danger)' : 'var(--color-warning)'
       return {
         icon:  '⏰',
-        color: urgent ? '#ef4444' : '#f97316',
-        glow:  urgent ? 'rgba(239,68,68,0.25)' : 'rgba(249,115,22,0.20)',
-        bg:    `linear-gradient(135deg,${urgent ? 'rgba(239,68,68,0.14)' : 'rgba(249,115,22,0.12)'} 0%,rgba(6,4,14,0.90) 100%)`,
+        color: token,
+        glow:  `color-mix(in srgb, ${token} 25%, transparent)`,
+        bg:    surfaceGradient(token),
         line1: data.missionName,
         line2: urgent ? `⚡ ${mm}:${ss} לסיום!` : `נשאר ${mm}:${ss}`,
       }
@@ -135,33 +133,31 @@ function getDisplay(data: EventData, accent: AccentRgb, secondNow: Date): EventD
     case 'upcoming':
       return {
         icon:  '🔜',
-        color: '#a78bfa',
-        glow:  'rgba(167,139,250,0.22)',
-        bg:    'linear-gradient(135deg,rgba(139,92,246,0.12) 0%,rgba(6,4,14,0.90) 100%)',
+        color: 'var(--color-primary)',
+        glow:  'color-mix(in srgb, var(--color-primary) 22%, transparent)',
+        bg:    surfaceGradient('var(--color-primary)'),
         line1: data.missionName,
         line2: data.minsLeft === 0 ? 'מתחיל עכשיו!' : `מתחיל בעוד ${data.minsLeft} דקות`,
       }
 
     case 'spotlight': {
       const rgb    = hexToRgb(data.groupColor)
-      const medals = ['🥇', '🥈', '🥉']
-      const labels = ['מקום ראשון', 'מקום שני', 'מקום שלישי']
       return {
-        icon:  medals[data.rank - 1] ?? '⭐',
+        icon:  ['🥇', '🥈', '🥉'][data.rank - 1] ?? '⭐',
         color: data.groupColor,
         glow:  `rgba(${rgb.r},${rgb.g},${rgb.b},0.22)`,
-        bg:    `linear-gradient(135deg,rgba(${rgb.r},${rgb.g},${rgb.b},0.12) 0%,rgba(6,4,14,0.90) 100%)`,
+        bg:    `linear-gradient(135deg, rgba(${rgb.r},${rgb.g},${rgb.b},0.12) 0%, var(--color-surface) 100%)`,
         line1: data.groupName,
-        line2: labels[data.rank - 1] ?? `מקום #${data.rank}`,
+        line2: ['מקום ראשון', 'מקום שני', 'מקום שלישי'][data.rank - 1] ?? `מקום #${data.rank}`,
       }
     }
 
     case 'mission_complete':
       return {
         icon:  '🏁',
-        color: '#14b8a6',
-        glow:  'rgba(20,184,166,0.22)',
-        bg:    'linear-gradient(135deg,rgba(20,184,166,0.13) 0%,rgba(6,4,14,0.90) 100%)',
+        color: 'var(--color-secondary)',
+        glow:  'color-mix(in srgb, var(--color-secondary) 22%, transparent)',
+        bg:    surfaceGradient('var(--color-secondary)'),
         line1: data.missionName,
         line2: 'המשימה הושלמה! 🎊',
       }
@@ -169,9 +165,9 @@ function getDisplay(data: EventData, accent: AccentRgb, secondNow: Date): EventD
     case 'milestone':
       return {
         icon:  '⭐',
-        color: '#fbbf24',
-        glow:  'rgba(251,191,36,0.25)',
-        bg:    'linear-gradient(135deg,rgba(234,179,8,0.15) 0%,rgba(6,4,14,0.90) 100%)',
+        color: 'var(--color-warning)',
+        glow:  'color-mix(in srgb, var(--color-warning) 25%, transparent)',
+        bg:    surfaceGradient('var(--color-warning)'),
         line1: data.groupName,
         line2: `עברה ${data.threshold.toLocaleString('he-IL')} נקודות!`,
       }
@@ -182,15 +178,13 @@ function getDisplay(data: EventData, accent: AccentRgb, secondNow: Date): EventD
         icon:  '🎮',
         color: `rgb(${r},${g},${b})`,
         glow:  `rgba(${r},${g},${b},0.18)`,
-        bg:    `linear-gradient(135deg,rgba(${r},${g},${b},0.09) 0%,rgba(6,4,14,0.90) 100%)`,
+        bg:    `linear-gradient(135deg, rgba(${r},${g},${b},0.09) 0%, var(--color-surface) 100%)`,
         line1: 'מוכנים!',
         line2: 'ממתינים לסריקה הראשונה...',
       }
     }
   }
 }
-
-// ─── Ambient playlist builder ─────────────────────────────────────────────────
 
 function buildAmbient(
   rankedGroups: RankedGroup[],
@@ -245,11 +239,6 @@ function buildAmbient(
   return list
 }
 
-// ─── Single event card ────────────────────────────────────────────────────────
-// Cards are completely inert between queue changes.
-// `layout` handles the downward shift when a new card is prepended.
-// `animate={{ opacity }}` fades each card as its index increases.
-
 function EventCard({
   event, index, accent, secondNow,
 }: {
@@ -276,26 +265,24 @@ function EventCard({
       }}
     >
       <div
-        className="flex items-center gap-4 rounded-2xl px-5 py-5"
+        className="flex items-center gap-4 rounded-2xl border border-border bg-surface px-5 py-5 shadow-card"
         style={{
           background:  d.bg,
           borderRight: `4px solid ${d.color}`,
-          boxShadow:   `0 0 24px ${d.glow}, 0 4px 16px rgba(0,0,0,0.40)`,
+          boxShadow:   `0 0 24px ${d.glow}`,
         }}
       >
         <span className="shrink-0 select-none leading-none" style={{ fontSize: 46 }}>
           {d.icon}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[18px] font-black leading-snug text-white">{d.line1}</p>
+          <p className="truncate text-[18px] font-black leading-snug text-foreground">{d.line1}</p>
           <p className="truncate text-[15px] font-bold leading-snug" style={{ color: d.color }}>{d.line2}</p>
         </div>
       </div>
     </motion.div>
   )
 }
-
-// ─── Main component ───────────────────────────────────────────────────────────
 
 export function LiveActivityFeed({
   rankedGroups,
@@ -312,9 +299,8 @@ export function LiveActivityFeed({
     [rankedGroups, transactions, sortedMissions, bonusMissions],
   )
 
-  // The queue — newest at index 0 (top), oldest at the bottom
   const [queue, setQueue]         = useState<QueuedEvent[]>([])
-  const [glowColor, setGlowColor] = useState('rgba(0,0,0,0)')
+  const [glowColor, setGlowColor] = useState('transparent')
 
   const idRef          = useRef(0)
   const ambientIdxRef  = useRef(0)
@@ -325,12 +311,8 @@ export function LiveActivityFeed({
   const prevPointsRef  = useRef<Record<string, number> | null>(null)
   const prevMssRef     = useRef<Record<string, string> | null>(null)
 
-  // Keep playlist ref fresh so the timer closure always reads the latest data
   playlistRef.current = ambientPlaylist
 
-  // ── Enqueue: prepend event, drop oldest if over limit ──
-  // This is the ONLY mutation of the queue. All animation is driven by
-  // Framer Motion's layout system responding to this state change.
   const enqueue = useCallback((data: EventData) => {
     const id = `e${++idRef.current}`
     setQueue(prev => [{ id, data }, ...prev].slice(0, MAX_VISIBLE))
@@ -345,9 +327,6 @@ export function LiveActivityFeed({
     return item
   }
 
-  // ── Variable-interval auto-advance ──
-  // A single recursive timer. Fires → pushes one event → reschedules.
-  // No card has its own timer. Nothing moves between firings.
   const scheduleNext = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current)
     const delay = DELAY_MIN + Math.random() * (DELAY_MAX - DELAY_MIN)
@@ -358,7 +337,6 @@ export function LiveActivityFeed({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enqueue])
 
-  // Seed 3 events on mount with a short stagger so the feed isn't empty
   useEffect(() => {
     const pl = playlistRef.current
     const seed = Math.min(3, Math.max(pl.length, 1))
@@ -372,14 +350,11 @@ export function LiveActivityFeed({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Push a live event immediately, then reset the ambient timer so the next
-  // ambient event doesn't fire too close after it.
   function insertLive(data: EventData) {
     enqueue(data)
     scheduleNext()
   }
 
-  // ── Live: score submitted ──
   useEffect(() => {
     if (!latestScore || latestScore.id === prevScoreIdRef.current) return
     prevScoreIdRef.current = latestScore.id
@@ -387,7 +362,6 @@ export function LiveActivityFeed({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [latestScore?.id])
 
-  // ── Live: leader change ──
   useEffect(() => {
     const id = rankedGroups[0]?.group_id ?? null
     if (prevLeaderRef.current === undefined) { prevLeaderRef.current = id; return }
@@ -399,7 +373,6 @@ export function LiveActivityFeed({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rankedGroups])
 
-  // ── Live: milestone ──
   useEffect(() => {
     if (!prevPointsRef.current) {
       prevPointsRef.current = Object.fromEntries(rankedGroups.map(g => [g.group_id, g.total_points]))
@@ -416,7 +389,6 @@ export function LiveActivityFeed({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rankedGroups])
 
-  // ── Live: mission complete ──
   useEffect(() => {
     if (!prevMssRef.current) {
       prevMssRef.current = Object.fromEntries(sortedMissions.map(m => [m.id, getMissionStatus(m)]))
@@ -432,30 +404,14 @@ export function LiveActivityFeed({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortedMissions])
 
-  // ─── Render ───────────────────────────────────────────────────────────────
-
   return (
-    <div className="relative flex h-full flex-col overflow-hidden" style={{ direction: 'rtl' }}>
-
-      {/* Atmospheric glow — updates to match the latest event type */}
+    <div className="relative flex h-full flex-col overflow-hidden bg-background" style={{ direction: 'rtl' }}>
       <motion.div
         className="pointer-events-none absolute inset-0 z-0"
         animate={{ background: `radial-gradient(ellipse at 50% 30%,${glowColor} 0%,transparent 60%)` }}
         transition={{ duration: 2.4, ease: 'easeInOut' }}
       />
 
-      {/* Vignette */}
-      <div
-        className="pointer-events-none absolute inset-0 z-0"
-        style={{ background: 'radial-gradient(ellipse at 50% 50%,transparent 25%,rgba(0,0,0,0.55) 100%)' }}
-      />
-
-
-      {/* ── Event queue ──
-          Newest card at the top (index 0). When enqueue() fires, React prepends
-          a new item. AnimatePresence + layout shift every existing card down
-          by exactly one slot in a single coordinated 380ms animation.
-          Nothing moves until the next enqueue(). */}
       <div className="relative z-10 flex flex-1 flex-col justify-between">
         <AnimatePresence initial={false}>
           {queue.map((event, index) => (

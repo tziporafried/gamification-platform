@@ -1,3 +1,5 @@
+@import './styles/design-tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,11 +10,15 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     direction: rtl;
+    color: var(--color-foreground);
+    background-color: var(--color-background);
+    background-image: var(--gradient-background);
+    background-attachment: fixed;
   }
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(139, 92, 246, 0.35) transparent;
+    scrollbar-color: var(--color-border) transparent;
   }
 
   *::-webkit-scrollbar {
@@ -25,14 +31,14 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background: rgba(139, 92, 246, 0.28);
+    background: var(--color-border);
     border-radius: 9999px;
     border: 1px solid transparent;
     background-clip: padding-box;
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background: rgba(139, 92, 246, 0.5);
+    background: var(--color-muted);
     background-clip: padding-box;
   }
 
@@ -43,33 +49,42 @@
 
 @layer utilities {
   .gradient-brand {
-    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
   }
   .gradient-success {
-    background: linear-gradient(135deg, #059669 0%, #34d399 100%);
+    background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-success) 100%);
   }
   .gradient-gold {
-    background: linear-gradient(135deg, #d97706 0%, #fbbf24 100%);
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-warning) 100%);
   }
   .gradient-silver {
-    background: linear-gradient(135deg, #6b7280 0%, #d1d5db 100%);
+    background: linear-gradient(135deg, var(--color-muted) 0%, var(--color-border) 100%);
   }
   .gradient-bronze {
-    background: linear-gradient(135deg, #92400e 0%, #d97706 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
   }
   .gradient-diamond {
-    background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 50%, #a855f7 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 50%, var(--color-primary-hover) 100%);
+  }
+  .bg-wizard-panel {
+    background-color: var(--color-surface-elevated);
+  }
+  .bg-app-radial {
+    background-color: var(--color-background);
+    background-image: var(--gradient-background);
   }
   .bg-game {
-    background: linear-gradient(180deg, #0f0b1e 0%, #1a1433 100%);
+    background-color: var(--color-background);
+    background-image: var(--gradient-background);
   }
   .bg-game-radial {
-    background: radial-gradient(ellipse at 50% 0%, #2d2250 0%, #1a1433 50%, #0f0b1e 100%);
+    background-color: var(--color-background);
+    background-image: var(--gradient-background);
   }
   .glow-border-gold {
-    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.3), 0 0 16px rgba(251, 191, 36, 0.15);
+    box-shadow: 0 0 0 1px var(--color-warning), 0 0 16px color-mix(in srgb, var(--color-warning) 15%, transparent);
   }
   .glow-border-brand {
-    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.3), 0 0 16px rgba(139, 92, 246, 0.15);
+    box-shadow: 0 0 0 1px var(--color-primary), 0 0 16px color-mix(in srgb, var(--color-primary) 15%, transparent);
   }
 }

@@ -1,0 +1,67 @@
+/**
+ * Design Token System
+ *
+ * Layer 1 — Primitives: exact approved palette values (single source of truth)
+ * Layer 2 — Semantics: role-based tokens mapped only to approved palette values
+ *
+ * Do not reference primitives directly in components — use semantic tokens.
+ */
+
+:root {
+  /* ── Layer 1: Primitives (approved palette) ── */
+  --palette-brand-primary: #AB3500;
+  --palette-brand-accent: #FF6B35;
+  --palette-secondary: #008080;
+  --palette-accent: #FF9500;
+  --palette-background: #FFF8F3;
+  --palette-surface: #FFF8F3;
+  --palette-surface-elevated: #FFF1EC;
+  --palette-foreground: #2E221E;
+  --palette-muted: #7D706A;
+  --palette-border: #E7D6CF;
+  --palette-success: #45CF6B;
+  --palette-warning: #FFB800;
+  --palette-danger: #FF4D4D;
+
+  /* ── Layer 2: Semantic tokens (approved palette only) ── */
+  --color-background: var(--palette-background);
+  --color-surface: var(--palette-surface);
+  --color-surface-elevated: var(--palette-surface-elevated);
+  --color-foreground: var(--palette-foreground);
+  --color-muted: var(--palette-muted);
+  --color-border: var(--palette-border);
+
+  --color-primary: var(--palette-brand-primary);
+  --color-primary-hover: var(--palette-brand-accent);
+  --color-on-primary: var(--palette-surface);
+
+  --color-secondary: var(--palette-secondary);
+  --color-on-secondary: var(--palette-surface);
+
+  --color-accent: var(--palette-accent);
+
+  --color-success: var(--palette-success);
+  --color-warning: var(--palette-warning);
+  --color-danger: var(--palette-danger);
+  --color-on-danger: var(--palette-surface);
+
+  /*
+   * Page background — flat warm cream (reference: body #FFF8F3)
+   */
+  --gradient-background: none;
+
+  /* Wizard step card — glowing orb accents (reference: primary-fixed-dim / secondary-fixed-dim orbs) */
+  --gradient-wizard-panel-orb-primary: color-mix(in srgb, var(--palette-brand-accent) 20%, transparent);
+  --gradient-wizard-panel-orb-secondary: color-mix(in srgb, var(--palette-warning) 20%, transparent);
+
+  /*
+   * Design review required — no approved palette value yet:
+   *
+   * --color-primary-active
+   * --color-secondary-hover
+   * --color-secondary-active
+   * --color-secondary-foreground
+   * --color-focus-ring
+   * --color-disabled
+   */
+}

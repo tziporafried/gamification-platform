@@ -59,9 +59,9 @@ export function AutocompleteField<T>({
     (blurred || suggestions.length === 0)
 
   const borderColor = isValid
-    ? 'rgba(34,197,94,0.5)'
+    ? 'color-mix(in srgb, var(--color-success) 50%, transparent)'
     : isInvalid
-      ? 'rgba(239,68,68,0.5)'
+      ? 'color-mix(in srgb, var(--color-danger) 50%, transparent)'
       : rgba(accent, 0.3)
 
   const showPanel = showDropdown && hasQuery && !selected
@@ -81,24 +81,24 @@ export function AutocompleteField<T>({
 
   return (
     <div ref={dropdownRef}>
-      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted">
         {label}
       </label>
 
       <div className="relative">
         {selected ? (
           <div
-            className="flex h-10 items-center justify-between rounded-lg border bg-game-dark px-3"
-            style={{ borderColor: 'rgba(34,197,94,0.5)' }}
+            className="flex h-10 items-center justify-between rounded-lg border bg-surface-elevated px-3"
+            style={{ borderColor: 'color-mix(in srgb, var(--color-success) 50%, transparent)' }}
           >
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <CheckCircle2 size={14} className="shrink-0 text-emerald-400" />
+              <CheckCircle2 size={14} className="shrink-0 text-success" />
               {renderSelected(selected)}
             </div>
             <button
               type="button"
               onClick={onClear}
-              className="mr-1 shrink-0 rounded p-0.5 text-gray-400 hover:text-white"
+              className="mr-1 shrink-0 rounded p-0.5 text-muted hover:text-foreground"
             >
               <X size={14} />
             </button>
@@ -115,34 +115,34 @@ export function AutocompleteField<T>({
               }}
               onFocus={handleFocus}
               onBlur={handleBlur}
-              className="h-10 w-full rounded-lg border bg-game-dark py-0 pl-3 pr-9 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-1"
+              className="h-10 w-full rounded-lg border bg-surface-elevated py-0 pl-3 pr-9 text-sm text-foreground placeholder-muted focus:outline-none focus:ring-1"
               style={{
                 borderColor,
-                ['--tw-ring-color' as string]: isInvalid ? 'rgba(239,68,68,0.5)' : rgba(accent, 0.5),
+                ['--tw-ring-color' as string]: isInvalid ? 'color-mix(in srgb, var(--color-danger) 50%, transparent)' : rgba(accent, 0.5),
               }}
             />
             <div className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2">
-              {searching && <Loader2 size={14} className="animate-spin text-gray-400" />}
-              {!searching && isInvalid && <AlertCircle size={14} className="text-red-400" />}
+              {searching && <Loader2 size={14} className="animate-spin text-muted" />}
+              {!searching && isInvalid && <AlertCircle size={14} className="text-danger" />}
             </div>
           </div>
         )}
 
         {showPanel && (
-          <div className="absolute inset-x-0 bottom-full z-20 mb-1 max-h-48 overflow-y-auto rounded-lg border border-game-border bg-game-dark shadow-xl">
+          <div className="absolute inset-x-0 bottom-full z-20 mb-1 max-h-48 overflow-y-auto rounded-lg border border-border bg-surface-elevated shadow-xl">
             {searching ? (
-              <div className="flex items-center justify-center gap-2 px-3 py-4 text-xs text-gray-400">
+              <div className="flex items-center justify-center gap-2 px-3 py-4 text-xs text-muted">
                 <Loader2 size={14} className="animate-spin" />
                 מחפש...
               </div>
             ) : suggestions.length === 0 ? (
-              <div className="px-3 py-4 text-center text-xs text-gray-500">{emptyMessage}</div>
+              <div className="px-3 py-4 text-center text-xs text-muted">{emptyMessage}</div>
             ) : (
               suggestions.map((item) => (
                 <button
                   key={getKey(item)}
                   type="button"
-                  className="flex w-full items-center gap-2 px-3 py-2 text-right text-sm text-gray-200 transition-colors hover:bg-white/5"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-right text-sm text-foreground transition-colors hover:bg-surface"
                   onMouseDown={handleOptionMouseDown}
                   onClick={() => onSelect(item)}
                 >
@@ -154,7 +154,7 @@ export function AutocompleteField<T>({
         )}
 
         {isInvalid && !showPanel && (
-          <p className="mt-1 text-[10px] text-red-400">
+          <p className="mt-1 text-[10px] text-danger">
             {suggestions.length === 0 && hasQuery ? emptyMessage : 'יש לבחור מהרשימה'}
           </p>
         )}

@@ -122,12 +122,12 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved, onPlanLi
         />
 
         <div className="w-full">
-          <label htmlFor="reward-description" className="block text-sm font-medium text-gray-300 mb-1">
+          <label htmlFor="reward-description" className="block text-sm font-medium text-foreground mb-1">
             תיאור
           </label>
           <textarea
             id="reward-description"
-            className="block w-full rounded-xl border border-game-border bg-game-dark px-3 py-2 text-sm text-white placeholder-gray-500 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-brand-500 focus:ring-brand-500/30"
+            className="block w-full rounded-xl border border-border bg-surface-elevated px-3 py-2 text-sm text-foreground placeholder-muted shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-secondary focus:ring-secondary"
             rows={2}
             placeholder="תיאור אופציונלי"
             value={description}
@@ -136,12 +136,12 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved, onPlanLi
         </div>
 
         {isEdit && (
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2 text-sm text-muted">
             <input
               type="checkbox"
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              className="h-4 w-4 rounded border-game-border bg-game-dark text-brand-600 focus:ring-brand-500"
+              className="h-4 w-4 rounded border-border bg-surface-elevated text-secondary focus:ring-secondary"
             />
             פעיל
           </label>

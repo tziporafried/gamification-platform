@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Printer } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
+import { ScrollContainer } from '@/components/ui/ScrollContainer'
 import { ReadinessChecklist } from './ReadinessChecklist'
 import { QrCardGenerator } from '@/components/qr-cards/QrCardGenerator'
 import { Button } from '@/components/ui/Button'
@@ -47,11 +48,11 @@ export function StepReviewGenerate({
   }, [])
 
   const footerBar = !isTemplate && generateFn ? (
-    <div className="border-t border-game-border bg-game-dark px-4 py-3">
+    <div className="border-t border-border/70 px-4 py-3">
       <Button onClick={generateFn} className="w-full">
         <Printer size={16} className="ml-1.5" />הדפס כרטיסים
       </Button>
-      <p className="text-center text-xs text-gray-500 mt-2">אפשר תמיד לחזור ולהדפיס שוב בהמשך.</p>
+      <p className="text-center text-xs text-muted mt-2">אפשר תמיד לחזור ולהדפיס שוב בהמשך.</p>
     </div>
   ) : null
 
@@ -90,9 +91,10 @@ export function StepReviewGenerate({
       nextLabel={isTemplate ? 'סיום עריכה' : 'התחל פעילות'}
       footerBar={footerBar}
     >
+      <ScrollContainer className="flex-1">
       <div className="space-y-4">
         {saveError && (
-          <p className="rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-sm text-red-300">
+          <p className="rounded-lg bg-surface-elevated border border-danger px-3 py-2 text-sm text-danger">
             {saveError}
           </p>
         )}
@@ -110,9 +112,9 @@ export function StepReviewGenerate({
             onGoToStep={onGoToStep}
           />
         ) : isTemplate ? (
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-center space-y-1">
-            <p className="text-base font-semibold text-emerald-300">התבנית מוכנה</p>
-            <p className="text-sm text-gray-400">
+          <div className="rounded-2xl border border-success bg-surface-elevated px-5 py-4 text-center space-y-1">
+            <p className="text-base font-semibold text-success">התבנית מוכנה</p>
+            <p className="text-sm text-muted">
               השינויים נשמרים אוטומטית. לחצו «סיום עריכה» לחזרה לניהול התבניות.
             </p>
             <div className="pt-2">
@@ -123,14 +125,15 @@ export function StepReviewGenerate({
           </div>
         ) : (
           <>
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-center space-y-1">
-              <p className="text-base font-semibold text-emerald-300">🎉 הפעילות מוכנה</p>
-              <p className="text-sm text-gray-400">הכל מוכן! אפשר להדפיס את הכרטיסים ולהתחיל את הפעילות.</p>
+            <div className="rounded-2xl border border-success bg-surface-elevated px-5 py-4 text-center space-y-1">
+              <p className="text-base font-semibold text-success">🎉 הפעילות מוכנה</p>
+              <p className="text-sm text-muted">הכל מוכן! אפשר להדפיס את הכרטיסים ולהתחיל את הפעילות.</p>
             </div>
             <QrCardGenerator event={event} onReadyChange={handleReadyChange} />
           </>
         )}
       </div>
+      </ScrollContainer>
     </WizardStepWrapper>
   )
 }
@@ -152,8 +155,8 @@ function SummaryCard({ type, value }: { type: SummaryCardType; value: number }) 
   const isAllTogether = type === 'groups' && value === 0
 
   return (
-    <div className="rounded-xl border border-game-border bg-game-card px-3 py-2 flex items-center justify-center">
-      <span className={isAllTogether ? 'text-sm text-gray-400' : 'text-sm font-bold text-white'}>
+    <div className="rounded-xl border border-border bg-surface px-3 py-2 flex items-center justify-center">
+      <span className={isAllTogether ? 'text-sm text-muted' : 'text-sm font-bold text-foreground'}>
         {isAllTogether ? 'כולם יחד' : formatSummaryLabel(type, value)}
       </span>
     </div>

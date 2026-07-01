@@ -29,7 +29,7 @@ export function Tabs({ tabs, activeTab, onChange, variant = 'pill', className }:
               onClick={() => onChange(tab.id)}
               className={cn(
                 'relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
-                isActive ? 'border-brand-500 text-white' : cn('border-transparent', theme.textSubtle, theme.hoverText),
+                isActive ? 'border-secondary text-foreground' : cn('border-transparent', theme.textSubtle, theme.hoverText),
               )}
             >
               {tab.icon}
@@ -42,7 +42,7 @@ export function Tabs({ tabs, activeTab, onChange, variant = 'pill', className }:
   }
 
   return (
-    <div className={cn('flex gap-1 rounded-xl border p-1 bg-game-card/50', theme.border, className)}>
+    <div className={cn('flex gap-1 rounded-xl border p-1 bg-surface/50', theme.border, className)}>
       {tabs.map((tab) => {
         const isActive = tab.id === activeTab
         return (
@@ -52,7 +52,7 @@ export function Tabs({ tabs, activeTab, onChange, variant = 'pill', className }:
             onClick={() => onChange(tab.id)}
             className={cn(
               'flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all',
-              isActive ? 'bg-brand-600 text-white shadow-sm' : cn(theme.textMuted, theme.hoverSurface, theme.hoverText),
+              isActive ? 'bg-secondary text-foreground shadow-sm' : cn(theme.textMuted, theme.hoverSurface, theme.hoverText),
             )}
           >
             {tab.icon}

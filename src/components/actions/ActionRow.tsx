@@ -176,8 +176,8 @@ export const ActionRow = memo(function ActionRow({
   return (
     <div
       className={cn(
-        'rounded-xl border bg-game-card transition-all duration-200 hover:border-brand-700/50 group/row',
-        isPositive ? 'border-game-border' : 'border-red-500/20',
+        'rounded-xl border bg-surface transition-all duration-200 hover:border-secondary group/row',
+        isPositive ? 'border-border' : 'border-danger/20',
       )}
     >
       <div className="px-4 py-3">
@@ -192,7 +192,7 @@ export const ActionRow = memo(function ActionRow({
             onKeyDown={handlePointsKey}
             onBlur={savePoints}
             className={cn(
-              'h-11 w-11 rounded-xl text-center text-sm font-bold outline-none border border-brand-500 bg-game-dark text-white',
+              'h-11 w-11 rounded-xl text-center text-sm font-bold outline-none border border-secondary bg-surface-elevated text-foreground',
               saving && 'opacity-50',
             )}
             disabled={saving}
@@ -204,8 +204,8 @@ export const ActionRow = memo(function ActionRow({
               'flex shrink-0 items-center justify-center rounded-xl text-sm font-bold cursor-text transition-colors',
               'h-11 min-w-[3.25rem] px-2',
               isPositive
-                ? 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'
-                : 'bg-red-500/15 text-red-400 hover:bg-red-500/25',
+                ? 'bg-surface-elevated text-success hover:bg-surface border border-success/20'
+                : 'bg-surface-elevated text-danger hover:bg-surface border border-danger/20',
             )}
           >
             {pointsLabel}
@@ -223,13 +223,13 @@ export const ActionRow = memo(function ActionRow({
               onKeyDown={handleNameKey}
               onBlur={saveName}
               className={cn(
-                'w-full bg-transparent text-sm font-semibold text-white outline-none border-b border-brand-500 pb-0.5',
+                'w-full bg-transparent text-sm font-semibold text-foreground outline-none border-b border-secondary pb-0.5',
                 saving && 'opacity-50',
               )}
               disabled={saving}
             />
           ) : (
-            <span className="block w-full text-sm font-semibold text-gray-200 hover:text-white transition-colors cursor-text truncate">
+            <span className="block w-full text-sm font-semibold text-foreground hover:text-secondary transition-colors cursor-text truncate">
               {name}
             </span>
           )}
@@ -262,7 +262,7 @@ export const ActionRow = memo(function ActionRow({
 
         <button
           onClick={handleDelete}
-          className="shrink-0 p-1.5 rounded-lg text-gray-600 opacity-0 group-hover/row:opacity-100 hover:bg-red-500/10 hover:text-red-400 transition-all"
+          className="shrink-0 p-1.5 rounded-lg text-muted opacity-0 group-hover/row:opacity-100 hover:bg-surface-elevated hover:text-danger transition-all"
           title="מחיקה"
         >
           <Trash2 size={16} />

@@ -43,10 +43,10 @@ export function EventBySlugControl() {
 
   if (state === 'not_found') {
     return (
-      <div className="flex h-screen items-center justify-center bg-game-dark px-4" dir="rtl">
+      <div className="flex h-screen items-center justify-center bg-background px-4" dir="rtl">
         <div className="text-center space-y-3">
-          <h1 className="text-2xl font-bold text-white">האירוע לא נמצא</h1>
-          <p className="text-gray-400 text-sm">הקישור שגוי או שהאירוע נמחק</p>
+          <h1 className="text-2xl font-bold text-foreground">האירוע לא נמצא</h1>
+          <p className="text-muted text-sm">הקישור שגוי או שהאירוע נמחק</p>
         </div>
       </div>
     )
@@ -54,10 +54,10 @@ export function EventBySlugControl() {
 
   if (state === 'no_permission') {
     return (
-      <div className="flex h-screen items-center justify-center bg-game-dark px-4" dir="rtl">
+      <div className="flex h-screen items-center justify-center bg-background px-4" dir="rtl">
         <div className="text-center space-y-3">
-          <h1 className="text-2xl font-bold text-white">אין לך הרשאה</h1>
-          <p className="text-gray-400 text-sm">אין לך גישה לאירוע הזה. פנה לבעל האירוע כדי לקבל הזמנה.</p>
+          <h1 className="text-2xl font-bold text-foreground">אין לך הרשאה</h1>
+          <p className="text-muted text-sm">אין לך גישה לאירוע הזה. פנה לבעל האירוע כדי לקבל הזמנה.</p>
         </div>
       </div>
     )

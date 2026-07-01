@@ -10,34 +10,41 @@ export default {
         sans: ['Heebo', 'sans-serif'],
       },
       colors: {
-        brand: {
-          50: '#f5f3ff',
-          100: '#ede9fe',
-          200: '#ddd6fe',
-          300: '#c4b5fd',
-          400: '#a78bfa',
-          500: '#8b5cf6',
-          600: '#7c3aed',
-          700: '#6d28d9',
-          800: '#5b21b6',
-          900: '#4c1d95',
-          950: '#1e1b4b',
+        // Design system — semantic tokens (see src/styles/design-tokens.css)
+        // Note: legacy `surface` key below retains #F8F7FC; use --color-surface / bg-surface-elevated until migrated.
+        background: 'var(--color-background)',
+        foreground: 'var(--color-foreground)',
+        muted: 'var(--color-muted)',
+        border: 'var(--color-border)',
+        'surface-elevated': 'var(--color-surface-elevated)',
+        primary: {
+          DEFAULT: 'var(--color-primary)',
+          hover: 'var(--color-primary-hover)',
+          foreground: 'var(--color-on-primary)',
         },
-        surface: '#F8F7FC',
-        game: {
-          dark: '#0f0b1e',
-          card: '#1a1433',
-          border: '#2d2250',
+        secondary: {
+          DEFAULT: 'var(--color-secondary)',
+          foreground: 'var(--color-on-secondary)',
         },
+        accent: 'var(--color-accent)',
+        success: 'var(--color-success)',
+        warning: 'var(--color-warning)',
+        danger: 'var(--color-danger)',
+        // Design review required: focus-ring, disabled
+
+        surface: 'var(--color-surface)',
       },
       boxShadow: {
-        'dropdown': '0 8px 24px -4px rgba(37, 25, 20, 0.12), 0 4px 8px -4px rgba(37, 25, 20, 0.06)',
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
-        'card-hover': '0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -2px rgba(0, 0, 0, 0.04)',
-        'podium': '0 8px 24px -4px rgba(0, 0, 0, 0.12), 0 4px 8px -4px rgba(0, 0, 0, 0.06)',
-        'glow-brand': '0 0 20px rgba(139, 92, 246, 0.25)',
-        'glow-gold': '0 0 24px rgba(251, 191, 36, 0.35)',
-        'glow-emerald': '0 0 20px rgba(52, 211, 153, 0.3)',
+        'dropdown': '0 8px 24px -4px rgba(46, 34, 30, 0.12), 0 4px 8px -4px rgba(46, 34, 30, 0.06)',
+        'card': '0 1px 3px 0 rgba(46, 34, 30, 0.06), 0 1px 2px -1px rgba(46, 34, 30, 0.04)',
+        'card-hover': '0 4px 12px -2px rgba(46, 34, 30, 0.1), 0 2px 6px -2px rgba(46, 34, 30, 0.05)',
+        'header': '0 4px 20px -4px rgba(46, 34, 30, 0.12), 0 1px 0 var(--color-border)',
+        'wizard-panel': '0 8px 30px rgba(171, 53, 0, 0.06)',
+        'footer-up': '0 -4px 12px rgba(171, 53, 0, 0.08)',
+        'podium': '0 8px 24px -4px rgba(46, 34, 30, 0.12), 0 4px 8px -4px rgba(46, 34, 30, 0.06)',
+        'glow-brand': '0 0 20px color-mix(in srgb, var(--color-primary) 25%, transparent)',
+        'glow-gold': '0 0 24px color-mix(in srgb, var(--color-warning) 35%, transparent)',
+        'glow-emerald': '0 0 20px color-mix(in srgb, var(--color-success) 30%, transparent)',
       },
       keyframes: {
         'fade-in-up': {
@@ -53,12 +60,12 @@ export default {
           '50%': { transform: 'scale(1.1)' },
         },
         'glow-pulse': {
-          '0%, 100%': { boxShadow: '0 0 20px rgba(139, 92, 246, 0.3)' },
-          '50%': { boxShadow: '0 0 40px rgba(139, 92, 246, 0.6)' },
+          '0%, 100%': { boxShadow: '0 0 20px color-mix(in srgb, var(--color-primary) 30%, transparent)' },
+          '50%': { boxShadow: '0 0 40px color-mix(in srgb, var(--color-primary) 60%, transparent)' },
         },
         'glow-pulse-gold': {
-          '0%, 100%': { boxShadow: '0 0 16px rgba(251, 191, 36, 0.3)' },
-          '50%': { boxShadow: '0 0 32px rgba(251, 191, 36, 0.5)' },
+          '0%, 100%': { boxShadow: '0 0 16px color-mix(in srgb, var(--color-warning) 30%, transparent)' },
+          '50%': { boxShadow: '0 0 32px color-mix(in srgb, var(--color-warning) 50%, transparent)' },
         },
         'confetti-fall': {
           '0%': { transform: 'translateY(-100%) rotate(0deg)', opacity: '1' },
@@ -96,12 +103,12 @@ export default {
           '30%, 60%, 90%': { transform: 'translateX(4px)' },
         },
         'crown-glow': {
-          '0%, 100%': { filter: 'drop-shadow(0 0 4px rgba(251, 191, 36, 0.4))' },
-          '50%': { filter: 'drop-shadow(0 0 12px rgba(251, 191, 36, 0.8))' },
+          '0%, 100%': { filter: 'drop-shadow(0 0 4px color-mix(in srgb, var(--color-warning) 40%, transparent))' },
+          '50%': { filter: 'drop-shadow(0 0 12px color-mix(in srgb, var(--color-warning) 80%, transparent))' },
         },
         'border-glow': {
-          '0%, 100%': { borderColor: 'rgba(139, 92, 246, 0.3)' },
-          '50%': { borderColor: 'rgba(139, 92, 246, 0.6)' },
+          '0%, 100%': { borderColor: 'color-mix(in srgb, var(--color-primary) 30%, transparent)' },
+          '50%': { borderColor: 'color-mix(in srgb, var(--color-primary) 60%, transparent)' },
         },
         'screen-flash': {
           '0%': { opacity: '0.7' },

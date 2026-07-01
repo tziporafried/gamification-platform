@@ -24,19 +24,19 @@ interface RewardGroupJoin {
 
 function LockedRewardCard({ reward }: { reward: TemplateReward }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-game-card/50 opacity-50 select-none">
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-surface opacity-50 select-none">
       <div className="flex flex-col items-center p-5 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 mb-3">
-          <Lock size={22} className="text-zinc-600" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-elevated mb-3">
+          <Lock size={22} className="text-muted" />
         </div>
-        <div className="mb-0.5 text-[9px] font-bold uppercase tracking-widest text-zinc-600">
+        <div className="mb-0.5 text-[9px] font-bold uppercase tracking-widest text-muted">
           פרמיום
         </div>
-        <p className="w-full truncate text-sm font-bold text-zinc-500">{reward.name}</p>
-        <div className="mt-3 inline-flex items-center rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-zinc-600">
+        <p className="w-full truncate text-sm font-bold text-muted">{reward.name}</p>
+        <div className="mt-3 inline-flex items-center rounded-full bg-surface-elevated px-3 py-1 text-xs font-bold text-muted">
           {reward.required_points.toLocaleString()} נק׳
         </div>
-        <span className="mt-2 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-500/60">
+        <span className="mt-2 rounded-full border border-warning bg-surface-elevated px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
           שדרוג נדרש
         </span>
       </div>
@@ -47,12 +47,12 @@ function LockedRewardCard({ reward }: { reward: TemplateReward }) {
 function PremiumDivider() {
   return (
     <div className="flex items-center gap-2 py-1">
-      <div className="h-px flex-1 bg-white/10" />
-      <span className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
+      <div className="h-px flex-1 bg-border" />
+      <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted">
         <Lock size={10} />
         פרמיום
       </span>
-      <div className="h-px flex-1 bg-white/10" />
+      <div className="h-px flex-1 bg-border" />
     </div>
   )
 }
@@ -196,7 +196,7 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
         ) : (
           <EmptyState
             variant="solid"
-            icon={<Trophy size={32} className="text-gray-600" />}
+            icon={<Trophy size={32} className="text-muted" />}
             title="אין פרסים עדיין"
             description="צרו הפתעות שהשחקנים שלכם יוכלו לקבל."
             action={<Button size="sm" variant="gradient" onClick={handleCreate}>הוספת פרס</Button>}

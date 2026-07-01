@@ -109,7 +109,7 @@ export function PlansPage() {
     <main className="mx-auto max-w-4xl px-4 py-10" dir="rtl">
       <button
         onClick={() => navigate(-1)}
-        className="mb-10 flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+        className="mb-10 flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors"
       >
         <ArrowRight size={15} />
         חזרה
@@ -117,10 +117,10 @@ export function PlansPage() {
 
       {/* Header */}
       <div className="mb-10 text-center">
-        <h1 className="text-2xl font-bold text-white mb-3 leading-snug">
+        <h1 className="text-2xl font-bold text-foreground mb-3 leading-snug">
           איך תרצו להפעיל את המשחק באירוע שלכם?
         </h1>
-        <p className="text-gray-400 text-sm max-w-lg mx-auto leading-relaxed">
+        <p className="text-muted text-sm max-w-lg mx-auto leading-relaxed">
           בחרו את האפשרות המתאימה לכם.
           <br />
           לאחר הבחירה ניצור אתכם קשר ונעזור לכם להפיק אירוע בלתי נשכח.
@@ -137,13 +137,13 @@ export function PlansPage() {
           <div className="mb-4">
             <div className="mb-1 flex items-center gap-2">
               <span className="text-lg">🎮</span>
-              <span className="text-base font-bold text-white">משחק עצמאי</span>
+              <span className="text-base font-bold text-foreground">משחק עצמאי</span>
             </div>
             <div className="flex items-end gap-1 mt-2">
-              <span className="text-2xl font-extrabold text-white">40</span>
-              <span className="mb-0.5 text-sm text-gray-400">₪ לאירוע</span>
+              <span className="text-2xl font-extrabold text-foreground">40</span>
+              <span className="mb-0.5 text-sm text-muted">₪ לאירוע</span>
             </div>
-            <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+            <p className="mt-2 text-xs text-muted leading-relaxed">
               מתאים למי שרוצה להפעיל את המשחק באופן עצמאי.
             </p>
           </div>
@@ -170,7 +170,7 @@ export function PlansPage() {
         {/* Card 2 — חוויה מלאה */}
         <div className="relative">
           <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
-            <span className="rounded-full bg-brand-600 px-3.5 py-1 text-xs font-semibold text-white shadow-sm">
+            <span className="rounded-full bg-primary px-3.5 py-1 text-xs font-semibold text-primary-foreground shadow-sm">
               הכי פופולרי
             </span>
           </div>
@@ -181,15 +181,15 @@ export function PlansPage() {
             <div className="mb-4">
               <div className="mb-1 flex items-center gap-2">
                 <span className="text-lg">⭐</span>
-                <span className="text-base font-bold text-white">חוויה מלאה</span>
+                <span className="text-base font-bold text-foreground">חוויה מלאה</span>
               </div>
               <div className="flex items-end gap-1 mt-2">
-                <span className="text-2xl font-extrabold text-white">150</span>
-                <span className="mb-0.5 text-sm text-gray-400">₪ לאירוע</span>
+                <span className="text-2xl font-extrabold text-foreground">150</span>
+                <span className="mb-0.5 text-sm text-muted">₪ לאירוע</span>
               </div>
-              <p className="mt-1 text-xs text-gray-500">יום פעילות נוסף: 15 ₪</p>
-              <p className="mt-1 text-xs text-gray-500">עד 50 משתתפים</p>
-              <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+              <p className="mt-1 text-xs text-muted">יום פעילות נוסף: 15 ₪</p>
+              <p className="mt-1 text-xs text-muted">עד 50 משתתפים</p>
+              <p className="mt-2 text-xs text-muted leading-relaxed">
                 הפתרון המלא להפעלת המשחק.
               </p>
             </div>
@@ -221,12 +221,12 @@ export function PlansPage() {
           <div className="mb-4">
             <div className="mb-1 flex items-center gap-2">
               <span className="text-lg">🏫</span>
-              <span className="text-base font-bold text-white">פתרון לארגונים</span>
+              <span className="text-base font-bold text-foreground">פתרון לארגונים</span>
             </div>
-            <p className="mt-3 text-xs text-gray-400 leading-relaxed">
+            <p className="mt-3 text-xs text-muted leading-relaxed">
               מתאים לבתי ספר, קייטנות, ישיבות, חברות, קהילות וארגונים.
             </p>
-            <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+            <p className="mt-2 text-xs text-muted leading-relaxed">
               נשמח להתאים את המערכת בדיוק לצרכים שלכם.
             </p>
           </div>
@@ -247,77 +247,77 @@ export function PlansPage() {
       {/* Contact form — appears when an option is chosen */}
       {selectedOption && (
         <div ref={formRef} className="scroll-mt-6">
-          <div className="mx-auto max-w-xl rounded-2xl border border-game-border bg-game-card p-7 shadow-card">
+          <div className="mx-auto max-w-xl rounded-2xl border border-border bg-surface p-7 shadow-card">
             {submitted ? (
               <div className="flex flex-col items-center gap-4 py-6 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 shadow-[0_0_20px_rgba(52,211,153,0.15)]">
-                  <CheckCircle size={26} className="text-emerald-400" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-elevated border border-success">
+                  <CheckCircle size={26} className="text-success" />
                 </div>
                 <div>
-                  <p className="text-base font-semibold text-white">הפנייה נשלחה בהצלחה</p>
-                  <p className="mt-1 text-sm text-gray-400">ניצור אתכם קשר בהקדם.</p>
+                  <p className="text-base font-semibold text-foreground">הפנייה נשלחה בהצלחה</p>
+                  <p className="mt-1 text-sm text-muted">ניצור אתכם קשר בהקדם.</p>
                 </div>
               </div>
             ) : (
               <>
-                <h2 className="mb-1 text-lg font-bold text-white">ספרו לנו על האירוע שלכם</h2>
-                <p className="mb-5 text-sm text-gray-400">נחזור אליכם בהקדם ונעזור לכם להתחיל.</p>
+                <h2 className="mb-1 text-lg font-bold text-foreground">ספרו לנו על האירוע שלכם</h2>
+                <p className="mb-5 text-sm text-muted">נחזור אליכם בהקדם ונעזור לכם להתחיל.</p>
 
                 {/* Selected option tag */}
-                <div className="mb-5 flex items-center gap-2 rounded-xl bg-brand-600/10 border border-brand-500/20 px-4 py-2.5">
-                  <span className="text-xs font-semibold text-brand-400">האפשרות שבחרתם</span>
-                  <span className="text-xs text-white font-medium">{OPTIONS[selectedOption]}</span>
+                <div className="mb-5 flex items-center gap-2 rounded-xl bg-surface-elevated border border-primary px-4 py-2.5">
+                  <span className="text-xs font-semibold text-primary">האפשרות שבחרתם</span>
+                  <span className="text-xs text-foreground font-medium">{OPTIONS[selectedOption]}</span>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-3">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="mb-1 block text-xs font-semibold text-gray-400">שם מלא *</label>
+                      <label className="mb-1 block text-xs font-semibold text-muted">שם מלא *</label>
                       <input
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         placeholder="ישראל ישראלי"
-                        className="w-full rounded-lg border border-game-border bg-game-dark px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs font-semibold text-gray-400">טלפון *</label>
+                      <label className="mb-1 block text-xs font-semibold text-muted">טלפון *</label>
                       <input
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="050-1234567"
                         dir="ltr"
-                        className="w-full rounded-lg border border-game-border bg-game-dark px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-semibold text-gray-400">אימייל *</label>
+                    <label className="mb-1 block text-xs font-semibold text-muted">אימייל *</label>
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="email@example.com"
                       dir="ltr"
-                      className="w-full rounded-lg border border-game-border bg-game-dark px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="mb-1 block text-xs font-semibold text-gray-400">תאריך האירוע</label>
+                      <label className="mb-1 block text-xs font-semibold text-muted">תאריך האירוע</label>
                       <input
                         type="date"
                         value={eventDate}
                         onChange={(e) => setEventDate(e.target.value)}
                         dir="ltr"
-                        className="w-full rounded-lg border border-game-border bg-game-dark px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs font-semibold text-gray-400">מספר משתתפים משוער</label>
+                      <label className="mb-1 block text-xs font-semibold text-muted">מספר משתתפים משוער</label>
                       <input
                         type="number"
                         min="1"
@@ -325,23 +325,23 @@ export function PlansPage() {
                         onChange={(e) => setParticipantCount(e.target.value)}
                         placeholder="50"
                         dir="ltr"
-                        className="w-full rounded-lg border border-game-border bg-game-dark px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-semibold text-gray-400">הערות</label>
+                    <label className="mb-1 block text-xs font-semibold text-muted">הערות</label>
                     <textarea
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="ספרו לנו על האירוע שלכם..."
                       rows={3}
-                      className="w-full rounded-lg border border-game-border bg-game-dark px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 resize-none"
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary resize-none"
                     />
                   </div>
 
-                  {error && <p className="text-xs text-red-400">{error}</p>}
+                  {error && <p className="text-xs text-danger">{error}</p>}
 
                   <Button
                     type="submit"
@@ -376,9 +376,9 @@ function OptionCard({
       className={[
         'flex flex-col rounded-2xl p-5 transition-all duration-200',
         featured
-          ? 'border-2 border-brand-500 bg-game-card shadow-[0_0_28px_rgba(139,92,246,0.15)]'
-          : 'border border-game-border bg-game-card shadow-card',
-        selected && !featured ? 'border-brand-500/60' : '',
+          ? 'border-2 border-primary bg-surface shadow-card'
+          : 'border border-border bg-surface shadow-card',
+        selected && !featured ? 'border-primary' : '',
       ].join(' ')}
     >
       {children}
@@ -390,11 +390,11 @@ function FeatureRow({ included, text, highlight }: { included: boolean; text: st
   return (
     <div className="flex items-center gap-2">
       {included ? (
-        <Check size={13} className={`shrink-0 ${highlight ? 'text-brand-400' : 'text-emerald-400'}`} />
+        <Check size={13} className={`shrink-0 ${highlight ? 'text-primary' : 'text-success'}`} />
       ) : (
-        <X size={13} className="shrink-0 text-gray-600" />
+        <X size={13} className="shrink-0 text-muted" />
       )}
-      <span className={`text-xs ${!included ? 'text-gray-600 line-through' : highlight ? 'font-medium text-brand-300' : 'text-gray-400'}`}>
+      <span className={`text-xs ${!included ? 'text-muted line-through' : highlight ? 'font-medium text-primary' : 'text-muted'}`}>
         {text}
       </span>
     </div>

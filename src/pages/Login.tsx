@@ -57,14 +57,14 @@ export function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-game-dark px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-game-border bg-game-card p-6">
+    <div className="flex min-h-screen items-center justify-center bg-app-radial px-4">
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-6">
         <div className="mb-6 text-center">
-          <Link to="/" className="inline-flex h-10 w-10 items-center justify-center rounded-xl gradient-brand text-lg font-bold text-white">
+          <Link to="/" className="inline-flex h-10 w-10 items-center justify-center rounded-xl gradient-brand text-lg font-bold text-foreground">
             G
           </Link>
-          <h1 className="mt-4 text-2xl font-bold text-white">ברוכים הבאים</h1>
-          <p className="mt-1 text-sm text-gray-500">התחברו לפלטפורמה</p>
+          <h1 className="mt-4 text-2xl font-bold text-foreground">ברוכים הבאים</h1>
+          <p className="mt-1 text-sm text-muted">התחברו לפלטפורמה</p>
         </div>
 
         {error && (
@@ -85,20 +85,20 @@ export function Login() {
 
         {/* Divider */}
         <div className="my-5 flex items-center gap-3">
-          <div className="flex-1 h-px bg-game-border" />
-          <span className="text-xs text-gray-500">או</span>
-          <div className="flex-1 h-px bg-game-border" />
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-xs text-muted">או</span>
+          <div className="flex-1 h-px bg-border" />
         </div>
 
         {/* Magic Link — Secondary */}
         {magicLinkSent ? (
           <div className="text-center space-y-2 py-2">
-            <CheckCircle2 size={32} className="mx-auto text-emerald-400" />
-            <p className="text-sm font-medium text-white">קישור התחברות נשלח למייל שלך</p>
-            <p className="text-xs text-gray-400">בדוק את תיבת הדואר ולחץ על הקישור</p>
+            <CheckCircle2 size={32} className="mx-auto text-success" />
+            <p className="text-sm font-medium text-foreground">קישור התחברות נשלח למייל שלך</p>
+            <p className="text-xs text-muted">בדוק את תיבת הדואר ולחץ על הקישור</p>
             <button
               onClick={() => { setMagicLinkSent(false); setEmail('') }}
-              className="text-xs text-brand-400 hover:text-brand-300 transition-colors mt-2"
+              className="text-xs text-secondary hover:text-accent transition-colors mt-2"
             >
               שלח שוב
             </button>

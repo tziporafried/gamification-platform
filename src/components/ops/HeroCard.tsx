@@ -5,6 +5,7 @@ import type { Action } from '@/types'
 import type { TxRow, RankedGroup } from '@/hooks/useOperationsData'
 import type { AccentRgb } from '@/lib/accentColor'
 import { rgba } from '@/lib/accentColor'
+import { cn } from '@/lib/utils'
 
 // ── Props ──────────────────────────────────────────────────────────────────────
 
@@ -107,21 +108,21 @@ function BigCountdown({ secsLeft, urgent }: { secsLeft: number | null; urgent: b
         ch === ':' ? (
           <span
             key={`sep-${i}`}
-            className="pb-1 text-5xl font-black"
-            style={{ color: urgent ? 'rgba(248,113,113,0.6)' : 'rgba(255,255,255,0.35)', lineHeight: 1 }}
+            className={cn('pb-1 text-5xl font-black', urgent ? 'text-danger/60' : 'text-muted')}
+            style={{ lineHeight: 1 }}
           >
             :
           </span>
         ) : (
           <div
             key={`box-${i}`}
-            className="flex items-center justify-center overflow-hidden rounded-xl font-black tabular-nums"
-            style={{
-              width: 52, height: 64, fontSize: 40,
-              background: urgent ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.08)',
-              border: `1px solid ${urgent ? 'rgba(239,68,68,0.30)' : 'rgba(255,255,255,0.10)'}`,
-              color: urgent ? '#f87171' : '#ffffff',
-            }}
+            className={cn(
+              'flex items-center justify-center overflow-hidden rounded-xl border font-black tabular-nums',
+              urgent
+                ? 'border-danger bg-surface-elevated text-danger'
+                : 'border-border bg-surface-elevated text-foreground',
+            )}
+            style={{ width: 52, height: 64, fontSize: 40 }}
           >
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.span
@@ -158,13 +159,13 @@ function SpeedBonusCard({ state, secondNow }: { state: Extract<HeroState, { kind
         🔥
       </motion.span>
       <div>
-        <p className="text-4xl font-black text-orange-400">{state.label} בונוס!</p>
-        <p className="mt-1 text-lg text-gray-400">{state.mission.name}</p>
+        <p className="text-4xl font-black text-warning">{state.label} בונוס!</p>
+        <p className="mt-1 text-lg text-muted">{state.mission.name}</p>
       </div>
       {secsLeft !== null && state.mission.end_at && (
         <>
           <BigCountdown secsLeft={secsLeft} urgent={urgent} />
-          <p className="text-sm text-gray-500">נשארו</p>
+          <p className="text-sm text-muted">נשארו</p>
         </>
       )}
     </div>
@@ -186,8 +187,8 @@ function MissionEndingCard({ state, secondNow }: { state: Extract<HeroState, { k
         ⏰
       </motion.span>
       <div>
-        <p className="text-2xl font-black text-white">{state.mission.name}</p>
-        <p className="mt-1 text-sm text-gray-500">מסתיימת בעוד</p>
+        <p className="text-2xl font-black text-foreground">{state.mission.name}</p>
+        <p className="mt-1 text-sm text-muted">מסתיימת בעוד</p>
       </div>
       <BigCountdown secsLeft={secsLeft} urgent={urgent} />
     </div>
@@ -201,8 +202,8 @@ function UpcomingMissionCard({ state, secondNow }: { state: Extract<HeroState, {
     <div className="flex h-full flex-col items-center justify-center gap-5 text-center">
       <span className="select-none leading-none" style={{ fontSize: 96 }}>🔜</span>
       <div>
-        <p className="text-2xl font-black text-white">{state.mission.name}</p>
-        <p className="mt-1 text-sm text-gray-500">מתחילה בעוד</p>
+        <p className="text-2xl font-black text-foreground">{state.mission.name}</p>
+        <p className="mt-1 text-sm text-muted">מתחילה בעוד</p>
       </div>
       <BigCountdown secsLeft={secsLeft} urgent={false} />
     </div>
@@ -221,8 +222,8 @@ function RecommendedCard({ state, accent }: { state: Extract<HeroState, { kind: 
         🎯
       </motion.span>
       <div>
-        <p className="text-[11px] font-black uppercase tracking-widest text-gray-500 mb-2">משימה מומלצת</p>
-        <p className="text-3xl font-black text-white">{state.mission.name}</p>
+        <p className="text-[11px] font-black uppercase tracking-widest text-muted mb-2">משימה מומלצת</p>
+        <p className="text-3xl font-black text-foreground">{state.mission.name}</p>
         <p className="mt-3 text-2xl font-black" style={{ color: rgba(accent, 1) }}>
           +{state.mission.points} נקודות
         </p>
@@ -243,9 +244,9 @@ function PopularCard({ state }: { state: Extract<HeroState, { kind: 'popular' }>
         🔥
       </motion.span>
       <div>
-        <p className="text-[11px] font-black uppercase tracking-widest text-gray-500 mb-2">כולם עושים...</p>
-        <p className="text-3xl font-black text-white">{state.missionName}</p>
-        <p className="mt-2 text-sm text-gray-500">{state.count} השלמות</p>
+        <p className="text-[11px] font-black uppercase tracking-widest text-muted mb-2">כולם עושים...</p>
+        <p className="text-3xl font-black text-foreground">{state.missionName}</p>
+        <p className="mt-2 text-sm text-muted">{state.count} השלמות</p>
       </div>
     </div>
   )
@@ -255,22 +256,22 @@ function GameStatsCard({ state }: { state: Extract<HeroState, { kind: 'game_stat
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6 text-center">
       <span className="select-none leading-none" style={{ fontSize: 80 }}>📊</span>
-      <p className="text-[11px] font-black uppercase tracking-widest text-gray-500">סטטיסטיקות משחק</p>
+      <p className="text-[11px] font-black uppercase tracking-widest text-muted">סטטיסטיקות משחק</p>
       <div className="flex flex-col gap-5 w-full">
         <div>
-          <p className="text-5xl font-black tabular-nums text-white">{state.txCount}</p>
-          <p className="mt-1 text-sm text-gray-500">משימות הושלמו</p>
+          <p className="text-5xl font-black tabular-nums text-foreground">{state.txCount}</p>
+          <p className="mt-1 text-sm text-muted">משימות הושלמו</p>
         </div>
         <div>
-          <p className="text-5xl font-black tabular-nums text-emerald-400">
+          <p className="text-5xl font-black tabular-nums text-success">
             {state.totalPts.toLocaleString('he-IL')}
           </p>
-          <p className="mt-1 text-sm text-gray-500">נקודות חולקו</p>
+          <p className="mt-1 text-sm text-muted">נקודות חולקו</p>
         </div>
         {state.groupCount > 0 && (
           <div>
-            <p className="text-4xl font-black tabular-nums text-white">{state.groupCount}</p>
-            <p className="mt-1 text-sm text-gray-500">קבוצות פעילות</p>
+            <p className="text-4xl font-black tabular-nums text-foreground">{state.groupCount}</p>
+            <p className="mt-1 text-sm text-muted">קבוצות פעילות</p>
           </div>
         )}
       </div>
@@ -289,7 +290,7 @@ function MotivationalCard({ state }: { state: Extract<HeroState, { kind: 'motiva
       >
         {state.icon}
       </motion.span>
-      <p className="text-2xl font-black leading-snug text-white">{state.text}</p>
+      <p className="text-2xl font-black leading-snug text-foreground">{state.text}</p>
     </div>
   )
 }

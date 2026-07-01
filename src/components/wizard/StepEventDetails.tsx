@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { Upload, X, Image as ImageIcon } from 'lucide-react'
+import { X, Image as ImageIcon } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
+import { ScrollContainer } from '@/components/ui/ScrollContainer'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { FormLabel } from '@/components/ui/FormLabel'
@@ -154,6 +155,7 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
       canAdvance={canAdvance && !saving}
       onNext={handleNext}
     >
+      <ScrollContainer className="flex-1">
       <div className="space-y-6">
         <div>
           <FormLabel>
@@ -188,7 +190,7 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
 
           {logoPreview ? (
             <div className="relative inline-block">
-              <div className="w-28 h-28 rounded-xl border-2 border-game-border bg-game-card flex items-center justify-center overflow-hidden">
+              <div className="w-28 h-28 rounded-xl border-2 border-border bg-surface flex items-center justify-center overflow-hidden">
                 <img
                   src={logoPreview}
                   alt="סמל הפעילות"
@@ -198,7 +200,7 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
               <button
                 type="button"
                 onClick={handleRemoveLogo}
-                className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+                className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-danger text-foreground flex items-center justify-center hover:bg-danger transition-colors"
               >
                 <X size={14} />
               </button>
@@ -208,17 +210,17 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
               onClick={() => fileInputRef.current?.click()}
-              className="w-full max-w-sm border-2 border-dashed border-game-border rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:border-brand-500/50 hover:bg-brand-500/5 transition-colors"
+              className="w-full max-w-sm border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:border-secondary hover:bg-surface-elevated transition-colors"
             >
-              <div className="w-12 h-12 rounded-full bg-brand-500/10 flex items-center justify-center">
-                <ImageIcon size={24} className="text-brand-400" />
+              <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center">
+                <ImageIcon size={24} className="text-secondary" />
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-300">
+                <p className="text-sm text-foreground">
                   גרור לוגו לכאן או{' '}
-                  <span className="text-brand-400 underline underline-offset-2">בחר קובץ</span>
+                  <span className="text-accent underline underline-offset-2">בחר קובץ</span>
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-muted mt-1">
                   PNG, JPG, WebP או SVG • עד 2MB
                 </p>
               </div>
@@ -237,46 +239,27 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
           />
 
           {uploadError && (
-            <p className="mt-2 text-sm text-red-400">{uploadError}</p>
+            <p className="mt-2 text-sm text-danger">{uploadError}</p>
           )}
         </div>
-
-        <PanelCard size="sm" className="bg-game-card/50">
-          <p className="text-xs text-gray-500 mb-3">כך הפעילות תיראה</p>
-          <div className="flex items-center gap-3">
-            {logoPreview ? (
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden shrink-0 border border-game-border bg-game-card">
-                <img src={logoPreview} alt="" className="max-w-full max-h-full object-contain p-0.5" />
-              </div>
-            ) : (
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-brand-600/20">
-                <Upload size={18} className="text-brand-400" />
-              </div>
-            )}
-            <div>
-              <p className="text-white font-semibold text-sm leading-tight">
-                {name || 'שם הפעילות'}
-              </p>
-            </div>
-          </div>
-        </PanelCard>
         </>
         )}
 
         {templateMode && (
-          <PanelCard size="sm" className="bg-game-card/50">
-            <p className="text-xs text-gray-500 mb-3">כך התבנית תוצג</p>
+          <PanelCard size="sm" className="bg-surface-elevated border-border">
+            <p className="text-xs text-muted mb-3">כך התבנית תוצג</p>
             <div>
-              <p className="text-white font-semibold text-sm leading-tight">
+              <p className="text-foreground font-semibold text-sm leading-tight">
                 {name || 'שם התבנית'}
               </p>
               {description && (
-                <p className="text-xs text-gray-400 mt-1">{description}</p>
+                <p className="text-xs text-muted mt-1">{description}</p>
               )}
             </div>
           </PanelCard>
         )}
       </div>
+      </ScrollContainer>
     </WizardStepWrapper>
   )
 }

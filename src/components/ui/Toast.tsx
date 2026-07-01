@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { theme } from '@/lib/theme'
 
 interface ToastProps {
   message: string
@@ -30,14 +31,14 @@ export function Toast({ message, variant, onDismiss, autoDismissMs, size = 'defa
 
   const styles = {
     success: {
-      bg: 'bg-emerald-500/15 border-emerald-500/30',
-      text: 'text-emerald-300',
-      icon: <CheckCircle2 size={18} className="text-emerald-400" />,
+      bg: 'bg-surface-elevated border-success',
+      text: 'text-success',
+      icon: <CheckCircle2 size={18} className="text-success" />,
     },
     error: {
-      bg: 'bg-red-500/15 border-red-500/30',
-      text: 'text-red-300',
-      icon: <XCircle size={18} className="text-red-400" />,
+      bg: 'bg-surface-elevated border-danger',
+      text: 'text-danger',
+      icon: <XCircle size={18} className="text-danger" />,
     },
   }
 
@@ -55,14 +56,14 @@ export function Toast({ message, variant, onDismiss, autoDismissMs, size = 'defa
         )}
       >
         {isLarge ? (
-          <span className="shrink-0">{variant === 'success' ? <CheckCircle2 size={32} className="text-emerald-400" /> : <XCircle size={32} className="text-red-400" />}</span>
+          <span className="shrink-0">{variant === 'success' ? <CheckCircle2 size={32} className="text-success" /> : <XCircle size={32} className="text-danger" />}</span>
         ) : (
           s.icon
         )}
         <span className={cn(isLarge ? 'text-2xl font-bold tracking-tight md:text-3xl' : 'text-sm font-medium', s.text)}>{message}</span>
         <button
           onClick={handleDismiss}
-          className={cn('rounded-md text-gray-500 transition-colors hover:text-gray-300', isLarge ? 'ml-2 p-1' : 'ml-1 p-0.5')}
+          className={cn('rounded-md transition-colors', theme.textMuted, theme.hoverText, isLarge ? 'ml-2 p-1' : 'ml-1 p-0.5')}
         >
           <X size={isLarge ? 18 : 14} />
         </button>

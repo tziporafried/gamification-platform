@@ -22,15 +22,15 @@ interface GroupListProps {
 
 function LockedGroupCard({ group }: { group: ActivityTemplateGroup }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-white/5 bg-game-card/50 opacity-50 select-none">
-      <div className="h-1.5 w-full bg-white/10" />
+    <div className="relative overflow-hidden rounded-xl border border-border bg-surface opacity-50 select-none">
+      <div className="h-1.5 w-full bg-border" />
       <div className="p-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/5">
-            <Lock size={12} className="text-zinc-500" />
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-elevated">
+            <Lock size={12} className="text-muted" />
           </div>
-          <span className="flex-1 truncate text-sm font-semibold text-zinc-500">{group.name}</span>
-          <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-500/60">
+          <span className="flex-1 truncate text-sm font-semibold text-muted">{group.name}</span>
+          <span className="shrink-0 rounded-full border border-warning bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
             פרמיום
           </span>
         </div>
@@ -165,7 +165,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <SectionHeader
-        icon={<Layers size={18} className="text-brand-400" />}
+        icon={<Layers size={18} className="text-secondary" />}
         title="קבוצות"
         className="mb-4"
       />
@@ -180,7 +180,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
           description="הקלד שם קבוצה למטה ולחץ Enter"
         />
       ) : (
-        <ScrollContainer ref={listRef} className="flex-1 space-y-3">
+        <ScrollContainer ref={listRef} className="flex-1 space-y-3 p-1">
           {groups.length > 0 && (
             <div className="grid gap-3 sm:grid-cols-2">
               {groups.map((group) => (
@@ -197,12 +197,12 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
           {hasLocked && (
             <>
               <div className="flex items-center gap-2 py-1">
-                <div className="h-px flex-1 bg-white/10" />
-                <span className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
+                <div className="h-px flex-1 bg-border" />
+                <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted">
                   <Lock size={10} />
                   פרמיום
                 </span>
-                <div className="h-px flex-1 bg-white/10" />
+                <div className="h-px flex-1 bg-border" />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {lockedGroups.map((group) => (
@@ -233,8 +233,8 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
         onClose={() => setDeletingGroup(null)}
         title="מחיקת קבוצה"
       >
-        <p className="text-sm text-gray-400">
-          האם אתם בטוחים שברצונכם למחוק את <strong className="text-white">{deletingGroup?.name}</strong>?
+        <p className="text-sm text-muted">
+          האם אתם בטוחים שברצונכם למחוק את <strong className="text-foreground">{deletingGroup?.name}</strong>?
           כל שיוכי המשתתפים לקבוצה זו יוסרו גם כן. לא ניתן לבטל פעולה זו.
         </p>
         <div className="mt-4 flex gap-3">

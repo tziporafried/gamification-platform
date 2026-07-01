@@ -10,7 +10,7 @@ export const ScrollContainer = forwardRef<HTMLDivElement, ScrollContainerProps>(
   ({ className, stableGutter = true, style, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('overflow-y-auto min-h-0', className)}
+      className={cn('overflow-y-auto min-h-0 px-1', className)}
       style={stableGutter ? { scrollbarGutter: 'stable', ...style } : style}
       {...props}
     />

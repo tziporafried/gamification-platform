@@ -9,8 +9,8 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 export function IconButton({ className, revealOnHover, variant = 'danger', children, ...props }: IconButtonProps) {
   const variantClasses = variant === 'danger'
-    ? 'text-gray-600 hover:bg-red-500/10 hover:text-red-400'
-    : 'text-gray-500 hover:bg-white/10 hover:text-gray-300'
+    ? 'text-muted hover:bg-danger/10 hover:text-danger'
+    : 'text-muted hover:bg-surface-elevated hover:text-foreground'
 
   return (
     <button

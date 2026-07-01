@@ -13,15 +13,15 @@ interface AdminUser {
 }
 
 const STATUS_CONFIG: Record<DevTodoStatus, { label: string; icon: typeof Circle; color: string }> = {
-  todo: { label: 'לביצוע', icon: Circle, color: 'text-gray-400' },
-  in_progress: { label: 'בעבודה', icon: Clock, color: 'text-amber-400' },
-  done: { label: 'הושלם', icon: CheckCircle2, color: 'text-emerald-400' },
+  todo: { label: 'לביצוע', icon: Circle, color: 'text-muted' },
+  in_progress: { label: 'בעבודה', icon: Clock, color: 'text-warning' },
+  done: { label: 'הושלם', icon: CheckCircle2, color: 'text-success' },
 }
 
 const PRIORITY_CONFIG: Record<DevTodoPriority, { label: string; color: string; dot: string }> = {
-  low: { label: 'נמוך', color: 'text-gray-400', dot: 'bg-gray-400' },
-  medium: { label: 'בינוני', color: 'text-blue-400', dot: 'bg-blue-400' },
-  high: { label: 'גבוה', color: 'text-red-400', dot: 'bg-red-400' },
+  low: { label: 'נמוך', color: 'text-muted', dot: 'bg-muted' },
+  medium: { label: 'בינוני', color: 'text-secondary', dot: 'bg-secondary' },
+  high: { label: 'גבוה', color: 'text-danger', dot: 'bg-danger' },
 }
 
 export function DevTodoList() {
@@ -99,8 +99,8 @@ export function DevTodoList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 rounded-xl border border-dashed border-game-border bg-game-card/50 p-3 transition-colors focus-within:border-brand-500/50">
-        <Plus size={18} className="shrink-0 text-gray-500" />
+      <div className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-surface p-3 transition-colors focus-within:border-secondary">
+        <Plus size={18} className="shrink-0 text-muted" />
         <input
           type="text"
           value={newTitle}
@@ -108,7 +108,7 @@ export function DevTodoList() {
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTodo() } }}
           placeholder="משימה חדשה..."
           className={cn(
-            'flex-1 bg-transparent text-sm text-white placeholder-gray-500 outline-none',
+            'flex-1 bg-transparent text-sm text-foreground placeholder-muted outline-none',
             adding && 'opacity-50',
           )}
           disabled={adding}
@@ -117,7 +117,7 @@ export function DevTodoList() {
           <button
             onClick={addTodo}
             disabled={adding}
-            className="shrink-0 text-xs font-medium text-brand-400 hover:text-brand-300 transition-colors disabled:opacity-50"
+            className="shrink-0 text-xs font-medium text-accent hover:text-secondary transition-colors disabled:opacity-50"
           >
             הוסף
           </button>
@@ -125,7 +125,7 @@ export function DevTodoList() {
       </div>
 
       {todoItems.length > 0 && (
-        <TodoSection title="לביצוע" count={todoItems.length} color="text-gray-400">
+        <TodoSection title="לביצוע" count={todoItems.length} color="text-muted">
           {todoItems.map(todo => (
             <TodoRow key={todo.id} todo={todo} admins={admins} onUpdate={updateField} onDelete={deleteTodo} getAssigneeName={getAssigneeName} />
           ))}
@@ -133,7 +133,7 @@ export function DevTodoList() {
       )}
 
       {inProgressItems.length > 0 && (
-        <TodoSection title="בעבודה" count={inProgressItems.length} color="text-amber-400">
+        <TodoSection title="בעבודה" count={inProgressItems.length} color="text-warning">
           {inProgressItems.map(todo => (
             <TodoRow key={todo.id} todo={todo} admins={admins} onUpdate={updateField} onDelete={deleteTodo} getAssigneeName={getAssigneeName} />
           ))}
@@ -141,7 +141,7 @@ export function DevTodoList() {
       )}
 
       {doneItems.length > 0 && (
-        <TodoSection title="הושלם" count={doneItems.length} color="text-emerald-400">
+        <TodoSection title="הושלם" count={doneItems.length} color="text-success">
           {doneItems.map(todo => (
             <TodoRow key={todo.id} todo={todo} admins={admins} onUpdate={updateField} onDelete={deleteTodo} getAssigneeName={getAssigneeName} />
           ))}
@@ -149,7 +149,7 @@ export function DevTodoList() {
       )}
 
       {todos.length === 0 && (
-        <div className="text-center py-12 text-gray-500 text-sm">
+        <div className="text-center py-12 text-muted text-sm">
           אין משימות עדיין. הוסף משימה חדשה למעלה.
         </div>
       )}
@@ -162,7 +162,7 @@ function TodoSection({ title, count, color, children }: { title: string; count: 
     <div>
       <div className="flex items-center gap-2 mb-2">
         <h3 className={cn('text-sm font-semibold', color)}>{title}</h3>
-        <span className="text-[11px] text-gray-500 bg-gray-800 rounded-full px-1.5 py-0.5">{count}</span>
+        <span className="text-[11px] text-muted bg-surface-elevated rounded-full px-1.5 py-0.5">{count}</span>
       </div>
       <div className="space-y-1.5">{children}</div>
     </div>
@@ -208,7 +208,7 @@ function TodoRow({
 
   return (
     <div className={cn(
-      'flex items-center gap-2 rounded-xl border border-game-border bg-game-card px-3 py-2.5 transition-all hover:border-brand-700/50 group/todo',
+      'flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 transition-all hover:border-secondary group/todo',
       todo.status === 'done' && 'opacity-60',
     )}>
       <button
@@ -231,11 +231,11 @@ function TodoRow({
             onKeyDown={(e) => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') { setTitle(todo.title); setEditing(false) } }}
             onBlur={saveTitle}
             autoFocus
-            className="w-full bg-transparent text-sm text-white outline-none border-b border-brand-500 pb-0.5"
+            className="w-full bg-transparent text-sm text-foreground outline-none border-b border-secondary pb-0.5"
           />
         ) : (
           <span className={cn(
-            'block w-full text-sm text-gray-200 hover:text-white transition-colors cursor-text truncate',
+            'block w-full text-sm text-foreground hover:text-secondary transition-colors cursor-text truncate',
             todo.status === 'done' && 'line-through',
           )}>
             {title}
@@ -248,7 +248,7 @@ function TodoRow({
           onClick={() => { setPriorityOpen(!priorityOpen); setStatusOpen(false); setAssigneeOpen(false) }}
           title="עדיפות"
           className={cn(
-            'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-all border border-game-border hover:border-gray-600',
+            'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-all border border-border hover:border-secondary/30',
             priorityConf.color,
           )}
         >
@@ -257,14 +257,14 @@ function TodoRow({
         </button>
         {priorityOpen && (
           <DropdownMenu onClose={() => setPriorityOpen(false)}>
-            <div className="px-3 py-1.5 text-[10px] text-gray-500">עדיפות</div>
+            <div className="px-3 py-1.5 text-[10px] text-muted">עדיפות</div>
             {(['high', 'medium', 'low'] as DevTodoPriority[]).map(p => (
               <button
                 key={p}
                 onClick={() => { onUpdate(todo.id, 'priority', p); setPriorityOpen(false) }}
                 className={cn(
-                  'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-white/5',
-                  todo.priority === p ? PRIORITY_CONFIG[p].color : 'text-gray-400',
+                  'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
+                  todo.priority === p ? PRIORITY_CONFIG[p].color : 'text-muted',
                 )}
               >
                 <span className={cn('h-2 w-2 rounded-full', PRIORITY_CONFIG[p].dot)} />
@@ -279,35 +279,35 @@ function TodoRow({
         <button
           onClick={() => { setAssigneeOpen(!assigneeOpen); setStatusOpen(false); setPriorityOpen(false) }}
           title="אחראי"
-          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-all border border-game-border hover:border-gray-600 text-gray-400"
+          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-all border border-border hover:border-secondary/30 text-muted"
         >
           {assigneeName ? (
-            <span className="text-brand-400 max-w-[80px] truncate">{assigneeName}</span>
+            <span className="text-secondary max-w-[80px] truncate">{assigneeName}</span>
           ) : (
-            <span className="text-gray-500">לא משויך</span>
+            <span className="text-muted">לא משויך</span>
           )}
           <ChevronDown size={10} />
         </button>
         {assigneeOpen && (
           <DropdownMenu onClose={() => setAssigneeOpen(false)}>
-            <div className="px-3 py-1.5 text-[10px] text-gray-500">שיוך לאחראי</div>
+            <div className="px-3 py-1.5 text-[10px] text-muted">שיוך לאחראי</div>
             <button
               onClick={() => { onUpdate(todo.id, 'assigned_to', null); setAssigneeOpen(false) }}
               className={cn(
-                'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-white/5',
-                !todo.assigned_to ? 'text-brand-400' : 'text-gray-400',
+                'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
+                !todo.assigned_to ? 'text-secondary' : 'text-muted',
               )}
             >
               לא משויך
             </button>
-            <div className="mx-2 my-1 border-t border-game-border" />
+            <div className="mx-2 my-1 border-t border-border" />
             {admins.map(a => (
               <button
                 key={a.id}
                 onClick={() => { onUpdate(todo.id, 'assigned_to', a.id); setAssigneeOpen(false) }}
                 className={cn(
-                  'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-white/5',
-                  todo.assigned_to === a.id ? 'text-brand-400' : 'text-gray-400',
+                  'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
+                  todo.assigned_to === a.id ? 'text-secondary' : 'text-muted',
                 )}
               >
                 <span className="truncate">{a.display_name || a.email}</span>
@@ -322,7 +322,7 @@ function TodoRow({
           onClick={() => { setStatusOpen(!statusOpen); setAssigneeOpen(false); setPriorityOpen(false) }}
           title="סטטוס"
           className={cn(
-            'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-all border border-game-border hover:border-gray-600',
+            'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-all border border-border hover:border-secondary/30',
             statusConf.color,
           )}
         >
@@ -331,7 +331,7 @@ function TodoRow({
         </button>
         {statusOpen && (
           <DropdownMenu onClose={() => setStatusOpen(false)}>
-            <div className="px-3 py-1.5 text-[10px] text-gray-500">סטטוס</div>
+            <div className="px-3 py-1.5 text-[10px] text-muted">סטטוס</div>
             {(['todo', 'in_progress', 'done'] as DevTodoStatus[]).map(s => {
               const conf = STATUS_CONFIG[s]
               const Icon = conf.icon
@@ -340,8 +340,8 @@ function TodoRow({
                   key={s}
                   onClick={() => { onUpdate(todo.id, 'status', s); setStatusOpen(false) }}
                   className={cn(
-                    'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-white/5',
-                    todo.status === s ? conf.color : 'text-gray-400',
+                    'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
+                    todo.status === s ? conf.color : 'text-muted',
                   )}
                 >
                   <Icon size={14} />
@@ -355,7 +355,7 @@ function TodoRow({
 
       <button
         onClick={() => onDelete(todo.id)}
-        className="shrink-0 p-1 rounded-lg text-gray-600 opacity-0 group-hover/todo:opacity-100 hover:bg-red-500/10 hover:text-red-400 transition-all"
+        className="shrink-0 p-1 rounded-lg text-muted opacity-0 group-hover/todo:opacity-100 hover:bg-surface-elevated hover:text-danger transition-all"
         title="מחיקה"
       >
         <Trash2 size={14} />
@@ -376,7 +376,7 @@ function DropdownMenu({ children, onClose }: { children: React.ReactNode; onClos
   }, [onClose])
 
   return (
-    <div ref={ref} className="absolute z-50 top-full mt-1 left-0 w-40 rounded-xl border border-game-border bg-game-card shadow-xl py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+    <div ref={ref} className="absolute z-50 top-full mt-1 left-0 w-40 rounded-xl border border-border bg-surface shadow-xl py-1 animate-in fade-in slide-in-from-top-1 duration-150">
       {children}
     </div>
   )

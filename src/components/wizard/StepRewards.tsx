@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { WizardStepWrapper } from './WizardStepWrapper'
+import { ScrollContainer } from '@/components/ui/ScrollContainer'
 import { RewardList } from '@/components/rewards/RewardList'
 import type { EventCounts } from '@/types'
 
@@ -30,7 +31,9 @@ export function StepRewards({ eventId, counts, onCountsPatch, onNext, onBack }: 
       onNext={onNext}
       onBack={onBack}
     >
-      <RewardList eventId={eventId} onCountChange={handleCountChange} />
+      <ScrollContainer className="flex-1">
+        <RewardList eventId={eventId} onCountChange={handleCountChange} />
+      </ScrollContainer>
     </WizardStepWrapper>
   )
 }

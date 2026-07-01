@@ -180,7 +180,7 @@ export function StepParticipants({ eventId, counts, groupType, onCountsPatch, on
       <div className="flex h-full flex-col min-h-0">
         <div className="shrink-0 space-y-3 pb-3">
           {participants.length > 0 && (
-            <p className="text-xs text-gray-400 text-center">
+            <p className="text-xs text-muted text-center">
               נוספו {participants.length} משתתפים
             </p>
           )}
@@ -199,7 +199,7 @@ export function StepParticipants({ eventId, counts, groupType, onCountsPatch, on
           </div>
         )}
 
-        <ScrollContainer ref={listRef} className="flex-1 space-y-2 pb-2 pl-1">
+        <ScrollContainer ref={listRef} className="flex-1 space-y-2 pb-2">
           {participants.length === 0 ? (
             <EmptyState
               title="אין משתתפים עדיין"

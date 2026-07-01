@@ -5,7 +5,6 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { UsageBar } from '@/components/ui/UsageBar'
-import { ScrollContainer } from '@/components/ui/ScrollContainer'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
@@ -90,7 +89,7 @@ export function StepGroups({
     >
       <div className="flex h-full flex-col min-h-0">
         <div className="shrink-0 space-y-4">
-          <div className="grid grid-cols-2 gap-3 p-0.5">
+          <div className="grid grid-cols-2 gap-3 p-1">
             {GROUP_OPTIONS.map(({ type, label, description, icon: Icon }) => (
               <button
                 key={type}
@@ -100,30 +99,29 @@ export function StepGroups({
                 <Card
                   variant="interactive"
                   className={cn(
-                    'flex cursor-pointer transition-all justify-center',
+                    'flex cursor-pointer transition-all justify-center bg-surface border-border',
                     showGroupSetup
                       ? 'p-3 flex-row items-center gap-2 text-right'
                       : 'p-6 flex-col items-center gap-3 text-center min-h-[120px]',
-                    groupType === type && 'ring-2 ring-brand-500 border-brand-500/50',
+                    groupType === type && 'ring-2 ring-primary border-primary',
                   )}
                 >
                   <Icon
                     size={showGroupSetup ? 20 : 32}
                     className={cn(
                       'shrink-0 transition-colors',
-                      groupType === type ? 'text-brand-400' : 'text-gray-500',
+                      groupType === type ? 'text-primary' : 'text-muted',
                     )}
                   />
                   <div>
                     <span className={cn(
-                      'font-medium',
+                      'font-medium text-foreground',
                       showGroupSetup ? 'text-sm' : 'text-base',
-                      groupType === type ? 'text-white' : 'text-gray-300',
                     )}>
                       {label}
                     </span>
                     {!showGroupSetup && (
-                      <span className="text-xs text-gray-500 block mt-1">{description}</span>
+                      <span className="text-xs text-muted block mt-1">{description}</span>
                     )}
                   </div>
                 </Card>
@@ -132,7 +130,7 @@ export function StepGroups({
           </div>
 
           {showGroupSetup && localGroupCount > 0 && (
-            <p className="text-xs text-gray-500 text-center">{localGroupCount} קבוצות</p>
+            <p className="text-xs text-muted text-center">{localGroupCount} קבוצות</p>
           )}
 
           {showGroupSetup && planLimits.isFreePlan && (
@@ -141,9 +139,9 @@ export function StepGroups({
         </div>
 
         {showGroupSetup && (
-          <ScrollContainer className="flex-1 mt-4 pl-1">
+          <div className="flex min-h-0 flex-1 flex-col mt-4">
             <GroupList eventId={eventId} onCountChange={handleCountChange} />
-          </ScrollContainer>
+          </div>
         )}
       </div>
 
@@ -153,19 +151,19 @@ export function StepGroups({
         title="מחיקת כל הקבוצות"
       >
         <div className="space-y-4">
-          <div className="flex items-start gap-3 rounded-lg bg-amber-500/10 border border-amber-500/20 p-4">
-            <AlertTriangle size={20} className="shrink-0 text-amber-400 mt-0.5" />
-            <div className="text-sm text-amber-200">
+          <div className="flex items-start gap-3 rounded-lg bg-surface-elevated border border-warning p-4">
+            <AlertTriangle size={20} className="shrink-0 text-warning mt-0.5" />
+            <div className="text-sm text-warning">
               <p className="font-medium mb-1">שים לב!</p>
               <p>מעבר ל"בלי קבוצות" ימחק את כל הקבוצות הקיימות ({localGroupCount}) ואת כל שיוכי המשתתפים לקבוצות.</p>
               <p className="mt-1">לא ניתן לבטל פעולה זו.</p>
             </div>
           </div>
           <div className="flex gap-3">
-            <Button variant="danger" loading={deleting} onClick={handleConfirmDeleteGroups}>
+            <Button variant="danger" loading={deleting} className="bg-danger text-foreground hover:bg-danger" onClick={handleConfirmDeleteGroups}>
               מחק הכל ועבור לבלי קבוצות
             </Button>
-            <Button variant="outline" onClick={() => setConfirmDelete(false)}>
+            <Button variant="outline" className="border-border text-foreground hover:bg-surface-elevated" onClick={() => setConfirmDelete(false)}>
               ביטול
             </Button>
           </div>

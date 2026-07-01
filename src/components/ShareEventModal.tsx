@@ -104,34 +104,34 @@ export function ShareEventModal({ isOpen, onClose, eventId }: ShareEventModalPro
         </div>
 
         {error && (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-danger">{error}</p>
         )}
         {success && (
-          <p className="text-sm text-emerald-400">{success}</p>
+          <p className="text-sm text-success">{success}</p>
         )}
       </form>
 
       {collaborators.length > 0 && (
         <div className="mt-5 space-y-2">
-          <h3 className="text-xs font-medium text-gray-500 uppercase">משתמשים משותפים</h3>
+          <h3 className="text-xs font-medium text-muted uppercase">משתמשים משותפים</h3>
           {collaborators.map((c) => (
-            <div key={c.user_id} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+            <div key={c.user_id} className="flex items-center justify-between rounded-lg bg-surface-elevated px-3 py-2">
               <div className="flex items-center gap-2 min-w-0">
                 {c.avatar_url ? (
                   <img src={c.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover" />
                 ) : (
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-600/20 text-xs font-bold text-brand-400">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-elevated text-xs font-bold text-secondary">
                     {(c.display_name || c.email)[0]?.toUpperCase()}
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="text-sm text-white truncate">{c.display_name || c.email.split('@')[0]}</p>
-                  <p className="text-xs text-gray-500 truncate">{c.email}</p>
+                  <p className="text-sm text-foreground truncate">{c.display_name || c.email.split('@')[0]}</p>
+                  <p className="text-xs text-muted truncate">{c.email}</p>
                 </div>
               </div>
               <button
                 onClick={() => handleRemove(c.user_id)}
-                className="text-gray-500 hover:text-red-400 transition-colors p-1"
+                className="text-muted hover:text-danger transition-colors p-1"
               >
                 <Trash2 size={14} />
               </button>

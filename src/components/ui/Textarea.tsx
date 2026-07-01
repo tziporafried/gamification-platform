@@ -25,13 +25,13 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           theme.text,
           theme.inputPlaceholder,
           error
-            ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/30'
+            ? 'border-danger/50 focus:border-danger focus:ring-danger/30'
             : cn(theme.inputBorder, theme.focusBorder, theme.focusRing),
           className,
         )}
         {...props}
       />
-      {error && <p className="mt-1 text-sm text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-sm text-danger">{error}</p>}
     </div>
   ),
 )

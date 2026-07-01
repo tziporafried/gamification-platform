@@ -35,11 +35,11 @@ export function EventDisplayPage() {
   if (loading || !event) return <FullPageLoader />
 
   return (
-    <div className="relative min-h-screen bg-game-dark">
+    <div className="relative min-h-screen bg-app-radial">
       <div className="absolute left-4 top-3 z-30">
         <button
           onClick={() => navigate(`/events/${event.id}/control`)}
-          className="flex items-center gap-1.5 rounded-lg bg-game-card/60 px-3 py-1.5 text-sm text-gray-400 backdrop-blur-sm transition-colors hover:bg-game-card hover:text-gray-200"
+          className="flex items-center gap-1.5 rounded-lg bg-surface/60 px-3 py-1.5 text-sm text-muted backdrop-blur-sm transition-colors hover:bg-surface hover:text-foreground"
         >
           <ArrowRight size={14} />
           <span>חזרה</span>

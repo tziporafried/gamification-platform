@@ -17,15 +17,15 @@ export function Landing() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-game-radial px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-app-radial px-4">
       <div className="text-center">
-        <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl gradient-brand text-2xl font-bold text-white shadow-glow-brand">
+        <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl gradient-brand text-2xl font-bold text-foreground shadow-card">
           G
         </div>
-        <h1 className="mb-3 text-4xl font-black tracking-tight text-white sm:text-5xl">
+        <h1 className="mb-3 text-4xl font-black tracking-tight text-foreground sm:text-5xl">
           Gamify PLATFORM
         </h1>
-        <p className="mb-8 max-w-md text-lg text-gray-400">
+        <p className="mb-8 max-w-md text-lg text-muted">
           צרו תחרויות מרתקות עם ניקוד, קבוצות וטבלאות דירוג.
         </p>
         <Button size="lg" variant="gradient" loading={loading} onClick={handleGoogleSignIn}>

@@ -37,7 +37,7 @@ export function StepTasks({ eventId, counts, onCountsPatch, onCountsRefresh, onN
       <div className="flex h-full flex-col">
         <div className="shrink-0 space-y-3 pb-3">
           {localTaskCount > 0 && (
-            <p className="text-xs text-gray-400 text-center">
+            <p className="text-xs text-muted text-center">
               {localTaskCount} פעילויות הוגדרו
             </p>
           )}
@@ -49,7 +49,7 @@ export function StepTasks({ eventId, counts, onCountsPatch, onCountsRefresh, onN
             />
           )}
         </div>
-        <ScrollContainer className="flex-1 pl-1">
+        <ScrollContainer className="flex-1">
           <ActionList eventId={eventId} onCountChange={handleCountChange} />
         </ScrollContainer>
       </div>

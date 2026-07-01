@@ -1,72 +1,74 @@
-/** App design tokens — edit this file to swap the design language app-wide. */
+/** App design tokens — semantic token class strings for app-wide styling. */
 export const theme = {
   // Page shells
-  pageBg: 'bg-game-dark',
-  pageRadial: 'bg-game-radial',
+  pageBg: 'bg-app-radial',
+  pageRadial: 'bg-app-radial',
 
   // Atomic colors
-  bg: 'bg-game-dark',
-  bgCard: 'bg-game-card',
-  bgCardMuted: 'bg-game-card/50',
-  bgInset: 'bg-game-dark',
-  border: 'border-game-border',
-  text: 'text-white',
-  textMuted: 'text-gray-400',
-  textSubtle: 'text-gray-500',
-  label: 'text-gray-300',
-  accentText: 'text-brand-400',
-  accentBorder: 'border-brand-500/30',
-  accentBg: 'bg-brand-500/10',
-  focusRing: 'focus:ring-brand-500/30',
-  focusBorder: 'focus:border-brand-500',
-  inputBg: 'bg-game-dark',
-  inputBorder: 'border-game-border',
-  inputPlaceholder: 'placeholder-gray-500',
-  hoverSurface: 'hover:bg-white/5',
-  hoverText: 'hover:text-white',
-  progressTrack: 'bg-game-border',
-  progressFill: 'bg-brand-500',
-  spinner: 'border-brand-600',
-  iconBg: 'bg-brand-500/20',
-  iconBgSubtle: 'bg-brand-500/15',
+  bg: 'bg-app-radial',
+  bgCard: 'bg-surface',
+  bgCardMuted: 'bg-surface-elevated',
+  bgInset: 'bg-surface-elevated',
+  border: 'border-border',
+  text: 'text-foreground',
+  textMuted: 'text-muted',
+  textSubtle: 'text-muted',
+  label: 'text-foreground',
+  accentText: 'text-accent',
+  accentBorder: 'border-accent',
+  accentBg: 'bg-surface-elevated',
+  focusRing: 'focus:ring-secondary',
+  focusBorder: 'focus:border-secondary',
+  inputBg: 'bg-surface',
+  inputBorder: 'border-border',
+  inputPlaceholder: 'placeholder-muted',
+  hoverSurface: 'hover:bg-surface-elevated',
+  hoverText: 'hover:text-foreground',
+  progressTrack: 'bg-border',
+  progressFill: 'bg-secondary',
+  spinner: 'border-secondary',
+  iconBg: 'bg-surface-elevated',
+  iconBgSubtle: 'bg-surface-elevated',
 
-  // Composite surfaces — prefer these over repeating class strings
-  surfaceCard: 'rounded-xl border border-game-border bg-game-card shadow-card',
-  surfaceCardElevated: 'rounded-xl border border-game-border bg-game-card shadow-podium',
-  surfacePanel: 'rounded-2xl border border-game-border bg-game-card shadow-card',
-  surfaceMuted: 'rounded-2xl border border-game-border bg-game-card/50',
-  surfaceInset: 'rounded-xl border border-game-border bg-game-dark',
+  // Composite surfaces
+  surfaceCard: 'rounded-xl border border-border bg-surface shadow-card',
+  surfaceCardElevated: 'rounded-xl border border-border bg-surface-elevated shadow-podium',
+  surfacePanel: 'rounded-2xl border border-border bg-surface shadow-card',
+  surfaceMuted: 'rounded-2xl border border-border bg-surface-elevated',
+  surfaceInset: 'rounded-xl border border-border bg-surface-elevated',
   surfaceEmpty:
-    'flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-game-border bg-game-card/30 px-6 py-12 text-center',
+    'flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-surface-elevated px-6 py-12 text-center',
   surfaceInteractive:
-    'transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5 hover:border-brand-700/50',
+    'transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5 hover:border-accent',
 
   // Icon containers
-  iconBox: 'flex h-12 w-12 items-center justify-center rounded-xl bg-brand-500/15 text-brand-400',
-  iconBoxSm: 'flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20',
-  iconBoxMd: 'flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/20',
+  iconBox: 'flex h-12 w-12 items-center justify-center rounded-xl bg-surface-elevated text-secondary',
+  iconBoxSm: 'flex h-8 w-8 items-center justify-center rounded-lg bg-surface-elevated text-secondary',
+  iconBoxMd: 'flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated text-secondary',
 } as const
 
 export const buttonVariants = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-500',
-  secondary: 'bg-white/10 text-gray-200 hover:bg-white/15 focus:ring-gray-500',
-  outline: 'border border-game-border text-gray-300 hover:bg-white/5 focus:ring-brand-500',
-  ghost: 'text-gray-400 hover:bg-white/10 hover:text-gray-200 focus:ring-gray-500',
-  danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-  gradient: 'gradient-brand text-white hover:opacity-90 focus:ring-brand-500 shadow-sm',
+  primary: 'bg-primary text-[var(--color-on-primary)] hover:bg-primary-hover focus:ring-primary font-semibold',
+  secondary: 'bg-secondary text-[var(--color-on-secondary)] hover:opacity-90 focus:ring-secondary font-semibold',
+  outline: 'border border-border text-foreground hover:bg-surface-elevated focus:ring-secondary',
+  soft: 'border border-primary bg-surface text-primary hover:bg-primary hover:text-[var(--color-on-primary)] focus:ring-primary font-medium',
+  ghost: 'text-muted hover:bg-surface-elevated hover:text-foreground focus:ring-secondary',
+  danger: 'bg-danger text-[var(--color-on-danger)] hover:bg-danger focus:ring-danger font-semibold',
+  gradient: 'bg-primary text-[var(--color-on-primary)] hover:bg-primary-hover focus:ring-primary font-semibold',
 } as const
 
 export const alertVariants = {
-  error: 'rounded-lg bg-red-900/20 border border-red-800/30 text-red-300',
-  success: 'rounded-lg bg-emerald-900/20 border border-emerald-800/30 text-emerald-300',
-  warning: 'rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-200',
+  error: 'rounded-lg bg-surface-elevated border border-danger text-danger',
+  success: 'rounded-lg bg-surface-elevated border border-success text-success',
+  warning: 'rounded-lg bg-surface-elevated border border-warning text-warning',
 } as const
 
 export const chipColors = {
-  brand: 'border-brand-500/30 text-brand-400 bg-brand-400/10 hover:bg-brand-400/15',
-  amber: 'border-amber-500/30 text-amber-400 bg-amber-400/10 hover:bg-amber-400/15',
-  cyan: 'border-cyan-500/30 text-cyan-400 bg-cyan-400/10 hover:bg-cyan-400/15',
-  default: 'border-game-border text-gray-400 bg-white/5 hover:bg-white/10',
+  brand: 'border-primary text-primary bg-surface-elevated hover:bg-surface',
+  accent: 'border-accent text-accent bg-surface-elevated hover:bg-surface',
+  amber: 'border-warning text-warning bg-surface-elevated hover:bg-surface',
+  cyan: 'border-secondary text-secondary bg-surface-elevated hover:bg-surface',
+  default: 'border-border text-muted bg-surface-elevated hover:bg-surface',
 } as const
 
 export type ButtonVariant = keyof typeof buttonVariants

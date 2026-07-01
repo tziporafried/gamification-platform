@@ -40,7 +40,7 @@ export function InlineAddField({
         'flex items-center gap-2 rounded-xl border border-dashed p-3 transition-colors',
         theme.bgCardMuted,
         theme.border,
-        'focus-within:border-brand-500/50',
+        'focus-within:border-secondary',
         className,
       )}
     >
@@ -70,7 +70,7 @@ export function InlineAddField({
           className={cn(
             'shrink-0 text-xs font-medium transition-colors disabled:opacity-50',
             theme.accentText,
-            'hover:text-brand-300',
+            'hover:text-accent',
           )}
         >
           {submitLabel}

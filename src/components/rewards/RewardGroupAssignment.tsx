@@ -79,13 +79,13 @@ export function RewardGroupAssignment({ eventId, rewardId, rewardName, isOpen, o
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`קבוצות עבור ${rewardName}`}>
-      <p className="mb-3 text-xs text-gray-500">
+      <p className="mb-3 text-xs text-muted">
         השאירו ריק כדי להפוך פרס זה לזמין לכל המשתתפים.
       </p>
       {loading ? (
         <CenteredLoader className="py-6" size="sm" />
       ) : groups.length === 0 ? (
-        <p className="py-4 text-center text-sm text-gray-500">
+        <p className="py-4 text-center text-sm text-muted">
           עדיין לא נוצרו קבוצות. פרס זה יהיה זמין לכל המשתתפים.
         </p>
       ) : (
@@ -93,20 +93,20 @@ export function RewardGroupAssignment({ eventId, rewardId, rewardName, isOpen, o
           {groups.map((group) => (
             <label
               key={group.id}
-              className="flex cursor-pointer items-center gap-3 rounded-lg border border-game-border p-3 transition-colors hover:bg-white/5"
+              className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-surface-elevated"
             >
               <input
                 type="checkbox"
                 checked={assignedIds.has(group.id)}
                 onChange={() => toggle(group.id)}
                 disabled={toggling === group.id}
-                className="h-4 w-4 rounded border-game-border bg-game-dark text-brand-600 focus:ring-brand-500"
+                className="h-4 w-4 rounded border-border bg-surface-elevated text-secondary focus:ring-secondary"
               />
               <div
                 className="h-4 w-4 rounded-full"
                 style={{ backgroundColor: group.color }}
               />
-              <span className="text-sm font-medium text-gray-200">{group.name}</span>
+              <span className="text-sm font-medium text-foreground">{group.name}</span>
             </label>
           ))}
         </div>

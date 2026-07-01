@@ -20,14 +20,14 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
       isOpen={isOpen}
       onClose={onClose}
       title="נהנים מהמשחק?"
-      titleClassName="text-xl font-bold text-white"
+      titleClassName="text-xl font-bold text-foreground"
     >
       <div className="flex flex-col gap-6 pt-1 pb-1">
         <div className="space-y-3 text-center">
-          <p className="text-[15px] text-gray-200 leading-[1.75]">
+          <p className="text-[15px] text-foreground leading-[1.75]">
             משחק ההתנסות נועד לתת לכם טעימה מהחוויה.
           </p>
-          <p className="text-sm text-gray-400 leading-[1.75]">
+          <p className="text-sm text-muted leading-[1.75]">
             רוצים להפעיל את אותו המשחק בתוכנית שלכם?
             <br />
             נשמח לעזור לכם ליצור תוכנית בלתי נשכחת.

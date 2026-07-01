@@ -214,7 +214,7 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
   }
 
   return (
-    <div className="border-t border-game-border/30">
+    <div className="border-t border-border/30">
       {/* ── Collapse trigger ── */}
       <button
         type="button"
@@ -222,8 +222,8 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
         className={cn(
           'flex w-full items-center gap-1.5 px-4 py-1.5 text-[11px] transition-colors duration-150',
           hasSettings
-            ? 'text-brand-400 hover:text-brand-300'
-            : 'text-gray-600 hover:text-gray-400',
+            ? 'text-secondary hover:text-accent'
+            : 'text-muted hover:text-foreground',
         )}
       >
         <Clock size={11} className="shrink-0" />
@@ -232,9 +232,9 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
         </span>
         {hasSettings && (
           <span className="mr-1 flex gap-1">
-            <span className="rounded px-1 py-px text-[9px] bg-brand-500/20 text-brand-400">⏱</span>
+            <span className="rounded px-1 py-px text-[9px] bg-surface-elevated text-accent">⏱</span>
             {action.speed_bonus_enabled && (
-              <span className="rounded px-1 py-px text-[9px] bg-orange-500/20 text-orange-400">🔥</span>
+              <span className="rounded px-1 py-px text-[9px] bg-surface-elevated text-accent">🔥</span>
             )}
           </span>
         )}
@@ -259,14 +259,14 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
             className="overflow-hidden"
           >
             <div className="px-4 pb-4 pt-1">
-              <div className="rounded-xl border border-game-border bg-game-dark p-4 space-y-4">
+              <div className="rounded-xl border border-border bg-surface-elevated p-4 space-y-4">
 
                 {/* ── Time Limitation ── */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Clock size={14} className="text-brand-400" />
-                      <span className="text-xs font-semibold text-gray-200">הגבלת זמן</span>
+                      <Clock size={14} className="text-secondary" />
+                      <span className="text-xs font-semibold text-foreground">הגבלת זמן</span>
                     </div>
                     <ToggleSwitch checked={timeEnabled} onChange={handleTimeToggle} />
                   </div>
@@ -283,7 +283,7 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
                       >
                         {/* Start */}
                         <div>
-                          <p className="mb-1.5 text-[10px] font-medium text-gray-500">התחלה</p>
+                          <p className="mb-1.5 text-[10px] font-medium text-muted">התחלה</p>
                           <div className="flex gap-1.5">
                             <PillButton
                               active={startMode === 'immediately'}
@@ -304,14 +304,14 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
                               dir="ltr"
                               value={specificStartAt}
                               onChange={(e) => setSpecificStartAt(e.target.value)}
-                              className="mt-2 w-full rounded-lg border border-game-border bg-game-card px-2.5 py-1.5 text-xs text-white outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30"
+                              className="mt-2 w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
                             />
                           )}
                         </div>
 
                         {/* Duration */}
                         <div>
-                          <p className="mb-1.5 text-[10px] font-medium text-gray-500">משך</p>
+                          <p className="mb-1.5 text-[10px] font-medium text-muted">משך</p>
                           <div className="flex flex-wrap gap-1.5">
                             {DURATION_OPTIONS.map((opt) => (
                               <PillButton
@@ -325,13 +325,13 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
                           </div>
                           {durationMode === 'custom' && (
                             <div className="mt-2">
-                              <p className="mb-1 text-[10px] text-gray-500">תאריך סיום</p>
+                              <p className="mb-1 text-[10px] text-muted">תאריך סיום</p>
                               <input
                                 type="datetime-local"
                                 dir="ltr"
                                 value={customEndAt}
                                 onChange={(e) => setCustomEndAt(e.target.value)}
-                                className="w-full rounded-lg border border-game-border bg-game-card px-2.5 py-1.5 text-xs text-white outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30"
+                                className="w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
                               />
                             </div>
                           )}
@@ -341,14 +341,14 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
                   </AnimatePresence>
                 </div>
 
-                <div className="border-t border-game-border" />
+                <div className="border-t border-border" />
 
                 {/* ── Speed Bonus ── */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Flame size={14} className="text-orange-400" />
-                      <span className="text-xs font-semibold text-gray-200">בונוס מהירות</span>
+                      <Flame size={14} className="text-accent" />
+                      <span className="text-xs font-semibold text-foreground">בונוס מהירות</span>
                     </div>
                     <ToggleSwitch
                       checked={speedBonusEnabled}
@@ -357,7 +357,7 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
                     />
                   </div>
                   {!timeEnabled && (
-                    <p className="text-[10px] text-gray-600">יש להפעיל הגבלת זמן תחילה</p>
+                    <p className="text-[10px] text-muted">יש להפעיל הגבלת זמן תחילה</p>
                   )}
 
                   <AnimatePresence initial={false}>
@@ -370,8 +370,8 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
                         transition={{ duration: 0.15 }}
                         className="overflow-hidden"
                       >
-                        <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-3 space-y-2.5">
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-300">
+                        <div className="rounded-xl border border-accent/20 bg-surface-elevated p-3 space-y-2.5">
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-foreground">
                             <span>משלימים תוך</span>
                             <input
                               type="number"
@@ -381,7 +381,7 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
                               onChange={(e) =>
                                 setSpeedBonusMinutes(Math.max(1, parseInt(e.target.value) || 1))
                               }
-                              className="w-14 rounded-lg border border-game-border bg-game-card px-2 py-1 text-center text-xs text-white outline-none focus:border-orange-500"
+                              className="w-14 rounded-lg border border-border bg-surface px-2 py-1 text-center text-xs text-foreground outline-none focus:border-accent"
                             />
                             <span>דקות יקבלו</span>
                           </div>
@@ -406,8 +406,8 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
                                   className={cn(
                                     'rounded-lg border px-3 py-1.5 text-xs font-bold transition-all',
                                     isActive
-                                      ? 'border-orange-500/50 bg-orange-500/20 text-orange-400'
-                                      : 'border-game-border text-gray-500 hover:border-orange-500/30 hover:text-gray-300',
+                                      ? 'border-accent/50 bg-surface-elevated text-accent'
+                                      : 'border-border text-muted hover:border-accent/30 hover:text-foreground',
                                   )}
                                 >
                                   {opt.label}
@@ -422,13 +422,13 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
                 </div>
 
                 {/* Combined-limits hint */}
-                <p className="text-[10px] leading-relaxed text-gray-500">
+                <p className="text-[10px] leading-relaxed text-muted">
                   הגבלת זמן והגבלת כמות פועלות יחד. המשתתף יוכל לבצע את המשימה רק אם הוא גם בתוך הזמן המותר וגם לא עבר את מגבלת הביצועים.
                 </p>
 
                 {/* Error */}
                 {formError && (
-                  <p className="text-xs text-red-400">⚠ {formError}</p>
+                  <p className="text-xs text-danger">⚠ {formError}</p>
                 )}
 
                 {/* Actions */}
