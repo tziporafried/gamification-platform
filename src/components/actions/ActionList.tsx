@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Lock, Plus } from 'lucide-react'
+import { Lock, Plus, CheckSquare } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
@@ -156,6 +156,7 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
       {actions.length === 0 && !hasLocked ? (
         <div className="space-y-4">
           <EmptyState
+            icon={<CheckSquare size={32} strokeWidth={1.75} />}
             title="עדיין לא נוספו פעילויות"
             description="הוסיפו את הפעילות הראשונה שמעניקה נקודות למשתתפים"
             action={

@@ -8,14 +8,16 @@ interface InlineAddGroupProps {
   eventId: string
   onAdded: (group: Group) => void
   onPlanLimit?: () => void
+  nameInputRef?: React.RefObject<HTMLInputElement | null>
 }
 
 const PRESET_COLORS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#14b8a6']
 
-export function InlineAddGroup({ eventId, onAdded, onPlanLimit }: InlineAddGroupProps) {
+export function InlineAddGroup({ eventId, onAdded, onPlanLimit, nameInputRef }: InlineAddGroupProps) {
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const internalInputRef = useRef<HTMLInputElement>(null)
+  const inputRef = nameInputRef ?? internalInputRef
 
   function getRandomColor() {
     return PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]

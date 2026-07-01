@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback, memo } from 'react'
+import { Plus, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { InlineAddParticipant } from '@/components/participants/InlineAddParticipant'
 import { UpgradeModal } from '@/components/UpgradeModal'
+import { Button } from '@/components/ui/Button'
 import { UsageBar } from '@/components/ui/UsageBar'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
@@ -19,6 +21,7 @@ interface StepParticipantsProps {
   eventId: string
   counts: EventCounts
   groupType: GroupType | null
+  isActive: boolean
   onCountsPatch: (patch: Partial<EventCounts>) => void
   onCountsRefresh: () => void
   onNext: () => void
@@ -30,13 +33,14 @@ interface ParticipantGroupJoin {
   groups: Group
 }
 
-export function StepParticipants({ eventId, counts, groupType, onCountsPatch, onCountsRefresh, onNext, onBack }: StepParticipantsProps) {
+export function StepParticipants({ eventId, counts, groupType, isActive, onCountsPatch, onCountsRefresh, onNext, onBack }: StepParticipantsProps) {
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [error, setError] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
+  const addInputRef = useRef<HTMLInputElement>(null)
   const prevCountRef = useRef(0)
   const planLimits = usePlanLimitsFromCounts(counts, onCountsRefresh)
 
@@ -75,21 +79,27 @@ export function StepParticipants({ eventId, counts, groupType, onCountsPatch, on
   }, [loadParticipants])
 
   useEffect(() => {
-    if (!hasGroups) {
-      setGroups([])
-      return
-    }
+    if (!isActive) return
+
     let cancelled = false
-    supabase
-      .from('groups')
-      .select('*')
-      .eq('event_id', eventId)
-      .order('created_at', { ascending: true })
-      .then(({ data }) => {
-        if (!cancelled) setGroups((data as Group[]) ?? [])
-      })
+    async function fetchGroups() {
+      if (!hasGroups) {
+        setGroups([])
+        return
+      }
+
+      const { data } = await supabase
+        .from('groups')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true })
+
+      if (!cancelled) setGroups((data as Group[]) ?? [])
+    }
+
+    fetchGroups()
     return () => { cancelled = true }
-  }, [eventId, hasGroups])
+  }, [eventId, hasGroups, counts.groups, isActive])
 
   useEffect(() => {
     if (participants.length > prevCountRef.current && listRef.current) {
@@ -200,17 +210,24 @@ export function StepParticipants({ eventId, counts, groupType, onCountsPatch, on
         )}
 
         {participants.length === 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-4">
             <EmptyState
+              icon={<Users size={32} strokeWidth={1.75} />}
               title="אין משתתפים עדיין"
-              description="הוסיפו את המשתתף הראשון למטה"
-              className="py-8"
+              description="הוסיפו את המשתתף הראשון"
+              action={
+                <Button size="sm" className="gap-1.5" onClick={() => addInputRef.current?.focus()}>
+                  <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+                  הוסף משתתף
+                </Button>
+              }
             />
             <InlineAddParticipant
               eventId={eventId}
               onAdded={handleAdded}
               onPlanLimit={() => setUpgradeOpen(true)}
               placeholder="הקלידו שם משתתף ולחצו Enter"
+              nameInputRef={addInputRef}
             />
           </div>
         ) : (
@@ -278,7 +295,6 @@ const MemoParticipantRow = memo(function ParticipantInlineRow({
   }
 
   const memberGroupIds = new Set(participant.groups.map(g => g.id))
-  const isAllSelected = groups.length > 0 && groups.every(g => memberGroupIds.has(g.id))
 
   return (
     <ListRow>
@@ -300,7 +316,7 @@ const MemoParticipantRow = memo(function ParticipantInlineRow({
             selectedGroupIds={memberGroupIds}
             allGroupsLabel="כל הקבוצות"
             tooltip="לאילו קבוצות שייך המשתתף"
-            isAllSelected={isAllSelected}
+            isAllSelected={false}
             onSelectAll={() => onSelectAllGroups(participant.id, memberGroupIds, allGroups)}
             onToggleGroup={(groupId, isMember) => onToggleGroup(participant.id, groupId, isMember)}
           />

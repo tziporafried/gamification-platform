@@ -29,7 +29,10 @@ export default {
         tertiary: 'var(--color-tertiary)',
         accent: 'var(--color-accent)',
         success: 'var(--color-success)',
-        warning: 'var(--color-warning)',
+        warning: {
+          DEFAULT: 'var(--color-warning)',
+          foreground: 'var(--color-on-warning)',
+        },
         danger: 'var(--color-danger)',
         // Design review required: focus-ring, disabled
 

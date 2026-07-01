@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useCallback, useRef } from 'react'
 import type { WizardState } from '@/types'
 
 interface WizardChromeContextValue {
@@ -6,6 +6,8 @@ interface WizardChromeContextValue {
   currentStep: number
   wizardState: WizardState
   onStepClick: (step: number) => void
+  hasIntroPlayed: (step: number) => boolean
+  markIntroPlayed: (step: number) => void
 }
 
 export const WizardChromeContext = createContext<WizardChromeContextValue>({
@@ -20,8 +22,21 @@ export const WizardChromeContext = createContext<WizardChromeContextValue>({
     review: 'not_started',
   },
   onStepClick: () => {},
+  hasIntroPlayed: () => false,
+  markIntroPlayed: () => {},
 })
 
 export function useWizardChrome() {
   return useContext(WizardChromeContext)
+}
+
+export function useWizardIntroTracking() {
+  const introPlayedRef = useRef(new Set<number>())
+
+  const hasIntroPlayed = useCallback((step: number) => introPlayedRef.current.has(step), [])
+  const markIntroPlayed = useCallback((step: number) => {
+    introPlayedRef.current.add(step)
+  }, [])
+
+  return { hasIntroPlayed, markIntroPlayed }
 }

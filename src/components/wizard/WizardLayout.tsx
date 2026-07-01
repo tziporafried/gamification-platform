@@ -1,5 +1,5 @@
 import { WizardProgress } from './WizardProgress'
-import { WizardChromeContext } from './WizardChromeContext'
+import { WizardChromeContext, useWizardIntroTracking } from './WizardChromeContext'
 import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
 import type { WizardState, Event } from '@/types'
 
@@ -23,6 +23,7 @@ export function WizardLayout({
   children,
 }: WizardLayoutProps) {
   useEventHeaderBreadcrumb(event.name, headerSuffix)
+  const { hasIntroPlayed, markIntroPlayed } = useWizardIntroTracking()
 
   return (
     <WizardChromeContext.Provider
@@ -31,6 +32,8 @@ export function WizardLayout({
         currentStep,
         wizardState,
         onStepClick,
+        hasIntroPlayed,
+        markIntroPlayed,
       }}
     >
       <div className="flex flex-col" style={{ height: 'calc(100vh - 56px)' }}>

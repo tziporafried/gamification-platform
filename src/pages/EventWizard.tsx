@@ -235,6 +235,7 @@ export function EventWizard() {
             eventId={event.id}
             counts={counts}
             groupType={groupType}
+            isActive={currentStep === 3}
             onCountsPatch={patchCounts}
             onCountsRefresh={refreshCounts}
             onNext={goNext}
@@ -275,6 +276,7 @@ export function EventWizard() {
             event={event}
             counts={counts}
             groupType={groupType}
+            isActive={currentStep === 6}
             onGoToStep={goToStep}
             onBack={goBack}
             templateMode={isTemplateMode ? {

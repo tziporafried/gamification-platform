@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Layers, Lock } from 'lucide-react'
+import { Layers, Lock, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
@@ -50,6 +50,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
   const [deleting, setDeleting] = useState(false)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
+  const addInputRef = useRef<HTMLInputElement>(null)
   const prevCountRef = useRef(0)
 
   useEffect(() => {
@@ -175,10 +176,25 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
       )}
 
       {groups.length === 0 && !hasLocked ? (
-        <EmptyState
-          title="אין קבוצות עדיין"
-          description="הקלד שם קבוצה למטה ולחץ Enter"
-        />
+        <div className="space-y-4">
+          <EmptyState
+            icon={<Layers size={32} strokeWidth={1.75} />}
+            title="אין קבוצות עדיין"
+            description="הוסיפו את הקבוצה הראשונה"
+            action={
+              <Button size="sm" className="gap-1.5" onClick={() => addInputRef.current?.focus()}>
+                <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+                הוסף קבוצה
+              </Button>
+            }
+          />
+          <InlineAddGroup
+            eventId={eventId}
+            onAdded={handleAdded}
+            onPlanLimit={() => setUpgradeOpen(true)}
+            nameInputRef={addInputRef}
+          />
+        </div>
       ) : (
         <ScrollContainer ref={listRef} className="flex-1 space-y-3 p-1">
           {groups.length > 0 && (
@@ -214,9 +230,11 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
         </ScrollContainer>
       )}
 
+      {(groups.length > 0 || hasLocked) && (
       <div className="shrink-0 pt-3">
         <InlineAddGroup eventId={eventId} onAdded={handleAdded} onPlanLimit={() => setUpgradeOpen(true)} />
       </div>
+      )}
 
       {formOpen && (
         <GroupForm

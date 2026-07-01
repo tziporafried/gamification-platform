@@ -66,7 +66,11 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
   }
 
   return (
-    <Card variant="interactive" className="group/card">
+    <Card
+      variant="interactive"
+      className="group hover:!border-[var(--group-color)]"
+      style={{ '--group-color': color } as React.CSSProperties}
+    >
       <div
         className="h-1.5 w-full rounded-t-xl transition-colors"
         style={{ backgroundColor: color }}
@@ -138,7 +142,7 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
           </div>
 
           {/* Delete */}
-          <DeleteButton revealOnHover="card" iconSize={14} onClick={onDelete} />
+          <DeleteButton revealOnHover iconSize={14} onClick={onDelete} />
         </div>
       </div>
     </Card>

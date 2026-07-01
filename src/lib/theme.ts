@@ -62,7 +62,7 @@ export const buttonVariants = {
 export const alertVariants = {
   error: 'rounded-lg bg-surface-elevated border border-danger text-danger',
   success: 'rounded-lg bg-surface-elevated border border-success text-success',
-  warning: 'rounded-lg bg-surface-elevated border border-warning text-warning',
+  warning: 'rounded-lg bg-surface-elevated border border-warning text-warning-foreground',
 } as const
 
 export const chipColors = {

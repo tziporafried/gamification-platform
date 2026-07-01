@@ -26,13 +26,7 @@ export function EmptyState({
 
   return (
     <div className={cn(shell, className)}>
-      {icon && (
-        variant === 'dashed' ? (
-          <div className={cn('mb-4', theme.iconBox)}>{icon}</div>
-        ) : (
-          <div className="mb-3">{icon}</div>
-        )
-      )}
+      {icon && <div className="mb-4 text-muted">{icon}</div>}
       <h3 className={cn('text-sm font-semibold', variant === 'dashed' ? theme.label : theme.textMuted)}>
         {title}
       </h3>

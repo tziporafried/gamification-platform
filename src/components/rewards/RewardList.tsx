@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Trophy, Lock } from 'lucide-react'
+import { Lock, Plus, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -176,7 +176,8 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
 
   const addButton = (
     <div className="flex justify-center pt-1">
-      <Button size="sm" variant="outline" onClick={handleCreate}>
+      <Button size="sm" variant="outline" className="gap-1.5" onClick={handleCreate}>
+        <Plus size={16} className="shrink-0" strokeWidth={2.5} />
         {rewards.length === 0 ? 'הוספת פרס' : 'הוספת פרס נוסף'}
       </Button>
     </div>
@@ -195,11 +196,15 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
           </div>
         ) : (
           <EmptyState
-            variant="solid"
-            icon={<Trophy size={32} className="text-muted" />}
+            icon={<Trophy size={32} strokeWidth={1.75} />}
             title="אין פרסים עדיין"
             description="צרו הפתעות שהשחקנים שלכם יוכלו לקבל."
-            action={<Button size="sm" variant="gradient" onClick={handleCreate}>הוספת פרס</Button>}
+            action={
+              <Button size="sm" className="gap-1.5" onClick={handleCreate}>
+                <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+                הוספת פרס
+              </Button>
+            }
           />
         )
       ) : (

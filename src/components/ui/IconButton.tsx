@@ -7,10 +7,21 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'default' | 'danger'
 }
 
+const NAMED_REVEAL_CLASSES: Record<string, string> = {
+  card: 'opacity-0 group-hover/card:opacity-100',
+}
+
 export function IconButton({ className, revealOnHover, variant = 'danger', children, ...props }: IconButtonProps) {
   const variantClasses = variant === 'danger'
     ? 'text-muted hover:bg-danger/10 hover:text-danger'
     : 'text-muted hover:bg-surface-elevated hover:text-foreground'
+
+  const revealClasses =
+    revealOnHover === true
+      ? 'opacity-0 group-hover:opacity-100'
+      : typeof revealOnHover === 'string'
+        ? NAMED_REVEAL_CLASSES[revealOnHover]
+        : undefined
 
   return (
     <button
@@ -18,8 +29,7 @@ export function IconButton({ className, revealOnHover, variant = 'danger', child
       className={cn(
         'shrink-0 p-1.5 rounded-lg transition-all',
         variantClasses,
-        revealOnHover === true && 'opacity-0 group-hover:opacity-100',
-        typeof revealOnHover === 'string' && `opacity-0 group-hover/${revealOnHover}:opacity-100`,
+        revealClasses,
         className,
       )}
       {...props}

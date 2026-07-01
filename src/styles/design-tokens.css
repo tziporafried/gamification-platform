@@ -45,6 +45,7 @@
 
   --color-success: var(--palette-success);
   --color-warning: var(--palette-warning);
+  --color-on-warning: var(--palette-brand-primary);
   --color-danger: var(--palette-danger);
   --color-on-danger: var(--palette-surface);
 

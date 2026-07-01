@@ -9,6 +9,7 @@ interface InlineAddParticipantProps {
   onAdded: (participant: Participant) => void
   onPlanLimit?: () => void
   placeholder?: string
+  nameInputRef?: React.RefObject<HTMLInputElement | null>
 }
 
 export function InlineAddParticipant({
@@ -16,10 +17,12 @@ export function InlineAddParticipant({
   onAdded,
   onPlanLimit,
   placeholder = 'הקלד שם ולחץ Enter להוספה...',
+  nameInputRef,
 }: InlineAddParticipantProps) {
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const internalInputRef = useRef<HTMLInputElement>(null)
+  const inputRef = nameInputRef ?? internalInputRef
 
   async function addParticipant() {
     const trimmed = name.trim()

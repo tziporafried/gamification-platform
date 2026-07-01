@@ -33,39 +33,42 @@ export function WizardStepWrapper({
   children,
   footerBar,
 }: WizardStepWrapperProps) {
-  const { currentStep: activeStep, wizardState } = useWizardChrome()
+  const { currentStep: activeStep, wizardState, hasIntroPlayed, markIntroPlayed } = useWizardChrome()
   const isActive = activeStep === currentStep
   const stepId = getWizardStepId(currentStep)
   const isIncomplete = stepId ? wizardState[stepId] !== 'completed' : false
   const [playIntro, setPlayIntro] = useState(false)
 
   useLayoutEffect(() => {
-    if (!isActive || !isIncomplete) {
+    if (!isActive || !isIncomplete || hasIntroPlayed(currentStep)) {
       setPlayIntro(false)
       return
     }
 
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (prefersReduced) {
+      markIntroPlayed(currentStep)
       setPlayIntro(false)
       return
     }
 
     setPlayIntro(true)
-  }, [isActive, isIncomplete, currentStep])
+  }, [isActive, isIncomplete, currentStep, hasIntroPlayed, markIntroPlayed])
 
   useEffect(() => {
     if (!playIntro) return
 
     const fallback = window.setTimeout(() => {
+      markIntroPlayed(currentStep)
       setPlayIntro(false)
     }, 2000)
 
     return () => window.clearTimeout(fallback)
-  }, [playIntro])
+  }, [playIntro, currentStep, markIntroPlayed])
 
   function handleIntroComplete(event: React.AnimationEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget) return
+    markIntroPlayed(currentStep)
     setPlayIntro(false)
   }
 
