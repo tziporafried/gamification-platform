@@ -39,8 +39,7 @@ export default {
         'card': '0 1px 3px 0 rgba(46, 34, 30, 0.06), 0 1px 2px -1px rgba(46, 34, 30, 0.04)',
         'card-hover': '0 4px 12px -2px rgba(46, 34, 30, 0.1), 0 2px 6px -2px rgba(46, 34, 30, 0.05)',
         'header': '0 4px 20px -4px rgba(46, 34, 30, 0.12), 0 1px 0 var(--color-border)',
-        'wizard-panel':
-          '0 8px 24px -8px rgba(171, 53, 0, 0.09), -4px 2px 16px -12px rgba(171, 53, 0, 0.04), 4px 2px 16px -12px rgba(171, 53, 0, 0.04)',
+        'wizard-panel': '0 10px 30px -5px rgba(171, 53, 0, 0.14), 0 4px 14px -2px rgba(171, 53, 0, 0.08)',
         'footer-up': '0 -4px 12px rgba(171, 53, 0, 0.08)',
         'podium': '0 8px 24px -4px rgba(46, 34, 30, 0.12), 0 4px 8px -4px rgba(46, 34, 30, 0.06)',
         'glow-brand': '0 0 20px color-mix(in srgb, var(--color-primary) 25%, transparent)',
@@ -59,6 +58,10 @@ export default {
         'celebration-bounce': {
           '0%, 100%': { transform: 'scale(1)' },
           '50%': { transform: 'scale(1.1)' },
+        },
+        'wizard-step-pulse': {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.08)' },
         },
         'glow-pulse': {
           '0%, 100%': { boxShadow: '0 0 20px color-mix(in srgb, var(--color-primary) 30%, transparent)' },
@@ -128,6 +131,7 @@ export default {
         'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
         'scale-in': 'scale-in 0.4s ease-out forwards',
         'celebration-bounce': 'celebration-bounce 1.5s ease-in-out infinite',
+        'wizard-step-pulse': 'wizard-step-pulse 2s ease-in-out infinite',
         'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
         'glow-pulse-gold': 'glow-pulse-gold 2s ease-in-out infinite',
         'confetti-fall': 'confetti-fall 3s ease-in forwards',

@@ -89,20 +89,20 @@ export function StepGroups({
     >
       <div className="flex h-full flex-col min-h-0">
         <div className="shrink-0 space-y-4">
-          <div className="grid grid-cols-2 gap-3 p-1">
+          <div className="grid grid-cols-2 items-stretch gap-3 p-1">
             {GROUP_OPTIONS.map(({ type, label, description, icon: Icon }) => (
               <button
                 key={type}
                 onClick={() => handleOptionClick(type)}
-                className="text-right w-full"
+                className="h-full w-full text-right"
               >
                 <Card
                   variant="interactive"
                   className={cn(
-                    'flex cursor-pointer transition-all justify-center bg-surface border-border',
+                    'flex h-full w-full cursor-pointer transition-all justify-center bg-surface border-border',
                     showGroupSetup
                       ? 'p-3 flex-row items-center gap-2 text-right'
-                      : 'p-6 flex-col items-center gap-3 text-center min-h-[120px]',
+                      : 'p-6 flex-col items-center gap-3 text-center',
                     groupType === type && 'ring-2 ring-primary border-primary',
                   )}
                 >
@@ -113,7 +113,7 @@ export function StepGroups({
                       groupType === type ? 'text-primary' : 'text-muted',
                     )}
                   />
-                  <div>
+                  <div className={cn(!showGroupSetup && 'flex flex-1 flex-col items-center')}>
                     <span className={cn(
                       'font-medium text-foreground',
                       showGroupSetup ? 'text-sm' : 'text-base',
@@ -121,7 +121,7 @@ export function StepGroups({
                       {label}
                     </span>
                     {!showGroupSetup && (
-                      <span className="text-xs text-muted block mt-1">{description}</span>
+                      <span className="mt-1 block min-h-[2.75rem] text-xs text-muted">{description}</span>
                     )}
                   </div>
                 </Card>

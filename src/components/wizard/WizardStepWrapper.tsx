@@ -34,10 +34,9 @@ export function WizardStepWrapper({
 
   return (
     <>
-      <div className="flex h-full flex-col animate-fade-in-up pb-[4.5rem]">
-        <div className="flex min-h-0 flex-1 flex-col px-2 pt-4 sm:px-3 sm:pt-6">
-          <div className="relative mb-6 flex min-h-0 flex-1 flex-col rounded-[2rem] shadow-wizard-panel sm:mb-8">
-            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[2rem] bg-surface-elevated">
+      <div className="flex h-full flex-col animate-fade-in-up pb-[var(--wizard-footer-bar-height)]">
+        <div className="flex min-h-0 flex-1 flex-col px-3 pt-[var(--wizard-chrome-gap-top)] sm:px-4 sm:pt-0">
+          <div className="relative mb-[var(--wizard-chrome-gap-bottom)] flex min-h-0 flex-1 flex-col overflow-hidden rounded-[2rem] bg-surface-elevated shadow-wizard-panel">
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute -left-24 -top-24 h-64 w-64 rounded-full blur-3xl"
@@ -48,8 +47,8 @@ export function WizardStepWrapper({
                 className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full blur-3xl"
                 style={{ background: 'var(--gradient-wizard-panel-orb-secondary)' }}
               />
-              <div className="relative z-10 flex min-h-0 flex-1 flex-col px-6 py-8 sm:px-10 sm:py-10">
-                <div className="shrink-0 space-y-2 pb-8 text-center">
+              <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 py-5 sm:px-8 sm:py-6">
+                <div className="shrink-0 space-y-2 pb-4 text-center sm:pb-5">
                   <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{title}</h2>
                   {subtitle && (
                     <p className="mx-auto max-w-md text-sm leading-relaxed text-foreground/75 sm:text-base">
@@ -64,7 +63,6 @@ export function WizardStepWrapper({
 
                 {footerBar && <div className="shrink-0">{footerBar}</div>}
               </div>
-            </div>
           </div>
         </div>
       </div>
@@ -88,7 +86,7 @@ export function WizardStepWrapper({
 
           {/* center: step dots */}
           <div className="flex justify-center">
-            <WizardFooterDots currentStep={currentStep} />
+            <WizardFooterDots />
           </div>
 
           {/* RTL col-3 → visual left: primary pill CTA */}

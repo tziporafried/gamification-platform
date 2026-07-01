@@ -14,59 +14,64 @@ export function WizardProgress({ currentStep, wizardState, onStepClick, hiddenSt
   const visibleSteps = WIZARD_STEPS.filter((step) => !hiddenSteps.includes(step.step))
 
   return (
-    <div className="w-full">
-      <nav className="hidden sm:flex items-center justify-between" aria-label="Wizard progress">
-        {visibleSteps.map((step, idx) => {
-          const status = wizardState[step.id as WizardStepId]
-          const isCurrent = step.step === currentStep
-          const isCompleted = status === 'completed'
+    <nav className="hidden w-full items-start sm:flex" aria-label="Wizard progress">
+      {visibleSteps.map((step) => {
+        const status = wizardState[step.id as WizardStepId]
+        const isCurrent = step.step === currentStep
+        const isCompleted = status === 'completed'
 
-          return (
-            <div key={step.id} className="flex items-center">
-              {isCompleted ? (
-                <button
-                  onClick={() => onStepClick(step.step)}
-                  className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-success transition-colors hover:bg-surface-elevated"
-                >
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface-elevated">
-                    <Check size={9} />
-                  </span>
-                  {step.label}
-                </button>
-              ) : isCurrent ? (
-                <button
-                  onClick={() => onStepClick(step.step)}
-                  className="flex items-center gap-1.5 rounded-full bg-surface-elevated px-3 py-1 text-xs font-semibold text-foreground ring-1 ring-primary"
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                    {step.step}
-                  </span>
-                  {step.label}
-                </button>
-              ) : (
-                <button
-                  onClick={() => onStepClick(step.step)}
-                  className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-muted transition-colors hover:text-foreground"
-                >
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface-elevated text-[10px] font-bold">
-                    {step.step}
-                  </span>
-                  {step.label}
-                </button>
-              )}
-
-              {idx < visibleSteps.length - 1 && (
-                <div
+        return (
+          <button
+            key={step.id}
+            type="button"
+            onClick={() => onStepClick(step.step)}
+            aria-current={isCurrent ? 'step' : undefined}
+            title={step.label}
+            className={cn(
+              'flex min-w-0 flex-1 flex-col items-center rounded-xl px-1 py-1 text-primary transition-colors outline-none',
+              'focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-primary)_45%,transparent)] focus-visible:ring-offset-1',
+              'hover:opacity-90',
+            )}
+          >
+            <span className="flex min-h-[4.5rem] w-full items-center justify-center">
+              <span
+                className={cn(
+                  'flex flex-col items-center gap-1.5',
+                  isCurrent && 'origin-center animate-wizard-step-pulse motion-reduce:animate-none',
+                )}
+              >
+                <span
                   className={cn(
-                    'mx-1 h-px w-3 shrink-0 transition-colors',
-                    isCompleted ? 'bg-success' : 'bg-border',
+                    'flex items-center justify-center rounded-full font-bold',
+                    isCompleted &&
+                      !isCurrent &&
+                      'h-6 w-6 bg-primary text-primary-foreground shadow-[0_2px_6px_rgba(171,53,0,0.22)]',
+                    isCurrent &&
+                      'h-7 w-7 border-2 border-primary bg-surface-elevated text-base text-primary',
+                    !isCompleted &&
+                      !isCurrent &&
+                      'h-6 w-6 border border-border bg-surface-elevated text-[10px] text-muted',
                   )}
-                />
-              )}
-            </div>
-          )
-        })}
-      </nav>
-    </div>
+                >
+                  {isCompleted && !isCurrent ? <Check size={13} strokeWidth={3} /> : step.step}
+                </span>
+                <span
+                  className={cn(
+                    'line-clamp-2 w-full text-center leading-tight text-primary',
+                    isCurrent
+                      ? 'text-xs font-bold sm:text-sm'
+                      : isCompleted
+                        ? 'text-[10px] font-semibold sm:text-[11px]'
+                        : 'text-[10px] font-medium',
+                  )}
+                >
+                  {step.label}
+                </span>
+              </span>
+            </span>
+          </button>
+        )
+      })}
+    </nav>
   )
 }
