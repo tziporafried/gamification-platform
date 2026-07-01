@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
 import { GroupList } from '@/components/groups/GroupList'
+import { WizardUsageScroll } from './WizardUsageScroll'
 import type { GroupType, EventCounts, UserPlan } from '@/types'
 
 interface StepGroupsProps {
@@ -159,19 +160,19 @@ export function StepGroups({
               )
             })}
           </div>
-
-          {showGroupSetup && localGroupCount > 0 && (
-            <p className="text-xs text-muted text-center">{localGroupCount} קבוצות</p>
-          )}
-
-          {showGroupSetup && planLimits.isFreePlan && (
-            <UsageBar info={planLimits.groups} entity="groups" />
-          )}
         </div>
 
         {showGroupSetup && (
-          <div className="flex min-h-0 flex-1 flex-col mt-4">
-            <GroupList eventId={eventId} onCountChange={handleCountChange} />
+          <div className="mt-4 flex min-h-0 flex-1 flex-col">
+            <WizardUsageScroll
+              usageBar={
+                planLimits.isFreePlan ? (
+                  <UsageBar info={planLimits.groups} entity="groups" />
+                ) : undefined
+              }
+            >
+              <GroupList embedded eventId={eventId} onCountChange={handleCountChange} />
+            </WizardUsageScroll>
           </div>
         )}
       </div>

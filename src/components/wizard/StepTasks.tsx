@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { ActionList } from '@/components/actions/ActionList'
 import { UsageBar } from '@/components/ui/UsageBar'
-import { ScrollContainer } from '@/components/ui/ScrollContainer'
+import { WizardUsageScroll } from './WizardUsageScroll'
 import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
 import type { EventCounts, UserPlan } from '@/types'
 
@@ -26,6 +26,11 @@ export function StepTasks({ eventId, plan, counts, onCountsPatch, onCountsRefres
     onCountsPatch({ tasks: count })
   }
 
+  const usageBar =
+    planLimits.isFreePlan && planLimits.actions.limit !== null ? (
+      <UsageBar info={planLimits.actions} entity="actions" />
+    ) : null
+
   return (
     <WizardStepWrapper
       title="מה אפשר לעשות?"
@@ -35,25 +40,9 @@ export function StepTasks({ eventId, plan, counts, onCountsPatch, onCountsRefres
       onNext={onNext}
       onBack={onBack}
     >
-      <div className="flex h-full flex-col min-h-0">
-        <div className="shrink-0 space-y-3 pb-3">
-          {localTaskCount > 0 && (
-            <p className="text-xs text-muted text-center">
-              {localTaskCount} פעילויות הוגדרו
-            </p>
-          )}
-          {planLimits.isFreePlan && planLimits.actions.limit !== null && (
-            <UsageBar
-              info={planLimits.actions}
-              entity="actions"
-              showCount={false}
-            />
-          )}
-        </div>
-        <ScrollContainer className="flex-1">
-          <ActionList eventId={eventId} onCountChange={handleCountChange} />
-        </ScrollContainer>
-      </div>
+      <WizardUsageScroll usageBar={usageBar}>
+        <ActionList embedded eventId={eventId} onCountChange={handleCountChange} />
+      </WizardUsageScroll>
     </WizardStepWrapper>
   )
 }

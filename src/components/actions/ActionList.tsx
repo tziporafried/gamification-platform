@@ -16,6 +16,8 @@ import type { Action, ActionWithGroups, Group, TemplateTask } from '@/types'
 interface ActionListProps {
   eventId: string
   onCountChange: (count: number) => void
+  /** Wizard step: list scrolls in parent; usage bar shares the same scroll width. */
+  embedded?: boolean
 }
 
 interface ActionGroupJoin {
@@ -38,7 +40,7 @@ function LockedActionRow({ task }: { task: TemplateTask }) {
   )
 }
 
-export function ActionList({ eventId, onCountChange }: ActionListProps) {
+export function ActionList({ eventId, onCountChange, embedded = false }: ActionListProps) {
   const [actions, setActions] = useState<ActionWithGroups[]>([])
   const [lockedTasks, setLockedTasks] = useState<TemplateTask[]>([])
   const [groups, setGroups] = useState<Group[]>([])
@@ -175,6 +177,49 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
             nameInputRef={addInputRef}
           />
         </div>
+      ) : embedded ? (
+        <>
+          <div ref={listRef} className="space-y-2">
+            {actions.map((action) => (
+              <ActionRow
+                key={action.id}
+                action={action}
+                groups={groups}
+                onEdit={() => {}}
+                onDeleted={() => handleDeleted(action.id)}
+                onUpdated={(patch) => handleActionPatched(action.id, patch)}
+                onError={setError}
+                siblingNames={existingNames.filter((n) => n !== action.name)}
+              />
+            ))}
+
+            {hasLocked && (
+              <>
+                <div className="flex items-center gap-2 py-1">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted">
+                    <Lock size={10} />
+                    פרמיום
+                  </span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+                {lockedTasks.map((task) => (
+                  <LockedActionRow key={task.id} task={task} />
+                ))}
+              </>
+            )}
+          </div>
+          <div className="pt-2">
+            <InlineAddAction
+              eventId={eventId}
+              onAdded={handleAdded}
+              onPlanLimit={() => setUpgradeOpen(true)}
+              existingNames={existingNames}
+              onFeedback={showFeedback}
+              nameInputRef={addInputRef}
+            />
+          </div>
+        </>
       ) : (
         <>
           <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-2">

@@ -49,7 +49,7 @@ export function WizardLayout({
         </div>
 
         <main className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col px-4 pb-0 pt-0 md:min-w-[42rem]">
+          <div className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col px-4 pb-0 pt-[var(--wizard-chrome-gap-top)] sm:pt-0 md:min-w-[42rem]">
             {children}
           </div>
         </main>

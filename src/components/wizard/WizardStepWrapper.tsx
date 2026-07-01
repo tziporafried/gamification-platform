@@ -89,7 +89,7 @@ export function WizardStepWrapper({
   return (
     <>
       <div className="flex h-full flex-col pb-[var(--wizard-footer-bar-height)]">
-        <div className="flex min-h-0 flex-1 flex-col px-3 pt-[var(--wizard-chrome-gap-top)] sm:px-4 sm:pt-0">
+        <div className="flex min-h-0 flex-1 flex-col">
           <div className="relative mb-[var(--wizard-chrome-gap-bottom)] flex min-h-0 flex-1 flex-col overflow-hidden rounded-[2rem] bg-surface-elevated shadow-wizard-panel">
               <div
                 aria-hidden="true"

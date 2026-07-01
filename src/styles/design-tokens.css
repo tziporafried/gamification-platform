@@ -69,7 +69,7 @@
   --gradient-wizard-panel-orb-secondary: color-mix(in srgb, var(--palette-warning) 36%, transparent);
 
   /* Wizard chrome spacing — gap around the step panel + fixed footer clearance */
-  --wizard-chrome-gap-top: 0.15rem;
+  --wizard-chrome-gap-top: 0.5rem;
   --wizard-chrome-gap-bottom: 0.85rem;
   --wizard-footer-bar-height: 4.75rem;
   --wizard-footer-height: calc(var(--wizard-footer-bar-height) + var(--wizard-chrome-gap-bottom));

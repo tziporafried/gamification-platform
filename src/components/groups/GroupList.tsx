@@ -12,12 +12,14 @@ import { UpgradeModal } from '@/components/UpgradeModal'
 import { GroupForm } from './GroupForm'
 import { GroupCard } from './GroupCard'
 import { InlineAddGroup } from './InlineAddGroup'
+import { cn } from '@/lib/utils'
 import { getLockedTemplate, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import type { ActivityTemplateGroup, Group, GroupWithCount } from '@/types'
 
 interface GroupListProps {
   eventId: string
   onCountChange: (count: number) => void
+  embedded?: boolean
 }
 
 function LockedGroupCard({ group }: { group: ActivityTemplateGroup }) {
@@ -39,7 +41,7 @@ function LockedGroupCard({ group }: { group: ActivityTemplateGroup }) {
   )
 }
 
-export function GroupList({ eventId, onCountChange }: GroupListProps) {
+export function GroupList({ eventId, onCountChange, embedded = false }: GroupListProps) {
   const [groups, setGroups] = useState<GroupWithCount[]>([])
   const [lockedGroups, setLockedGroups] = useState<ActivityTemplateGroup[]>([])
   const [loading, setLoading] = useState(true)
@@ -164,12 +166,14 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
   const hasLocked = lockedGroups.length > 0
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <SectionHeader
-        icon={<Layers size={18} className="text-tertiary" />}
-        title="קבוצות"
-        className="mb-4"
-      />
+    <div className={cn('flex flex-col h-full min-h-0', embedded && 'min-h-0')}>
+      {!embedded && (
+        <SectionHeader
+          icon={<Layers size={18} className="text-tertiary" />}
+          title="קבוצות"
+          className="mb-4"
+        />
+      )}
 
       {error && (
         <ErrorAlert message={error} className="mb-4" />
@@ -196,8 +200,46 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
             nameInputRef={addInputRef}
           />
         </div>
+      ) : embedded ? (
+        <>
+          <div ref={listRef} className="space-y-3 py-1">
+            {groups.length > 0 && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {groups.map((group) => (
+                  <GroupCard
+                    key={group.id}
+                    group={group}
+                    onEdit={() => handleEdit(group)}
+                    onDelete={() => setDeletingGroup(group)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {hasLocked && (
+              <>
+                <div className="flex items-center gap-2 py-1">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted">
+                    <Lock size={10} />
+                    פרמיום
+                  </span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {lockedGroups.map((group) => (
+                    <LockedGroupCard key={group.id} group={group} />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <div className="pt-3">
+            <InlineAddGroup eventId={eventId} onAdded={handleAdded} onPlanLimit={() => setUpgradeOpen(true)} />
+          </div>
+        </>
       ) : (
-        <ScrollContainer ref={listRef} className="flex-1 space-y-3 p-1">
+        <ScrollContainer ref={listRef} stableGutter={false} className="flex-1 space-y-3 py-1 px-0">
           {groups.length > 0 && (
             <div className="grid gap-3 sm:grid-cols-2">
               {groups.map((group) => (
@@ -231,7 +273,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
         </ScrollContainer>
       )}
 
-      {(groups.length > 0 || hasLocked) && (
+      {!embedded && (groups.length > 0 || hasLocked) && (
       <div className="shrink-0 pt-3">
         <InlineAddGroup eventId={eventId} onAdded={handleAdded} onPlanLimit={() => setUpgradeOpen(true)} />
       </div>

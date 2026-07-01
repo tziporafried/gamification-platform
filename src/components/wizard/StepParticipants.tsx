@@ -11,7 +11,7 @@ import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { ListRow } from '@/components/ui/ListRow'
 import { DeleteButton } from '@/components/ui/IconButton'
 import { InlineEditableText } from '@/components/ui/InlineEditableText'
-import { ScrollContainer } from '@/components/ui/ScrollContainer'
+import { WizardUsageScroll } from './WizardUsageScroll'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
 import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
@@ -179,6 +179,11 @@ export function StepParticipants({ eventId, plan, counts, groupType, isActive, o
     return <CenteredLoader size="lg" />
   }
 
+  const usageBar =
+    planLimits.isFreePlan && planLimits.participants.limit !== null ? (
+      <UsageBar info={planLimits.participants} entity="participants" />
+    ) : null
+
   return (
     <WizardStepWrapper
       title="מי משתתף?"
@@ -189,29 +194,15 @@ export function StepParticipants({ eventId, plan, counts, groupType, isActive, o
       onBack={onBack}
     >
       <div className="flex h-full flex-col min-h-0">
-        <div className="shrink-0 space-y-3 pb-3">
-          {participants.length > 0 && (
-            <p className="text-xs text-muted text-center">
-              נוספו {participants.length} משתתפים
-            </p>
-          )}
-          {planLimits.isFreePlan && planLimits.participants.limit !== null && (
-            <UsageBar
-              info={planLimits.participants}
-              entity="participants"
-              showCount={false}
-            />
-          )}
-        </div>
-
         {error && (
-          <div className="shrink-0 pb-2">
+          <div className="shrink-0 px-1 pb-2">
             <ErrorAlert message={error} />
           </div>
         )}
 
         {participants.length === 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-4 px-1">
+            {usageBar && <div className="shrink-0 pb-3">{usageBar}</div>}
             <EmptyState
               icon={<Users size={32} strokeWidth={1.75} />}
               title="אין משתתפים עדיין"
@@ -232,8 +223,19 @@ export function StepParticipants({ eventId, plan, counts, groupType, isActive, o
             />
           </div>
         ) : (
-          <>
-            <ScrollContainer ref={listRef} className="flex-1 space-y-2 pb-2">
+          <WizardUsageScroll
+            usageBar={usageBar}
+            scrollRef={listRef}
+            footer={
+              <InlineAddParticipant
+                eventId={eventId}
+                onAdded={handleAdded}
+                onPlanLimit={() => setUpgradeOpen(true)}
+                placeholder="הקלידו שם משתתף ולחצו Enter"
+              />
+            }
+          >
+            <div className="space-y-2 pb-2">
               {participants.map((p) => (
                 <MemoParticipantRow
                   key={p.id}
@@ -245,17 +247,8 @@ export function StepParticipants({ eventId, plan, counts, groupType, isActive, o
                   onSelectAllGroups={handleSelectAllGroups}
                 />
               ))}
-            </ScrollContainer>
-
-            <div className="shrink-0 pt-2">
-              <InlineAddParticipant
-                eventId={eventId}
-                onAdded={handleAdded}
-                onPlanLimit={() => setUpgradeOpen(true)}
-                placeholder="הקלידו שם משתתף ולחצו Enter"
-              />
             </div>
-          </>
+          </WizardUsageScroll>
         )}
       </div>
 

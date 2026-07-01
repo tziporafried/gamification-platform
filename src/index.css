@@ -95,6 +95,7 @@
     --atmosphere-orb-bottom-left: color-mix(in srgb, var(--palette-brand-accent) 14%, transparent);
     --atmosphere-orb-bottom-right: color-mix(in srgb, var(--palette-secondary) 11%, transparent);
     --atmosphere-orb-bottom-teal-wash: color-mix(in srgb, var(--palette-secondary) 4%, transparent);
+    --wizard-background-veil: color-mix(in srgb, var(--palette-surface) 28%, transparent);
   }
 
   /* Login — softer blobs so the form stays in focus */

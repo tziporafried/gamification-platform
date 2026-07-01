@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { WizardStepWrapper } from './WizardStepWrapper'
-import { ScrollContainer } from '@/components/ui/ScrollContainer'
 import { UsageBar } from '@/components/ui/UsageBar'
+import { WizardUsageScroll } from './WizardUsageScroll'
 import { RewardList } from '@/components/rewards/RewardList'
 import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
 import type { EventCounts, UserPlan } from '@/types'
@@ -25,6 +25,11 @@ export function StepRewards({ eventId, plan, counts, onCountsPatch, onCountsRefr
     onCountsPatch({ rewards: count })
   }
 
+  const usageBar =
+    planLimits.isFreePlan && planLimits.rewards.limit !== null ? (
+      <UsageBar info={planLimits.rewards} entity="rewards" />
+    ) : null
+
   return (
     <WizardStepWrapper
       title="פרסים והפתעות"
@@ -35,16 +40,9 @@ export function StepRewards({ eventId, plan, counts, onCountsPatch, onCountsRefr
       onNext={onNext}
       onBack={onBack}
     >
-      <div className="flex h-full flex-col min-h-0">
-        {planLimits.isFreePlan && planLimits.rewards.limit !== null && (
-          <div className="shrink-0 pb-3">
-            <UsageBar info={planLimits.rewards} entity="rewards" showCount={false} />
-          </div>
-        )}
-        <ScrollContainer className="flex-1 py-1">
-          <RewardList eventId={eventId} onCountChange={handleCountChange} />
-        </ScrollContainer>
-      </div>
+      <WizardUsageScroll usageBar={usageBar}>
+        <RewardList eventId={eventId} onCountChange={handleCountChange} />
+      </WizardUsageScroll>
     </WizardStepWrapper>
   )
 }

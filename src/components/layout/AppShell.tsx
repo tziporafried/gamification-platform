@@ -21,7 +21,8 @@ export function AppShell({ children, atmosphere = 'default' }: AppShellProps) {
         <AtmosphericBackground />
         {atmosphere === 'wizard' && (
           <div
-            className="pointer-events-none fixed inset-0 z-[1] bg-surface/52"
+            className="pointer-events-none fixed inset-0 z-[1]"
+            style={{ background: 'var(--wizard-background-veil)' }}
             aria-hidden="true"
           />
         )}

@@ -201,7 +201,7 @@ export function EventWizard() {
       hiddenSteps={isTemplateMode ? [...TEMPLATE_SKIP_STEPS] : undefined}
       headerSuffix={isTemplateMode ? 'עריכת תבנית' : undefined}
     >
-      {currentStep === 1 && (
+      <WizardStepPanel active={currentStep === 1}>
         <StepEventDetails
           event={event}
           onEventUpdated={setEvent}
@@ -214,7 +214,7 @@ export function EventWizard() {
             },
           } : undefined}
         />
-      )}
+      </WizardStepPanel>
 
       {visitedSteps.has(2) && (
         <WizardStepPanel active={currentStep === 2}>

@@ -126,7 +126,7 @@ export function MyEvents() {
   if (loading) return <FullPageLoader />
 
   return (
-    <main className="mr-0 ml-auto w-full max-w-5xl px-4 py-8">
+    <main className="mx-auto w-full max-w-5xl px-4 py-8">
       {events.length === 0 ? (
         <EmptyState
           icon={<Calendar size={40} />}

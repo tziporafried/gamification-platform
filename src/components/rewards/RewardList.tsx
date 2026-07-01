@@ -209,7 +209,7 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
         )
       ) : (
         <div className="space-y-3">
-          <div className="grid gap-3 p-1 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid gap-3 py-1 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
             {rewards.map((reward) => (
               <RewardRow
                 key={reward.id}
