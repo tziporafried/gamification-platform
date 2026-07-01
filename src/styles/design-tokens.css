@@ -53,14 +53,14 @@
    * Page background — warm cream base; corner glows via AtmosphericBackground orbs
    */
   --gradient-background:
-    radial-gradient(ellipse 95% 70% at 90% -5%, color-mix(in srgb, var(--palette-brand-accent) 24%, transparent), transparent 58%),
-    radial-gradient(ellipse 75% 60% at 10% -5%, color-mix(in srgb, var(--palette-warning) 16%, var(--palette-background)), var(--palette-background) 68%);
+    radial-gradient(ellipse 130% 80% at 50% -6%, color-mix(in srgb, var(--palette-brand-accent) 26%, transparent) 0%, color-mix(in srgb, var(--palette-warning) 18%, transparent) 44%, transparent 74%);
 
-  /* Fixed atmospheric corner orbs (AtmosphericBackground) */
-  --atmosphere-orb-top-right: color-mix(in srgb, var(--palette-brand-accent) 38%, transparent);
-  --atmosphere-orb-top-left: color-mix(in srgb, var(--palette-warning) 34%, transparent);
-  --atmosphere-orb-bottom-left: color-mix(in srgb, var(--palette-brand-accent) 36%, transparent);
-  --atmosphere-orb-bottom-right: color-mix(in srgb, var(--palette-secondary) 36%, transparent);
+  /* Fixed atmospheric orbs (AtmosphericBackground) */
+  --atmosphere-orb-top-wash:
+    radial-gradient(ellipse 90% 100% at 64% 42%, color-mix(in srgb, var(--palette-brand-accent) 46%, transparent), transparent 64%),
+    radial-gradient(ellipse 90% 100% at 36% 42%, color-mix(in srgb, var(--palette-warning) 40%, transparent), transparent 64%);
+  --atmosphere-orb-bottom-left: color-mix(in srgb, var(--palette-brand-accent) 30%, transparent);
+  --atmosphere-orb-bottom-right: color-mix(in srgb, var(--palette-secondary) 22%, transparent);
 
   /* Wizard step card — glowing orb accents */
   --gradient-wizard-panel-orb-primary: color-mix(in srgb, var(--palette-brand-accent) 42%, transparent);
