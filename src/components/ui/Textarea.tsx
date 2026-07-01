@@ -24,7 +24,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           theme.text,
           theme.inputPlaceholder,
           error
-            ? 'border-danger/50 focus:border-danger focus:outline-none focus:ring-1 focus:ring-offset-0 focus:ring-danger/25'
+            ? 'border-danger/50 focus:border-danger focus:outline-none focus-visible:outline-none'
             : cn(theme.inputBorder, theme.focusBorder, theme.focusRing),
           className,
         )}
