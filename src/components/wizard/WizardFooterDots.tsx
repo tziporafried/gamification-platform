@@ -8,7 +8,7 @@ export function WizardFooterDots() {
   const visibleSteps = WIZARD_STEPS.filter((step) => !hiddenSteps.includes(step.step))
 
   return (
-    <nav className="flex items-center justify-center gap-2" aria-label="Wizard progress">
+    <nav className="flex items-center justify-center gap-1.5" aria-label="Wizard progress">
       {visibleSteps.map((step) => {
         const status = wizardState[step.id as WizardStepId]
         const isCurrent = step.step === currentStep
@@ -20,19 +20,18 @@ export function WizardFooterDots() {
             type="button"
             onClick={() => onStepClick(step.step)}
             className={cn(
-              'flex items-center justify-center outline-none',
+              'rounded-full outline-none transition-all duration-300',
               'focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-primary)_45%,transparent)] focus-visible:ring-offset-1',
-              isCurrent ? 'h-2.5 w-7' : 'h-2.5 w-2.5',
-              !isCurrent && isCompleted && 'rounded-full bg-primary',
-              !isCurrent && !isCompleted && 'rounded-full bg-border hover:bg-muted/60',
+              isCurrent &&
+                'h-2 w-8 origin-center animate-wizard-step-pulse bg-primary shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_18%,transparent)] motion-reduce:animate-none',
+              !isCurrent && isCompleted && 'h-2 w-2 bg-primary/75 hover:bg-primary',
+              !isCurrent &&
+                !isCompleted &&
+                'h-2 w-2 bg-[color-mix(in_srgb,var(--color-primary)_10%,var(--color-surface-elevated))] hover:bg-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-surface-elevated))]',
             )}
             aria-label={step.label}
             aria-current={isCurrent ? 'step' : undefined}
-          >
-            {isCurrent && (
-              <span className="block h-2 w-7 origin-center animate-wizard-step-pulse rounded-full bg-primary motion-reduce:animate-none" />
-            )}
-          </button>
+          />
         )
       })}
     </nav>

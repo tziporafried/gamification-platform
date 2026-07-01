@@ -23,17 +23,33 @@ export function EmptyState({
 }: EmptyStateProps) {
   const shell =
     variant === 'dashed'
-      ? cn(theme.surfaceEmpty, compact && 'py-5 px-4')
-      : cn(theme.surfaceMuted, 'flex flex-col items-center justify-center px-6 py-12 text-center', compact && 'py-5 px-4')
+      ? cn(
+          'flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface-elevated text-center',
+          compact ? 'px-4 py-4' : 'px-5 py-7',
+        )
+      : cn(
+          theme.surfaceMuted,
+          'flex flex-col items-center justify-center text-center',
+          compact ? 'px-4 py-4' : 'px-5 py-8',
+        )
 
   return (
     <div className={cn(shell, className)}>
-      {icon && <div className={cn('text-muted', compact ? 'mb-2' : 'mb-4')}>{icon}</div>}
+      {icon && (
+        <div
+          className={cn(
+            'flex items-center justify-center text-secondary transition-transform duration-200',
+            compact ? 'mb-2 scale-100' : 'mb-3 scale-110',
+          )}
+        >
+          {icon}
+        </div>
+      )}
       <h3 className={cn('text-sm font-semibold', variant === 'dashed' ? theme.label : theme.textMuted)}>
         {title}
       </h3>
-      <p className={cn('mt-1 max-w-sm text-sm', theme.textSubtle)}>{description}</p>
-      {action && <div className={cn(compact ? 'mt-3' : 'mt-4')}>{action}</div>}
+      <p className={cn('mt-1.5 max-w-sm text-sm leading-relaxed', theme.textSubtle)}>{description}</p>
+      {action && <div className={cn(compact ? 'mt-3' : 'mt-5')}>{action}</div>}
     </div>
   )
 }
