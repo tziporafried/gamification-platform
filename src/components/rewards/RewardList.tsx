@@ -44,19 +44,6 @@ function LockedRewardCard({ reward }: { reward: TemplateReward }) {
   )
 }
 
-function PremiumDivider() {
-  return (
-    <div className="flex items-center gap-2 py-1">
-      <div className="h-px flex-1 bg-border" />
-      <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted">
-        <Lock size={10} />
-        פרמיום
-      </span>
-      <div className="h-px flex-1 bg-border" />
-    </div>
-  )
-}
-
 export function RewardList({ eventId, onCountChange }: RewardListProps) {
   const [rewards, setRewards] = useState<RewardWithGroups[]>([])
   const [lockedRewards, setLockedRewards] = useState<TemplateReward[]>([])
@@ -176,7 +163,7 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
 
   const addButton = (
     <div className="flex justify-center pt-1">
-      <Button size="sm" variant="outline" className="gap-1.5" onClick={handleCreate}>
+      <Button size="sm" className="gap-1.5" onClick={handleCreate}>
         <Plus size={16} className="shrink-0" strokeWidth={2.5} />
         {rewards.length === 0 ? 'הוספת פרס' : 'הוספת פרס נוסף'}
       </Button>
@@ -190,7 +177,6 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
       {rewards.length === 0 ? (
         hasLocked ? (
           <div className="space-y-3">
-            <PremiumDivider />
             {lockedGrid}
             {addButton}
           </div>
@@ -220,12 +206,7 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
               />
             ))}
           </div>
-          {hasLocked && (
-            <>
-              <PremiumDivider />
-              {lockedGrid}
-            </>
-          )}
+          {hasLocked && lockedGrid}
           {addButton}
         </div>
       )}

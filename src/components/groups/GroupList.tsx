@@ -217,21 +217,11 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
             )}
 
             {hasLocked && (
-              <>
-                <div className="flex items-center gap-2 py-1">
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted">
-                    <Lock size={10} />
-                    פרמיום
-                  </span>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {lockedGroups.map((group) => (
-                    <LockedGroupCard key={group.id} group={group} />
-                  ))}
-                </div>
-              </>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {lockedGroups.map((group) => (
+                  <LockedGroupCard key={group.id} group={group} />
+                ))}
+              </div>
             )}
           </div>
           <div className="pt-3">
@@ -254,21 +244,11 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
           )}
 
           {hasLocked && (
-            <>
-              <div className="flex items-center gap-2 py-1">
-                <div className="h-px flex-1 bg-border" />
-                <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted">
-                  <Lock size={10} />
-                  פרמיום
-                </span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {lockedGroups.map((group) => (
-                  <LockedGroupCard key={group.id} group={group} />
-                ))}
-              </div>
-            </>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {lockedGroups.map((group) => (
+                <LockedGroupCard key={group.id} group={group} />
+              ))}
+            </div>
           )}
         </ScrollContainer>
       )}

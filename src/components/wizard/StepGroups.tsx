@@ -3,10 +3,8 @@ import { Users, Layers, AlertTriangle } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { UsageBar } from '@/components/ui/UsageBar'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
 import { GroupList } from '@/components/groups/GroupList'
 import { WizardUsageScroll } from './WizardUsageScroll'
 import type { GroupType, EventCounts, UserPlan } from '@/types'
@@ -45,19 +43,16 @@ const GROUP_OPTION_STYLES: Record<GroupType, { card: string; cardSelected: strin
 
 export function StepGroups({
   eventId,
-  plan,
   groupType,
   counts,
   onGroupTypeSelect,
   onCountsPatch,
-  onCountsRefresh,
   onNext,
   onBack,
 }: StepGroupsProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [localGroupCount, setLocalGroupCount] = useState(counts.groups)
-  const planLimits = usePlanLimitsFromCounts(counts, plan, onCountsRefresh)
 
   const showGroupSetup = groupType === 'custom'
   const canAdvance = groupType === 'none' || localGroupCount > 0
@@ -164,13 +159,7 @@ export function StepGroups({
 
         {showGroupSetup && (
           <div className="mt-4 flex min-h-0 flex-1 flex-col">
-            <WizardUsageScroll
-              usageBar={
-                planLimits.isFreePlan ? (
-                  <UsageBar info={planLimits.groups} entity="groups" />
-                ) : undefined
-              }
-            >
+            <WizardUsageScroll>
               <GroupList embedded eventId={eventId} onCountChange={handleCountChange} />
             </WizardUsageScroll>
           </div>

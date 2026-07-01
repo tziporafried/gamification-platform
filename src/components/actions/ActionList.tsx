@@ -193,21 +193,9 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
               />
             ))}
 
-            {hasLocked && (
-              <>
-                <div className="flex items-center gap-2 py-1">
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted">
-                    <Lock size={10} />
-                    פרמיום
-                  </span>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
-                {lockedTasks.map((task) => (
-                  <LockedActionRow key={task.id} task={task} />
-                ))}
-              </>
-            )}
+            {hasLocked && lockedTasks.map((task) => (
+              <LockedActionRow key={task.id} task={task} />
+            ))}
           </div>
           <div className="pt-2">
             <InlineAddAction
@@ -236,21 +224,9 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
               />
             ))}
 
-            {hasLocked && (
-              <>
-                <div className="flex items-center gap-2 py-1">
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted">
-                    <Lock size={10} />
-                    פרמיום
-                  </span>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
-                {lockedTasks.map((task) => (
-                  <LockedActionRow key={task.id} task={task} />
-                ))}
-              </>
-            )}
+            {hasLocked && lockedTasks.map((task) => (
+              <LockedActionRow key={task.id} task={task} />
+            ))}
           </div>
           <div className="shrink-0 pt-2">
             <InlineAddAction

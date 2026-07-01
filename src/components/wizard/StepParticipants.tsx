@@ -5,7 +5,6 @@ import { WizardStepWrapper } from './WizardStepWrapper'
 import { InlineAddParticipant } from '@/components/participants/InlineAddParticipant'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { Button } from '@/components/ui/Button'
-import { UsageBar } from '@/components/ui/UsageBar'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { ListRow } from '@/components/ui/ListRow'
@@ -14,7 +13,6 @@ import { InlineEditableText } from '@/components/ui/InlineEditableText'
 import { WizardUsageScroll } from './WizardUsageScroll'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
-import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
 import type { EventCounts, GroupType, Participant, ParticipantWithGroups, Group, UserPlan } from '@/types'
 
 interface StepParticipantsProps {
@@ -34,7 +32,7 @@ interface ParticipantGroupJoin {
   groups: Group
 }
 
-export function StepParticipants({ eventId, plan, counts, groupType, isActive, onCountsPatch, onCountsRefresh, onNext, onBack }: StepParticipantsProps) {
+export function StepParticipants({ eventId, counts, groupType, isActive, onCountsPatch, onNext, onBack }: StepParticipantsProps) {
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,7 +41,6 @@ export function StepParticipants({ eventId, plan, counts, groupType, isActive, o
   const listRef = useRef<HTMLDivElement>(null)
   const addInputRef = useRef<HTMLInputElement>(null)
   const prevCountRef = useRef(0)
-  const planLimits = usePlanLimitsFromCounts(counts, plan, onCountsRefresh)
 
   const hasGroups = groupType === 'custom'
 
@@ -179,11 +176,6 @@ export function StepParticipants({ eventId, plan, counts, groupType, isActive, o
     return <CenteredLoader size="lg" />
   }
 
-  const usageBar =
-    planLimits.isFreePlan && planLimits.participants.limit !== null ? (
-      <UsageBar info={planLimits.participants} entity="participants" />
-    ) : null
-
   return (
     <WizardStepWrapper
       title="מי משתתף?"
@@ -202,7 +194,6 @@ export function StepParticipants({ eventId, plan, counts, groupType, isActive, o
 
         {participants.length === 0 ? (
           <div className="space-y-4 px-1">
-            {usageBar && <div className="shrink-0 pb-3">{usageBar}</div>}
             <EmptyState
               icon={<Users size={32} strokeWidth={1.75} />}
               title="אין משתתפים עדיין"
@@ -224,7 +215,6 @@ export function StepParticipants({ eventId, plan, counts, groupType, isActive, o
           </div>
         ) : (
           <WizardUsageScroll
-            usageBar={usageBar}
             scrollRef={listRef}
             footer={
               <InlineAddParticipant

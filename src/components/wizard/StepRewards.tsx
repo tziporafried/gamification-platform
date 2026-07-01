@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { WizardStepWrapper } from './WizardStepWrapper'
-import { UsageBar } from '@/components/ui/UsageBar'
 import { WizardUsageScroll } from './WizardUsageScroll'
 import { RewardList } from '@/components/rewards/RewardList'
-import { usePlanLimitsFromCounts } from '@/hooks/usePlanLimits'
 import type { EventCounts, UserPlan } from '@/types'
 
 interface StepRewardsProps {
@@ -16,19 +14,13 @@ interface StepRewardsProps {
   onBack: () => void
 }
 
-export function StepRewards({ eventId, plan, counts, onCountsPatch, onCountsRefresh, onNext, onBack }: StepRewardsProps) {
+export function StepRewards({ eventId, counts, onCountsPatch, onNext, onBack }: StepRewardsProps) {
   const [localRewardCount, setLocalRewardCount] = useState(counts.rewards)
-  const planLimits = usePlanLimitsFromCounts(counts, plan, onCountsRefresh)
 
   function handleCountChange(count: number) {
     setLocalRewardCount(count)
     onCountsPatch({ rewards: count })
   }
-
-  const usageBar =
-    planLimits.isFreePlan && planLimits.rewards.limit !== null ? (
-      <UsageBar info={planLimits.rewards} entity="rewards" />
-    ) : null
 
   return (
     <WizardStepWrapper
@@ -40,7 +32,7 @@ export function StepRewards({ eventId, plan, counts, onCountsPatch, onCountsRefr
       onNext={onNext}
       onBack={onBack}
     >
-      <WizardUsageScroll usageBar={usageBar}>
+      <WizardUsageScroll>
         <RewardList eventId={eventId} onCountChange={handleCountChange} />
       </WizardUsageScroll>
     </WizardStepWrapper>
