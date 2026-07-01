@@ -74,6 +74,15 @@
     background-image: var(--gradient-background);
     background-attachment: fixed;
   }
+
+  /* Wizard — softer glows than the events list, with a light cream veil */
+  .atmosphere-wizard {
+    --atmosphere-orb-top-orange: color-mix(in srgb, var(--palette-brand-accent) 15%, var(--palette-surface-elevated));
+    --atmosphere-orb-top-yellow: color-mix(in srgb, var(--palette-warning) 22%, transparent);
+    --atmosphere-orb-bottom-left: color-mix(in srgb, var(--palette-brand-accent) 14%, transparent);
+    --atmosphere-orb-bottom-right: color-mix(in srgb, var(--palette-secondary) 11%, transparent);
+    --atmosphere-orb-bottom-teal-wash: color-mix(in srgb, var(--palette-secondary) 4%, transparent);
+  }
   .bg-game {
     background-color: var(--color-background);
     background-image: var(--gradient-background);

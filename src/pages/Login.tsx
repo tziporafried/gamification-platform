@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { AtmosphericBackground } from '@/components/layout/AtmosphericBackground'
 import { GoogleIcon } from '@/components/icons/GoogleIcon'
 import { Button } from '@/components/ui/Button'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
@@ -57,8 +58,9 @@ export function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-app-radial px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-6">
+    <div className="relative flex min-h-screen items-center justify-center bg-[var(--color-background)] px-4">
+      <AtmosphericBackground />
+      <div className="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-surface p-6">
         <div className="mb-6 text-center">
           <Link to="/" className="inline-flex h-10 w-10 items-center justify-center rounded-xl gradient-brand text-lg font-bold text-foreground">
             G
