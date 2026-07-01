@@ -72,6 +72,7 @@
   .bg-app-radial {
     background-color: var(--color-background);
     background-image: var(--gradient-background);
+    background-attachment: fixed;
   }
   .bg-game {
     background-color: var(--color-background);

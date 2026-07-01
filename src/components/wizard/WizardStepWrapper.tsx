@@ -139,7 +139,7 @@ export function WizardStepWrapper({
         </div>
       </div>
 
-      <footer className="fixed inset-x-0 bottom-0 z-30 w-full bg-surface/90 py-4 shadow-[0_-4px_12px_rgba(171,53,0,0.08)] backdrop-blur-[20px]">
+      <footer className="fixed inset-x-0 bottom-0 z-30 w-full bg-surface/50 py-4 shadow-[0_-4px_12px_rgba(171,53,0,0.08)] backdrop-blur-[20px]">
         <div className="mx-auto grid w-[80%] grid-cols-3 items-center gap-2">
           {/* RTL col-1 → visual right: back link */}
           <div className="flex justify-start">
