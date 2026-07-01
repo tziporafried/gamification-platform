@@ -1,6 +1,5 @@
 import { ButtonHTMLAttributes, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { theme } from '@/lib/theme'
 
 interface DashedAddButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode
@@ -12,9 +11,8 @@ export function DashedAddButton({ className, children, ...props }: DashedAddButt
       type="button"
       className={cn(
         'flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed py-3 text-sm transition-colors disabled:opacity-50',
-        theme.border,
-        theme.textSubtle,
-        'hover:border-secondary hover:text-secondary',
+        'border-tertiary/40 text-primary',
+        'hover:border-tertiary hover:bg-surface-elevated',
         className,
       )}
       {...props}

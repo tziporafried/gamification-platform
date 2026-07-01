@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Calendar, ExternalLink, Trash2, Share2, Settings2 } from 'lucide-react'
+import { Plus, Calendar, ExternalLink, Share2, Settings2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
-import { SuccessAlert } from '@/components/ui/ErrorAlert'
+import { Toast } from '@/components/ui/Toast'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { DashedAddButton } from '@/components/ui/DashedAddButton'
+import { DeleteButton } from '@/components/ui/IconButton'
 import { PageTitle } from '@/components/ui/PageTitle'
 import { ShareEventModal } from '@/components/ShareEventModal'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
@@ -17,6 +18,13 @@ import { STATUS_COLORS } from '@/components/ui/StatusBadge'
 import type { Event } from '@/types'
 import { getWizardPrefs } from '@/lib/wizard'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
+import { cn } from '@/lib/utils'
+
+const STATUS_ICON_BORDER: Record<string, string> = {
+  editing: 'border-warning/30',
+  active: 'border-success/30',
+  archived: 'border-danger/30',
+}
 
 export function MyEvents() {
   const { user } = useAuth()
@@ -98,7 +106,6 @@ export function MyEvents() {
     setDeleting(false)
     setDeletingEvent(null)
     setSuccessMsg('האירוע נמחק בהצלחה.')
-    setTimeout(() => setSuccessMsg(''), 3000)
   }
 
   if (loading) return <FullPageLoader />
@@ -125,7 +132,6 @@ export function MyEvents() {
           <PageTitle title="האירועים שלי" size="md" />
 
           {error && <ErrorAlert message={error} />}
-          {successMsg && <SuccessAlert message={successMsg} />}
 
           <div className="space-y-2">
             {events.map((event) => (
@@ -173,6 +179,15 @@ export function MyEvents() {
           </div>
         </div>
       </Modal>
+
+      {successMsg && (
+        <Toast
+          message={successMsg}
+          variant="success"
+          autoDismissMs={3000}
+          onDismiss={() => setSuccessMsg('')}
+        />
+      )}
     </main>
   )
 }
@@ -220,19 +235,31 @@ function EventRow({ event, isOwner, onDelete, onShare }: EventRowProps) {
 
   const isWip = event.status === 'editing'
 
+  const iconBorder = STATUS_ICON_BORDER[event.status] ?? STATUS_ICON_BORDER.editing
+
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={() => isWip ? navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`) : navigate(`/events/${event.id}/control`)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isWip ? navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`) : navigate(`/events/${event.id}/control`) } }}
-      className="group relative flex w-full cursor-pointer items-center gap-5 px-5 py-4 text-right bg-surface hover:bg-surface-elevated transition-colors rounded-2xl border border-border overflow-hidden"
+      className={cn(
+        'group relative flex w-full cursor-pointer items-center gap-5 px-5 py-4 text-right',
+        'overflow-hidden rounded-[2rem] border border-white/40 bg-surface-elevated shadow-wizard-panel',
+        'transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover',
+      )}
     >
-      <div className="absolute right-0 top-0 h-full w-1 rounded-r-none transition-opacity opacity-60 group-hover:opacity-100 bg-accent" />
+      <div
+        className="absolute right-0 top-0 h-full w-1 rounded-r-none transition-opacity opacity-70 group-hover:opacity-100"
+        style={{ backgroundColor: status.color }}
+      />
 
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-elevated border border-secondary/25">
+      <div className={cn(
+        'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border bg-surface',
+        iconBorder,
+      )}>
         {event.logo_url ? (
-          <img src={event.logo_url} alt="" className="h-12 w-12 rounded-xl object-cover" />
+          <img src={event.logo_url} alt="" className="h-12 w-12 rounded-2xl object-cover" />
         ) : (
           <Calendar size={22} className="text-secondary" />
         )}
@@ -267,17 +294,16 @@ function EventRow({ event, isOwner, onDelete, onShare }: EventRowProps) {
           <Share2 size={13} className="ml-1" />
           שיתוף
         </Button>
-        {isOwner && (
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={handleDelete}
-            className="opacity-0 group-hover:opacity-100 hover:bg-surface-elevated hover:text-danger"
-          >
-            <Trash2 size={13} className="ml-1" />
-            מחיקה
-          </Button>
-        )}
+        <div className="flex w-7 shrink-0 justify-center">
+          {isOwner && (
+            <DeleteButton
+              revealOnHover
+              iconSize={14}
+              title="מחיקה"
+              onClick={handleDelete}
+            />
+          )}
+        </div>
       </div>
     </div>
   )

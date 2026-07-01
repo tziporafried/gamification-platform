@@ -178,7 +178,8 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
       {groups.length === 0 && !hasLocked ? (
         <div className="space-y-4">
           <EmptyState
-            icon={<Layers size={32} strokeWidth={1.75} />}
+            compact
+            icon={<Layers size={24} strokeWidth={1.75} />}
             title="אין קבוצות עדיין"
             description="הוסיפו את הקבוצה הראשונה"
             action={
