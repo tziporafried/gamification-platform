@@ -9,7 +9,6 @@ import { Modal } from '@/components/ui/Modal'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Toast } from '@/components/ui/Toast'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { DashedAddButton } from '@/components/ui/DashedAddButton'
 import { DeleteButton } from '@/components/ui/IconButton'
 import { PageTitle } from '@/components/ui/PageTitle'
 import { ShareEventModal } from '@/components/ShareEventModal'
@@ -20,11 +19,27 @@ import { getWizardPrefs } from '@/lib/wizard'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
 import { cn } from '@/lib/utils'
 
-const STATUS_ICON_BORDER: Record<string, string> = {
-  editing: 'border-warning/30',
-  active: 'border-success/30',
-  archived: 'border-danger/30',
-}
+const ROW_ACTION_CLASS = cn(
+  '!px-1.5 !py-1 !shadow-none',
+  'bg-transparent hover:!bg-foreground/[0.05]',
+  'text-foreground/82 hover:text-foreground',
+  'font-normal cursor-pointer leading-none',
+  'transition-colors duration-[180ms] ease-out',
+)
+
+const EVENT_CARD_CLASS = cn(
+  'group relative flex w-full cursor-pointer items-center gap-4 px-5 py-3.5 text-right',
+  'overflow-hidden rounded-2xl border border-border/30 bg-surface-elevated shadow-event-card',
+  'transition-[box-shadow,border-color,transform] duration-[180ms] ease-out',
+  'hover:-translate-y-0.5 hover:border-border/45 hover:shadow-event-card-hover',
+)
+
+const CREATE_EVENT_BTN_CLASS = cn(
+  'gap-1.5 shrink-0 !px-4 !py-1',
+  '!bg-[color-mix(in_srgb,var(--color-primary)_90%,var(--color-background))]',
+  'shadow-none hover:!bg-primary-hover hover:shadow-sm',
+  'transition-all duration-[180ms] ease-out',
+)
 
 export function MyEvents() {
   const { user } = useAuth()
@@ -111,7 +126,7 @@ export function MyEvents() {
   if (loading) return <FullPageLoader />
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
+    <main className="mr-0 ml-auto w-full max-w-5xl px-4 py-8">
       {events.length === 0 ? (
         <EmptyState
           icon={<Calendar size={40} />}
@@ -128,12 +143,26 @@ export function MyEvents() {
           }
         />
       ) : (
-        <div className="space-y-4">
-          <PageTitle title="האירועים שלי" size="md" />
+        <div className="w-full space-y-4 text-right">
+          <PageTitle
+            title="האירועים שלי"
+            size="md"
+            action={
+              <Button
+                size="sm"
+                className={CREATE_EVENT_BTN_CLASS}
+                loading={creating}
+                onClick={handleCreateEvent}
+              >
+                <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+                {creating ? 'יוצר...' : 'צור אירוע חדש'}
+              </Button>
+            }
+          />
 
           {error && <ErrorAlert message={error} />}
 
-          <div className="space-y-2">
+          <div className="space-y-2 py-1">
             {events.map((event) => (
               <EventRow
                 key={event.id}
@@ -144,11 +173,6 @@ export function MyEvents() {
               />
             ))}
           </div>
-
-          <DashedAddButton onClick={handleCreateEvent} disabled={creating}>
-            <Plus size={16} />
-            {creating ? 'יוצר...' : 'צור אירוע חדש'}
-          </DashedAddButton>
         </div>
       )}
 
@@ -235,71 +259,69 @@ function EventRow({ event, isOwner, onDelete, onShare }: EventRowProps) {
 
   const isWip = event.status === 'editing'
 
-  const iconBorder = STATUS_ICON_BORDER[event.status] ?? STATUS_ICON_BORDER.editing
-
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={() => isWip ? navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`) : navigate(`/events/${event.id}/control`)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isWip ? navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`) : navigate(`/events/${event.id}/control`) } }}
-      className={cn(
-        'group relative flex w-full cursor-pointer items-center gap-5 px-5 py-4 text-right',
-        'overflow-hidden rounded-[2rem] border border-white/40 bg-surface-elevated shadow-wizard-panel',
-        'transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover',
-      )}
+      className={EVENT_CARD_CLASS}
     >
       <div
-        className="absolute right-0 top-0 h-full w-1 rounded-r-none transition-opacity opacity-70 group-hover:opacity-100"
+        className="absolute right-0 top-0 h-full w-1 rounded-r-none transition-opacity duration-[180ms] ease-out opacity-35 group-hover:opacity-48"
         style={{ backgroundColor: status.color }}
       />
 
-      <div className={cn(
-        'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border bg-surface',
-        iconBorder,
-      )}>
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/20 bg-surface-elevated/50">
         {event.logo_url ? (
-          <img src={event.logo_url} alt="" className="h-12 w-12 rounded-2xl object-cover" />
+          <img src={event.logo_url} alt="" className="h-9 w-9 rounded-xl object-cover" />
         ) : (
-          <Calendar size={22} className="text-secondary" />
+          <Calendar size={16} className="shrink-0 text-muted/50" />
         )}
       </div>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-base font-bold text-foreground truncate leading-snug">
+      <div className="min-w-0 flex-1 self-center">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="truncate text-base font-extrabold tracking-tight text-foreground leading-snug">
             {event.name || 'אירוע ללא שם'}
           </p>
-          {isFreePlan && <Badge label="משחק התנסות" color="var(--color-primary)" />}
+          {isFreePlan && <Badge label="משחק התנסות" color="var(--color-primary)" variant="quiet" />}
         </div>
-        <p className="text-xs text-muted mt-0.5">
+      </div>
+
+      <div className="flex shrink-0 flex-col items-end justify-center gap-1 self-stretch py-0.5">
+        <Badge label={status.label} color={status.color} variant="quiet" />
+        <p className="text-[11px] leading-none text-muted/45">
           נוצר {new Date(event.created_at).toLocaleDateString('he-IL')}
         </p>
       </div>
 
-      <div className="shrink-0">
-        <Badge label={status.label} color={status.color} />
-      </div>
-
-      <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-        <Button variant="ghost" size="xs" onClick={handleOpenSettings} title="הגדרות">
-          <Settings2 size={13} className="ml-1" />
-          הגדרות
+      <div className="flex shrink-0 items-center gap-1.5 self-center" onClick={e => e.stopPropagation()}>
+        <Button variant="ghost" size="xs" className={ROW_ACTION_CLASS} onClick={handleOpenSettings} title="הגדרות">
+          <span className="inline-flex items-center gap-1 leading-none">
+            <Settings2 size={13} className="shrink-0" strokeWidth={2} />
+            הגדרות
+          </span>
         </Button>
-        <Button variant="ghost" size="xs" onClick={handleOpenControl} disabled={isWip} title={isWip ? 'האירוע עדיין בעריכה' : 'להתחיל לשחק'}>
-          <ExternalLink size={13} className="ml-1" />
-          להתחיל לשחק
+        <Button variant="ghost" size="xs" className={cn(ROW_ACTION_CLASS, isWip && 'opacity-40')} onClick={handleOpenControl} disabled={isWip} title={isWip ? 'האירוע עדיין בעריכה' : 'להתחיל לשחק'}>
+          <span className="inline-flex items-center gap-1 leading-none">
+            <ExternalLink size={13} className="shrink-0" strokeWidth={2} />
+            להתחיל לשחק
+          </span>
         </Button>
-        <Button variant="ghost" size="xs" onClick={handleShare}>
-          <Share2 size={13} className="ml-1" />
-          שיתוף
+        <Button variant="ghost" size="xs" className={ROW_ACTION_CLASS} onClick={handleShare}>
+          <span className="inline-flex items-center gap-1 leading-none">
+            <Share2 size={13} className="shrink-0" strokeWidth={2} />
+            שיתוף
+          </span>
         </Button>
-        <div className="flex w-7 shrink-0 justify-center">
+        <div className="flex h-[26px] w-7 shrink-0 items-center justify-center">
           {isOwner && (
             <DeleteButton
               revealOnHover
-              iconSize={14}
+              iconSize={13}
               title="מחיקה"
+              className="text-foreground/75 transition-colors duration-[180ms] ease-out hover:text-danger"
               onClick={handleDelete}
             />
           )}

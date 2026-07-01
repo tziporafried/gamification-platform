@@ -58,7 +58,7 @@ export function Login() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-[var(--color-background)] px-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-[var(--color-background)] atmosphere-login px-4">
       <AtmosphericBackground />
       <div className="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-surface p-6">
         <div className="mb-6 text-center">

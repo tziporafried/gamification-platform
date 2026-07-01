@@ -75,6 +75,19 @@
     background-attachment: fixed;
   }
 
+  /* Dashboard (My Events) — warm but restrained; content stays primary */
+  .atmosphere-dashboard {
+    --atmosphere-orb-top-orange: color-mix(in srgb, var(--palette-brand-accent) 16%, var(--palette-background));
+    --atmosphere-orb-top-yellow: color-mix(in srgb, var(--palette-warning) 24%, var(--palette-background));
+    --atmosphere-orb-bottom-left: color-mix(in srgb, var(--palette-brand-accent) 16%, var(--palette-background));
+    --atmosphere-orb-bottom-right: color-mix(in srgb, var(--palette-secondary) 11%, var(--palette-background));
+    --atmosphere-orb-bottom-teal-wash: color-mix(in srgb, var(--palette-secondary) 4%, var(--palette-background));
+    --gradient-background:
+      radial-gradient(ellipse 100% 80% at 82% -4%, color-mix(in srgb, var(--palette-brand-accent) 10%, var(--palette-surface-elevated)) 0%, transparent 70%),
+      radial-gradient(ellipse 88% 68% at 18% -4%, color-mix(in srgb, var(--palette-warning) 11%, transparent) 0%, transparent 72%),
+      radial-gradient(ellipse 72% 58% at 50% 54%, color-mix(in srgb, var(--palette-secondary) 3%, var(--palette-background)), transparent 76%);
+  }
+
   /* Wizard — softer glows than the events list, with a light cream veil */
   .atmosphere-wizard {
     --atmosphere-orb-top-orange: color-mix(in srgb, var(--palette-brand-accent) 15%, var(--palette-surface-elevated));
@@ -82,6 +95,15 @@
     --atmosphere-orb-bottom-left: color-mix(in srgb, var(--palette-brand-accent) 14%, transparent);
     --atmosphere-orb-bottom-right: color-mix(in srgb, var(--palette-secondary) 11%, transparent);
     --atmosphere-orb-bottom-teal-wash: color-mix(in srgb, var(--palette-secondary) 4%, transparent);
+  }
+
+  /* Login — softer blobs so the form stays in focus */
+  .atmosphere-login {
+    --atmosphere-orb-top-orange: color-mix(in srgb, var(--palette-brand-accent) 20%, var(--palette-background));
+    --atmosphere-orb-top-yellow: color-mix(in srgb, var(--palette-warning) 31%, var(--palette-background));
+    --atmosphere-orb-bottom-left: color-mix(in srgb, var(--palette-brand-accent) 21%, var(--palette-background));
+    --atmosphere-orb-bottom-right: color-mix(in srgb, var(--palette-secondary) 15%, var(--palette-background));
+    --atmosphere-orb-bottom-teal-wash: color-mix(in srgb, var(--palette-secondary) 6%, var(--palette-background));
   }
 
   /* Landing — full-strength atmospheric glows */

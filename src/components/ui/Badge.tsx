@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 interface BadgeProps {
   label: string
   color: string
-  variant?: 'subtle' | 'solid' | 'outline'
+  variant?: 'subtle' | 'solid' | 'outline' | 'quiet'
   size?: 'sm' | 'md'
   icon?: ReactNode
 }
@@ -25,6 +25,10 @@ export function Badge({ label, color, variant = 'subtle', size = 'sm', icon }: B
       bg: 'transparent',
       textColor: color,
       border: color,
+    },
+    quiet: {
+      bg: `color-mix(in srgb, ${color} 4%, var(--color-surface-elevated))`,
+      textColor: `color-mix(in srgb, ${color} 68%, var(--color-muted))`,
     },
   }
 

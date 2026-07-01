@@ -25,7 +25,7 @@ export default function App() {
           <Route path="/auth/callback" element={<AuthCallback />} />
 
           {/* All authenticated routes share AppShell (GlobalHeader) */}
-          <Route path="/events" element={<ProtectedRoute><AppShell><MyEvents /></AppShell></ProtectedRoute>} />
+          <Route path="/events" element={<ProtectedRoute><AppShell atmosphere="dashboard"><MyEvents /></AppShell></ProtectedRoute>} />
           <Route path="/events/:id" element={<ProtectedRoute><AppShell atmosphere="wizard"><EventWizard /></AppShell></ProtectedRoute>} />
           <Route path="/events/:id/step/:step" element={<ProtectedRoute><AppShell atmosphere="wizard"><EventWizard /></AppShell></ProtectedRoute>} />
           <Route path="/events/:id/control" element={<ProtectedRoute><AppShell><EventControlCenterPage /></AppShell></ProtectedRoute>} />
