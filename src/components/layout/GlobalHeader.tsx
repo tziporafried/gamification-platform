@@ -27,7 +27,7 @@ export function GlobalHeader() {
   if (!user) return null
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-surface shadow-header">
+    <header className="sticky top-0 z-40 bg-surface/90 shadow-sm backdrop-blur-[20px]">
       <div className="flex h-14 w-full items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-3 shrink-0">
           <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-card">
@@ -57,7 +57,7 @@ export function GlobalHeader() {
           {isSuperAdmin && (
             <button
               onClick={() => navigate('/admin')}
-              className="flex items-center gap-1.5 text-sm text-accent hover:text-secondary transition-colors"
+              className="flex items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground transition-colors"
             >
               <Shield size={16} />
               <span className="hidden sm:inline">ניהול</span>
@@ -67,12 +67,12 @@ export function GlobalHeader() {
           <div className="relative flex items-center" ref={menuRef}>
             <button
               onClick={() => setMenuOpen(prev => !prev)}
-              className="rounded-full hover:ring-2 hover:ring-secondary transition-all"
+              className="rounded-full hover:ring-2 hover:ring-border transition-all"
             >
               {avatarUrl ? (
                 <img src={avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover ring-2 ring-border" />
               ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-elevated text-xs font-bold text-secondary ring-2 ring-border">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-elevated text-xs font-bold text-muted ring-2 ring-border">
                   {displayName[0]?.toUpperCase()}
                 </div>
               )}

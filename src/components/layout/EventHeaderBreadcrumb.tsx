@@ -1,4 +1,3 @@
-import { ArrowRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 interface EventHeaderBreadcrumbProps {
@@ -15,19 +14,18 @@ export function EventHeaderBreadcrumb({ eventName, suffix }: EventHeaderBreadcru
     <div className="flex items-center gap-2 min-w-0">
       <button
         onClick={() => navigate(backPath, suffix === 'עריכת תבנית' ? { state: { tab: 'templates' } } : undefined)}
-        className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors shrink-0"
+        className="shrink-0 text-xs font-medium text-muted transition-colors hover:text-foreground"
       >
-        <ArrowRight size={14} />
         <span>{backLabel}</span>
       </button>
-      <span className="text-muted shrink-0">/</span>
-      <span className="text-xs font-medium text-foreground truncate max-w-[200px]">
+      <span className="shrink-0 text-muted/60">/</span>
+      <span className="truncate max-w-[200px] text-sm font-bold text-primary">
         {eventName || 'אירוע חדש'}
       </span>
       {suffix && (
         <>
-          <span className="text-muted shrink-0">/</span>
-          <span className="text-xs text-muted truncate">{suffix}</span>
+          <span className="shrink-0 text-muted/60">/</span>
+          <span className="truncate text-xs font-medium text-muted">{suffix}</span>
         </>
       )}
     </div>
