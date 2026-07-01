@@ -93,12 +93,12 @@ export function WizardStepWrapper({
           <div className="relative mb-[var(--wizard-chrome-gap-bottom)] flex min-h-0 flex-1 flex-col overflow-hidden rounded-[2rem] bg-surface-elevated shadow-wizard-panel">
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute -left-24 -top-24 h-64 w-64 rounded-full blur-3xl"
+                className="pointer-events-none absolute -left-32 -top-32 h-80 w-80 rounded-full blur-3xl"
                 style={{ background: 'var(--gradient-wizard-panel-orb-primary)' }}
               />
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full blur-3xl"
+                className="pointer-events-none absolute -bottom-32 -right-32 h-80 w-80 rounded-full blur-3xl"
                 style={{ background: 'var(--gradient-wizard-panel-orb-secondary)' }}
               />
               <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 py-5 sm:px-8 sm:py-6">

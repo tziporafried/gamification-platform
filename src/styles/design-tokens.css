@@ -50,13 +50,17 @@
   --color-on-danger: var(--palette-surface);
 
   /*
-   * Page background — flat warm cream (reference: body #FFF8F3)
+   * Page background — warm cream with atmospheric glows (strong right, subtle left)
    */
-  --gradient-background: none;
+  --gradient-background:
+    radial-gradient(ellipse 95% 70% at 90% -5%, color-mix(in srgb, var(--palette-brand-accent) 30%, transparent), transparent 58%),
+    radial-gradient(ellipse 70% 55% at 100% 55%, color-mix(in srgb, var(--palette-brand-primary) 14%, transparent), transparent 52%),
+    radial-gradient(ellipse 45% 35% at 0% 100%, color-mix(in srgb, var(--palette-secondary) 5%, transparent), transparent 45%),
+    radial-gradient(ellipse 65% 55% at 50% 50%, color-mix(in srgb, var(--palette-warning) 15%, transparent), transparent 68%);
 
-  /* Wizard step card — glowing orb accents (reference: primary-fixed-dim / secondary-fixed-dim orbs) */
-  --gradient-wizard-panel-orb-primary: color-mix(in srgb, var(--palette-brand-accent) 20%, transparent);
-  --gradient-wizard-panel-orb-secondary: color-mix(in srgb, var(--palette-warning) 20%, transparent);
+  /* Wizard step card — glowing orb accents */
+  --gradient-wizard-panel-orb-primary: color-mix(in srgb, var(--palette-brand-accent) 42%, transparent);
+  --gradient-wizard-panel-orb-secondary: color-mix(in srgb, var(--palette-warning) 36%, transparent);
 
   /* Wizard chrome spacing — gap around the step panel + fixed footer clearance */
   --wizard-chrome-gap-top: 0.15rem;
