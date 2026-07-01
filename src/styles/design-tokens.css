@@ -12,6 +12,7 @@
   --palette-brand-primary: #AB3500;
   --palette-brand-accent: #FF6B35;
   --palette-secondary: #008080;
+  --palette-tertiary: #FF9500;
   --palette-accent: #FF9500;
   --palette-background: #FFF8F3;
   --palette-surface: #FFF8F3;
@@ -37,6 +38,8 @@
 
   --color-secondary: var(--palette-secondary);
   --color-on-secondary: var(--palette-surface);
+
+  --color-tertiary: var(--palette-tertiary);
 
   --color-accent: var(--palette-accent);
 

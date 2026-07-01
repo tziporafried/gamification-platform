@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Lock } from 'lucide-react'
+import { Lock, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
@@ -159,8 +159,9 @@ export function ActionList({ eventId, onCountChange }: ActionListProps) {
             title="עדיין לא נוספו פעילויות"
             description="הוסיפו את הפעילות הראשונה שמעניקה נקודות למשתתפים"
             action={
-              <Button size="sm" onClick={() => addInputRef.current?.focus()}>
-                ➕ הוסף פעילות
+              <Button size="sm" className="gap-1.5" onClick={() => addInputRef.current?.focus()}>
+                <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+                הוסף פעילות
               </Button>
             }
           />

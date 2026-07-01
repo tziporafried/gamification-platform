@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Modal } from '@/components/ui/Modal'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
+import { theme } from '@/lib/theme'
+import { cn } from '@/lib/utils'
 import type { Group } from '@/types'
 
 interface RewardGroupAssignmentProps {
@@ -100,7 +102,7 @@ export function RewardGroupAssignment({ eventId, rewardId, rewardName, isOpen, o
                 checked={assignedIds.has(group.id)}
                 onChange={() => toggle(group.id)}
                 disabled={toggling === group.id}
-                className="h-4 w-4 rounded border-border bg-surface-elevated text-secondary focus:ring-secondary"
+                className={cn('h-4 w-4 rounded border-border bg-surface-elevated', theme.checkbox)}
               />
               <div
                 className="h-4 w-4 rounded-full"

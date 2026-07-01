@@ -26,7 +26,12 @@ export function WizardLayout({
 
   return (
     <WizardChromeContext.Provider
-      value={{ hiddenSteps: hiddenSteps ?? [], currentStep, wizardState, onStepClick: onStepClick }}
+      value={{
+        hiddenSteps: hiddenSteps ?? [],
+        currentStep,
+        wizardState,
+        onStepClick,
+      }}
     >
       <div className="flex flex-col" style={{ height: 'calc(100vh - 56px)' }}>
         <div className="hidden sm:block shrink-0 pb-[var(--wizard-chrome-gap-top)] pt-2">

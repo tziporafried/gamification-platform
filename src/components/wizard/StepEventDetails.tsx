@@ -210,10 +210,10 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
               onClick={() => fileInputRef.current?.click()}
-              className="w-full max-w-sm border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:border-secondary hover:bg-surface-elevated transition-colors"
+              className="w-full max-w-sm border-2 border-dashed border-tertiary/40 rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:border-tertiary hover:bg-surface-elevated transition-colors"
             >
               <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center">
-                <ImageIcon size={24} className="text-secondary" />
+                <ImageIcon size={24} className="text-tertiary" />
               </div>
               <div className="text-center">
                 <p className="text-sm text-foreground">

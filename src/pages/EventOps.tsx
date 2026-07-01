@@ -164,7 +164,7 @@ function EventOpsContent({ event }: { event: Event }) {
 
   if (opsData.loading) return (
     <div className={cn('flex min-h-screen flex-col items-center justify-center gap-3', theme.pageBg)}>
-      <Spinner size="lg" className="border-secondary" />
+      <Spinner size="lg" className="border-tertiary" />
       <p className={cn('text-sm', theme.textSubtle)}>טוען מסוף מבצעים...</p>
     </div>
   )

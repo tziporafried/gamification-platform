@@ -167,7 +167,7 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
   const hasLocked = lockedRewards.length > 0
 
   const lockedGrid = (
-    <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid gap-3 p-1 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
       {lockedRewards.map((reward) => (
         <LockedRewardCard key={reward.id} reward={reward} />
       ))}
@@ -204,7 +204,7 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
         )
       ) : (
         <div className="space-y-3">
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid gap-3 p-1 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
             {rewards.map((reward) => (
               <RewardRow
                 key={reward.id}

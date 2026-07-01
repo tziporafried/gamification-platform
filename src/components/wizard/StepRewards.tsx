@@ -31,7 +31,7 @@ export function StepRewards({ eventId, counts, onCountsPatch, onNext, onBack }: 
       onNext={onNext}
       onBack={onBack}
     >
-      <ScrollContainer className="flex-1">
+      <ScrollContainer className="flex-1 py-1">
         <RewardList eventId={eventId} onCountChange={handleCountChange} />
       </ScrollContainer>
     </WizardStepWrapper>

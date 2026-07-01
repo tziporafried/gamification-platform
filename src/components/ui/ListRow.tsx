@@ -15,7 +15,7 @@ export const ListRow = forwardRef<HTMLDivElement, ListRowProps>(
         'flex items-center gap-3 rounded-xl border p-3 transition-all group',
         theme.bgCard,
         theme.border,
-        interactive && 'hover:border-secondary',
+        interactive && 'hover:border-tertiary',
         className,
       )}
       {...props}

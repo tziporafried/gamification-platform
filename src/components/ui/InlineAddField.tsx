@@ -40,7 +40,7 @@ export function InlineAddField({
         'flex items-center gap-2 rounded-xl border border-dashed p-3 transition-colors',
         theme.bgCardMuted,
         theme.border,
-        'focus-within:border-secondary',
+        theme.focusWithinBorder,
         className,
       )}
     >

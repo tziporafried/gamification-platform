@@ -1,5 +1,9 @@
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { cn } from '@/lib/utils'
+import { getWizardStepId } from '@/lib/wizard'
+import { useWizardChrome } from './WizardChromeContext'
 import { WizardFooterDots } from './WizardFooterDots'
 
 interface WizardStepWrapperProps {
@@ -29,12 +33,48 @@ export function WizardStepWrapper({
   children,
   footerBar,
 }: WizardStepWrapperProps) {
+  const { currentStep: activeStep, wizardState } = useWizardChrome()
+  const isActive = activeStep === currentStep
+  const stepId = getWizardStepId(currentStep)
+  const isIncomplete = stepId ? wizardState[stepId] !== 'completed' : false
+  const [playIntro, setPlayIntro] = useState(false)
+
+  useLayoutEffect(() => {
+    if (!isActive || !isIncomplete) {
+      setPlayIntro(false)
+      return
+    }
+
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (prefersReduced) {
+      setPlayIntro(false)
+      return
+    }
+
+    setPlayIntro(true)
+  }, [isActive, isIncomplete, currentStep])
+
+  useEffect(() => {
+    if (!playIntro) return
+
+    const fallback = window.setTimeout(() => {
+      setPlayIntro(false)
+    }, 2000)
+
+    return () => window.clearTimeout(fallback)
+  }, [playIntro])
+
+  function handleIntroComplete(event: React.AnimationEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) return
+    setPlayIntro(false)
+  }
+
   const isFirst = currentStep === 1
   const isLast = currentStep === totalSteps
 
   return (
     <>
-      <div className="flex h-full flex-col animate-fade-in-up pb-[var(--wizard-footer-bar-height)]">
+      <div className="flex h-full flex-col pb-[var(--wizard-footer-bar-height)]">
         <div className="flex min-h-0 flex-1 flex-col px-3 pt-[var(--wizard-chrome-gap-top)] sm:px-4 sm:pt-0">
           <div className="relative mb-[var(--wizard-chrome-gap-bottom)] flex min-h-0 flex-1 flex-col overflow-hidden rounded-[2rem] bg-surface-elevated shadow-wizard-panel">
               <div
@@ -49,19 +89,37 @@ export function WizardStepWrapper({
               />
               <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 py-5 sm:px-8 sm:py-6">
                 <div className="shrink-0 space-y-2 pb-4 text-center sm:pb-5">
-                  <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{title}</h2>
+                  <h2
+                    className={cn(
+                      'text-2xl font-bold tracking-tight text-foreground sm:text-3xl',
+                      playIntro && 'animate-wizard-title-wow motion-reduce:animate-none',
+                    )}
+                  >
+                    {title}
+                  </h2>
                   {subtitle && (
-                    <p className="mx-auto max-w-md text-sm leading-relaxed text-foreground/75 sm:text-base">
+                    <p
+                      className={cn(
+                        'mx-auto max-w-md text-sm leading-relaxed text-foreground/75 sm:text-base',
+                        playIntro && 'animate-wizard-subtitle-in motion-reduce:animate-none',
+                      )}
+                    >
                       {subtitle}
                     </p>
                   )}
                 </div>
 
-                <div className="flex min-h-0 flex-1 flex-col">
+                <div
+                  className={cn(
+                    'flex min-h-0 flex-1 flex-col',
+                    playIntro && 'animate-wizard-content-in motion-reduce:animate-none',
+                  )}
+                  onAnimationEnd={playIntro ? handleIntroComplete : undefined}
+                >
                   {children}
-                </div>
 
-                {footerBar && <div className="shrink-0">{footerBar}</div>}
+                  {footerBar && <div className="shrink-0">{footerBar}</div>}
+                </div>
               </div>
           </div>
         </div>

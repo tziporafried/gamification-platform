@@ -26,7 +26,7 @@ export function RewardRow({ reward, onEdit, onToggleActive, onManageGroups }: Re
   return (
     <div
       className={cn(
-        'group relative overflow-hidden rounded-2xl border bg-surface transition-all duration-200 hover:-translate-y-0.5',
+        'group relative overflow-hidden rounded-2xl border bg-surface transition-all duration-200 hover:shadow-card-hover',
         tier.border,
         !reward.is_active && 'opacity-50',
       )}

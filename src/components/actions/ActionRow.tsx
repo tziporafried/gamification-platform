@@ -54,6 +54,7 @@ export const ActionRow = memo(function ActionRow({
   const limitRef = useRef<HTMLInputElement>(null)
 
   const [localGroups, setLocalGroups] = useState(action.groups)
+  const [timeSettingsOpen, setTimeSettingsOpen] = useState(false)
 
   const pointsNum = parseInt(points, 10) || 0
   const isPositive = pointsNum >= 0
@@ -176,8 +177,12 @@ export const ActionRow = memo(function ActionRow({
   return (
     <div
       className={cn(
-        'rounded-xl border bg-surface transition-all duration-200 hover:border-secondary group/row',
-        isPositive ? 'border-border' : 'border-danger/20',
+        'rounded-xl border bg-surface transition-all duration-200 group/row',
+        isPositive
+          ? timeSettingsOpen
+            ? 'border-tertiary'
+            : 'border-border hover:border-tertiary'
+          : 'border-danger/20',
       )}
     >
       <div className="px-4 py-3">
@@ -192,7 +197,7 @@ export const ActionRow = memo(function ActionRow({
             onKeyDown={handlePointsKey}
             onBlur={savePoints}
             className={cn(
-              'h-11 w-11 rounded-xl text-center text-sm font-bold outline-none border border-secondary bg-surface-elevated text-foreground',
+              'h-11 w-11 rounded-xl text-center text-sm font-bold outline-none border border-tertiary bg-surface-elevated text-foreground',
               saving && 'opacity-50',
             )}
             disabled={saving}
@@ -223,13 +228,13 @@ export const ActionRow = memo(function ActionRow({
               onKeyDown={handleNameKey}
               onBlur={saveName}
               className={cn(
-                'w-full bg-transparent text-sm font-semibold text-foreground outline-none border-b border-secondary pb-0.5',
+                'w-full bg-transparent text-sm font-semibold text-foreground outline-none border-b border-tertiary pb-0.5',
                 saving && 'opacity-50',
               )}
               disabled={saving}
             />
           ) : (
-            <span className="block w-full text-sm font-semibold text-foreground hover:text-secondary transition-colors cursor-text truncate">
+            <span className="block w-full text-sm font-semibold text-foreground hover:text-tertiary transition-colors cursor-text truncate">
               {name}
             </span>
           )}
@@ -272,6 +277,7 @@ export const ActionRow = memo(function ActionRow({
       <ActionTimeSettings
         action={action}
         onUpdated={(patch) => (onUpdated ? onUpdated(patch) : onEdit())}
+        onOpenChange={setTimeSettingsOpen}
       />
     </div>
   )

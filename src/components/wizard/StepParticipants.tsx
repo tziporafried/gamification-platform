@@ -199,35 +199,46 @@ export function StepParticipants({ eventId, counts, groupType, onCountsPatch, on
           </div>
         )}
 
-        <ScrollContainer ref={listRef} className="flex-1 space-y-2 pb-2">
-          {participants.length === 0 ? (
+        {participants.length === 0 ? (
+          <div className="space-y-2">
             <EmptyState
               title="אין משתתפים עדיין"
-              description="הקלידו שם משתתף ולחצו Enter"
+              description="הוסיפו את המשתתף הראשון למטה"
+              className="py-8"
             />
-          ) : (
-            participants.map((p) => (
-              <MemoParticipantRow
-                key={p.id}
-                participant={p}
-                groups={hasGroups ? groups : []}
-                allGroups={groups}
-                onDelete={handleDelete}
-                onToggleGroup={handleToggleGroup}
-                onSelectAllGroups={handleSelectAllGroups}
-              />
-            ))
-          )}
-        </ScrollContainer>
+            <InlineAddParticipant
+              eventId={eventId}
+              onAdded={handleAdded}
+              onPlanLimit={() => setUpgradeOpen(true)}
+              placeholder="הקלידו שם משתתף ולחצו Enter"
+            />
+          </div>
+        ) : (
+          <>
+            <ScrollContainer ref={listRef} className="flex-1 space-y-2 pb-2">
+              {participants.map((p) => (
+                <MemoParticipantRow
+                  key={p.id}
+                  participant={p}
+                  groups={hasGroups ? groups : []}
+                  allGroups={groups}
+                  onDelete={handleDelete}
+                  onToggleGroup={handleToggleGroup}
+                  onSelectAllGroups={handleSelectAllGroups}
+                />
+              ))}
+            </ScrollContainer>
 
-        <div className="shrink-0 pt-2">
-          <InlineAddParticipant
-            eventId={eventId}
-            onAdded={handleAdded}
-            onPlanLimit={() => setUpgradeOpen(true)}
-            placeholder="הקלידו שם משתתף ולחצו Enter"
-          />
-        </div>
+            <div className="shrink-0 pt-2">
+              <InlineAddParticipant
+                eventId={eventId}
+                onAdded={handleAdded}
+                onPlanLimit={() => setUpgradeOpen(true)}
+                placeholder="הקלידו שם משתתף ולחצו Enter"
+              />
+            </div>
+          </>
+        )}
       </div>
 
       <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} />

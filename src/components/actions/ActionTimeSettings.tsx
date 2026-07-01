@@ -58,12 +58,17 @@ function inferDurationMode(action: ActionWithGroups): DurationMode {
 interface ActionTimeSettingsProps {
   action: ActionWithGroups
   onUpdated: (patch: Partial<ActionWithGroups>) => void
+  onOpenChange?: (open: boolean) => void
 }
 
-export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProps) {
+export function ActionTimeSettings({ action, onUpdated, onOpenChange }: ActionTimeSettingsProps) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+
+  useEffect(() => {
+    onOpenChange?.(open)
+  }, [open, onOpenChange])
 
   const [timeEnabled, setTimeEnabled] = useState(action.time_enabled)
   const [startMode, setStartMode] = useState<StartMode>(action.start_at ? 'specific' : 'immediately')
@@ -222,7 +227,7 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
         className={cn(
           'flex w-full items-center gap-1.5 px-4 py-1.5 text-[11px] transition-colors duration-150',
           hasSettings
-            ? 'text-secondary hover:text-accent'
+            ? 'text-tertiary hover:text-accent'
             : 'text-muted hover:text-foreground',
         )}
       >
@@ -259,13 +264,13 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
             className="overflow-hidden"
           >
             <div className="px-4 pb-4 pt-1">
-              <div className="rounded-xl border border-border bg-surface-elevated p-4 space-y-4">
+              <div className="rounded-xl border border-tertiary/35 bg-surface-elevated p-4 space-y-4">
 
                 {/* ── Time Limitation ── */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Clock size={14} className="text-secondary" />
+                      <Clock size={14} className="text-tertiary" />
                       <span className="text-xs font-semibold text-foreground">הגבלת זמן</span>
                     </div>
                     <ToggleSwitch checked={timeEnabled} onChange={handleTimeToggle} />
@@ -304,7 +309,7 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
                               dir="ltr"
                               value={specificStartAt}
                               onChange={(e) => setSpecificStartAt(e.target.value)}
-                              className="mt-2 w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
+                              className="mt-2 w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-tertiary focus:ring-1 focus:ring-tertiary"
                             />
                           )}
                         </div>
@@ -331,7 +336,7 @@ export function ActionTimeSettings({ action, onUpdated }: ActionTimeSettingsProp
                                 dir="ltr"
                                 value={customEndAt}
                                 onChange={(e) => setCustomEndAt(e.target.value)}
-                                className="w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
+                                className="w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-tertiary focus:ring-1 focus:ring-tertiary"
                               />
                             </div>
                           )}

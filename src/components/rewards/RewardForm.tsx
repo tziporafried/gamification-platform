@@ -2,8 +2,11 @@ import { useState, FormEvent } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Textarea } from '@/components/ui/Textarea'
 import { Modal } from '@/components/ui/Modal'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { theme } from '@/lib/theme'
+import { cn } from '@/lib/utils'
 import { isPlanLimitError } from '@/lib/plans'
 import type { Reward } from '@/types'
 
@@ -121,19 +124,15 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved, onPlanLi
           onChange={(e) => setRequiredPoints(e.target.value)}
         />
 
-        <div className="w-full">
-          <label htmlFor="reward-description" className="block text-sm font-medium text-foreground mb-1">
-            תיאור
-          </label>
-          <textarea
-            id="reward-description"
-            className="block w-full rounded-xl border border-border bg-surface-elevated px-3 py-2 text-sm text-foreground placeholder-muted shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-secondary focus:ring-secondary"
-            rows={2}
-            placeholder="תיאור אופציונלי"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
+        <Textarea
+          id="reward-description"
+          label="תיאור"
+          rows={2}
+          placeholder="תיאור אופציונלי"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="bg-surface-elevated"
+        />
 
         {isEdit && (
           <label className="flex items-center gap-2 text-sm text-muted">
@@ -141,7 +140,7 @@ export function RewardForm({ eventId, reward, isOpen, onClose, onSaved, onPlanLi
               type="checkbox"
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              className="h-4 w-4 rounded border-border bg-surface-elevated text-secondary focus:ring-secondary"
+              className={cn('h-4 w-4 rounded border-border bg-surface-elevated', theme.checkbox)}
             />
             פעיל
           </label>

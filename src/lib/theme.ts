@@ -17,8 +17,9 @@ export const theme = {
   accentText: 'text-accent',
   accentBorder: 'border-accent',
   accentBg: 'bg-surface-elevated',
-  focusRing: 'focus:ring-secondary',
-  focusBorder: 'focus:border-secondary',
+  focusRing: 'focus:outline-none focus:ring-1 focus:ring-offset-0 focus:ring-tertiary/40',
+  focusBorder: 'focus:border-tertiary',
+  focusWithinBorder: 'focus-within:border-tertiary',
   inputBg: 'bg-surface',
   inputBorder: 'border-border',
   inputPlaceholder: 'placeholder-muted',
@@ -26,7 +27,8 @@ export const theme = {
   hoverText: 'hover:text-foreground',
   progressTrack: 'bg-border',
   progressFill: 'bg-secondary',
-  spinner: 'border-secondary',
+  spinner: 'border-tertiary',
+  checkbox: 'accent-tertiary focus:ring-tertiary',
   iconBg: 'bg-surface-elevated',
   iconBgSubtle: 'bg-surface-elevated',
 
@@ -48,13 +50,13 @@ export const theme = {
 } as const
 
 export const buttonVariants = {
-  primary: 'bg-primary text-[var(--color-on-primary)] hover:bg-primary-hover focus:ring-primary font-semibold',
+  primary: 'bg-primary text-[var(--color-on-primary)] hover:bg-primary-hover focus:ring-primary font-semibold [&_svg]:text-[var(--color-on-primary)]',
   secondary: 'bg-secondary text-[var(--color-on-secondary)] hover:opacity-90 focus:ring-secondary font-semibold',
   outline: 'border border-border text-foreground hover:bg-surface-elevated focus:ring-secondary',
   soft: 'border border-primary bg-surface text-primary hover:bg-primary hover:text-[var(--color-on-primary)] focus:ring-primary font-medium',
   ghost: 'text-muted hover:bg-surface-elevated hover:text-foreground focus:ring-secondary',
   danger: 'bg-danger text-[var(--color-on-danger)] hover:bg-danger focus:ring-danger font-semibold',
-  gradient: 'bg-primary text-[var(--color-on-primary)] hover:bg-primary-hover focus:ring-primary font-semibold',
+  gradient: 'bg-primary text-[var(--color-on-primary)] hover:bg-primary-hover focus:ring-primary font-semibold [&_svg]:text-[var(--color-on-primary)]',
 } as const
 
 export const alertVariants = {

@@ -50,7 +50,9 @@ export function GroupSelectDropdown({
           'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all border',
           isAllSelected
             ? 'border-success text-success bg-surface-elevated hover:bg-surface'
-            : 'border-secondary text-secondary bg-surface-elevated hover:bg-surface',
+            : selectedGroups.length > 0
+              ? 'border-primary/30 text-foreground bg-surface-elevated hover:bg-surface'
+              : 'border-border text-muted bg-surface-elevated hover:bg-surface',
         )}
       >
         {!isAllSelected && selectedGroups.length > 0 && (

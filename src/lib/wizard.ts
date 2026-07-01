@@ -1,6 +1,11 @@
-import type { Event, EventCounts, WizardState, ReadinessCheck, WizardPrefs, GroupType } from '@/types'
+import type { Event, EventCounts, WizardState, ReadinessCheck, WizardPrefs, GroupType, WizardStepId } from '@/types'
+import { WIZARD_STEPS } from '@/types'
 
 const STORAGE_PREFIX = 'wizard_prefs_'
+
+export function getWizardStepId(stepNumber: number): WizardStepId | null {
+  return WIZARD_STEPS.find((step) => step.step === stepNumber)?.id ?? null
+}
 
 export function getWizardPrefs(eventId: string): WizardPrefs {
   try {

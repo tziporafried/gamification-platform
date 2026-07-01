@@ -165,7 +165,7 @@ export function GroupList({ eventId, onCountChange }: GroupListProps) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <SectionHeader
-        icon={<Layers size={18} className="text-secondary" />}
+        icon={<Layers size={18} className="text-tertiary" />}
         title="קבוצות"
         className="mb-4"
       />
