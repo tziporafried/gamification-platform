@@ -1,13 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo, FormEvent } from 'react'
-import { motion } from 'framer-motion'
-import { Send, Flame } from 'lucide-react'
+import { Send } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { AutocompleteField } from '@/components/scoring/AutocompleteField'
 import type { AccentRgb } from '@/lib/accentColor'
 import { rgba } from '@/lib/accentColor'
-import type { Action } from '@/types'
-import { getMissionStatus } from '@/lib/missionUtils'
 import type { CatalogAction, CatalogParticipant } from '@/hooks/useEventCatalog'
 import { cn } from '@/lib/utils'
 
@@ -17,7 +14,6 @@ interface ActionOption { id: string; name: string; code: string; points: number 
 interface Props {
   eventId: string
   accent: AccentRgb
-  bonusMissions: Action[]
   submitting: boolean
   onSubmit: (participantExternalId: string, actionCode: string) => Promise<void>
   catalog?: {
@@ -33,7 +29,7 @@ function filterByQuery<T extends { name: string }>(items: T[], query: string, li
   return items.filter((item) => item.name.toLowerCase().includes(q)).slice(0, limit)
 }
 
-export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, onSubmit, catalog }: Props) {
+export function ManualEntryForm({ eventId, accent, submitting, onSubmit, catalog }: Props) {
   const [participantQuery, setParticipantQuery] = useState('')
   const [actionQuery, setActionQuery] = useState('')
   const [selectedParticipant, setSelectedParticipant] = useState<ParticipantOption | null>(null)
@@ -117,17 +113,6 @@ export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, on
   }
   function clearAction() { setSelectedAction(null); setActionQuery(''); setActionBlurred(false) }
 
-  const activeBonus = useMemo(() => {
-    if (!selectedAction) return null
-    const bm = bonusMissions.find(b => b.id === selectedAction.id && getMissionStatus(b) === 'active')
-    if (!bm) return null
-    const mult = Math.max(2, bm.speed_multiplier ?? 2)
-    const boostedPoints = bm.speed_bonus_flat_points != null
-      ? selectedAction.points + bm.speed_bonus_flat_points
-      : Math.round(selectedAction.points * mult)
-    return { mult, boostedPoints, label: bm.speed_bonus_flat_points != null ? `+${bm.speed_bonus_flat_points}` : `×${mult}` }
-  }, [selectedAction, bonusMissions])
-
   const bothValid = selectedParticipant && selectedAction
 
   const handleSubmit = useCallback(async (e: FormEvent) => {
@@ -140,10 +125,7 @@ export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, on
 
   return (
     <form onSubmit={handleSubmit}
-      className={cn(
-        'w-full max-w-sm rounded-2xl border bg-surface p-4 space-y-3 transition-colors duration-400',
-        activeBonus ? 'border-warning' : 'border-border',
-      )}>
+      className="w-full max-w-sm rounded-2xl border border-border bg-surface p-4 space-y-3">
 
       <p className="text-xs font-black text-muted text-right">הזנה ידנית</p>
 
@@ -214,44 +196,21 @@ export function ManualEntryForm({ eventId, accent, bonusMissions, submitting, on
       />
 
       {selectedAction && (
-        <motion.div
-          className="text-right text-xs"
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}>
-          {activeBonus ? (
-            <span className="text-warning font-bold">
-              <span className="line-through text-muted mr-1">+{selectedAction.points}</span>
-              🔥 +{activeBonus.boostedPoints} נק׳ ({activeBonus.label} בונוס!)
-            </span>
-          ) : (
-            <span style={{ color: rgba(accent, 0.9) }} className="font-bold">
-              +{selectedAction.points} נקודות
-            </span>
-          )}
-        </motion.div>
+        <p className="text-right text-xs font-bold" style={{ color: rgba(accent, 0.9) }}>
+          +{selectedAction.points} נקודות
+        </p>
       )}
 
-      <div className="relative">
-        <Button
-          type="submit"
-          variant="gradient"
-          size="md"
-          loading={submitting}
-          disabled={!bothValid}
-          className="w-full h-11 font-black text-base">
-          <Send size={18} />
-          <span>שלח</span>
-        </Button>
-        {activeBonus && (
-          <motion.div
-            className="absolute -top-2.5 -right-2 flex items-center gap-1 rounded-full bg-warning px-2 py-0.5 text-[10px] font-black text-foreground"
-            animate={{ scale: [1, 1.08, 1] }}
-            transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}>
-            <Flame size={9} />
-            {activeBonus.label}
-          </motion.div>
-        )}
-      </div>
+      <Button
+        type="submit"
+        variant="gradient"
+        size="md"
+        loading={submitting}
+        disabled={!bothValid}
+        className="w-full h-11 font-black text-base">
+        <Send size={18} />
+        <span>שלח</span>
+      </Button>
     </form>
   )
 }

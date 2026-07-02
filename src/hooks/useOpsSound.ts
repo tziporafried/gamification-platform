@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 
-export type OpsSoundEvent = 'score' | 'bonus_score' | 'rank_up' | 'rank_1' | 'bonus_activated'
+export type OpsSoundEvent = 'score' | 'rank_up' | 'rank_1'
 
 export function useOpsSound() {
   const play = useCallback((_event: OpsSoundEvent) => {

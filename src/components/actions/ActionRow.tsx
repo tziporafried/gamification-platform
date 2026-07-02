@@ -3,7 +3,6 @@ import { Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
-import { ActionTimeSettings } from './ActionTimeSettings'
 import { TaskLimitSelect } from './TaskLimitSelect'
 import type { ActionWithGroups, Group } from '@/types'
 
@@ -54,7 +53,6 @@ export const ActionRow = memo(function ActionRow({
   const limitRef = useRef<HTMLInputElement>(null)
 
   const [localGroups, setLocalGroups] = useState(action.groups)
-  const [timeSettingsOpen, setTimeSettingsOpen] = useState(false)
 
   const pointsNum = parseInt(points, 10) || 0
   const isPositive = pointsNum >= 0
@@ -179,9 +177,7 @@ export const ActionRow = memo(function ActionRow({
       className={cn(
         'rounded-xl border bg-surface transition-all duration-200 group/row',
         isPositive
-          ? timeSettingsOpen
-            ? 'border-tertiary'
-            : 'border-border hover:border-tertiary'
+          ? 'border-border hover:border-tertiary'
           : 'border-danger/20',
       )}
     >
@@ -274,11 +270,6 @@ export const ActionRow = memo(function ActionRow({
         </button>
       </div>
       </div>
-      <ActionTimeSettings
-        action={action}
-        onUpdated={(patch) => (onUpdated ? onUpdated(patch) : onEdit())}
-        onOpenChange={setTimeSettingsOpen}
-      />
     </div>
   )
 })

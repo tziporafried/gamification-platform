@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
-import { computeRanks, getMissionStatus, sortMissionsByUrgency } from '@/lib/missionUtils'
+import { computeRanks } from '@/lib/missionUtils'
 import type { Action, GroupLeaderboardEntry } from '@/types'
 
 export interface TxRow {
@@ -29,12 +29,9 @@ export interface ScorePatch {
 
 export interface OperationsData {
   rankedGroups: RankedGroup[]
-  sortedMissions: Action[]
-  primaryMission: Action | null
-  bonusMissions: Action[]
+  missions: Action[]
   transactions: TxRow[]
   todayPoints: number
-  secondNow: Date
   loading: boolean
   refresh: () => void
   applyScore: (patch: ScorePatch) => void
@@ -45,11 +42,8 @@ export function useOperationsData(eventId: string): OperationsData {
   const [transactions, setTransactions] = useState<TxRow[]>([])
   const [actions, setActions] = useState<Action[]>([])
   const [loading, setLoading] = useState(true)
-  const [secondNow, setSecondNow] = useState(new Date())
   const isInitialFetch = useRef(true)
   const leaderboardRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => { const t = setInterval(() => setSecondNow(new Date()), 1_000); return () => clearInterval(t) }, [])
 
   const refreshLeaderboard = useCallback(async () => {
     const { data } = await supabase.rpc('get_group_leaderboard', { p_event_id: eventId })
@@ -90,11 +84,7 @@ export function useOperationsData(eventId: string): OperationsData {
         if (prev.length !== newActs.length) return newActs
         for (let i = 0; i < newActs.length; i++) {
           const o = prev[i], n = newActs[i]
-          if (
-            o?.id !== n?.id || o?.is_active !== n?.is_active ||
-            o?.start_at !== n?.start_at || o?.end_at !== n?.end_at ||
-            o?.speed_bonus_enabled !== n?.speed_bonus_enabled
-          ) return newActs
+          if (o?.id !== n?.id || o?.is_active !== n?.is_active) return newActs
         }
         return prev
       })
@@ -148,21 +138,6 @@ export function useOperationsData(eventId: string): OperationsData {
 
   const rankedGroups = useMemo(() => computeRanks(groupData), [groupData])
 
-  const sortedMissions = useMemo(() => sortMissionsByUrgency(actions), [actions])
-
-  const primaryMission = useMemo(() => {
-    return (
-      sortedMissions.find(a => {
-        const s = getMissionStatus(a)
-        return (s === 'active' || s === 'ending') && a.time_enabled && a.end_at
-      }) ??
-      sortedMissions.find(a => getMissionStatus(a) === 'upcoming' && a.time_enabled && a.start_at) ??
-      sortedMissions[0] ?? null
-    )
-  }, [sortedMissions])
-
-  const bonusMissions = useMemo(() => sortedMissions.filter(a => a.speed_bonus_enabled), [sortedMissions])
-
   const todayPoints = useMemo(() => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -173,12 +148,9 @@ export function useOperationsData(eventId: string): OperationsData {
 
   return {
     rankedGroups,
-    sortedMissions,
-    primaryMission,
-    bonusMissions,
+    missions: actions,
     transactions,
     todayPoints,
-    secondNow,
     loading,
     refresh: fetchAll,
     applyScore,

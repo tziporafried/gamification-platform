@@ -95,7 +95,7 @@ function EventOpsContent({ event }: { event: Event }) {
       actionId: result.actionId,
       actionName: result.actionName,
       actionCode: result.actionCode,
-      actionBasePoints: result.basePoints,
+      actionBasePoints: result.points,
       points: result.points,
     })
 
@@ -108,26 +108,15 @@ function EventOpsContent({ event }: { event: Event }) {
     pendingTimers.current.push(setTimeout(() => setSuccessFlash(false), 1500))
 
     // Full-screen celebration overlay (1.2s auto-dismiss)
-    const overlayData: CelebrationOverlayData = {
-      name: result.participantName,
-      points: result.points,
-      bonus: result.speedBonusApplied,
-      mult: result.speedBonusLabel,
-    }
-    setCelebrationOverlay(overlayData)
+    setCelebrationOverlay({ name: result.participantName, points: result.points })
     pendingTimers.current.push(setTimeout(() => setCelebrationOverlay(null), 1200))
 
     // Secondary confirmation banner (1.5s)
-    setConfirmation({
-      name: result.participantName,
-      points: result.points,
-      bonus: result.speedBonusApplied,
-      mult: result.speedBonusLabel,
-    })
+    setConfirmation({ name: result.participantName, points: result.points })
     pendingTimers.current.push(setTimeout(() => setConfirmation(null), 1500))
 
     // Sound
-    opsSound.play(result.speedBonusApplied ? 'bonus_score' : 'score')
+    opsSound.play('score')
 
     // Celebration modal for reward milestones
     if (result.celebrationRewards.length > 0) {
@@ -220,11 +209,9 @@ function EventOpsContent({ event }: { event: Event }) {
         {/* Column 1 — Hero Card: what's happening now (rightmost in RTL) */}
         <div className="hidden lg:flex w-[28%] border-l border-border flex-col p-5 shrink-0 overflow-hidden">
           <HeroCard
-            sortedMissions={opsData.sortedMissions}
-            bonusMissions={opsData.bonusMissions}
+            missions={opsData.missions}
             transactions={opsData.transactions}
             rankedGroups={opsData.rankedGroups}
-            secondNow={opsData.secondNow}
             accent={accent} />
         </div>
 
@@ -292,7 +279,6 @@ function EventOpsContent({ event }: { event: Event }) {
                 <ManualEntryForm
                   eventId={event.id}
                   accent={accent}
-                  bonusMissions={opsData.bonusMissions}
                   submitting={submitting}
                   catalog={catalog}
                   onSubmit={handleSubmit} />
@@ -303,7 +289,6 @@ function EventOpsContent({ event }: { event: Event }) {
               <ManualEntryForm
                 eventId={event.id}
                 accent={accent}
-                bonusMissions={opsData.bonusMissions}
                 submitting={submitting}
                 catalog={catalog}
                 onSubmit={handleSubmit} />
