@@ -173,4 +173,154 @@
   .glow-border-brand {
     box-shadow: 0 0 0 1px var(--color-primary), 0 0 16px color-mix(in srgb, var(--color-primary) 15%, transparent);
   }
+
+  .festive-success-enter {
+    animation: festive-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .festive-success-icon {
+    --festive-green-deep: color-mix(in srgb, var(--color-success) 72%, black);
+    --festive-green-mid: var(--color-success);
+    --festive-green-light: color-mix(in srgb, var(--color-success) 38%, white);
+    --festive-green-soft: color-mix(in srgb, var(--color-success) 18%, white);
+    --festive-ring-gradient: conic-gradient(
+      from 0deg,
+      var(--festive-green-deep),
+      var(--festive-green-mid),
+      var(--festive-green-light),
+      var(--festive-green-soft),
+      var(--festive-green-deep)
+    );
+    position: relative;
+    display: flex;
+    height: 4.75rem;
+    width: 4.75rem;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  .festive-success-burst {
+    pointer-events: none;
+    position: absolute;
+    inset: 0.5rem;
+    border-radius: 9999px;
+    border: 2px solid color-mix(in srgb, var(--color-success) 70%, transparent);
+    animation: festive-burst 1.6s ease-out infinite;
+  }
+
+  .festive-success-burst-delayed {
+    animation-delay: 0.8s;
+  }
+
+  .festive-success-glow {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--color-success) 45%, transparent) 0%,
+      transparent 70%
+    );
+    animation: festive-glow-pulse 1.4s ease-in-out infinite;
+  }
+
+  .festive-success-ring {
+    position: absolute;
+    border-radius: 9999px;
+    padding: 4px;
+    background: var(--festive-ring-gradient);
+    animation: festive-ring-pulse 1.4s ease-in-out infinite;
+  }
+
+  .festive-success-ring-outer {
+    inset: 0;
+  }
+
+  .festive-success-ring-inner {
+    inset: 7px;
+    padding: 3px;
+    animation-delay: 0.35s;
+  }
+
+  .festive-success-ring-hole {
+    height: 100%;
+    width: 100%;
+    border-radius: 9999px;
+    background: var(--color-surface-elevated);
+  }
+
+  .festive-success-check {
+    position: relative;
+    z-index: 10;
+    animation: festive-check-pulse 1.4s ease-in-out infinite;
+    animation-delay: 0.15s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .festive-success-enter,
+    .festive-success-burst,
+    .festive-success-glow,
+    .festive-success-ring,
+    .festive-success-check {
+      animation: none !important;
+    }
+  }
+}
+
+@keyframes festive-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes festive-burst {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
+@keyframes festive-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes festive-ring-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes festive-check-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }
