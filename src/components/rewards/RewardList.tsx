@@ -1,20 +1,23 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Lock, Plus, Trophy } from 'lucide-react'
+import { Lock, Plus, Gift } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { TruncatedTooltipText } from '@/components/ui/Tooltip'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { RewardForm } from './RewardForm'
 import { RewardRow } from './RewardRow'
-import { RewardGroupAssignment } from './RewardGroupAssignment'
 import { getLockedTemplate, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import type { RewardWithGroups, Reward, Group, TemplateReward } from '@/types'
 
 interface RewardListProps {
   eventId: string
   onCountChange: (count: number) => void
+  /** Wizard: refetch groups when the step becomes active again. */
+  isActive?: boolean
+  groupCount?: number
 }
 
 interface RewardGroupJoin {
@@ -24,34 +27,40 @@ interface RewardGroupJoin {
 
 function LockedRewardCard({ reward }: { reward: TemplateReward }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-surface opacity-50 select-none">
-      <div className="flex flex-col items-center p-5 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-elevated mb-3">
-          <Lock size={22} className="text-muted" />
+    <div className="relative">
+      <div className="relative overflow-hidden rounded-2xl bg-surface opacity-50 select-none">
+        <div className="pointer-events-none absolute top-3 right-3 z-20 flex h-7 w-7 items-center justify-center rounded-xl bg-surface-elevated opacity-50 shadow-sm">
+          <Lock size={14} className="text-muted" />
         </div>
-        <div className="mb-0.5 text-[9px] font-bold uppercase tracking-widest text-muted">
-          פרמיום
+        <div className="relative z-10 flex min-h-[6.5rem] flex-col items-center justify-center gap-1.5 px-4 py-4 pl-8 pr-10 text-center">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-muted">
+            פרמיום
+          </div>
+          <TruncatedTooltipText
+            text={reward.name}
+            className="w-full min-w-0 truncate text-xl font-bold leading-9 text-muted"
+          />
+          <div className="inline-flex h-7 items-center justify-center rounded-full bg-surface-elevated px-3 text-xs font-bold text-muted">
+            {reward.required_points.toLocaleString()} נק׳
+          </div>
+          <div className="flex justify-center">
+            <span className="rounded-full border border-warning bg-surface-elevated px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
+              שדרוג נדרש
+            </span>
+          </div>
         </div>
-        <p className="w-full truncate text-sm font-bold text-muted">{reward.name}</p>
-        <div className="mt-3 inline-flex items-center rounded-full bg-surface-elevated px-3 py-1 text-xs font-bold text-muted">
-          {reward.required_points.toLocaleString()} נק׳
-        </div>
-        <span className="mt-2 rounded-full border border-warning bg-surface-elevated px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
-          שדרוג נדרש
-        </span>
       </div>
     </div>
   )
 }
 
-export function RewardList({ eventId, onCountChange }: RewardListProps) {
+export function RewardList({ eventId, onCountChange, isActive, groupCount }: RewardListProps) {
   const [rewards, setRewards] = useState<RewardWithGroups[]>([])
+  const [groups, setGroups] = useState<Group[]>([])
   const [lockedRewards, setLockedRewards] = useState<TemplateReward[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [formOpen, setFormOpen] = useState(false)
-  const [editingReward, setEditingReward] = useState<Reward | null>(null)
-  const [assigningReward, setAssigningReward] = useState<RewardWithGroups | null>(null)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const onCountChangeRef = useRef(onCountChange)
   const lastReportedCountRef = useRef<number | null>(null)
@@ -70,26 +79,40 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
     let cancelled = false
 
     async function load() {
-      const { data, error: fetchError } = await supabase
-        .from('rewards')
-        .select('*, reward_groups(group_id, groups(*))')
-        .eq('event_id', eventId)
-        .order('required_points', { ascending: true })
+      const [rewardsRes, groupsRes] = await Promise.all([
+        supabase
+          .from('rewards')
+          .select('*, reward_groups(group_id, groups(*))')
+          .eq('event_id', eventId)
+          .order('required_points', { ascending: true }),
+        supabase
+          .from('groups')
+          .select('*')
+          .eq('event_id', eventId)
+          .order('name'),
+      ])
 
       if (cancelled) return
 
-      if (fetchError) {
-        setError(fetchError.message)
+      if (rewardsRes.error) {
+        setError(rewardsRes.error.message)
         setLoading(false)
         return
       }
 
-      const mapped: RewardWithGroups[] = (data ?? []).map((r) => ({
+      if (groupsRes.error) {
+        setError(groupsRes.error.message)
+        setLoading(false)
+        return
+      }
+
+      const mapped: RewardWithGroups[] = (rewardsRes.data ?? []).map((r) => ({
         ...r,
         groups: ((r.reward_groups as unknown as RewardGroupJoin[]) ?? []).map((rg) => rg.groups),
       }))
 
       setRewards(mapped)
+      setGroups(groupsRes.data ?? [])
       if (lastReportedCountRef.current !== mapped.length) {
         lastReportedCountRef.current = mapped.length
         onCountChangeRef.current(mapped.length)
@@ -101,13 +124,35 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
     return () => { cancelled = true }
   }, [eventId])
 
-  const handleSaved = useCallback((saved: Reward) => {
-    handleFormClose()
-    setRewards((prev) => {
-      const exists = prev.some((r) => r.id === saved.id)
-      if (exists) {
-        return prev.map((r) => (r.id === saved.id ? { ...r, ...saved } : r))
+  useEffect(() => {
+    if (isActive === false) return
+
+    let cancelled = false
+
+    async function refreshGroups() {
+      const { data, error } = await supabase
+        .from('groups')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('name')
+
+      if (cancelled) return
+
+      if (error) {
+        setError(error.message)
+        return
       }
+
+      setGroups(data ?? [])
+    }
+
+    refreshGroups()
+    return () => { cancelled = true }
+  }, [eventId, isActive, groupCount])
+
+  const handleSaved = useCallback((saved: Reward) => {
+    setFormOpen(false)
+    setRewards((prev) => {
       const next = [...prev, { ...saved, groups: [] }]
       lastReportedCountRef.current = next.length
       onCountChangeRef.current(next.length)
@@ -116,35 +161,38 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
   }, [])
 
   function handleCreate() {
-    setEditingReward(null)
     setFormOpen(true)
   }
 
-  function handleEdit(reward: RewardWithGroups) {
-    setEditingReward(reward)
-    setFormOpen(true)
+  function handleUpdated(rewardId: string, patch: Partial<RewardWithGroups>) {
+    setRewards((prev) => prev.map((r) => (
+      r.id === rewardId ? { ...r, ...patch } : r
+    )))
   }
 
-  function handleFormClose() {
-    setFormOpen(false)
-    setEditingReward(null)
+  function handleGroupsChange(rewardId: string, nextGroups: Group[]) {
+    setRewards((prev) => prev.map((r) => (
+      r.id === rewardId ? { ...r, groups: nextGroups } : r
+    )))
   }
 
-  async function handleToggleActive(reward: RewardWithGroups) {
-    const nextActive = !reward.is_active
-    const { error: updateError } = await supabase
+  async function handleDelete(reward: RewardWithGroups) {
+    const { error: deleteError } = await supabase
       .from('rewards')
-      .update({ is_active: nextActive })
+      .delete()
       .eq('id', reward.id)
 
-    if (updateError) {
-      setError(updateError.message)
+    if (deleteError) {
+      setError(deleteError.message)
       return
     }
 
-    setRewards((prev) => prev.map((r) => (
-      r.id === reward.id ? { ...r, is_active: nextActive } : r
-    )))
+    setRewards((prev) => {
+      const next = prev.filter((r) => r.id !== reward.id)
+      lastReportedCountRef.current = next.length
+      onCountChangeRef.current(next.length)
+      return next
+    })
   }
 
   if (loading) {
@@ -153,8 +201,10 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
 
   const hasLocked = lockedRewards.length > 0
 
+  const rewardGridClass = 'grid gap-4 px-1 py-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+
   const lockedGrid = (
-    <div className="grid gap-3 p-1 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+    <div className={rewardGridClass}>
       {lockedRewards.map((reward) => (
         <LockedRewardCard key={reward.id} reward={reward} />
       ))}
@@ -171,7 +221,7 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
   )
 
   const content = (
-    <div>
+    <div className="pb-2">
       {error && <ErrorAlert message={error} className="mb-4" />}
 
       {rewards.length === 0 ? (
@@ -182,7 +232,7 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
           </div>
         ) : (
           <EmptyState
-            icon={<Trophy size={32} strokeWidth={1.75} />}
+            icon={<Gift size={32} strokeWidth={1.75} />}
             title="אין פרסים עדיין"
             description="צרו הפתעות שהשחקנים שלכם יוכלו לקבל."
             action={
@@ -195,14 +245,17 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
         )
       ) : (
         <div className="space-y-3">
-          <div className="grid gap-3 py-1 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+          <div className={rewardGridClass}>
             {rewards.map((reward) => (
               <RewardRow
                 key={reward.id}
                 reward={reward}
-                onEdit={() => handleEdit(reward)}
-                onToggleActive={() => handleToggleActive(reward)}
-                onManageGroups={() => setAssigningReward(reward)}
+                groups={groups}
+                siblingNames={rewards.filter((r) => r.id !== reward.id).map((r) => r.name)}
+                onDelete={() => handleDelete(reward)}
+                onUpdated={(patch) => handleUpdated(reward.id, patch)}
+                onGroupsChange={(nextGroups) => handleGroupsChange(reward.id, nextGroups)}
+                onError={setError}
               />
             ))}
           </div>
@@ -219,20 +272,10 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
       {formOpen && (
         <RewardForm
           eventId={eventId}
-          reward={editingReward ?? undefined}
           isOpen={formOpen}
-          onClose={handleFormClose}
+          onClose={() => setFormOpen(false)}
           onSaved={handleSaved}
           onPlanLimit={() => setUpgradeOpen(true)}
-        />
-      )}
-      {assigningReward && (
-        <RewardGroupAssignment
-          eventId={eventId}
-          rewardId={assigningReward.id}
-          rewardName={assigningReward.name}
-          isOpen={!!assigningReward}
-          onClose={() => setAssigningReward(null)}
         />
       )}
       <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} eventId={eventId} />

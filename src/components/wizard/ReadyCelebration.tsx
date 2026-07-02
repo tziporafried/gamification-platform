@@ -459,7 +459,7 @@ export function AnimatedPrintFooter({ children, celebrate }: AnimatedPrintFooter
 
   return (
     <motion.div
-      className="border-t border-border/70 px-4 py-3"
+      className="border-t border-border px-4 py-3"
       initial={reducedMotion ? false : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 260, damping: 24, delay: 0.5 }}

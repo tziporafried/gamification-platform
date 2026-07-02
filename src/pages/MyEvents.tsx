@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
+import { ModalActions } from '@/components/ui/ModalActions'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Toast } from '@/components/ui/Toast'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -193,14 +194,14 @@ export function MyEvents() {
             <strong className="text-foreground">{deletingEvent?.name || 'ללא שם'}</strong>?
             {' '}האירוע יועבר לארכיון ולא יוצג במערכת.
           </p>
-          <div className="flex gap-3">
+          <ModalActions className="pt-0">
             <Button variant="danger" loading={deleting} onClick={handleDeleteEvent}>
               מחק אירוע
             </Button>
             <Button variant="outline" onClick={() => setDeletingEvent(null)}>
               ביטול
             </Button>
-          </div>
+          </ModalActions>
         </div>
       </Modal>
 

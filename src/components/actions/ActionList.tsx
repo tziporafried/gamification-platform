@@ -10,6 +10,7 @@ import { UpgradeModal } from '@/components/UpgradeModal'
 import { ActionForm } from './ActionForm'
 import { ActionRow } from './ActionRow'
 import { InlineAddAction } from './InlineAddAction'
+import { ScrollableListLayout } from '@/components/ui/ScrollableListLayout'
 import { getLockedTemplate, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import type { Action, ActionWithGroups, Group, TemplateTask } from '@/types'
 
@@ -50,9 +51,16 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
   const [editingAction, setEditingAction] = useState<Action | null>(null)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
+  const [showAddInput, setShowAddInput] = useState(false)
+  const [addInputFocusRequest, setAddInputFocusRequest] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const prevCountRef = useRef(0)
   const addInputRef = useRef<HTMLInputElement>(null)
+
+  function revealAddInput() {
+    setShowAddInput(true)
+    setAddInputFocusRequest((n) => n + 1)
+  }
 
   const showFeedback = useCallback((message: string, feedbackVariant: 'success' | 'error') => {
     setToast({ message, variant: feedbackVariant })
@@ -118,6 +126,18 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
     prevCountRef.current = actions.length
   }, [actions.length])
 
+  useEffect(() => {
+    if (actions.length === 0) {
+      setShowAddInput(false)
+    }
+  }, [actions.length])
+
+  useEffect(() => {
+    if (showAddInput) {
+      addInputRef.current?.focus()
+    }
+  }, [showAddInput, addInputFocusRequest])
+
   const handleFormClose = useCallback(() => {
     setFormOpen(false)
     setEditingAction(null)
@@ -156,48 +176,67 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
       {error && <ErrorAlert message={error} className="shrink-0 mb-4" />}
 
       {actions.length === 0 && !hasLocked ? (
-        <div className="space-y-4">
-          <EmptyState
-            icon={<CheckSquare size={32} strokeWidth={1.75} />}
-            title="עדיין לא נוספו פעילויות"
-            description="הוסיפו את הפעילות הראשונה שמעניקה נקודות למשתתפים"
-            action={
-              <Button size="sm" className="gap-1.5" onClick={() => addInputRef.current?.focus()}>
-                <Plus size={16} className="shrink-0" strokeWidth={2.5} />
-                הוסף פעילות
-              </Button>
+        embedded ? (
+          <ScrollableListLayout
+            listRef={listRef}
+            footer={
+              showAddInput ? (
+                <InlineAddAction
+                  eventId={eventId}
+                  onAdded={handleAdded}
+                  onPlanLimit={() => setUpgradeOpen(true)}
+                  existingNames={existingNames}
+                  onFeedback={showFeedback}
+                  nameInputRef={addInputRef}
+                />
+              ) : undefined
             }
-          />
-          <InlineAddAction
-            eventId={eventId}
-            onAdded={handleAdded}
-            onPlanLimit={() => setUpgradeOpen(true)}
-            existingNames={existingNames}
-            onFeedback={showFeedback}
-            nameInputRef={addInputRef}
-          />
-        </div>
-      ) : embedded ? (
-        <>
-          <div ref={listRef} className="space-y-2">
-            {actions.map((action) => (
-              <ActionRow
-                key={action.id}
-                action={action}
-                groups={groups}
-                onEdit={() => {}}
-                onDeleted={() => handleDeleted(action.id)}
-                onUpdated={(patch) => handleActionPatched(action.id, patch)}
-                onError={setError}
-                siblingNames={existingNames.filter((n) => n !== action.name)}
+          >
+            <EmptyState
+              icon={<CheckSquare size={32} strokeWidth={1.75} />}
+              title="עדיין לא נוספו פעילויות"
+              description="הוסיפו את הפעילות הראשונה שמעניקה נקודות למשתתפים"
+              action={
+                <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
+                  <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+                  הוסף פעילות
+                </Button>
+              }
+            />
+          </ScrollableListLayout>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div ref={listRef} className="flex-1 overflow-y-auto min-h-0">
+              <EmptyState
+                icon={<CheckSquare size={32} strokeWidth={1.75} />}
+                title="עדיין לא נוספו פעילויות"
+                description="הוסיפו את הפעילות הראשונה שמעניקה נקודות למשתתפים"
+                action={
+                  <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
+                    <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+                    הוסף פעילות
+                  </Button>
+                }
               />
-            ))}
-
-            {hasLocked && lockedTasks.map((task) => (
-              <LockedActionRow key={task.id} task={task} />
-            ))}
+            </div>
+            {showAddInput && (
+              <div className="shrink-0 pt-2">
+                <InlineAddAction
+                  eventId={eventId}
+                  onAdded={handleAdded}
+                  onPlanLimit={() => setUpgradeOpen(true)}
+                  existingNames={existingNames}
+                  onFeedback={showFeedback}
+                  nameInputRef={addInputRef}
+                />
+              </div>
+            )}
           </div>
-          <div className="pt-2">
+        )
+      ) : embedded ? (
+        <ScrollableListLayout
+          listRef={listRef}
+          footer={
             <InlineAddAction
               eventId={eventId}
               onAdded={handleAdded}
@@ -206,8 +245,25 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
               onFeedback={showFeedback}
               nameInputRef={addInputRef}
             />
-          </div>
-        </>
+          }
+        >
+          {actions.map((action) => (
+            <ActionRow
+              key={action.id}
+              action={action}
+              groups={groups}
+              onEdit={() => {}}
+              onDeleted={() => handleDeleted(action.id)}
+              onUpdated={(patch) => handleActionPatched(action.id, patch)}
+              onError={setError}
+              siblingNames={existingNames.filter((n) => n !== action.name)}
+            />
+          ))}
+
+          {hasLocked && lockedTasks.map((task) => (
+            <LockedActionRow key={task.id} task={task} />
+          ))}
+        </ScrollableListLayout>
       ) : (
         <>
           <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-2">

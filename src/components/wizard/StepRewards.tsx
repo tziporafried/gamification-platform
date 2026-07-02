@@ -8,13 +8,14 @@ interface StepRewardsProps {
   eventId: string
   plan: UserPlan
   counts: EventCounts
+  isActive: boolean
   onCountsPatch: (patch: Partial<EventCounts>) => void
   onCountsRefresh: () => void
   onNext: () => void
   onBack: () => void
 }
 
-export function StepRewards({ eventId, counts, onCountsPatch, onNext, onBack }: StepRewardsProps) {
+export function StepRewards({ eventId, counts, isActive, onCountsPatch, onNext, onBack }: StepRewardsProps) {
   const [localRewardCount, setLocalRewardCount] = useState(counts.rewards)
 
   function handleCountChange(count: number) {
@@ -32,9 +33,16 @@ export function StepRewards({ eventId, counts, onCountsPatch, onNext, onBack }: 
       onNext={onNext}
       onBack={onBack}
     >
-      <WizardUsageScroll>
-        <RewardList eventId={eventId} onCountChange={handleCountChange} />
-      </WizardUsageScroll>
+      <div className="flex h-full min-h-0 flex-col">
+        <WizardUsageScroll>
+          <RewardList
+            eventId={eventId}
+            isActive={isActive}
+            groupCount={counts.groups}
+            onCountChange={handleCountChange}
+          />
+        </WizardUsageScroll>
+      </div>
     </WizardStepWrapper>
   )
 }

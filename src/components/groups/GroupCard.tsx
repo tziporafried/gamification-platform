@@ -110,7 +110,7 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
   return (
     <Card
       variant="interactive"
-      className="group hover:!border-[var(--group-color)]"
+      className="group"
       style={{ '--group-color': color } as React.CSSProperties}
     >
       <div

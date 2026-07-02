@@ -20,7 +20,7 @@ export function ScrollableListLayout({
   listClassName,
 }: ScrollableListLayoutProps) {
   return (
-    <div className={cn('flex h-full flex-col', className)}>
+    <div className={cn('flex h-full min-h-0 flex-col', className)}>
       {header}
       <ScrollContainer
         ref={listRef}

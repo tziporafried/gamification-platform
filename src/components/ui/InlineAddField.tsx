@@ -37,10 +37,10 @@ export function InlineAddField({
   return (
     <div
       className={cn(
-        'flex items-center gap-2 rounded-xl border border-dashed p-3 transition-colors',
+        'flex items-center gap-2 rounded-xl p-3',
         theme.bgCardMuted,
-        theme.border,
-        theme.focusWithinBorder,
+        theme.borderInteractiveDashed,
+        'focus-within:border-accent',
         className,
       )}
     >

@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { ModalActions } from '@/components/ui/ModalActions'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { cn } from '@/lib/utils'
 import {
@@ -247,14 +248,14 @@ export function TemplateAdminList() {
             <strong className="text-foreground">{deletingTemplate?.name}</strong>?
             {' '}הפעולה לא ניתנת לביטול.
           </p>
-          <div className="flex gap-3">
+          <ModalActions className="pt-0">
             <Button variant="danger" loading={busyId === deletingTemplate?.id} onClick={handleDelete}>
               מחק תבנית
             </Button>
             <Button variant="outline" onClick={() => setDeletingTemplate(null)}>
               ביטול
             </Button>
-          </div>
+          </ModalActions>
         </div>
       </Modal>
     </div>

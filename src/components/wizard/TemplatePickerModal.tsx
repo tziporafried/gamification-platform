@@ -104,7 +104,7 @@ export function TemplatePickerModal({
 
           <button
             onClick={onChooseScratch}
-            className="w-full text-right rounded-xl border border-border bg-surface p-4 transition-colors hover:border-border hover:bg-surface-elevated group"
+            className="w-full text-right rounded-xl border border-border bg-surface p-4 transition-colors hover:border-accent hover:bg-surface-elevated group"
           >
             <div className="flex items-start gap-3">
               <div className="shrink-0 rounded-lg bg-surface-elevated p-2 group-hover:bg-surface-elevated transition-colors">
@@ -133,7 +133,7 @@ export function TemplatePickerModal({
             templates.map((tmpl) => (
               <div
                 key={tmpl.id}
-                className="rounded-xl border border-border bg-surface p-4 space-y-3"
+                className="rounded-xl border border-border bg-surface p-4 space-y-3 transition-colors hover:border-accent"
               >
                 <div>
                   <p className="font-medium text-foreground">{tmpl.name}</p>

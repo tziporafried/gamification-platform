@@ -17,6 +17,7 @@
   --palette-background: #FFF8F3;
   --palette-surface: #FFF8F3;
   --palette-surface-elevated: #FFF1EC;
+  --palette-surface-modal: #FFFFFF;
   --palette-foreground: #2E221E;
   --palette-muted: #7D706A;
   --palette-border: #E7D6CF;
@@ -28,6 +29,7 @@
   --color-background: var(--palette-background);
   --color-surface: var(--palette-surface);
   --color-surface-elevated: var(--palette-surface-elevated);
+  --color-surface-modal: var(--palette-surface-modal);
   --color-foreground: var(--palette-foreground);
   --color-muted: var(--palette-muted);
   --color-border: var(--palette-border);

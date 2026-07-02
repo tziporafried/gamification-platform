@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { cn } from '@/lib/utils'
+import { ModalActions } from './ModalActions'
 
 interface FormFooterProps {
   children: ReactNode
@@ -7,9 +7,5 @@ interface FormFooterProps {
 }
 
 export function FormFooter({ children, className }: FormFooterProps) {
-  return (
-    <div className={cn('flex gap-3 pt-2', className)}>
-      {children}
-    </div>
-  )
+  return <ModalActions className={className}>{children}</ModalActions>
 }

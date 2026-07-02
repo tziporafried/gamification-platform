@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { Trophy, Star, Award, Gem } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { XPBar } from '@/components/ui/XPBar'
 import { useCelebrationSound } from '@/hooks/useCelebrationSound'
+import { getRewardTier } from '@/lib/rewardTiers'
+import { cn } from '@/lib/utils'
 import type { NewlyAwardedReward } from '@/types'
 
 interface CelebrationModalProps {
@@ -43,41 +44,6 @@ function generateConfetti(count: number): ConfettiPiece[] {
   }))
 }
 
-function getTierConfig(points: number) {
-  if (points >= 2000) return {
-    Icon: Gem,
-    gradient: 'gradient-diamond',
-    border: 'border-accent/40',
-    glow: '0 0 40px color-mix(in srgb, var(--color-primary) 40%, transparent), 0 0 80px color-mix(in srgb, var(--color-secondary) 20%, transparent)',
-    title: '!פתיחה אגדית',
-    confettiCount: 80,
-  }
-  if (points >= 1000) return {
-    Icon: Trophy,
-    gradient: 'gradient-gold',
-    border: 'border-warning/40',
-    glow: '0 0 40px color-mix(in srgb, var(--color-warning) 40%, transparent)',
-    title: '!הישג נפתח',
-    confettiCount: 60,
-  }
-  if (points >= 500) return {
-    Icon: Award,
-    gradient: 'gradient-silver',
-    border: 'border-border',
-    glow: '0 0 24px color-mix(in srgb, var(--color-muted) 30%, transparent)',
-    title: '!הישג חדש',
-    confettiCount: 45,
-  }
-  return {
-    Icon: Star,
-    gradient: 'gradient-bronze',
-    border: 'border-accent/40',
-    glow: '0 0 24px color-mix(in srgb, var(--color-accent) 30%, transparent)',
-    title: '!פרס חדש',
-    confettiCount: 40,
-  }
-}
-
 export function CelebrationModal({ rewards, participantName, onComplete }: CelebrationModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showFlash, setShowFlash] = useState(true)
@@ -87,7 +53,7 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
 
   const reward = rewards[currentIndex]
   const isLast = currentIndex === rewards.length - 1
-  const tier = getTierConfig(reward.out_required_points)
+  const tier = getRewardTier(reward.out_required_points)
   const confetti = useMemo(() => generateConfetti(tier.confettiCount), [tier.confettiCount])
 
   useEffect(() => {
@@ -170,14 +136,17 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
 
             <div className="relative p-8 text-center">
               <div
-                className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl text-foreground animate-celebration-bounce ${tier.gradient}`}
+                className={cn(
+                  'mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl text-white animate-celebration-bounce',
+                  tier.gradient,
+                )}
                 style={{ boxShadow: tier.glow }}
               >
-                <tier.Icon size={40} />
+                <tier.Icon size={40} strokeWidth={2.25} />
               </div>
 
               <h2 className="mb-3 text-2xl font-black text-foreground">
-                {tier.title}
+                {tier.celebrationTitle}
               </h2>
 
               <p className="mb-1 text-sm text-muted">
@@ -191,9 +160,6 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
                 <p className="text-xl font-black text-foreground">
                   {reward.out_reward_name}
                 </p>
-                {reward.out_reward_description && (
-                  <p className="mt-1 text-sm text-muted">{reward.out_reward_description}</p>
-                )}
               </div>
 
               <XPBar

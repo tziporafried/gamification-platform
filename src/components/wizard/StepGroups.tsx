@@ -3,7 +3,9 @@ import { Users, Layers, AlertTriangle } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { ModalActions } from '@/components/ui/ModalActions'
 import { cn } from '@/lib/utils'
+import { theme } from '@/lib/theme'
 import { supabase } from '@/lib/supabase'
 import { GroupList } from '@/components/groups/GroupList'
 import { WizardUsageScroll } from './WizardUsageScroll'
@@ -119,29 +121,39 @@ export function StepGroups({
                     className={cn(
                       'rounded-xl border shadow-none',
                       'flex h-full w-full cursor-pointer transition-all duration-200 justify-center',
-                      'hover:shadow-card-hover hover:-translate-y-0.5',
-                      optionStyles.card,
                       showGroupSetup
-                        ? 'p-3 flex-row items-center gap-2 text-right'
-                        : 'p-6 flex-col items-center gap-3 text-center',
-                      isSelected
                         ? cn(
-                            optionStyles.cardSelected,
-                            type === 'none' ? 'hover:border-secondary' : 'hover:border-tertiary',
+                            'p-3 flex-row items-center gap-2 text-right',
+                            'bg-[color-mix(in_srgb,var(--color-primary)_7%,var(--color-surface))]',
+                            isSelected
+                              ? 'border-primary'
+                              : theme.borderInteractive,
                           )
-                        : 'border-transparent hover:border-transparent',
+                        : cn(
+                            'p-6 flex-col items-center gap-3 text-center',
+                            'hover:shadow-card-hover hover:-translate-y-0.5',
+                            optionStyles.card,
+                            isSelected
+                              ? optionStyles.cardSelected
+                              : theme.borderInteractive,
+                          ),
                     )}
                   >
                     <Icon
                       size={showGroupSetup ? 20 : 32}
                       className={cn(
                         'shrink-0 transition-colors',
-                        isSelected ? optionStyles.iconSelected : 'text-muted',
+                        showGroupSetup
+                          ? isSelected ? 'text-primary' : 'text-muted'
+                          : isSelected ? optionStyles.iconSelected : 'text-muted',
                       )}
                     />
                     <div className={cn(!showGroupSetup && 'flex flex-1 flex-col items-center')}>
                       <span className={cn(
-                        'font-medium text-foreground',
+                        'font-medium',
+                        showGroupSetup
+                          ? isSelected ? 'text-primary' : 'text-foreground'
+                          : 'text-foreground',
                         showGroupSetup ? 'text-sm' : 'text-base',
                       )}>
                         {label}
@@ -180,14 +192,14 @@ export function StepGroups({
               <p className="mt-1">לא ניתן לבטל פעולה זו.</p>
             </div>
           </div>
-          <div className="flex gap-3">
+          <ModalActions className="pt-0">
             <Button variant="danger" loading={deleting} className="bg-danger text-foreground hover:bg-danger" onClick={handleConfirmDeleteGroups}>
-              מחק הכל ועבור לבלי קבוצות
+              אשר מחיקה
             </Button>
             <Button variant="outline" className="border-border text-foreground hover:bg-surface-elevated" onClick={() => setConfirmDelete(false)}>
               ביטול
             </Button>
-          </div>
+          </ModalActions>
         </div>
       </Modal>
     </WizardStepWrapper>

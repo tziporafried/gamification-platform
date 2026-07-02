@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
 import { TaskLimitSelect } from './TaskLimitSelect'
+import { Tooltip, useIsTruncated } from '@/components/ui/Tooltip'
 import type { ActionWithGroups, Group } from '@/types'
 
 type LimitMode = 'unlimited' | 'once' | 'limited'
@@ -45,6 +46,7 @@ export const ActionRow = memo(function ActionRow({
   const [points, setPoints] = useState(action.points.toString())
   const [saving, setSaving] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
+  const nameTextRef = useRef<HTMLSpanElement>(null)
   const pointsRef = useRef<HTMLInputElement>(null)
 
   const [limitMode, setLimitMode] = useState<LimitMode>(toLimitMode(action.max_completions))
@@ -59,6 +61,7 @@ export const ActionRow = memo(function ActionRow({
   const pointsLabel = `${pointsNum < 0 ? '−' : ''}${Math.abs(pointsNum)} נק'`
   const assignedGroupIds = new Set(localGroups.map(g => g.id))
   const isAllGroups = localGroups.length === 0
+  const isNameTruncated = useIsTruncated(nameTextRef, name)
 
   useEffect(() => { setName(action.name) }, [action.name])
   useEffect(() => { setPoints(action.points.toString()) }, [action.points])
@@ -214,27 +217,41 @@ export const ActionRow = memo(function ActionRow({
         )}
 
         {/* Name */}
-        <div className="min-w-0 flex-1" onClick={() => !editingName && setEditingName(true)} role="button" tabIndex={-1}>
-          {editingName ? (
-            <input
-              ref={nameRef}
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={handleNameKey}
-              onBlur={saveName}
-              className={cn(
-                'w-full bg-transparent text-sm font-semibold text-foreground outline-none border-b border-tertiary pb-0.5',
-                saving && 'opacity-50',
-              )}
-              disabled={saving}
-            />
-          ) : (
-            <span className="block w-full text-sm font-semibold text-foreground hover:text-tertiary transition-colors cursor-text truncate">
-              {name}
-            </span>
-          )}
-        </div>
+        <Tooltip
+          content={name}
+          hidden={editingName || !isNameTruncated}
+          className="min-w-0 flex-1"
+        >
+          <div
+            className="min-w-0 flex-1"
+            onClick={() => !editingName && setEditingName(true)}
+            role="button"
+            tabIndex={-1}
+          >
+            {editingName ? (
+              <input
+                ref={nameRef}
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={handleNameKey}
+                onBlur={saveName}
+                className={cn(
+                  'w-full bg-transparent text-sm font-semibold text-foreground outline-none border-b border-tertiary pb-0.5',
+                  saving && 'opacity-50',
+                )}
+                disabled={saving}
+              />
+            ) : (
+              <span
+                ref={nameTextRef}
+                className="block w-full text-sm font-semibold text-foreground hover:text-tertiary transition-colors cursor-text truncate"
+              >
+                {name}
+              </span>
+            )}
+          </div>
+        </Tooltip>
 
         {/* Task limit dropdown */}
         <TaskLimitSelect

@@ -38,9 +38,16 @@ export function StepParticipants({ eventId, counts, groupType, isActive, onCount
   const [loading, setLoading] = useState(true)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [error, setError] = useState('')
+  const [showAddInput, setShowAddInput] = useState(false)
+  const [addInputFocusRequest, setAddInputFocusRequest] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const addInputRef = useRef<HTMLInputElement>(null)
   const prevCountRef = useRef(0)
+
+  function revealAddInput() {
+    setShowAddInput(true)
+    setAddInputFocusRequest((n) => n + 1)
+  }
 
   const hasGroups = groupType === 'custom'
 
@@ -105,6 +112,18 @@ export function StepParticipants({ eventId, counts, groupType, isActive, onCount
     }
     prevCountRef.current = participants.length
   }, [participants.length])
+
+  useEffect(() => {
+    if (participants.length === 0) {
+      setShowAddInput(false)
+    }
+  }, [participants.length])
+
+  useEffect(() => {
+    if (showAddInput) {
+      addInputRef.current?.focus()
+    }
+  }, [showAddInput, addInputFocusRequest])
 
   const handleAdded = useCallback((participant: Participant) => {
     setParticipants((prev) => {
@@ -193,26 +212,34 @@ export function StepParticipants({ eventId, counts, groupType, isActive, onCount
         )}
 
         {participants.length === 0 ? (
-          <div className="space-y-4 px-1">
-            <EmptyState
-              icon={<Users size={32} strokeWidth={1.75} />}
-              title="אין משתתפים עדיין"
-              description="הוסיפו את המשתתף הראשון"
-              action={
-                <Button size="sm" className="gap-1.5" onClick={() => addInputRef.current?.focus()}>
-                  <Plus size={16} className="shrink-0" strokeWidth={2.5} />
-                  הוסף משתתף
-                </Button>
-              }
-            />
-            <InlineAddParticipant
-              eventId={eventId}
-              onAdded={handleAdded}
-              onPlanLimit={() => setUpgradeOpen(true)}
-              placeholder="הקלידו שם משתתף ולחצו Enter"
-              nameInputRef={addInputRef}
-            />
-          </div>
+          <WizardUsageScroll
+            scrollRef={listRef}
+            footer={
+              showAddInput ? (
+                <InlineAddParticipant
+                  eventId={eventId}
+                  onAdded={handleAdded}
+                  onPlanLimit={() => setUpgradeOpen(true)}
+                  placeholder="הקלידו שם משתתף ולחצו Enter"
+                  nameInputRef={addInputRef}
+                />
+              ) : undefined
+            }
+          >
+            <div className="px-1">
+              <EmptyState
+                icon={<Users size={32} strokeWidth={1.75} />}
+                title="אין משתתפים עדיין"
+                description="הוסיפו את המשתתף הראשון"
+                action={
+                  <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
+                    <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+                    הוסף משתתף
+                  </Button>
+                }
+              />
+            </div>
+          </WizardUsageScroll>
         ) : (
           <WizardUsageScroll
             scrollRef={listRef}

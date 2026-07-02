@@ -3,10 +3,12 @@ import { Layers, Lock, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { ModalActions } from '@/components/ui/ModalActions'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { ScrollContainer } from '@/components/ui/ScrollContainer'
+import { ScrollableListLayout } from '@/components/ui/ScrollableListLayout'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { GroupForm } from './GroupForm'
@@ -51,9 +53,16 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
   const [deletingGroup, setDeletingGroup] = useState<GroupWithCount | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [showAddInput, setShowAddInput] = useState(false)
+  const [addInputFocusRequest, setAddInputFocusRequest] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const addInputRef = useRef<HTMLInputElement>(null)
   const prevCountRef = useRef(0)
+
+  function revealAddInput() {
+    setShowAddInput(true)
+    setAddInputFocusRequest((n) => n + 1)
+  }
 
   useEffect(() => {
     function syncLocked() {
@@ -99,6 +108,18 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
     }
     prevCountRef.current = groups.length
   }, [groups.length])
+
+  useEffect(() => {
+    if (groups.length === 0) {
+      setShowAddInput(false)
+    }
+  }, [groups.length])
+
+  useEffect(() => {
+    if (showAddInput) {
+      addInputRef.current?.focus()
+    }
+  }, [showAddInput, addInputFocusRequest])
 
   function handleAdded(group: Group) {
     setGroups((prev) => {
@@ -182,55 +203,93 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
       )}
 
       {groups.length === 0 && !hasLocked ? (
-        <div className="space-y-4">
-          <EmptyState
-            compact
-            icon={<Layers size={24} strokeWidth={1.75} />}
-            title="אין קבוצות עדיין"
-            description="הוסיפו את הקבוצה הראשונה"
-            action={
-              <Button size="sm" className="gap-1.5" onClick={() => addInputRef.current?.focus()}>
-                <Plus size={16} className="shrink-0" strokeWidth={2.5} />
-                הוסף קבוצה
-              </Button>
+        embedded ? (
+          <ScrollableListLayout
+            listRef={listRef}
+            listClassName="py-1"
+            footer={
+              showAddInput ? (
+                <InlineAddGroup
+                  eventId={eventId}
+                  usedColors={usedGroupColors}
+                  onAdded={handleAdded}
+                  onPlanLimit={() => setUpgradeOpen(true)}
+                  nameInputRef={addInputRef}
+                />
+              ) : undefined
             }
-          />
-          <InlineAddGroup
-            eventId={eventId}
-            usedColors={usedGroupColors}
-            onAdded={handleAdded}
-            onPlanLimit={() => setUpgradeOpen(true)}
-            nameInputRef={addInputRef}
-          />
-        </div>
+          >
+            <EmptyState
+              compact
+              icon={<Layers size={24} strokeWidth={1.75} />}
+              title="אין קבוצות עדיין"
+              description="הוסיפו את הקבוצה הראשונה"
+              action={
+                <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
+                  <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+                  הוסף קבוצה
+                </Button>
+              }
+            />
+          </ScrollableListLayout>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <ScrollContainer ref={listRef} stableGutter={false} className="flex-1 py-1 px-0">
+              <EmptyState
+                compact
+                icon={<Layers size={24} strokeWidth={1.75} />}
+                title="אין קבוצות עדיין"
+                description="הוסיפו את הקבוצה הראשונה"
+                action={
+                  <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
+                    <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+                    הוסף קבוצה
+                  </Button>
+                }
+              />
+            </ScrollContainer>
+            {showAddInput && (
+              <div className="shrink-0 pt-3">
+                <InlineAddGroup
+                  eventId={eventId}
+                  usedColors={usedGroupColors}
+                  onAdded={handleAdded}
+                  onPlanLimit={() => setUpgradeOpen(true)}
+                  nameInputRef={addInputRef}
+                />
+              </div>
+            )}
+          </div>
+        )
       ) : embedded ? (
-        <>
-          <div ref={listRef} className="space-y-3 py-1">
-            {groups.length > 0 && (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {groups.map((group) => (
-                  <GroupCard
-                    key={group.id}
-                    group={group}
-                    onEdit={() => handleEdit(group)}
-                    onDelete={() => setDeletingGroup(group)}
-                  />
-                ))}
-              </div>
-            )}
-
-            {hasLocked && (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {lockedGroups.map((group) => (
-                  <LockedGroupCard key={group.id} group={group} />
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="pt-3">
+        <ScrollableListLayout
+          listRef={listRef}
+          listClassName="space-y-3 py-1"
+          footer={
             <InlineAddGroup eventId={eventId} usedColors={usedGroupColors} onAdded={handleAdded} onPlanLimit={() => setUpgradeOpen(true)} />
-          </div>
-        </>
+          }
+        >
+          {groups.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {groups.map((group) => (
+                <GroupCard
+                  key={group.id}
+                  group={group}
+                  onEdit={() => handleEdit(group)}
+                  onDelete={() => setDeletingGroup(group)}
+                />
+              ))}
+            </div>
+          )}
+
+          {hasLocked && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {lockedGroups.map((group) => (
+                <LockedGroupCard key={group.id} group={group} />
+              ))}
+            </div>
+          )}
+        </ScrollableListLayout>
       ) : (
         <ScrollContainer ref={listRef} stableGutter={false} className="flex-1 space-y-3 py-1 px-0">
           {groups.length > 0 && (
@@ -282,14 +341,14 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
           האם אתם בטוחים שברצונכם למחוק את <strong className="text-foreground">{deletingGroup?.name}</strong>?
           כל שיוכי המשתתפים לקבוצה זו יוסרו גם כן. לא ניתן לבטל פעולה זו.
         </p>
-        <div className="mt-4 flex gap-3">
+        <ModalActions className="mt-4 pt-0">
           <Button variant="danger" loading={deleting} onClick={handleDelete}>
             מחיקה
           </Button>
           <Button variant="outline" onClick={() => setDeletingGroup(null)}>
             ביטול
           </Button>
-        </div>
+        </ModalActions>
       </Modal>
 
       <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} eventId={eventId} />

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Modal } from '@/components/ui/Modal'
+import { ModalActions } from '@/components/ui/ModalActions'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { theme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
@@ -123,14 +124,14 @@ export function ActionForm({ eventId, action, isOpen, onClose, onSaved }: Action
           </label>
         )}
 
-        <div className="flex gap-3 pt-2">
+        <ModalActions>
           <Button type="submit" loading={saving}>
             {isEdit ? 'שמירת שינויים' : 'יצירת משימה'}
           </Button>
           <Button type="button" variant="outline" onClick={onClose}>
             ביטול
           </Button>
-        </div>
+        </ModalActions>
       </form>
     </Modal>
   )

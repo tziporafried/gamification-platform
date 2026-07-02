@@ -12,6 +12,7 @@ interface GroupSelectDropdownProps {
   isAllSelected: boolean
   onSelectAll: () => void
   onToggleGroup: (groupId: string, isMember: boolean) => void
+  tone?: 'default' | 'onColor'
 }
 
 const PANEL_WIDTH = 192
@@ -28,6 +29,7 @@ export function GroupSelectDropdown({
   isAllSelected,
   onSelectAll,
   onToggleGroup,
+  tone = 'default',
 }: GroupSelectDropdownProps) {
   const [open, setOpen] = useState(false)
   const [panelStyle, setPanelStyle] = useState<{ top: number; left: number } | null>(null)
@@ -94,12 +96,18 @@ export function GroupSelectDropdown({
         onClick={() => setOpen((prev) => !prev)}
         title={tooltip}
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all border',
-          isAllSelected
-            ? 'border-success text-success bg-surface-elevated hover:bg-surface'
-            : selectedGroups.length > 0
-              ? 'border-primary/30 text-foreground bg-surface-elevated hover:bg-surface'
-              : 'border-border text-muted bg-surface-elevated hover:bg-surface',
+          'inline-flex max-w-full items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all border',
+          tone === 'onColor'
+            ? isAllSelected
+              ? 'border-white/50 text-white bg-white/20 hover:bg-white/30'
+              : selectedGroups.length > 0
+                ? 'border-white/40 text-white bg-white/15 hover:bg-white/25'
+                : 'border-white/30 text-white/80 bg-white/10 hover:bg-white/20'
+            : isAllSelected
+              ? 'border-success text-success bg-surface-elevated hover:bg-surface'
+              : selectedGroups.length > 0
+                ? 'border-primary/30 text-foreground bg-surface-elevated hover:bg-surface hover:border-accent'
+                : 'border-border text-muted bg-surface-elevated hover:bg-surface hover:border-accent',
         )}
       >
         {!isAllSelected && selectedGroups.length > 0 && (
@@ -107,14 +115,14 @@ export function GroupSelectDropdown({
             {selectedGroups.slice(0, 3).map((g) => (
               <span
                 key={g.id}
-                className="h-2 w-2 rounded-full ring-1 ring-surface"
+                className={cn('h-2 w-2 rounded-full ring-1', tone === 'onColor' ? 'ring-white/40' : 'ring-surface')}
                 style={{ backgroundColor: g.color }}
               />
             ))}
           </span>
         )}
-        {label}
-        <ChevronDown size={12} className={cn('transition-transform', open && 'rotate-180')} />
+        <span className="truncate">{label}</span>
+        <ChevronDown size={12} className={cn('shrink-0 transition-transform', open && 'rotate-180')} />
       </button>
 
       {open && panelStyle && createPortal(

@@ -203,7 +203,6 @@ export interface Reward {
   id: string;
   event_id: string;
   name: string;
-  description: string | null;
   required_points: number;
   is_active: boolean;
   created_at: string;
@@ -226,7 +225,6 @@ export interface ParticipantReward {
 export interface NewlyAwardedReward {
   out_reward_id: string;
   out_reward_name: string;
-  out_reward_description: string | null;
   out_required_points: number;
   out_total_points: number;
 }

@@ -7,9 +7,14 @@ export const theme = {
   // Atomic colors
   bg: 'bg-app-radial',
   bgCard: 'bg-surface',
+  bgModal: 'bg-modal',
   bgCardMuted: 'bg-surface-elevated',
   bgInset: 'bg-surface-elevated',
   border: 'border-border',
+  /** Gray bordered surfaces — uniform default + orange hover (wizard & lists) */
+  borderInteractive: 'border border-border transition-colors hover:border-accent',
+  borderInteractiveDashed:
+    'border border-dashed border-border transition-colors hover:border-accent',
   text: 'text-foreground',
   textMuted: 'text-muted',
   textSubtle: 'text-muted',
@@ -70,7 +75,7 @@ export const chipColors = {
   accent: 'border-accent text-accent bg-surface-elevated hover:bg-surface',
   amber: 'border-warning text-warning bg-surface-elevated hover:bg-surface',
   cyan: 'border-secondary text-secondary bg-surface-elevated hover:bg-surface',
-  default: 'border-border text-muted bg-surface-elevated hover:bg-surface',
+  default: 'border-border text-muted bg-surface-elevated hover:bg-surface hover:border-accent',
 } as const
 
 export type ButtonVariant = keyof typeof buttonVariants

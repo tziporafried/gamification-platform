@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { FormLabel } from '@/components/ui/FormLabel'
 import { PanelCard } from '@/components/ui/PanelCard'
+import { cn } from '@/lib/utils'
+import { theme } from '@/lib/theme'
 import type { Event } from '@/types'
 import { supabase } from '@/lib/supabase'
 import { updateTemplateMetadata } from '@/lib/templates'
@@ -190,7 +192,7 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
 
           {logoPreview ? (
             <div className="relative inline-block">
-              <div className="w-28 h-28 rounded-xl border-2 border-border bg-surface flex items-center justify-center overflow-hidden">
+              <div className={cn('w-28 h-28 rounded-xl border bg-surface flex items-center justify-center overflow-hidden', theme.border)}>
                 <img
                   src={logoPreview}
                   alt="סמל הפעילות"
@@ -210,7 +212,10 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
               onClick={() => fileInputRef.current?.click()}
-              className="w-full max-w-sm border-2 border-dashed border-tertiary/40 rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:border-tertiary hover:bg-surface-elevated transition-colors"
+              className={cn(
+                'w-full max-w-sm rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:bg-surface-elevated',
+                theme.borderInteractiveDashed,
+              )}
             >
               <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center">
                 <ImageIcon size={24} className="text-tertiary" />
