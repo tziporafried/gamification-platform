@@ -6,6 +6,7 @@ import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
 import { TaskLimitSelect } from './TaskLimitSelect'
 import { Tooltip, useIsTruncated } from '@/components/ui/Tooltip'
 import { ACTION_CARD_GRADIENT, getActionIcon, getActionIconMotion, getActionIconPlacement } from '@/lib/actionTiers'
+import { theme } from '@/lib/theme'
 import type { ActionWithGroups, Group } from '@/types'
 
 type LimitMode = 'unlimited' | 'once' | 'limited'
@@ -182,7 +183,8 @@ export const ActionRow = memo(function ActionRow({
     <div className="group/card relative">
       <div
         className={cn(
-          'relative overflow-hidden rounded-xl text-white transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card-hover hover:brightness-[1.03] motion-reduce:hover:transform-none motion-reduce:hover:brightness-100',
+          'relative overflow-hidden rounded-xl text-white',
+          theme.wizardListRowHover,
           ACTION_CARD_GRADIENT,
         )}
       >

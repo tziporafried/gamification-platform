@@ -260,6 +260,7 @@ export function RewardRow({
                 onSelectAll={selectAllGroups}
                 onToggleGroup={(groupId) => toggleGroup(groupId)}
                 tone="onColor"
+                size="compact"
               />
             </div>
           )}

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useLayoutEffect, useEffect } from 'react'
+import { useState, useRef, useCallback, useLayoutEffect, useEffect, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -8,15 +8,18 @@ interface GroupSelectDropdownProps {
   groups: Group[]
   selectedGroupIds: Set<string>
   allGroupsLabel?: string
+  emptyLabel?: string
   tooltip?: string
   isAllSelected: boolean
   onSelectAll: () => void
   onToggleGroup: (groupId: string, isMember: boolean) => void
   tone?: 'default' | 'onColor'
-  size?: 'default' | 'compact'
+  size?: 'default' | 'compact' | 'badge'
+  badgeMaxWidth?: number
 }
 
 const PANEL_WIDTH = 192
+export const WIZARD_GROUP_CHIP_MAX_WIDTH = 140
 
 function clampPanelLeft(triggerLeft: number) {
   return Math.max(8, Math.min(triggerLeft, window.innerWidth - PANEL_WIDTH - 8))
@@ -26,12 +29,14 @@ export function GroupSelectDropdown({
   groups,
   selectedGroupIds,
   allGroupsLabel = 'כל הקבוצות',
+  emptyLabel,
   tooltip = 'לאילו קבוצות שייך הפריט',
   isAllSelected,
   onSelectAll,
   onToggleGroup,
   tone = 'default',
   size = 'default',
+  badgeMaxWidth,
 }: GroupSelectDropdownProps) {
   const [open, setOpen] = useState(false)
   const [panelStyle, setPanelStyle] = useState<{ top: number; left: number } | null>(null)
@@ -84,14 +89,33 @@ export function GroupSelectDropdown({
   if (isAllSelected) {
     label = allGroupsLabel
   } else if (selectedGroups.length === 0) {
-    label = allGroupsLabel
+    label = emptyLabel ?? allGroupsLabel
   } else if (selectedGroups.length === 1) {
     label = selectedGroups[0].name
   } else {
     label = `${selectedGroups.length} קבוצות`
   }
 
-  const compact = size === 'compact'
+  const isWizardChip = size === 'compact' || size === 'badge'
+  const compact = isWizardChip
+  const isEmpty = !isAllSelected && selectedGroups.length === 0 && Boolean(emptyLabel)
+  const singleGroupColor = selectedGroups.length === 1 && !isAllSelected && tone === 'default'
+    ? selectedGroups[0].color
+    : null
+
+  const chipMaxWidth = badgeMaxWidth ?? (isWizardChip ? WIZARD_GROUP_CHIP_MAX_WIDTH : undefined)
+
+  const badgeStyle: CSSProperties | undefined = chipMaxWidth || singleGroupColor
+    ? {
+        ...(chipMaxWidth ? { maxWidth: chipMaxWidth } : {}),
+        ...(singleGroupColor
+          ? {
+              borderColor: singleGroupColor,
+              backgroundColor: `color-mix(in srgb, ${singleGroupColor} 18%, transparent)`,
+            }
+          : {}),
+      }
+    : undefined
 
   return (
     <div className="relative" onClick={(e) => e.stopPropagation()}>
@@ -99,24 +123,29 @@ export function GroupSelectDropdown({
         ref={buttonRef}
         onClick={() => setOpen((prev) => !prev)}
         title={tooltip}
+        style={badgeStyle}
         className={cn(
           'inline-flex max-w-full items-center font-medium transition-all border',
-          compact ? 'gap-1 rounded-full px-2 py-0.5 text-[10px]' : 'gap-1.5 rounded-lg px-2.5 py-1 text-[11px]',
+          compact ? 'gap-1 rounded-full px-2 py-0.5 text-[10px] shrink-0 font-normal' : 'gap-1.5 rounded-lg px-2.5 py-1 text-[11px]',
           tone === 'onColor'
             ? isAllSelected
               ? 'border-white/50 text-white bg-white/20 hover:bg-white/30'
               : selectedGroups.length > 0
                 ? 'border-white/40 text-white bg-white/15 hover:bg-white/25'
                 : 'border-white/30 text-white/80 bg-white/10 hover:bg-white/20'
-            : isAllSelected
-              ? 'border-success text-success bg-surface-elevated hover:bg-surface'
-              : selectedGroups.length > 0
-                ? 'border-primary/30 text-foreground bg-surface-elevated hover:bg-surface hover:border-accent'
-                : 'border-border text-muted bg-surface-elevated hover:bg-surface hover:border-accent',
+            : isEmpty
+              ? 'border-border/50 text-muted/75 bg-black/[0.03] hover:bg-black/[0.05] hover:border-border'
+              : singleGroupColor
+                ? 'text-foreground hover:brightness-95'
+                : isAllSelected
+                  ? 'border-success text-success bg-surface-elevated hover:bg-surface'
+                  : selectedGroups.length > 0
+                    ? 'border-primary/30 text-foreground bg-surface-elevated hover:bg-surface hover:border-accent'
+                    : 'border-border text-muted bg-surface-elevated hover:bg-surface hover:border-accent',
         )}
       >
-        {!isAllSelected && selectedGroups.length > 0 && (
-          <span className="flex -space-x-1">
+        {!isAllSelected && selectedGroups.length > 1 && (
+          <span className="flex -space-x-1 shrink-0">
             {selectedGroups.slice(0, 3).map((g) => (
               <span
                 key={g.id}
@@ -126,7 +155,7 @@ export function GroupSelectDropdown({
             ))}
           </span>
         )}
-        <span className={cn(tone === 'onColor' ? 'whitespace-nowrap' : 'truncate')}>{label}</span>
+        <span className={cn('min-w-0', tone === 'onColor' ? 'whitespace-nowrap' : 'truncate')}>{label}</span>
         <ChevronDown size={compact ? 10 : 12} className={cn('shrink-0 transition-transform', open && 'rotate-180')} />
       </button>
 
@@ -134,7 +163,7 @@ export function GroupSelectDropdown({
         <div
           ref={panelRef}
           style={{ position: 'fixed', top: panelStyle.top, left: panelStyle.left, width: PANEL_WIDTH }}
-          className="z-[100] rounded-xl border border-border bg-surface shadow-xl py-1 animate-in fade-in slide-in-from-top-1 duration-150"
+          className="z-[100] rounded-xl border border-border bg-surface shadow-dropdown py-1 animate-in fade-in slide-in-from-top-1 duration-150"
         >
           <div className="px-3 py-1.5 text-[10px] text-muted">{tooltip}</div>
           <button
