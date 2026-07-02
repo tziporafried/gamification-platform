@@ -197,7 +197,7 @@ export const ActionRow = memo(function ActionRow({
             }}
           >
             <ActionIcon
-              size={48}
+              size={30}
               strokeWidth={1.5}
               className="text-white/[0.1] animate-action-icon-float motion-reduce:animate-none"
               style={{
@@ -215,75 +215,45 @@ export const ActionRow = memo(function ActionRow({
           onClick={handleDelete}
         />
 
-        <div className="relative z-10 flex min-h-[3.25rem] items-center gap-2 py-2 pl-10 pr-3">
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <Tooltip
-              content={name}
-              hidden={editingName || !isNameTruncated}
-              className="min-w-0"
+        <div className="relative z-10 flex flex-col gap-2 py-2 pl-9 pr-3">
+          <Tooltip
+            content={name}
+            hidden={editingName || !isNameTruncated}
+            className="min-w-0"
+          >
+            <div
+              className="flex min-w-0 items-center"
+              onClick={() => !editingName && setEditingName(true)}
+              role="button"
+              tabIndex={-1}
             >
-              <div
-                className="flex h-5 min-w-0 items-center"
-                onClick={() => !editingName && setEditingName(true)}
-                role="button"
-                tabIndex={-1}
-              >
-                {editingName ? (
-                  <input
-                    ref={nameRef}
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    onKeyDown={handleNameKey}
-                    onBlur={saveName}
-                    className={cn(
-                      'h-full w-full min-w-0 bg-transparent text-sm font-semibold leading-5 text-white outline-none border-0 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.5)]',
-                      saving && 'opacity-50',
-                    )}
-                    disabled={saving}
-                  />
-                ) : (
-                  <p
-                    ref={nameTextRef}
-                    className="h-full w-full min-w-0 truncate text-sm font-semibold leading-5 cursor-text hover:text-white/90 transition-colors"
-                  >
-                    {name}
-                  </p>
-                )}
-              </div>
-            </Tooltip>
-
-            <div className="flex min-h-[1.375rem] flex-wrap items-center gap-1">
-              <TaskLimitSelect
-                limitMode={limitMode}
-                customLimit={customLimit}
-                editingLimit={editingLimit}
-                limitRef={limitRef}
-                onSaveLimitMode={saveLimitMode}
-                onSetEditingLimit={setEditingLimit}
-                onSetCustomLimit={setCustomLimit}
-                onResetLimit={() => setLimitMode(toLimitMode(action.max_completions))}
-                tone="onColor"
-                size="compact"
-              />
-
-              {groups.length > 0 && (
-                <GroupSelectDropdown
-                  groups={groups}
-                  selectedGroupIds={assignedGroupIds}
-                  isAllSelected={isAllGroups}
-                  tooltip="על אילו קבוצות חלה הפעילות"
-                  onSelectAll={selectAllGroups}
-                  onToggleGroup={(groupId) => toggleGroup(groupId)}
-                  tone="onColor"
-                  size="compact"
+              {editingName ? (
+                <input
+                  ref={nameRef}
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={handleNameKey}
+                  onBlur={saveName}
+                  className={cn(
+                    'h-full w-full min-w-0 bg-transparent text-sm font-semibold leading-tight text-white outline-none border-0 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.5)]',
+                    saving && 'opacity-50',
+                  )}
+                  disabled={saving}
                 />
+              ) : (
+                <p
+                  ref={nameTextRef}
+                  className="h-full w-full min-w-0 truncate text-sm font-semibold leading-tight cursor-text hover:text-white/90 transition-colors"
+                >
+                  {name}
+                </p>
               )}
             </div>
-          </div>
+          </Tooltip>
 
-          <div className="flex shrink-0 items-center">
-            <div className="h-7 w-24 shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex shrink-0 items-center">
               {editingPoints ? (
                 <input
                   ref={pointsRef}
@@ -293,7 +263,7 @@ export const ActionRow = memo(function ActionRow({
                   onKeyDown={handlePointsKey}
                   onBlur={savePoints}
                   className={cn(
-                    'h-full w-full rounded-full bg-white/25 text-center text-xs font-bold leading-none text-white outline-none border border-white/40',
+                    'w-20 rounded-full border border-white/70 bg-white/50 px-3 py-1.5 text-center text-xs font-bold leading-none text-white shadow-md outline-none',
                     saving && 'opacity-50',
                   )}
                   disabled={saving}
@@ -302,12 +272,38 @@ export const ActionRow = memo(function ActionRow({
                 <button
                   type="button"
                   onClick={() => setEditingPoints(true)}
-                  className="inline-flex h-full w-full min-w-0 cursor-text items-center justify-center rounded-full bg-white/20 px-1 text-xs font-bold leading-none transition-colors hover:bg-white/30"
+                  className="inline-flex min-w-[5rem] cursor-text items-center justify-center gap-1.5 rounded-full border border-white/70 bg-white/50 px-3 py-1.5 text-xs font-bold leading-none shadow-md transition-colors hover:bg-white/60"
                 >
-                  <span className="truncate">{pointsLabel}</span>
+                  <span className="text-xs leading-none" aria-hidden>⭐</span>
+                  <span className="truncate tabular-nums">{pointsLabel}</span>
                 </button>
               )}
             </div>
+            <TaskLimitSelect
+              limitMode={limitMode}
+              customLimit={customLimit}
+              editingLimit={editingLimit}
+              limitRef={limitRef}
+              onSaveLimitMode={saveLimitMode}
+              onSetEditingLimit={setEditingLimit}
+              onSetCustomLimit={setCustomLimit}
+              onResetLimit={() => setLimitMode(toLimitMode(action.max_completions))}
+              tone="onColor"
+              size="compact"
+            />
+
+            {groups.length > 0 && (
+              <GroupSelectDropdown
+                groups={groups}
+                selectedGroupIds={assignedGroupIds}
+                isAllSelected={isAllGroups}
+                tooltip="על אילו קבוצות חלה הפעילות"
+                onSelectAll={selectAllGroups}
+                onToggleGroup={(groupId) => toggleGroup(groupId)}
+                tone="onColor"
+                size="compact"
+              />
+            )}
           </div>
         </div>
       </div>

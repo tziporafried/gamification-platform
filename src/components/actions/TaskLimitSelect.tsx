@@ -101,7 +101,7 @@ export function TaskLimitSelect({
   }
 
   return (
-    <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+    <div className="relative flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
       {tone === 'onColor' ? (
         <button
           ref={buttonRef}
@@ -109,13 +109,16 @@ export function TaskLimitSelect({
           onClick={() => setOpen((prev) => !prev)}
           title={limitTooltip}
           className={cn(
-            'inline-flex items-center rounded-full bg-white/20 font-medium text-white transition-colors hover:bg-white/30',
-            compact ? 'gap-1 px-2 py-0.5 text-[10px]' : 'gap-1.5 px-2.5 py-1 text-[11px]',
+            compact ? theme.wizardCompactChip : 'inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-normal transition-all',
+            tone === 'onColor' && 'border-white/50 text-white bg-white/20 hover:bg-white/30',
           )}
         >
-          <Icon size={compact ? 9 : 10} className="shrink-0" />
-          <span className="whitespace-nowrap">{label}</span>
-          <ChevronDown size={compact ? 10 : 12} className={cn('shrink-0 transition-transform', open && 'rotate-180')} />
+          <Icon className="shrink-0" strokeWidth={2} />
+          <span className={cn(compact ? 'whitespace-nowrap' : 'truncate')}>{label}</span>
+          <ChevronDown
+            size={compact ? undefined : 12}
+            className={cn('shrink-0 transition-transform', open && 'rotate-180')}
+          />
         </button>
       ) : (
         <ChipButton

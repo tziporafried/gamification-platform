@@ -31,21 +31,24 @@ function LockedActionCard({ task }: { task: TemplateTask }) {
   return (
     <div className="relative">
       <div className="relative overflow-hidden rounded-xl bg-surface opacity-50 shadow-card select-none">
-        <div className="relative z-10 flex items-center gap-2 px-3 py-2">
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="relative z-10 flex flex-col gap-1 px-3 py-2">
+          <div className="flex min-w-0 items-start justify-between gap-2">
             <TruncatedTooltipText
               text={task.name}
               className="truncate text-sm font-semibold leading-tight text-muted"
             />
-            <span className="inline-flex w-fit rounded-full border border-warning bg-surface-elevated px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-warning">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-elevated">
+              <Lock size={11} className="text-muted" />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-[11px] font-bold leading-none text-muted">
+              <span className="text-[11px] leading-none" aria-hidden>⭐</span>
+              +{task.points.toLocaleString()} נק׳
+            </span>
+            <span className="inline-flex w-fit rounded-full border border-warning bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
               שדרוג נדרש
             </span>
-          </div>
-          <div className="inline-flex h-7 shrink-0 items-center justify-center rounded-full bg-surface-elevated px-2.5 text-xs font-bold text-muted">
-            +{task.points.toLocaleString()} נק׳
-          </div>
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-elevated">
-            <Lock size={12} className="text-muted" />
           </div>
         </div>
       </div>
@@ -183,7 +186,7 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
   const hasLocked = lockedTasks.length > 0
 
   const actionList = actions.length > 0 && (
-    <div className="space-y-1.5 px-1 py-0.5">
+    <div className="space-y-1 px-1 py-0.5">
       {actions.map((action) => (
         <ActionRow
           key={action.id}
@@ -200,7 +203,7 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
   )
 
   const lockedList = hasLocked && (
-    <div className="space-y-1.5 px-1 py-0.5">
+    <div className="space-y-1 px-1 py-0.5">
       {lockedTasks.map((task) => (
         <LockedActionCard key={task.id} task={task} />
       ))}
@@ -231,8 +234,8 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
           >
             <EmptyState
               icon={<CheckSquare size={32} strokeWidth={1.75} />}
-              title="עדיין לא נוספו פעילויות"
-              description="הוסיפו את הפעילות הראשונה שמעניקה נקודות למשתתפים"
+              title="עדיין לא הוספתם פעילויות"
+              description="כל פעילות שתיצרו היא דרך נוספת עבור המשתתפים לצבור נקודות ולהתקדם במשחק."
               action={
                 <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
                   <Plus size={16} className="shrink-0" strokeWidth={2.5} />
@@ -246,8 +249,8 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
             <div ref={listRef} className="flex-1 overflow-y-auto min-h-0">
               <EmptyState
                 icon={<CheckSquare size={32} strokeWidth={1.75} />}
-                title="עדיין לא נוספו פעילויות"
-                description="הוסיפו את הפעילות הראשונה שמעניקה נקודות למשתתפים"
+                title="עדיין לא הוספתם פעילויות"
+                description="כל פעילות שתיצרו היא דרך נוספת עבור המשתתפים לצבור נקודות ולהתקדם במשחק."
                 action={
                   <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
                     <Plus size={16} className="shrink-0" strokeWidth={2.5} />
@@ -274,7 +277,7 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
         <ScrollableListLayout
           className="flex-1 min-h-0"
           listRef={listRef}
-          listClassName="space-y-1.5"
+          listClassName="space-y-1"
           footer={
             <InlineAddAction
               eventId={eventId}
@@ -291,7 +294,7 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
         </ScrollableListLayout>
       ) : (
         <>
-          <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-1.5">
+          <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-1">
             {actionList}
             {lockedList}
           </div>

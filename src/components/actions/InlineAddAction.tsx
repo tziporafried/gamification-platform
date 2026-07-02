@@ -88,7 +88,7 @@ export function InlineAddAction({
       value={name}
       onChange={setName}
       onKeyDown={handleNameKeyDown}
-      placeholder="שם המשימה..."
+      placeholder="שם המשימה - לדוגמה: פתרון חידה, ביקור בתחנה..."
       disabled={saving}
       onSubmit={addAction}
       submitLabel="הוסף פעילות"
@@ -100,6 +100,7 @@ export function InlineAddAction({
           onKeyDown={handlePointsKeyDown}
           inputRef={pointsRef}
           disabled={saving}
+          placeholder="כמה נקודות?"
         />
       }
     />

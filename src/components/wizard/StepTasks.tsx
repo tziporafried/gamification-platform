@@ -25,8 +25,8 @@ export function StepTasks({ eventId, counts, onCountsPatch, onNext, onBack }: St
 
   return (
     <WizardStepWrapper
-      title="מה אפשר לעשות?"
-      subtitle="הוסיפו פעילויות, אתגרים ומשימות שיעניקו נקודות למשתתפים"
+      title="איך המשתתפים יצברו נקודות?"
+      subtitle="צרו פעילויות, משימות ואתגרים שיעניקו נקודות לאורך המשחק. ככל שהמשימות מגוונות יותר – החוויה תהיה מהנה ומאתגרת יותר."
       currentStep={4}
       canAdvance={canAdvance}
       onNext={onNext}

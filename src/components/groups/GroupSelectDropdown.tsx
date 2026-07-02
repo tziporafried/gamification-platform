@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Group } from '@/types'
+import { theme } from '@/lib/theme'
 
 interface GroupSelectDropdownProps {
   groups: Group[]
@@ -118,15 +119,14 @@ export function GroupSelectDropdown({
     : undefined
 
   return (
-    <div className="relative" onClick={(e) => e.stopPropagation()}>
+    <div className="relative flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
       <button
         ref={buttonRef}
         onClick={() => setOpen((prev) => !prev)}
         title={tooltip}
         style={badgeStyle}
         className={cn(
-          'inline-flex max-w-full items-center font-medium transition-all border',
-          compact ? 'gap-1 rounded-full px-2 py-0.5 text-[10px] shrink-0 font-normal' : 'gap-1.5 rounded-lg px-2.5 py-1 text-[11px]',
+          compact ? theme.wizardCompactChip : 'inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-all',
           tone === 'onColor'
             ? isAllSelected
               ? 'border-white/50 text-white bg-white/20 hover:bg-white/30'
@@ -156,7 +156,10 @@ export function GroupSelectDropdown({
           </span>
         )}
         <span className={cn('min-w-0', tone === 'onColor' ? 'whitespace-nowrap' : 'truncate')}>{label}</span>
-        <ChevronDown size={compact ? 10 : 12} className={cn('shrink-0 transition-transform', open && 'rotate-180')} />
+        <ChevronDown
+          size={compact ? undefined : 12}
+          className={cn('shrink-0 transition-transform', open && 'rotate-180')}
+        />
       </button>
 
       {open && panelStyle && createPortal(
