@@ -9,6 +9,8 @@ interface AuthContextType {
   loading: boolean
   signInWithGoogle: (redirectTo?: string) => Promise<void>
   signInWithMagicLink: (email: string, redirectTo?: string) => Promise<{ error?: string }>
+  /** Demo-only: email+password login, only exposed via ?demo=true in the UI */
+  signInWithPassword: (email: string, password: string) => Promise<{ error?: string }>
   signOut: () => Promise<void>
   isSuperAdmin: boolean
   refreshProfile: () => Promise<void>
@@ -84,6 +86,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {}
   }, [])
 
+  // Demo-only: real Supabase email+password auth, intentionally not surfaced in production UI
+  const signInWithPassword = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) return { error: error.message }
+    return {}
+  }, [])
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
     setProfile(null)
@@ -92,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isSuperAdmin = profile?.role === 'super_admin'
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signInWithMagicLink, signOut, isSuperAdmin, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signInWithMagicLink, signInWithPassword, signOut, isSuperAdmin, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

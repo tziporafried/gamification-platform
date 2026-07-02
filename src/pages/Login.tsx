@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { AtmosphericBackground } from '@/components/layout/AtmosphericBackground'
@@ -9,9 +9,13 @@ import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Input } from '@/components/ui/Input'
 
 export function Login() {
-  const { signInWithGoogle, signInWithMagicLink } = useAuth()
+  const { signInWithGoogle, signInWithMagicLink, signInWithPassword } = useAuth()
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const returnTo = searchParams.get('returnTo') || undefined
+
+  // Demo mode is only active when ?demo=true is explicitly present in the URL
+  const isDemoMode = searchParams.get('demo') === 'true'
 
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
@@ -19,6 +23,12 @@ export function Login() {
   const [email, setEmail] = useState('')
   const [magicLinkLoading, setMagicLinkLoading] = useState(false)
   const [magicLinkSent, setMagicLinkSent] = useState(false)
+
+  // Demo-only state — not used unless isDemoMode is true
+  const [demoEmail, setDemoEmail] = useState('')
+  const [demoPassword, setDemoPassword] = useState('')
+  const [demoLoading, setDemoLoading] = useState(false)
+  const [demoError, setDemoError] = useState('')
 
   async function handleGoogleSignIn() {
     setError('')
@@ -29,6 +39,25 @@ export function Login() {
       setError('שגיאה בהתחברות. נסו שוב.')
       setGoogleLoading(false)
     }
+  }
+
+  // Demo-only: authenticates with real Supabase email+password, only reachable via ?demo=true
+  async function handleDemoLogin(e: FormEvent) {
+    e.preventDefault()
+    setDemoError('')
+    const trimmedEmail = demoEmail.trim()
+    if (!trimmedEmail || !demoPassword) {
+      setDemoError('יש להזין אימייל וסיסמה')
+      return
+    }
+    setDemoLoading(true)
+    const result = await signInWithPassword(trimmedEmail, demoPassword)
+    setDemoLoading(false)
+    if (result.error) {
+      setDemoError('פרטי התחברות שגויים')
+      return
+    }
+    navigate(returnTo || '/events')
   }
 
   async function handleMagicLink(e: FormEvent) {
@@ -69,63 +98,99 @@ export function Login() {
           <p className="mt-1 text-sm text-muted">התחברו לפלטפורמה</p>
         </div>
 
-        {error && (
-          <ErrorAlert message={error} className="mb-4" />
-        )}
-
-        {/* Google — Primary */}
-        <Button
-          variant="gradient"
-          size="lg"
-          loading={googleLoading}
-          className="w-full"
-          onClick={handleGoogleSignIn}
-        >
-          <GoogleIcon className="ml-2 h-5 w-5" />
-          התחברות עם Google
-        </Button>
-
-        {/* Divider */}
-        <div className="my-5 flex items-center gap-3">
-          <div className="flex-1 h-px bg-border" />
-          <span className="text-xs text-muted">או</span>
-          <div className="flex-1 h-px bg-border" />
-        </div>
-
-        {/* Magic Link — Secondary */}
-        {magicLinkSent ? (
-          <div className="text-center space-y-2 py-2">
-            <CheckCircle2 size={32} className="mx-auto text-success" />
-            <p className="text-sm font-medium text-foreground">קישור התחברות נשלח למייל שלך</p>
-            <p className="text-xs text-muted">בדוק את תיבת הדואר ולחץ על הקישור</p>
-            <button
-              onClick={() => { setMagicLinkSent(false); setEmail('') }}
-              className="text-xs text-secondary hover:text-accent transition-colors mt-2"
-            >
-              שלח שוב
-            </button>
-          </div>
+        {/* Demo-only: show only email+password form when ?demo=true */}
+        {isDemoMode ? (
+          <>
+            {demoError && <ErrorAlert message={demoError} className="mb-4" />}
+            <form onSubmit={handleDemoLogin} className="space-y-3">
+              <Input
+                id="demo-email"
+                label="אימייל"
+                type="email"
+                placeholder=""
+                value={demoEmail}
+                onChange={(e) => setDemoEmail(e.target.value)}
+                autoComplete="username"
+              />
+              <Input
+                id="demo-password"
+                label="סיסמה"
+                type="password"
+                placeholder=""
+                value={demoPassword}
+                onChange={(e) => setDemoPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+              <Button
+                type="submit"
+                variant="gradient"
+                size="lg"
+                loading={demoLoading}
+                className="w-full"
+              >
+                כניסה
+              </Button>
+            </form>
+          </>
         ) : (
-          <form onSubmit={handleMagicLink} className="space-y-3">
-            <Input
-              id="magic-email"
-              label="כתובת אימייל"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-            />
+          <>
+            {error && <ErrorAlert message={error} className="mb-4" />}
+
+            {/* Google — Primary */}
             <Button
-              type="submit"
-              variant="outline"
-              size="md"
-              loading={magicLinkLoading}
+              variant="gradient"
+              size="lg"
+              loading={googleLoading}
               className="w-full"
+              onClick={handleGoogleSignIn}
             >
-              שלח קישור התחברות
+              <GoogleIcon className="ml-2 h-5 w-5" />
+              התחברות עם Google
             </Button>
-          </form>
+
+            {/* Divider */}
+            <div className="my-5 flex items-center gap-3">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted">או</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+
+            {/* Magic Link — Secondary */}
+            {magicLinkSent ? (
+              <div className="text-center space-y-2 py-2">
+                <CheckCircle2 size={32} className="mx-auto text-success" />
+                <p className="text-sm font-medium text-foreground">קישור התחברות נשלח למייל שלך</p>
+                <p className="text-xs text-muted">בדוק את תיבת הדואר ולחץ על הקישור</p>
+                <button
+                  onClick={() => { setMagicLinkSent(false); setEmail('') }}
+                  className="text-xs text-secondary hover:text-accent transition-colors mt-2"
+                >
+                  שלח שוב
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleMagicLink} className="space-y-3">
+                <Input
+                  id="magic-email"
+                  label="כתובת אימייל"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="md"
+                  loading={magicLinkLoading}
+                  className="w-full"
+                >
+                  שלח קישור התחברות
+                </Button>
+              </form>
+            )}
+          </>
         )}
 
       </div>
