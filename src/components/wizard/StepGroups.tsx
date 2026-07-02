@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react'
-import { Users, Layers, AlertTriangle } from 'lucide-react'
+import { Users, Layers, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { ModalActions } from '@/components/ui/ModalActions'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { cn } from '@/lib/utils'
-import { theme } from '@/lib/theme'
 import { supabase } from '@/lib/supabase'
 import { GroupList } from '@/components/groups/GroupList'
 import { WizardUsageScroll } from './WizardUsageScroll'
@@ -24,23 +24,129 @@ interface StepGroupsProps {
 }
 
 const GROUP_OPTIONS: { type: GroupType; label: string; description: string; icon: typeof Users }[] = [
-  { type: 'none', label: 'כולם יחד', description: 'כל המשתתפים צוברים נקודות באותה טבלה', icon: Users },
-  { type: 'custom', label: 'משפחות וקבוצות', description: 'חלקו את המשתתפים למשפחות, צוותים או קבוצות תחרות', icon: Layers },
+  { type: 'custom', label: 'תחרות בין קבוצות', description: 'המשתתפים יחולקו לקבוצות שיתחרו זו בזו לאורך המשחק.', icon: Layers },
+  { type: 'none', label: 'תחרות בין משתתפים', description: 'כל משתתף יתחרה מול שאר המשתתפים ויצבור נקודות אישיות לאורך המשחק.', icon: Users },
 ]
 
-const GROUP_OPTION_STYLES: Record<GroupType, { card: string; cardSelected: string; iconSelected: string }> = {
-  none: {
-    card: 'bg-[color-mix(in_srgb,var(--color-secondary)_22%,var(--color-surface))]',
-    cardSelected:
-      'bg-[color-mix(in_srgb,var(--color-secondary)_32%,var(--color-surface))] ring-2 ring-secondary border-secondary',
-    iconSelected: 'text-secondary',
-  },
-  custom: {
-    card: 'bg-[color-mix(in_srgb,var(--color-tertiary)_22%,var(--color-surface))]',
-    cardSelected:
-      'bg-[color-mix(in_srgb,var(--color-tertiary)_32%,var(--color-surface))] ring-2 ring-tertiary border-tertiary',
-    iconSelected: 'text-tertiary',
-  },
+const SELECTED_SEGMENT_STYLES = {
+  indicator:
+    'bg-[color-mix(in_srgb,var(--color-tertiary)_11%,var(--color-surface))]',
+  icon: 'text-tertiary',
+  title: 'text-[color-mix(in_srgb,var(--color-tertiary)_88%,var(--color-foreground))]',
+  description: 'text-muted/58',
+} as const
+
+interface CompetitionModeSelectorProps {
+  groupType: GroupType | null
+  onSelect: (type: GroupType) => void
+  compact?: boolean
+}
+
+function CompetitionModeSelector({ groupType, onSelect, compact = false }: CompetitionModeSelectorProps) {
+  const hasSelection = groupType !== null
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label="סוג התחרות"
+      className={cn(
+        'relative grid grid-cols-2 items-stretch gap-0 border border-border bg-surface-elevated p-1',
+        'shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.06)]',
+        'transition-[box-shadow,border-color] duration-200 ease-out',
+        compact ? 'rounded-xl' : 'rounded-2xl',
+      )}
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute top-4 bottom-4 start-1/2 z-20 w-px -translate-x-1/2 bg-border/70"
+      />
+      <div
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute rounded-xl',
+          SELECTED_SEGMENT_STYLES.indicator,
+          'transition-[inset-inline-start,inset-inline-end,opacity,background-color] duration-200 ease-out',
+          compact ? 'top-1.5 bottom-1.5' : 'top-2 bottom-2',
+          !hasSelection && 'opacity-0',
+          groupType === 'custom' && 'start-1.5 end-[calc(50%+1px)]',
+          groupType === 'none' && 'start-[calc(50%+1px)] end-1.5',
+        )}
+      />
+
+      {GROUP_OPTIONS.map(({ type, label, description, icon: Icon }) => {
+        const isSelected = groupType === type
+
+        return (
+          <button
+            key={type}
+            type="button"
+            role="radio"
+            aria-checked={isSelected}
+            onClick={() => onSelect(type)}
+            className={cn(
+              'group/segment relative z-10 flex h-full w-full min-w-0 cursor-pointer items-center justify-center text-center',
+              'rounded-xl transition-[color,background-color] duration-200 ease-out',
+              'focus:outline-none focus-visible:ring-1 focus-visible:ring-tertiary/35 focus-visible:ring-offset-0',
+              compact
+                ? 'min-h-[2.375rem] flex-row gap-2.5 px-4 py-2.5'
+                : 'min-h-[9.5rem] flex-col gap-6 px-7 py-7',
+              isSelected
+                ? SELECTED_SEGMENT_STYLES.title
+                : cn(
+                    'text-foreground/85',
+                    'hover:bg-[color-mix(in_srgb,var(--color-foreground)_3%,var(--color-surface))]',
+                  ),
+            )}
+          >
+            <span
+              className={cn(
+                'inline-flex shrink-0 items-center justify-center transition-colors duration-200 ease-out',
+                compact ? 'h-6 w-6' : 'h-[3.25rem] w-[3.25rem]',
+              )}
+            >
+              <Icon
+                size={compact ? 25 : 52}
+                strokeWidth={compact ? 2 : 1.55}
+                className={cn(
+                  'shrink-0 transition-colors duration-200 ease-out',
+                  isSelected ? SELECTED_SEGMENT_STYLES.icon : 'text-muted/68',
+                )}
+              />
+            </span>
+            <div
+              className={cn(
+                'flex min-w-0 flex-col items-center',
+                !compact && 'max-w-[11.5rem]',
+              )}
+            >
+              <span
+                className={cn(
+                  'block transition-colors duration-200 ease-out',
+                  compact
+                    ? cn('text-xs leading-tight', isSelected ? 'font-bold' : 'font-semibold')
+                    : cn('text-base leading-snug', isSelected ? 'font-bold' : 'font-semibold'),
+                )}
+              >
+                {label}
+              </span>
+              {!compact && (
+                <span
+                  className={cn(
+                    'mt-3 block min-h-[2.75rem] text-[11px] leading-relaxed transition-colors duration-200 ease-out',
+                    isSelected
+                      ? cn(SELECTED_SEGMENT_STYLES.description, 'font-normal')
+                      : 'font-normal text-muted/62',
+                  )}
+                >
+                  {description}
+                </span>
+              )}
+            </div>
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 export function StepGroups({
@@ -94,114 +200,76 @@ export function StepGroups({
     onCountsPatch({ groups: 0 })
   }
 
-  function renderGroupOptions(compact: boolean) {
-    return GROUP_OPTIONS.map(({ type, label, description, icon: Icon }) => {
-      const optionStyles = GROUP_OPTION_STYLES[type]
-      const isSelected = groupType === type
-
-      return (
-        <button
-          key={type}
-          type="button"
-          onClick={() => handleOptionClick(type)}
-          className={cn('w-full text-right', !compact && 'h-full')}
-        >
-          <div
-            className={cn(
-              'rounded-xl border shadow-none',
-              'flex h-full w-full cursor-pointer transition-all duration-200 justify-center',
-              compact
-                ? cn(
-                    'min-h-0 py-1.5 px-2.5 flex-row items-center gap-1.5 text-right rounded-lg',
-                    isSelected
-                      ? cn(
-                          'ring-1 shadow-sm font-semibold',
-                          'bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-surface))] ring-primary border-primary',
-                        )
-                      : cn(
-                          'bg-surface opacity-75',
-                          theme.borderInteractive,
-                        ),
-                  )
-                : cn(
-                    'p-6 flex-col items-center gap-3 text-center',
-                    'hover:shadow-card-hover hover:-translate-y-0.5',
-                    optionStyles.card,
-                    isSelected
-                      ? optionStyles.cardSelected
-                      : theme.borderInteractive,
-                  ),
-            )}
-          >
-            <Icon
-              size={compact ? 16 : 32}
-              className={cn(
-                'shrink-0 transition-colors',
-                compact
-                  ? isSelected ? 'text-primary' : 'text-muted'
-                  : isSelected ? optionStyles.iconSelected : 'text-muted',
-              )}
-            />
-            <div className={cn(!compact && 'flex flex-1 flex-col items-center')}>
-              <span className={cn(
-                'font-medium',
-                compact
-                  ? isSelected
-                    ? 'font-semibold text-primary'
-                    : 'font-medium text-muted'
-                  : 'text-foreground',
-                compact ? 'text-xs' : 'text-base',
-              )}>
-                {label}
-              </span>
-              {!compact && (
-                <span className="mt-1 block min-h-[2.75rem] text-xs text-muted">{description}</span>
-              )}
-            </div>
-          </div>
-        </button>
-      )
-    })
-  }
-
   const compactGroupModeHeader = (
     <div className="shrink-0 px-1 pb-3">
-      <div className="grid grid-cols-2 gap-4 px-1">
-        {renderGroupOptions(true)}
-      </div>
+      <CompetitionModeSelector
+        groupType={groupType}
+        onSelect={handleOptionClick}
+        compact
+      />
     </div>
   )
 
   return (
     <WizardStepWrapper
       title="איך תרצו לשחק?"
-      subtitle="אפשר לשחק יחד או לחלק את המשתתפים לקבוצות ומשפחות"
+      subtitle="בחרו האם התחרות תהיה בין קבוצות או בין המשתתפים עצמם."
       currentStep={2}
       canAdvance={canAdvance}
       onNext={onNext}
       onBack={onBack}
     >
-      <div className="flex h-full flex-col min-h-0">
-        {!showGroupSetup && (
-          <div className="shrink-0 space-y-4">
-            <div className="grid grid-cols-2 items-stretch gap-3 p-1">
-              {renderGroupOptions(false)}
-            </div>
+      <div className="relative flex h-full min-h-0 flex-col">
+        <div
+          className={cn(
+            'flex h-full min-h-0 flex-col transition-opacity duration-150 ease-out',
+            !showGroupSetup
+              ? 'relative z-10 opacity-100'
+              : 'pointer-events-none absolute inset-0 z-0 opacity-0',
+          )}
+        >
+          <div className="shrink-0 p-1">
+            <CompetitionModeSelector
+              groupType={groupType}
+              onSelect={handleOptionClick}
+            />
           </div>
-        )}
 
-        {showGroupSetup && (
-          <div className="flex min-h-0 flex-1 flex-col">
-            <WizardUsageScroll className="h-full min-h-0 flex-1">
-              <GroupList
-                embedded
-                eventId={eventId}
-                header={compactGroupModeHeader}
-                onCountChange={handleCountChange}
-              />
-            </WizardUsageScroll>
+          <div
+            className={cn(
+              'flex min-h-[10rem] flex-1 flex-col items-center justify-center px-1 pt-2 transition-all duration-150 ease-out',
+              groupType === 'none' ? 'opacity-100' : 'pointer-events-none opacity-0',
+            )}
+            aria-hidden={groupType !== 'none'}
+          >
+            <EmptyState
+              compact
+              variant="solid"
+              icon={<CheckCircle2 size={28} strokeWidth={1.75} className="text-success" />}
+              title="מעולה!"
+              description="כל משתתף יתחרה באופן עצמאי ואין צורך להגדיר קבוצות."
+              className="w-full"
+            />
           </div>
-        )}
+        </div>
+
+        <div
+          className={cn(
+            'flex min-h-0 flex-1 flex-col transition-opacity duration-150 ease-out',
+            showGroupSetup
+              ? 'relative z-10 opacity-100'
+              : 'pointer-events-none absolute inset-0 z-0 opacity-0',
+          )}
+        >
+          <WizardUsageScroll className="h-full min-h-0 flex-1">
+            <GroupList
+              embedded
+              eventId={eventId}
+              header={compactGroupModeHeader}
+              onCountChange={handleCountChange}
+            />
+          </WizardUsageScroll>
+        </div>
       </div>
 
       <Modal

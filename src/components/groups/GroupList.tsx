@@ -230,9 +230,9 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
           >
             <EmptyState
               compact
-              icon={<Layers size={24} strokeWidth={1.75} />}
+              icon={<Layers size={24} strokeWidth={1.75} className="text-tertiary" />}
               title="אין קבוצות עדיין"
-              description="הוסיפו את הקבוצה הראשונה"
+              description="הוסיפו את הקבוצה הראשונה כדי להתחיל את התחרות."
               action={
                 <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
                   <Plus size={16} className="shrink-0" strokeWidth={2.5} />
@@ -246,9 +246,9 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
             <ScrollContainer ref={listRef} stableGutter={false} className="flex-1 py-1 px-0">
               <EmptyState
                 compact
-                icon={<Layers size={24} strokeWidth={1.75} />}
+                icon={<Layers size={24} strokeWidth={1.75} className="text-tertiary" />}
                 title="אין קבוצות עדיין"
-                description="הוסיפו את הקבוצה הראשונה"
+                description="הוסיפו את הקבוצה הראשונה כדי להתחיל את התחרות."
                 action={
                   <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
                     <Plus size={16} className="shrink-0" strokeWidth={2.5} />
@@ -281,7 +281,7 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
           }
         >
           {groups.length > 0 && (
-            <div className="grid gap-4 px-1 py-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 items-stretch gap-4 px-1 py-1 sm:grid-cols-2 lg:grid-cols-3">
               {groups.map((group) => (
                 <GroupCard
                   key={group.id}
@@ -294,7 +294,7 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
           )}
 
           {hasLocked && (
-            <div className="grid gap-4 px-1 py-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 items-stretch gap-4 px-1 py-1 sm:grid-cols-2 lg:grid-cols-3">
               {lockedGroups.map((group) => (
                 <LockedGroupCard key={group.id} group={group} />
               ))}
@@ -304,7 +304,7 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
       ) : (
         <ScrollContainer ref={listRef} stableGutter={false} className="flex-1 space-y-3 py-1 px-0">
           {groups.length > 0 && (
-            <div className="grid gap-4 px-1 py-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 items-stretch gap-4 px-1 py-1 sm:grid-cols-2 lg:grid-cols-3">
               {groups.map((group) => (
                 <GroupCard
                   key={group.id}
@@ -317,7 +317,7 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
           )}
 
           {hasLocked && (
-            <div className="grid gap-4 px-1 py-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 items-stretch gap-4 px-1 py-1 sm:grid-cols-2 lg:grid-cols-3">
               {lockedGroups.map((group) => (
                 <LockedGroupCard key={group.id} group={group} />
               ))}

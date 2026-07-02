@@ -116,7 +116,7 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
   }
 
   return (
-    <div className="group/card relative">
+    <div className="group/card relative h-full">
       <div
         className={cn(
           'relative overflow-hidden rounded-2xl text-white transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card-hover hover:brightness-[1.03] motion-reduce:hover:transform-none motion-reduce:hover:brightness-100',
