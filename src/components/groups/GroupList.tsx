@@ -26,17 +26,23 @@ interface GroupListProps {
 
 function LockedGroupCard({ group }: { group: ActivityTemplateGroup }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border bg-surface opacity-50 select-none">
-      <div className="h-1.5 w-full bg-border" />
-      <div className="p-4">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-elevated">
-            <Lock size={12} className="text-muted" />
+    <div className="relative">
+      <div className="relative overflow-hidden rounded-2xl bg-surface opacity-50 select-none">
+        <div className="relative z-10 flex min-h-[8.5rem] flex-col items-center justify-center gap-2 px-4 py-5 text-center">
+          <div className="pointer-events-none flex h-8 w-8 items-center justify-center rounded-xl bg-surface-elevated opacity-50 shadow-sm">
+            <Lock size={16} className="text-muted" />
           </div>
-          <span className="flex-1 truncate text-sm font-semibold text-muted">{group.name}</span>
-          <span className="shrink-0 rounded-full border border-warning bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-muted">
             פרמיום
+          </div>
+          <span className="w-full min-w-0 truncate text-xl font-bold leading-9 text-muted">
+            {group.name}
           </span>
+          <div className="flex justify-center">
+            <span className="rounded-full border border-warning bg-surface-elevated px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
+              שדרוג נדרש
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -270,7 +276,7 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
           }
         >
           {groups.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 px-1 py-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {groups.map((group) => (
                 <GroupCard
                   key={group.id}
@@ -283,7 +289,7 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
           )}
 
           {hasLocked && (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 px-1 py-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {lockedGroups.map((group) => (
                 <LockedGroupCard key={group.id} group={group} />
               ))}
@@ -293,7 +299,7 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
       ) : (
         <ScrollContainer ref={listRef} stableGutter={false} className="flex-1 space-y-3 py-1 px-0">
           {groups.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 px-1 py-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {groups.map((group) => (
                 <GroupCard
                   key={group.id}
@@ -306,7 +312,7 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
           )}
 
           {hasLocked && (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 px-1 py-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {lockedGroups.map((group) => (
                 <LockedGroupCard key={group.id} group={group} />
               ))}

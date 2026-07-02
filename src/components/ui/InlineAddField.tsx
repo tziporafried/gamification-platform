@@ -64,19 +64,24 @@ export function InlineAddField({
       />
       {trailing}
       {onSubmit && showSubmit !== false && (
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={!canSubmit}
-          className={cn(
-            'shrink-0 text-xs font-medium transition-colors',
-            canSubmit
-              ? 'text-primary hover:text-primary-hover'
-              : 'text-muted cursor-default',
+        <>
+          {trailing != null && (
+            <span className="mx-0.5 h-4 w-px shrink-0 bg-border" aria-hidden />
           )}
-        >
-          {submitLabel}
-        </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            className={cn(
+              'shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-all',
+              canSubmit
+                ? 'border-transparent bg-primary text-[var(--color-on-primary)] hover:bg-primary-hover active:scale-[0.97]'
+                : 'cursor-not-allowed border-border bg-surface text-muted',
+            )}
+          >
+            {submitLabel}
+          </button>
+        </>
       )}
     </div>
   )

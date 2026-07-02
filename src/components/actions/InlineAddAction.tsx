@@ -94,19 +94,21 @@ export function InlineAddAction({
       submitLabel="הוסף פעילות"
       inputRef={nameRef}
       trailing={
-        <input
-          ref={pointsRef}
-          type="number"
-          value={points}
-          onChange={(e) => setPoints(e.target.value)}
-          onKeyDown={handlePointsKeyDown}
-          placeholder="נק׳"
-          className={cn(
-            'w-16 bg-transparent text-sm text-center text-success font-bold outline-none border-b border-border focus:border-secondary placeholder-muted',
-            saving && 'opacity-50',
-          )}
-          disabled={saving}
-        />
+        <div className="flex shrink-0 items-center gap-1">
+          <input
+            ref={pointsRef}
+            type="number"
+            value={points}
+            onChange={(e) => setPoints(e.target.value)}
+            onKeyDown={handlePointsKeyDown}
+            className={cn(
+              'w-12 bg-transparent text-sm text-center text-success font-bold outline-none border-b border-border focus:border-secondary',
+              saving && 'opacity-50',
+            )}
+            disabled={saving}
+          />
+          <span className="text-xs text-muted">נקודות</span>
+        </div>
       }
     />
   )
