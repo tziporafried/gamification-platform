@@ -135,7 +135,6 @@ interface ReadyCelebrationBannerProps {
   title: string
   description: string
   celebrate: boolean
-  replayKey: number
   collapsed?: boolean
   footerNote?: string
   children?: ReactNode
@@ -145,7 +144,6 @@ export function ReadyCelebrationBanner({
   title,
   description,
   celebrate,
-  replayKey,
   collapsed = false,
   footerNote,
   children,
@@ -184,7 +182,7 @@ export function ReadyCelebrationBanner({
               transition={{ type: 'spring', stiffness: 320, damping: 24 }}
               className="overflow-visible py-1"
             >
-              <FestiveSuccessIcon key={replayKey} celebrate={celebrate} replayKey={replayKey} />
+              <FestiveSuccessIcon />
             </motion.div>
           )}
         </AnimatePresence>
@@ -240,251 +238,76 @@ export function ReadyCelebrationBanner({
   )
 }
 
-const ICON_BURST_COLORS = [
-  'var(--color-success)',
-  'var(--color-secondary)',
-  'var(--color-warning)',
-  'var(--color-primary)',
-]
-
-const ICON_ORBIT_FLASHES = [
-  { color: 'var(--color-warning)', radius: 34, size: 4 },
-  { color: 'var(--color-success)', radius: 34, size: 3 },
-  { color: 'var(--color-secondary)', radius: 34, size: 3.5 },
-  { color: 'var(--color-primary)', radius: 34, size: 3 },
-  { color: 'var(--color-warning)', radius: 26, size: 2.5 },
-  { color: 'var(--color-success)', radius: 26, size: 2.5 },
-] as const
-
-function FestiveSuccessIcon({
-  celebrate,
-  replayKey,
-  compact = false,
-}: {
-  celebrate: boolean
-  replayKey: number
-  compact?: boolean
-}) {
+function FestiveSuccessIcon() {
   const reducedMotion = usePrefersReducedMotion()
-  const burstParticles = useMemo(
-    () =>
-      Array.from({ length: 10 }, (_, i) => ({
-        id: i,
-        angle: (i / 10) * Math.PI * 2 + Math.random() * 0.4,
-        distance: compact ? 20 + Math.random() * 12 : 28 + Math.random() * 18,
-        size: 3 + Math.random() * 3,
-        color: ICON_BURST_COLORS[i % ICON_BURST_COLORS.length],
-        delay: Math.random() * 0.08,
-      })),
-    [replayKey, compact],
-  )
 
-  const outerSize = compact ? 'h-[3.25rem] w-[3.25rem]' : 'h-[4.5rem] w-[4.5rem]'
-  const innerSize = compact ? 'h-9 w-9' : 'h-12 w-12'
-  const svgSize = compact ? 'h-5 w-5' : 'h-7 w-7'
-  const rippleSize = compact ? '2.25rem' : '3rem'
-
-  if (reducedMotion) {
-    return (
-      <div className={cn('flex items-center justify-center rounded-full bg-success/15 ring-2 ring-success/30', innerSize)}>
-        <CheckCircle2 size={compact ? 20 : 28} className="text-success" strokeWidth={2.25} />
-      </div>
-    )
-  }
+  const greenDeep = 'color-mix(in srgb, var(--color-success) 72%, black)'
+  const greenMid = 'var(--color-success)'
+  const greenLight = 'color-mix(in srgb, var(--color-success) 38%, white)'
+  const greenSoft = 'color-mix(in srgb, var(--color-success) 18%, white)'
+  const ringGradient = `conic-gradient(from 0deg, ${greenDeep}, ${greenMid}, ${greenLight}, ${greenSoft}, ${greenDeep})`
+  const glowSoft = '0 0 10px color-mix(in srgb, var(--color-success) 30%, transparent)'
+  const glowBright = '0 0 26px color-mix(in srgb, var(--color-success) 65%, transparent)'
 
   return (
-    <div className={cn('relative flex items-center justify-center overflow-visible', outerSize)}>
-      {[0, 1, 2].map((i) => (
-        <div key={`ripple-wrap-${replayKey}-${i}`} className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
-          <motion.div
-            className="rounded-full border-2"
-            style={{
-              width: rippleSize,
-              height: rippleSize,
-              borderColor:
-                i === 0
-                  ? 'color-mix(in srgb, var(--color-secondary) 45%, transparent)'
-                  : 'color-mix(in srgb, var(--color-success) 40%, transparent)',
-            }}
-            initial={{ scale: 0.75, opacity: 0 }}
-            animate={{ scale: [0.75, compact ? 2 + i * 0.15 : 2.5 + i * 0.2], opacity: [0.65, 0] }}
-            transition={{
-              duration: 1.8,
-              repeat: Infinity,
-              delay: i * 0.5,
-              ease: 'easeOut',
-            }}
-          />
-        </div>
+    <div className="relative flex h-[4.75rem] w-[4.75rem] items-center justify-center" aria-hidden="true">
+      {[0, 1].map((i) => (
+        <motion.div
+          key={`burst-${i}`}
+          className="pointer-events-none absolute inset-2 rounded-full border-2 border-success/70"
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={
+            reducedMotion
+              ? undefined
+              : { scale: [0.9, 1.45], opacity: [0.75, 0] }
+          }
+          transition={{
+            duration: 1.6,
+            repeat: Infinity,
+            ease: 'easeOut',
+            delay: i * 0.8,
+          }}
+        />
       ))}
 
       <motion.div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        animate={{ rotate: 360 }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+        className="absolute inset-0 rounded-full p-[4px]"
+        style={{ background: ringGradient }}
+        animate={
+          reducedMotion
+            ? undefined
+            : {
+                opacity: [0.55, 1, 0.55],
+                scale: [1, 1.05, 1],
+                boxShadow: [glowSoft, glowBright, glowSoft],
+              }
+        }
+        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
       >
-        {ICON_ORBIT_FLASHES.map((flash, i) => (
-          <div
-            key={`orbit-${i}`}
-            className="absolute inset-0"
-            style={{ transform: `rotate(${(360 / ICON_ORBIT_FLASHES.length) * i}deg)` }}
-          >
-            <motion.div
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-              style={{
-                width: flash.size,
-                height: flash.size,
-                transform: `translate(-50%, -50%) translateY(-${compact ? flash.radius - 10 : flash.radius}px)`,
-                backgroundColor: flash.color,
-                boxShadow: `0 0 8px color-mix(in srgb, ${flash.color} 60%, transparent)`,
-              }}
-              animate={{ scale: [0.85, 1.4, 0.85], opacity: [0.55, 1, 0.55] }}
-              transition={{
-                duration: 1.2 + i * 0.08,
-                repeat: Infinity,
-                ease: 'easeInOut',
-                delay: i * 0.1,
-              }}
-            />
-          </div>
-        ))}
+        <div className="h-full w-full rounded-full bg-surface-elevated" />
       </motion.div>
 
       <motion.div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        animate={{ rotate: -360 }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+        className="absolute inset-[7px] rounded-full p-[3px]"
+        style={{ background: ringGradient }}
+        animate={
+          reducedMotion
+            ? undefined
+            : {
+                opacity: [0.4, 0.95, 0.4],
+                scale: [1, 1.03, 1],
+              }
+        }
+        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut', delay: 0.35 }}
       >
-        {[0, 1, 2, 3].map((i) => (
-          <div
-            key={`orbit-inner-${i}`}
-            className="absolute inset-0"
-            style={{ transform: `rotate(${i * 90 + 45}deg)` }}
-          >
-            <motion.div
-              className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-success/80"
-              style={{
-                transform: `translate(-50%, -50%) translateY(-${compact ? 30 : 36}px)`,
-                boxShadow: '0 0 6px color-mix(in srgb, var(--color-success) 55%, transparent)',
-              }}
-              animate={{ scale: [0.6, 1.2, 0.6], opacity: [0.4, 1, 0.4] }}
-              transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut', delay: i * 0.15 }}
-            />
-          </div>
-        ))}
+        <div className="h-full w-full rounded-full bg-surface-elevated" />
       </motion.div>
 
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
-        <motion.div
-          className={cn('rounded-full border-2 border-secondary/40', compact ? 'h-10 w-10' : 'h-14 w-14')}
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: [1, 1.06, 1], opacity: [0.45, 0.9, 0.45], rotate: 360 }}
-          transition={{
-            scale: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.08 },
-            opacity: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.08 },
-            rotate: { duration: 8, repeat: Infinity, ease: 'linear', delay: 0.08 },
-          }}
-        />
-      </div>
-
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
-        <motion.div
-          className={cn('rounded-full border-2 border-success/50', compact ? 'h-9 w-9' : 'h-[3.25rem] w-[3.25rem]')}
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: [1, 1.08, 1], opacity: [0.4, 1, 0.4], rotate: -360 }}
-          transition={{
-            scale: { duration: 1.6, repeat: Infinity, ease: 'easeInOut', delay: 0.14 },
-            opacity: { duration: 1.6, repeat: Infinity, ease: 'easeInOut', delay: 0.14 },
-            rotate: { duration: 5.5, repeat: Infinity, ease: 'linear', delay: 0.14 },
-          }}
-        />
-      </div>
-
-      {celebrate &&
-        burstParticles.map((p) => (
-          <motion.div
-            key={p.id}
-            aria-hidden="true"
-            className="pointer-events-none absolute rounded-full"
-            style={{
-              width: p.size,
-              height: p.size,
-              backgroundColor: p.color,
-            }}
-            initial={{ x: 0, y: 0, scale: 0, opacity: 1 }}
-            animate={{
-              x: Math.cos(p.angle) * p.distance,
-              y: Math.sin(p.angle) * p.distance,
-              scale: 1,
-              opacity: 0,
-            }}
-            transition={{ duration: 0.75, delay: 1.05 + p.delay, ease: 'easeOut' }}
-          />
-        ))}
-
       <motion.div
-        className={cn(
-          'relative z-10 flex items-center justify-center rounded-full bg-success/15 ring-2 ring-success/30',
-          innerSize,
-        )}
-        initial={{ scale: 0.2 }}
-        animate={{
-          scale: [1, 1.05, 1],
-          boxShadow: [
-            '0 0 18px color-mix(in srgb, var(--color-success) 25%, transparent)',
-            '0 0 36px color-mix(in srgb, var(--color-success) 55%, transparent)',
-            '0 0 18px color-mix(in srgb, var(--color-success) 25%, transparent)',
-          ],
-        }}
-        transition={{
-          scale: { duration: 0.9, delay: 0.12, ease: [0.22, 1, 0.36, 1] },
-          boxShadow: { duration: 1.8, repeat: Infinity, ease: 'easeInOut', delay: 0.5 },
-        }}
+        animate={reducedMotion ? undefined : { scale: [1, 1.1, 1] }}
+        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut', delay: 0.15 }}
       >
-        <motion.div
-          animate={
-            celebrate
-              ? { scale: [1, 1.18, 0.96, 1.05, 1] }
-              : { scale: [1, 1.1, 1] }
-          }
-          transition={
-            celebrate
-              ? { duration: 1.05, delay: 1.05, ease: [0.22, 1, 0.36, 1] }
-              : { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }
-          }
-        >
-          <svg
-            key={`check-${replayKey}`}
-            viewBox="0 0 24 24"
-            className={cn('text-success', svgSize)}
-            aria-hidden="true"
-          >
-            <motion.circle
-              cx="12"
-              cy="12"
-              r="9"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 1 }}
-              transition={{ duration: 0.85, delay: 0.55, ease: 'easeInOut' }}
-            />
-            <motion.path
-              d="M7.5 12.2 10.8 15.5 16.5 9"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 1 }}
-              transition={{ duration: 0.95, delay: 1.15, ease: [0.22, 1, 0.36, 1] }}
-            />
-          </svg>
-        </motion.div>
+        <CheckCircle2 size={32} className="relative z-10 text-success" strokeWidth={2.5} />
       </motion.div>
     </div>
   )

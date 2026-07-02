@@ -157,7 +157,6 @@ export function StepReviewGenerate({
                 transition={{ type: 'spring', stiffness: 280, damping: 22 }}
               >
                 <ReadyCelebrationBanner
-                  replayKey={animationKey}
                   title="התבנית מוכנה"
                   description="השינויים נשמרים אוטומטית. לחצו «סיום עריכה» לחזרה לניהול התבניות."
                   celebrate={false}
@@ -179,7 +178,6 @@ export function StepReviewGenerate({
                 {cardsGenerated && (
                   <div className="mb-5 shrink-0">
                     <ReadyCelebrationBanner
-                      replayKey={animationKey}
                       title="🎉 הכול מוכן!"
                       description="המשחק מוכן להפעלה. אפשר להדפיס את הכרטיסים ולהתחיל את הפעילות."
                       celebrate={celebrate}
@@ -208,7 +206,6 @@ export function StepReviewGenerate({
                   {!cardsGenerated && (
                     <div className="mb-3 shrink-0">
                       <ReadyCelebrationBanner
-                        replayKey={animationKey}
                         title="🎉 הכול מוכן!"
                         description="המשחק מוכן להפעלה. אפשר להדפיס את הכרטיסים ולהתחיל את הפעילות."
                         celebrate={celebrate}
