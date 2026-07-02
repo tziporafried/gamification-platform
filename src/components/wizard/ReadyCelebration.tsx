@@ -152,7 +152,6 @@ export function ReadyCelebrationBanner({
 
   return (
     <motion.div
-      layout
       className={cn(
         'relative overflow-visible rounded-2xl border border-border bg-surface-elevated shadow-card',
         collapsed ? 'px-4 py-3' : 'px-5 py-5',
@@ -189,7 +188,6 @@ export function ReadyCelebrationBanner({
 
         <div className={cn('w-full', !collapsed && 'space-y-1')}>
           <motion.p
-            layout
             className={cn(
               'font-semibold text-success',
               collapsed ? 'text-sm' : 'text-base',
@@ -218,7 +216,6 @@ export function ReadyCelebrationBanner({
 
         {children && (
           <motion.div
-            layout
             className={cn(
               'w-full',
               collapsed ? 'pt-0' : 'border-t border-border/50 pt-4',
@@ -246,21 +243,26 @@ function FestiveSuccessIcon() {
   const greenLight = 'color-mix(in srgb, var(--color-success) 38%, white)'
   const greenSoft = 'color-mix(in srgb, var(--color-success) 18%, white)'
   const ringGradient = `conic-gradient(from 0deg, ${greenDeep}, ${greenMid}, ${greenLight}, ${greenSoft}, ${greenDeep})`
-  const glowSoft = '0 0 10px color-mix(in srgb, var(--color-success) 30%, transparent)'
-  const glowBright = '0 0 26px color-mix(in srgb, var(--color-success) 65%, transparent)'
+
+  if (reducedMotion) {
+    return (
+      <div className="relative flex h-[4.75rem] w-[4.75rem] items-center justify-center" aria-hidden="true">
+        <div className="absolute inset-0 rounded-full p-[4px]" style={{ background: ringGradient }}>
+          <div className="h-full w-full rounded-full bg-surface-elevated" />
+        </div>
+        <CheckCircle2 size={32} className="relative z-10 text-success" strokeWidth={2.5} />
+      </div>
+    )
+  }
 
   return (
-    <div className="relative flex h-[4.75rem] w-[4.75rem] items-center justify-center" aria-hidden="true">
+    <div className="relative flex h-[4.75rem] w-[4.75rem] items-center justify-center overflow-visible" aria-hidden="true">
       {[0, 1].map((i) => (
         <motion.div
           key={`burst-${i}`}
           className="pointer-events-none absolute inset-2 rounded-full border-2 border-success/70"
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={
-            reducedMotion
-              ? undefined
-              : { scale: [0.9, 1.45], opacity: [0.75, 0] }
-          }
+          initial={false}
+          animate={{ scale: [0.95, 1.4], opacity: [0.7, 0] }}
           transition={{
             duration: 1.6,
             repeat: Infinity,
@@ -271,17 +273,21 @@ function FestiveSuccessIcon() {
       ))}
 
       <motion.div
+        className="pointer-events-none absolute inset-0 rounded-full"
+        initial={false}
+        animate={{ opacity: [0.2, 0.65, 0.2], scale: [0.98, 1.08, 0.98] }}
+        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+        style={{
+          background:
+            'radial-gradient(circle, color-mix(in srgb, var(--color-success) 45%, transparent) 0%, transparent 70%)',
+        }}
+      />
+
+      <motion.div
         className="absolute inset-0 rounded-full p-[4px]"
         style={{ background: ringGradient }}
-        animate={
-          reducedMotion
-            ? undefined
-            : {
-                opacity: [0.55, 1, 0.55],
-                scale: [1, 1.05, 1],
-                boxShadow: [glowSoft, glowBright, glowSoft],
-              }
-        }
+        initial={false}
+        animate={{ opacity: [0.55, 1, 0.55], scale: [1, 1.05, 1] }}
         transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
       >
         <div className="h-full w-full rounded-full bg-surface-elevated" />
@@ -290,24 +296,20 @@ function FestiveSuccessIcon() {
       <motion.div
         className="absolute inset-[7px] rounded-full p-[3px]"
         style={{ background: ringGradient }}
-        animate={
-          reducedMotion
-            ? undefined
-            : {
-                opacity: [0.4, 0.95, 0.4],
-                scale: [1, 1.03, 1],
-              }
-        }
+        initial={false}
+        animate={{ opacity: [0.4, 0.95, 0.4], scale: [1, 1.03, 1] }}
         transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut', delay: 0.35 }}
       >
         <div className="h-full w-full rounded-full bg-surface-elevated" />
       </motion.div>
 
       <motion.div
-        animate={reducedMotion ? undefined : { scale: [1, 1.1, 1] }}
+        className="relative z-10"
+        initial={false}
+        animate={{ scale: [1, 1.1, 1] }}
         transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut', delay: 0.15 }}
       >
-        <CheckCircle2 size={32} className="relative z-10 text-success" strokeWidth={2.5} />
+        <CheckCircle2 size={32} className="text-success" strokeWidth={2.5} />
       </motion.div>
     </div>
   )
