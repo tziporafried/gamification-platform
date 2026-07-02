@@ -244,7 +244,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
             </motion.div>
           )}
 
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <motion.button onClick={() => handleAction('ops')} className="group relative text-right"
               initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
               whileHover={{ scale: 1.03, y: -4 }} whileTap={{ scale: 0.98 }}>
@@ -322,6 +322,36 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                   </div>
                   <div className="mt-2 rounded-xl border border-warning bg-surface-elevated px-5 py-2 text-sm font-bold text-warning transition-all group-hover:bg-surface">
                     צפו בדירוג ←
+                  </div>
+                </div>
+              </div>
+            </motion.button>
+
+            <motion.button onClick={() => handleAction('kiosk')} className="group relative text-right"
+              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
+              whileHover={{ scale: 1.03, y: -4 }} whileTap={{ scale: 0.98 }}>
+              <div className="relative overflow-hidden rounded-3xl border-2 border-secondary bg-surface p-8 shadow-card transition-shadow duration-300 group-hover:shadow-card-hover">
+                <div className="absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                  style={{ background: 'radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--color-secondary) 8%, transparent), transparent 70%)' }} />
+                <motion.div
+                  className="pointer-events-none absolute inset-0 rounded-3xl border-2 border-secondary/20"
+                  animate={{ boxShadow: [
+                    '0 0 0 0 color-mix(in srgb, var(--color-secondary) 5%, transparent)',
+                    '0 0 0 4px color-mix(in srgb, var(--color-secondary) 12%, transparent)',
+                    '0 0 0 0 color-mix(in srgb, var(--color-secondary) 5%, transparent)',
+                  ] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
+                />
+                <div className="relative flex flex-col items-center gap-4 text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-secondary bg-surface-elevated text-2xl">
+                    🏝️
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-foreground mb-1.5">עמדת סריקה</h3>
+                    <p className="text-sm text-muted leading-relaxed">תצוגת קיוסק מלא-מסך עם דירוג וסורק</p>
+                  </div>
+                  <div className="mt-2 rounded-xl border border-secondary bg-surface-elevated px-5 py-2 text-sm font-bold text-secondary transition-all group-hover:bg-surface">
+                    פתחו את הקיוסק ←
                   </div>
                 </div>
               </div>

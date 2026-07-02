@@ -10,6 +10,7 @@ import { EventWizard } from '@/pages/EventWizard'
 import { EventControlCenterPage } from '@/pages/EventControlCenter'
 import { EventDisplayPage } from '@/pages/EventDisplay'
 import { EventOpsPage } from '@/pages/EventOps'
+import { EventKioskPage } from '@/pages/EventKioskPage'
 import { AdminPanel } from '@/pages/AdminPanel'
 import { EventBySlugControl } from '@/pages/EventBySlug'
 import { AuthCallback } from '@/pages/AuthCallback'
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/events/:id/control" element={<ProtectedRoute><AppShell><EventControlCenterPage /></AppShell></ProtectedRoute>} />
           <Route path="/events/:id/display" element={<ProtectedRoute><EventDisplayPage /></ProtectedRoute>} />
           <Route path="/events/:id/ops" element={<ProtectedRoute><EventOpsPage /></ProtectedRoute>} />
+          <Route path="/events/:id/kiosk" element={<ProtectedRoute><EventKioskPage /></ProtectedRoute>} />
           <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell><EventBySlugControl /></AppShell></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />
           <Route path="/plans" element={<AppShell><PlansPage /></AppShell>} />
