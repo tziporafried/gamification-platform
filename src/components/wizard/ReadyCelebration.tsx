@@ -12,7 +12,9 @@ const CONFETTI_COLORS = [
 ]
 
 function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(false)
+  const [reduced, setReduced] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  )
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -173,16 +175,9 @@ export function ReadyCelebrationBanner({
       <div className={cn('relative flex flex-col items-center text-center', collapsed ? 'gap-2' : 'gap-3')}>
         <AnimatePresence initial={false}>
           {!collapsed && (
-            <motion.div
-              key="festive-icon"
-              initial={reducedMotion ? false : { opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={reducedMotion ? undefined : { opacity: 0, scale: 0.85 }}
-              transition={{ type: 'spring', stiffness: 320, damping: 24 }}
-              className="overflow-visible py-1"
-            >
+            <div key="festive-icon" className="overflow-visible py-1 festive-success-enter">
               <FestiveSuccessIcon />
-            </motion.div>
+            </div>
           )}
         </AnimatePresence>
 
@@ -236,81 +231,18 @@ export function ReadyCelebrationBanner({
 }
 
 function FestiveSuccessIcon() {
-  const reducedMotion = usePrefersReducedMotion()
-
-  const greenDeep = 'color-mix(in srgb, var(--color-success) 72%, black)'
-  const greenMid = 'var(--color-success)'
-  const greenLight = 'color-mix(in srgb, var(--color-success) 38%, white)'
-  const greenSoft = 'color-mix(in srgb, var(--color-success) 18%, white)'
-  const ringGradient = `conic-gradient(from 0deg, ${greenDeep}, ${greenMid}, ${greenLight}, ${greenSoft}, ${greenDeep})`
-
-  if (reducedMotion) {
-    return (
-      <div className="relative flex h-[4.75rem] w-[4.75rem] items-center justify-center" aria-hidden="true">
-        <div className="absolute inset-0 rounded-full p-[4px]" style={{ background: ringGradient }}>
-          <div className="h-full w-full rounded-full bg-surface-elevated" />
-        </div>
-        <CheckCircle2 size={32} className="relative z-10 text-success" strokeWidth={2.5} />
-      </div>
-    )
-  }
-
   return (
-    <div className="relative flex h-[4.75rem] w-[4.75rem] items-center justify-center overflow-visible" aria-hidden="true">
-      {[0, 1].map((i) => (
-        <motion.div
-          key={`burst-${i}`}
-          className="pointer-events-none absolute inset-2 rounded-full border-2 border-success/70"
-          initial={false}
-          animate={{ scale: [0.95, 1.4], opacity: [0.7, 0] }}
-          transition={{
-            duration: 1.6,
-            repeat: Infinity,
-            ease: 'easeOut',
-            delay: i * 0.8,
-          }}
-        />
-      ))}
-
-      <motion.div
-        className="pointer-events-none absolute inset-0 rounded-full"
-        initial={false}
-        animate={{ opacity: [0.2, 0.65, 0.2], scale: [0.98, 1.08, 0.98] }}
-        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-        style={{
-          background:
-            'radial-gradient(circle, color-mix(in srgb, var(--color-success) 45%, transparent) 0%, transparent 70%)',
-        }}
-      />
-
-      <motion.div
-        className="absolute inset-0 rounded-full p-[4px]"
-        style={{ background: ringGradient }}
-        initial={false}
-        animate={{ opacity: [0.55, 1, 0.55], scale: [1, 1.05, 1] }}
-        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-      >
-        <div className="h-full w-full rounded-full bg-surface-elevated" />
-      </motion.div>
-
-      <motion.div
-        className="absolute inset-[7px] rounded-full p-[3px]"
-        style={{ background: ringGradient }}
-        initial={false}
-        animate={{ opacity: [0.4, 0.95, 0.4], scale: [1, 1.03, 1] }}
-        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut', delay: 0.35 }}
-      >
-        <div className="h-full w-full rounded-full bg-surface-elevated" />
-      </motion.div>
-
-      <motion.div
-        className="relative z-10"
-        initial={false}
-        animate={{ scale: [1, 1.1, 1] }}
-        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut', delay: 0.15 }}
-      >
-        <CheckCircle2 size={32} className="text-success" strokeWidth={2.5} />
-      </motion.div>
+    <div className="festive-success-icon" aria-hidden="true">
+      <div className="festive-success-burst" />
+      <div className="festive-success-burst festive-success-burst-delayed" />
+      <div className="festive-success-glow" />
+      <div className="festive-success-ring festive-success-ring-outer">
+        <div className="festive-success-ring-hole" />
+      </div>
+      <div className="festive-success-ring festive-success-ring-inner">
+        <div className="festive-success-ring-hole" />
+      </div>
+      <CheckCircle2 size={32} className="festive-success-check text-success" strokeWidth={2.5} />
     </div>
   )
 }
