@@ -203,7 +203,6 @@ export interface Reward {
   id: string;
   event_id: string;
   name: string;
-  description: string | null;
   required_points: number;
   is_active: boolean;
   created_at: string;
@@ -226,7 +225,6 @@ export interface ParticipantReward {
 export interface NewlyAwardedReward {
   out_reward_id: string;
   out_reward_name: string;
-  out_reward_description: string | null;
   out_required_points: number;
   out_total_points: number;
 }
@@ -256,5 +254,5 @@ export const WIZARD_STEPS: { id: WizardStepId; label: string; step: number }[] =
   { id: 'participants', label: 'מי משתתף?', step: 3 },
   { id: 'tasks', label: 'צבירת נקודות', step: 4 },
   { id: 'rewards', label: 'פרסים', step: 5 },
-  { id: 'review', label: 'מוכנים להתחיל?', step: 6 },
+  { id: 'review', label: 'מוכנים לצאת לדרך?', step: 6 },
 ];

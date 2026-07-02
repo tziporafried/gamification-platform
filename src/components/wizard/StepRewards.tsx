@@ -8,13 +8,14 @@ interface StepRewardsProps {
   eventId: string
   plan: UserPlan
   counts: EventCounts
+  isActive: boolean
   onCountsPatch: (patch: Partial<EventCounts>) => void
   onCountsRefresh: () => void
   onNext: () => void
   onBack: () => void
 }
 
-export function StepRewards({ eventId, counts, onCountsPatch, onNext, onBack }: StepRewardsProps) {
+export function StepRewards({ eventId, counts, isActive, onCountsPatch, onNext, onBack }: StepRewardsProps) {
   const [localRewardCount, setLocalRewardCount] = useState(counts.rewards)
 
   function handleCountChange(count: number) {
@@ -24,16 +25,22 @@ export function StepRewards({ eventId, counts, onCountsPatch, onNext, onBack }: 
 
   return (
     <WizardStepWrapper
-      title="פרסים והפתעות"
-      subtitle="הוסיפו פרסים שמשתתפים יוכלו לקבל לפי הנקודות שיצברו"
+      title="אילו פרסים יחכו למשתתפים?"
+      subtitle="צרו פרסים שייפתחו כאשר המשתתפים יגיעו למספר הנקודות שהגדרתם. כל יעד חדש נותן למשתתפים עוד סיבה להמשיך לשחק."
       currentStep={5}
       canAdvance={true}
       nextLabel={localRewardCount === 0 ? 'דלג' : 'המשך'}
       onNext={onNext}
       onBack={onBack}
     >
-      <WizardUsageScroll>
-        <RewardList eventId={eventId} onCountChange={handleCountChange} />
+      <WizardUsageScroll className="h-full min-h-0 flex-1">
+        <RewardList
+          embedded
+          eventId={eventId}
+          isActive={isActive}
+          groupCount={counts.groups}
+          onCountChange={handleCountChange}
+        />
       </WizardUsageScroll>
     </WizardStepWrapper>
   )

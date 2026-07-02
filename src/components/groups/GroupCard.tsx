@@ -2,9 +2,9 @@ import { useState, useRef, useEffect, useCallback, useLayoutEffect, KeyboardEven
 import { createPortal } from 'react-dom'
 import { Users, Palette } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { Card } from '@/components/ui/Card'
 import { ColorPicker } from '@/components/ui/ColorPicker'
-import { DeleteButton } from '@/components/ui/IconButton'
+import { WizardDeleteButton } from '@/components/wizard/WizardDeleteButton'
+import { Tooltip, useIsTruncated } from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
 import { isPresetColor } from '@/lib/paletteColors'
 import type { GroupWithCount } from '@/types'
@@ -21,6 +21,10 @@ function clampPanelLeft(triggerLeft: number) {
   return Math.max(8, Math.min(triggerLeft, window.innerWidth - COLOR_PANEL_WIDTH - 8))
 }
 
+function getGroupCardStyle(color: string): React.CSSProperties {
+  return { backgroundColor: color }
+}
+
 export function GroupCard({ group, onDelete }: GroupCardProps) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(group.name)
@@ -29,8 +33,12 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [panelStyle, setPanelStyle] = useState<{ top: number; left: number } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const nameTextRef = useRef<HTMLParagraphElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+
+  const isNameTruncated = useIsTruncated(nameTextRef, name)
+  const memberLabel = group.member_count === 1 ? 'משתתף' : 'משתתפים'
 
   useEffect(() => { setName(group.name) }, [group.name])
   useEffect(() => { setColor(group.color) }, [group.color])
@@ -108,48 +116,31 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
   }
 
   return (
-    <Card
-      variant="interactive"
-      className="group hover:!border-[var(--group-color)]"
-      style={{ '--group-color': color } as React.CSSProperties}
-    >
+    <div className="group/card relative h-full">
       <div
-        className="h-1.5 w-full rounded-t-xl transition-colors"
-        style={{ backgroundColor: color }}
-      />
-      <div className="p-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            {/* Color dot + picker */}
-            <div className="relative">
-              <button
-                ref={buttonRef}
-                onClick={() => setShowColorPicker((prev) => !prev)}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-transparent hover:border-border transition-all"
-                style={{ backgroundColor: color }}
-                title="שנה צבע"
-              >
-                <Palette size={12} className="text-foreground/70" />
-              </button>
+        className={cn(
+          'relative overflow-hidden rounded-2xl text-white transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card-hover hover:brightness-[1.03] motion-reduce:hover:transform-none motion-reduce:hover:brightness-100',
+        )}
+        style={getGroupCardStyle(color)}
+      >
+        <div className="relative z-10 flex min-h-[8.5rem] flex-col items-center justify-center gap-1.5 px-4 py-5 text-center">
+          <Users
+            size={16}
+            strokeWidth={2}
+            className="pointer-events-none shrink-0 text-white/80"
+          />
 
-              {showColorPicker && panelStyle && createPortal(
-                <div
-                  ref={panelRef}
-                  style={{ position: 'fixed', top: panelStyle.top, left: panelStyle.left }}
-                  className="z-[200] w-max rounded-xl border border-border bg-surface p-3 shadow-podium animate-scale-in"
-                >
-                  <ColorPicker
-                    compact
-                    value={color}
-                    onChange={(c) => changeColor(c, isPresetColor(c))}
-                  />
-                </div>,
-                document.body,
-              )}
-            </div>
-
-            {/* Name */}
-            <div className="min-w-0 flex-1">
+          <Tooltip
+            content={name}
+            hidden={editing || !isNameTruncated}
+            className="w-full"
+          >
+            <div
+              className="flex h-9 w-full min-w-0 items-center justify-center"
+              onClick={() => !editing && setEditing(true)}
+              role="button"
+              tabIndex={-1}
+            >
               {editing ? (
                 <input
                   ref={inputRef}
@@ -158,33 +149,58 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
                   onChange={(e) => setName(e.target.value)}
                   onKeyDown={handleKeyDown}
                   onBlur={saveEdit}
+                  disabled={saving}
                   className={cn(
-                    'w-full bg-transparent text-sm font-semibold text-foreground outline-none border-b border-secondary pb-0.5',
+                    'h-full w-full min-w-0 bg-transparent text-center text-xl font-bold text-white outline-none border-0 border-b border-white/50',
                     saving && 'opacity-50',
                   )}
-                  disabled={saving}
                 />
               ) : (
-                <span
-                  onClick={() => setEditing(true)}
-                  className="block w-full font-semibold text-foreground hover:text-secondary transition-colors cursor-text text-right truncate"
+                <p
+                  ref={nameTextRef}
+                  className="w-full min-w-0 truncate text-xl font-bold leading-9 cursor-text hover:text-white/90 transition-colors"
                 >
                   {name}
-                </span>
+                </p>
               )}
             </div>
+          </Tooltip>
 
-            {/* Member count */}
-            <div className="flex items-center gap-1 text-xs text-muted shrink-0">
-              <Users size={12} />
-              <span>{group.member_count}</span>
-            </div>
+          <div className="inline-flex h-7 items-center justify-center rounded-full bg-white/20 px-3 text-xs font-bold">
+            {group.member_count.toLocaleString()} {memberLabel}
           </div>
-
-          {/* Delete */}
-          <DeleteButton revealOnHover iconSize={14} onClick={onDelete} />
         </div>
+
+        <div className="absolute right-2 top-2 z-20">
+          <button
+            ref={buttonRef}
+            type="button"
+            onClick={() => setShowColorPicker((prev) => !prev)}
+            className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border-2 border-white/35 transition-opacity hover:opacity-90"
+            style={{ backgroundColor: color }}
+            title="שנה צבע"
+          >
+            <Palette size={11} className="text-white drop-shadow-sm" />
+          </button>
+
+          {showColorPicker && panelStyle && createPortal(
+            <div
+              ref={panelRef}
+              style={{ position: 'fixed', top: panelStyle.top, left: panelStyle.left }}
+              className="z-[200] w-max rounded-xl border border-border bg-surface p-3 shadow-podium animate-scale-in"
+            >
+              <ColorPicker
+                compact
+                value={color}
+                onChange={(c) => changeColor(c, isPresetColor(c))}
+              />
+            </div>,
+            document.body,
+          )}
+        </div>
+
+        <WizardDeleteButton variant="card" onClick={onDelete} />
       </div>
-    </Card>
+    </div>
   )
 }

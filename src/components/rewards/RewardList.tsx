@@ -1,20 +1,27 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Lock, Plus, Trophy } from 'lucide-react'
+import { Lock, Plus, Gift } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { ScrollableListLayout } from '@/components/ui/ScrollableListLayout'
+import { Toast } from '@/components/ui/Toast'
+import { TruncatedTooltipText } from '@/components/ui/Tooltip'
 import { UpgradeModal } from '@/components/UpgradeModal'
-import { RewardForm } from './RewardForm'
+import { InlineAddReward } from './InlineAddReward'
 import { RewardRow } from './RewardRow'
-import { RewardGroupAssignment } from './RewardGroupAssignment'
 import { getLockedTemplate, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import type { RewardWithGroups, Reward, Group, TemplateReward } from '@/types'
 
 interface RewardListProps {
   eventId: string
   onCountChange: (count: number) => void
+  /** Wizard step: list scrolls in parent; add field pinned at bottom. */
+  embedded?: boolean
+  /** Wizard: refetch groups when the step becomes active again. */
+  isActive?: boolean
+  groupCount?: number
 }
 
 interface RewardGroupJoin {
@@ -24,38 +31,71 @@ interface RewardGroupJoin {
 
 function LockedRewardCard({ reward }: { reward: TemplateReward }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-surface opacity-50 select-none">
-      <div className="flex flex-col items-center p-5 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-elevated mb-3">
-          <Lock size={22} className="text-muted" />
+    <div className="relative">
+      <div className="relative overflow-hidden rounded-2xl bg-surface opacity-50 select-none">
+        <div className="relative z-10 flex min-h-[8.5rem] flex-col items-center justify-center gap-2 px-4 py-5 text-center">
+          <div className="pointer-events-none flex h-8 w-8 items-center justify-center rounded-xl bg-surface-elevated opacity-50 shadow-sm">
+            <Lock size={16} className="text-muted" />
+          </div>
+          <div className="text-[9px] font-bold uppercase tracking-widest text-muted">
+            פרמיום
+          </div>
+          <TruncatedTooltipText
+            text={reward.name}
+            className="w-full min-w-0 truncate text-xl font-bold leading-9 text-muted"
+          />
+          <div className="inline-flex h-7 items-center justify-center rounded-full bg-surface-elevated px-3 text-xs font-bold text-muted">
+            {reward.required_points.toLocaleString()} נק׳
+          </div>
+          <div className="flex justify-center">
+            <span className="rounded-full border border-warning bg-surface-elevated px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
+              שדרוג נדרש
+            </span>
+          </div>
         </div>
-        <div className="mb-0.5 text-[9px] font-bold uppercase tracking-widest text-muted">
-          פרמיום
-        </div>
-        <p className="w-full truncate text-sm font-bold text-muted">{reward.name}</p>
-        <div className="mt-3 inline-flex items-center rounded-full bg-surface-elevated px-3 py-1 text-xs font-bold text-muted">
-          {reward.required_points.toLocaleString()} נק׳
-        </div>
-        <span className="mt-2 rounded-full border border-warning bg-surface-elevated px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
-          שדרוג נדרש
-        </span>
       </div>
     </div>
   )
 }
 
-export function RewardList({ eventId, onCountChange }: RewardListProps) {
+export function RewardList({ eventId, onCountChange, embedded = false, isActive, groupCount }: RewardListProps) {
   const [rewards, setRewards] = useState<RewardWithGroups[]>([])
+  const [groups, setGroups] = useState<Group[]>([])
   const [lockedRewards, setLockedRewards] = useState<TemplateReward[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [formOpen, setFormOpen] = useState(false)
-  const [editingReward, setEditingReward] = useState<Reward | null>(null)
-  const [assigningReward, setAssigningReward] = useState<RewardWithGroups | null>(null)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
+  const [showAddInput, setShowAddInput] = useState(false)
+  const [addInputFocusRequest, setAddInputFocusRequest] = useState(0)
+  const listRef = useRef<HTMLDivElement>(null)
+  const prevCountRef = useRef(0)
+  const addInputRef = useRef<HTMLInputElement>(null)
   const onCountChangeRef = useRef(onCountChange)
   const lastReportedCountRef = useRef<number | null>(null)
   onCountChangeRef.current = onCountChange
+
+  function revealAddInput() {
+    setShowAddInput(true)
+    setAddInputFocusRequest((n) => n + 1)
+  }
+
+  const showFeedback = useCallback((message: string, feedbackVariant: 'success' | 'error') => {
+    setToast({ message, variant: feedbackVariant })
+  }, [])
+
+  useEffect(() => {
+    if (showAddInput) {
+      setTimeout(() => addInputRef.current?.focus(), 0)
+    }
+  }, [showAddInput, addInputFocusRequest])
+
+  useEffect(() => {
+    if (rewards.length > prevCountRef.current && listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight
+    }
+    prevCountRef.current = rewards.length
+  }, [rewards.length])
 
   useEffect(() => {
     function syncLocked() {
@@ -70,26 +110,40 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
     let cancelled = false
 
     async function load() {
-      const { data, error: fetchError } = await supabase
-        .from('rewards')
-        .select('*, reward_groups(group_id, groups(*))')
-        .eq('event_id', eventId)
-        .order('required_points', { ascending: true })
+      const [rewardsRes, groupsRes] = await Promise.all([
+        supabase
+          .from('rewards')
+          .select('*, reward_groups(group_id, groups(*))')
+          .eq('event_id', eventId)
+          .order('required_points', { ascending: true }),
+        supabase
+          .from('groups')
+          .select('*')
+          .eq('event_id', eventId)
+          .order('name'),
+      ])
 
       if (cancelled) return
 
-      if (fetchError) {
-        setError(fetchError.message)
+      if (rewardsRes.error) {
+        setError(rewardsRes.error.message)
         setLoading(false)
         return
       }
 
-      const mapped: RewardWithGroups[] = (data ?? []).map((r) => ({
+      if (groupsRes.error) {
+        setError(groupsRes.error.message)
+        setLoading(false)
+        return
+      }
+
+      const mapped: RewardWithGroups[] = (rewardsRes.data ?? []).map((r) => ({
         ...r,
         groups: ((r.reward_groups as unknown as RewardGroupJoin[]) ?? []).map((rg) => rg.groups),
       }))
 
       setRewards(mapped)
+      setGroups(groupsRes.data ?? [])
       if (lastReportedCountRef.current !== mapped.length) {
         lastReportedCountRef.current = mapped.length
         onCountChangeRef.current(mapped.length)
@@ -101,13 +155,40 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
     return () => { cancelled = true }
   }, [eventId])
 
-  const handleSaved = useCallback((saved: Reward) => {
-    handleFormClose()
-    setRewards((prev) => {
-      const exists = prev.some((r) => r.id === saved.id)
-      if (exists) {
-        return prev.map((r) => (r.id === saved.id ? { ...r, ...saved } : r))
+  useEffect(() => {
+    if (groupCount === 0) {
+      setGroups([])
+      setRewards((prev) => prev.map((r) => (r.groups.length > 0 ? { ...r, groups: [] } : r)))
+      return
+    }
+
+    if (isActive === false) return
+
+    let cancelled = false
+
+    async function refreshGroups() {
+      const { data, error } = await supabase
+        .from('groups')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('name')
+
+      if (cancelled) return
+
+      if (error) {
+        setError(error.message)
+        return
       }
+
+      setGroups(data ?? [])
+    }
+
+    refreshGroups()
+    return () => { cancelled = true }
+  }, [eventId, isActive, groupCount])
+
+  const handleAdded = useCallback((saved: Reward) => {
+    setRewards((prev) => {
       const next = [...prev, { ...saved, groups: [] }]
       lastReportedCountRef.current = next.length
       onCountChangeRef.current(next.length)
@@ -115,127 +196,152 @@ export function RewardList({ eventId, onCountChange }: RewardListProps) {
     })
   }, [])
 
-  function handleCreate() {
-    setEditingReward(null)
-    setFormOpen(true)
+  function handleUpdated(rewardId: string, patch: Partial<RewardWithGroups>) {
+    setRewards((prev) => prev.map((r) => (
+      r.id === rewardId ? { ...r, ...patch } : r
+    )))
   }
 
-  function handleEdit(reward: RewardWithGroups) {
-    setEditingReward(reward)
-    setFormOpen(true)
+  function handleGroupsChange(rewardId: string, nextGroups: Group[]) {
+    setRewards((prev) => prev.map((r) => (
+      r.id === rewardId ? { ...r, groups: nextGroups } : r
+    )))
   }
 
-  function handleFormClose() {
-    setFormOpen(false)
-    setEditingReward(null)
-  }
-
-  async function handleToggleActive(reward: RewardWithGroups) {
-    const nextActive = !reward.is_active
-    const { error: updateError } = await supabase
+  async function handleDelete(reward: RewardWithGroups) {
+    const { error: deleteError } = await supabase
       .from('rewards')
-      .update({ is_active: nextActive })
+      .delete()
       .eq('id', reward.id)
 
-    if (updateError) {
-      setError(updateError.message)
+    if (deleteError) {
+      setError(deleteError.message)
       return
     }
 
-    setRewards((prev) => prev.map((r) => (
-      r.id === reward.id ? { ...r, is_active: nextActive } : r
-    )))
+    setRewards((prev) => {
+      const next = prev.filter((r) => r.id !== reward.id)
+      lastReportedCountRef.current = next.length
+      onCountChangeRef.current(next.length)
+      return next
+    })
   }
 
   if (loading) {
     return <CenteredLoader />
   }
 
+  const existingNames = rewards.map((r) => r.name)
   const hasLocked = lockedRewards.length > 0
 
-  const lockedGrid = (
-    <div className="grid gap-3 p-1 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+  const rewardGridClass = 'grid gap-4 px-1 py-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+
+  const inlineAdd = (
+    <InlineAddReward
+      eventId={eventId}
+      onAdded={handleAdded}
+      onPlanLimit={() => setUpgradeOpen(true)}
+      existingNames={existingNames}
+      onFeedback={showFeedback}
+      nameInputRef={addInputRef}
+    />
+  )
+
+  const emptyState = (
+    <EmptyState
+      icon={<Gift size={32} strokeWidth={1.75} />}
+      title="עדיין לא הוספתם פרסים"
+      description="כל פרס הוא יעד נוסף שהמשתתפים יוכלו להגיע אליו במהלך המשחק."
+      action={
+        <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
+          <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+          הוספת פרס
+        </Button>
+      }
+    />
+  )
+
+  const rewardGrid = rewards.length > 0 && (
+    <div className={rewardGridClass}>
+      {rewards.map((reward) => (
+        <RewardRow
+          key={reward.id}
+          reward={reward}
+          groups={groups}
+          siblingNames={rewards.filter((r) => r.id !== reward.id).map((r) => r.name)}
+          onDelete={() => handleDelete(reward)}
+          onUpdated={(patch) => handleUpdated(reward.id, patch)}
+          onGroupsChange={(nextGroups) => handleGroupsChange(reward.id, nextGroups)}
+          onError={setError}
+        />
+      ))}
+    </div>
+  )
+
+  const lockedGrid = hasLocked && (
+    <div className={rewardGridClass}>
       {lockedRewards.map((reward) => (
         <LockedRewardCard key={reward.id} reward={reward} />
       ))}
     </div>
   )
 
-  const addButton = (
-    <div className="flex justify-center pt-1">
-      <Button size="sm" className="gap-1.5" onClick={handleCreate}>
-        <Plus size={16} className="shrink-0" strokeWidth={2.5} />
-        {rewards.length === 0 ? 'הוספת פרס' : 'הוספת פרס נוסף'}
-      </Button>
-    </div>
-  )
-
-  const content = (
-    <div>
-      {error && <ErrorAlert message={error} className="mb-4" />}
-
-      {rewards.length === 0 ? (
-        hasLocked ? (
-          <div className="space-y-3">
-            {lockedGrid}
-            {addButton}
-          </div>
-        ) : (
-          <EmptyState
-            icon={<Trophy size={32} strokeWidth={1.75} />}
-            title="אין פרסים עדיין"
-            description="צרו הפתעות שהשחקנים שלכם יוכלו לקבל."
-            action={
-              <Button size="sm" className="gap-1.5" onClick={handleCreate}>
-                <Plus size={16} className="shrink-0" strokeWidth={2.5} />
-                הוספת פרס
-              </Button>
-            }
-          />
-        )
-      ) : (
-        <div className="space-y-3">
-          <div className="grid gap-3 py-1 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-            {rewards.map((reward) => (
-              <RewardRow
-                key={reward.id}
-                reward={reward}
-                onEdit={() => handleEdit(reward)}
-                onToggleActive={() => handleToggleActive(reward)}
-                onManageGroups={() => setAssigningReward(reward)}
-              />
-            ))}
-          </div>
-          {hasLocked && lockedGrid}
-          {addButton}
-        </div>
-      )}
-    </div>
-  )
-
   return (
-    <>
-      {content}
-      {formOpen && (
-        <RewardForm
-          eventId={eventId}
-          reward={editingReward ?? undefined}
-          isOpen={formOpen}
-          onClose={handleFormClose}
-          onSaved={handleSaved}
-          onPlanLimit={() => setUpgradeOpen(true)}
-        />
+    <div className="flex h-full min-h-0 flex-1 flex-col">
+      {error && <ErrorAlert message={error} className="shrink-0 mb-4" />}
+
+      {rewards.length === 0 && !hasLocked ? (
+        embedded ? (
+          <ScrollableListLayout
+            className="flex-1 min-h-0"
+            listRef={listRef}
+            footer={showAddInput ? inlineAdd : undefined}
+          >
+            {emptyState}
+          </ScrollableListLayout>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div ref={listRef} className="flex-1 overflow-y-auto min-h-0">
+              {emptyState}
+            </div>
+            {showAddInput && (
+              <div className="shrink-0">
+                {inlineAdd}
+              </div>
+            )}
+          </div>
+        )
+      ) : embedded ? (
+        <ScrollableListLayout
+          className="flex-1 min-h-0"
+          listRef={listRef}
+          listClassName="space-y-3"
+          footer={inlineAdd}
+        >
+          {rewardGrid}
+          {lockedGrid}
+        </ScrollableListLayout>
+      ) : (
+        <>
+          <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-3">
+            {rewardGrid}
+            {lockedGrid}
+          </div>
+          <div className="shrink-0">
+            {inlineAdd}
+          </div>
+        </>
       )}
-      {assigningReward && (
-        <RewardGroupAssignment
-          eventId={eventId}
-          rewardId={assigningReward.id}
-          rewardName={assigningReward.name}
-          isOpen={!!assigningReward}
-          onClose={() => setAssigningReward(null)}
-        />
-      )}
+
       <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} eventId={eventId} />
-    </>
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          autoDismissMs={3000}
+          onDismiss={() => setToast(null)}
+        />
+      )}
+    </div>
   )
 }

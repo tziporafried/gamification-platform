@@ -442,7 +442,7 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                   style={{ background: 'linear-gradient(180deg, rgba(13,9,32,0.9) 0%, rgba(8,5,22,0.95) 100%)', boxShadow: '0 0 20px rgba(6,182,212,0.05)' }}
                   initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
                   <div className="flex items-center gap-2.5 border-b border-secondary/10 px-5 py-3">
-                    <span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-secondary opacity-75" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-secondary shadow-[0_0_6px_rgba(34,211,238,0.6)]" /></span>
+                    <span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-secondary opacity-75" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-secondary shadow-[0_0_6px_color-mix(in_srgb,var(--color-secondary)_60%,transparent)]" /></span>
                     <span className="text-xs font-black text-secondary/90">פעילות אחרונה</span>
                   </div>
                   <div>

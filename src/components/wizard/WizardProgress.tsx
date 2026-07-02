@@ -50,7 +50,7 @@ export function WizardProgress({ currentStep, wizardState, onStepClick, hiddenSt
                       'h-8 w-8 bg-primary text-sm text-primary-foreground shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-primary)_16%,transparent),0_2px_10px_rgba(171,53,0,0.28)]',
                     !isCompleted &&
                       !isCurrent &&
-                      'h-7 w-7 border border-border/70 bg-surface text-[11px] text-muted/75',
+                      'h-7 w-7 border border-border bg-surface text-[11px] text-muted/75',
                   )}
                 >
                   {isCompleted && !isCurrent ? <Check size={12} strokeWidth={3} /> : step.step}

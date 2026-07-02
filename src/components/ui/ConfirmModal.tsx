@@ -1,6 +1,7 @@
 import { ReactNode } from 'react'
 import { Modal } from './Modal'
 import { Button } from './Button'
+import { ModalActions } from './ModalActions'
 import { cn } from '@/lib/utils'
 import { theme } from '@/lib/theme'
 
@@ -38,14 +39,14 @@ export function ConfirmModal({
           )
         )}
         {children}
-        <div className="flex gap-3">
+        <ModalActions className="pt-0">
           <Button variant="danger" loading={loading} onClick={onConfirm}>
             {confirmLabel}
           </Button>
           <Button variant="outline" onClick={onClose}>
             {cancelLabel}
           </Button>
-        </div>
+        </ModalActions>
       </div>
     </Modal>
   )

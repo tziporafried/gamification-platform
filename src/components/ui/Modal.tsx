@@ -1,4 +1,4 @@
-import { useEffect, useRef, ReactNode } from 'react'
+import { useEffect, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { theme } from '@/lib/theme'
@@ -12,8 +12,6 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, titleClassName, children }: ModalProps) {
-  const overlayRef = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
     if (!isOpen) return
     function handleKey(e: KeyboardEvent) {
@@ -30,13 +28,18 @@ export function Modal({ isOpen, onClose, title, titleClassName, children }: Moda
   if (!isOpen) return null
 
   return createPortal(
-    <div
-      ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4"
-      onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
-    >
-      <div className={cn('w-full max-w-md rounded-2xl border shadow-xl animate-scale-in', theme.bgInset, theme.border)}>
-        <div className={cn('flex items-center justify-between border-b px-6 py-4', theme.border)}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-foreground/50"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-border bg-modal shadow-modal animate-scale-in"
+      >
+        <div className={cn('flex items-center justify-between border-b bg-modal px-6 py-4', theme.border)}>
           <h2 className={titleClassName ?? cn('text-lg font-semibold', theme.text)}>{title}</h2>
           <button
             onClick={onClose}
@@ -47,7 +50,7 @@ export function Modal({ isOpen, onClose, title, titleClassName, children }: Moda
             </svg>
           </button>
         </div>
-        <div className="px-6 py-4">{children}</div>
+        <div className="bg-modal px-6 py-4">{children}</div>
       </div>
     </div>,
     document.body,

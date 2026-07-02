@@ -1,8 +1,8 @@
 import { useState, useRef, KeyboardEvent } from 'react'
 import { supabase } from '@/lib/supabase'
-import { cn } from '@/lib/utils'
 import { isPlanLimitError } from '@/lib/plans'
 import { InlineAddField } from '@/components/ui/InlineAddField'
+import { InlineAddPointsTrailing } from '@/components/ui/InlineAddPointsTrailing'
 import type { Action } from '@/types'
 
 interface InlineAddActionProps {
@@ -88,23 +88,17 @@ export function InlineAddAction({
       value={name}
       onChange={setName}
       onKeyDown={handleNameKeyDown}
-      placeholder="שם המשימה..."
+      placeholder="שם המשימה - לדוגמה: פתרון חידה, ביקור בתחנה..."
       disabled={saving}
       onSubmit={addAction}
       submitLabel="הוסף פעילות"
       inputRef={nameRef}
       trailing={
-        <input
-          ref={pointsRef}
-          type="number"
+        <InlineAddPointsTrailing
           value={points}
-          onChange={(e) => setPoints(e.target.value)}
+          onChange={setPoints}
           onKeyDown={handlePointsKeyDown}
-          placeholder="נק׳"
-          className={cn(
-            'w-16 bg-transparent text-sm text-center text-success font-bold outline-none border-b border-border focus:border-secondary placeholder-muted',
-            saving && 'opacity-50',
-          )}
+          inputRef={pointsRef}
           disabled={saving}
         />
       }

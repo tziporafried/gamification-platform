@@ -7,9 +7,14 @@ export const theme = {
   // Atomic colors
   bg: 'bg-app-radial',
   bgCard: 'bg-surface',
+  bgModal: 'bg-modal',
   bgCardMuted: 'bg-surface-elevated',
   bgInset: 'bg-surface-elevated',
   border: 'border-border',
+  /** Gray bordered surfaces — uniform default + orange hover (wizard & lists) */
+  borderInteractive: 'border border-border transition-colors hover:border-accent',
+  borderInteractiveDashed:
+    'border border-dashed border-border transition-colors hover:border-accent',
   text: 'text-foreground',
   textMuted: 'text-muted',
   textSubtle: 'text-muted',
@@ -43,6 +48,14 @@ export const theme = {
   surfaceInteractive:
     'transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5 hover:border-accent',
 
+  /** Wizard list rows — base shadow + subtle hover lift */
+  wizardListRowHover:
+    'shadow-lift transition-[box-shadow,transform] duration-[180ms] ease-out hover:-translate-y-px hover:scale-[1.002] hover:shadow-card-hover before:pointer-events-none before:absolute before:inset-0 before:rounded-xl before:bg-black/0 before:transition-colors before:duration-[180ms] hover:before:bg-black/[0.04] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:hover:translate-y-0 motion-reduce:hover:before:bg-black/0',
+
+  /** Compact chip triggers in wizard rows (groups, limits, etc.) */
+  wizardCompactChip:
+    'inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-normal leading-none shrink-0 transition-all [&_svg]:size-3 [&_svg]:shrink-0',
+
   // Icon containers
   iconBox: 'flex h-12 w-12 items-center justify-center rounded-xl bg-surface-elevated text-secondary',
   iconBoxSm: 'flex h-8 w-8 items-center justify-center rounded-lg bg-surface-elevated text-secondary',
@@ -70,7 +83,7 @@ export const chipColors = {
   accent: 'border-accent text-accent bg-surface-elevated hover:bg-surface',
   amber: 'border-warning text-warning bg-surface-elevated hover:bg-surface',
   cyan: 'border-secondary text-secondary bg-surface-elevated hover:bg-surface',
-  default: 'border-border text-muted bg-surface-elevated hover:bg-surface',
+  default: 'border-border text-muted bg-surface-elevated hover:bg-surface hover:border-accent',
 } as const
 
 export type ButtonVariant = keyof typeof buttonVariants

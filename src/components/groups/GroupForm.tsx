@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
+import { ModalActions } from '@/components/ui/ModalActions'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { ColorPicker } from '@/components/ui/ColorPicker'
 import { getNextPresetColor } from '@/lib/paletteColors'
@@ -99,14 +100,14 @@ export function GroupForm({ eventId, group, usedColors = [], isOpen, onClose, on
           onChange={setColor}
         />
 
-        <div className="flex gap-3 pt-2">
+        <ModalActions>
           <Button type="submit" loading={saving}>
             {isEdit ? 'שמירת שינויים' : 'יצירת קבוצה'}
           </Button>
           <Button type="button" variant="outline" onClick={onClose}>
             ביטול
           </Button>
-        </div>
+        </ModalActions>
       </form>
     </Modal>
   )

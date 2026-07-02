@@ -10,7 +10,7 @@ interface WizardUsageScrollProps {
   children: ReactNode
 }
 
-/** One scroll region so usage bar, list, and footer share the exact same width. */
+/** Scrollable list with optional pinned usage bar (top) and add field (bottom). */
 export function WizardUsageScroll({
   usageBar,
   footer,
@@ -18,13 +18,21 @@ export function WizardUsageScroll({
   className,
   children,
 }: WizardUsageScrollProps) {
+  const hasFooter = footer != null
+
   return (
-    <div className={cn('flex h-full min-h-0 flex-col', className)}>
-      <ScrollContainer ref={scrollRef} className="flex-1">
-        {usageBar && <div className="pb-3">{usageBar}</div>}
-        {children}
-        {footer && <div className="pt-2">{footer}</div>}
-      </ScrollContainer>
+    <div className={cn('flex h-full min-h-0 flex-1 flex-col', className)}>
+      {usageBar && <div className="shrink-0 pb-3">{usageBar}</div>}
+      {hasFooter ? (
+        <>
+          <ScrollContainer ref={scrollRef} className="min-h-0 flex-1">
+            {children}
+          </ScrollContainer>
+          <div className="shrink-0 mt-auto pt-2">{footer}</div>
+        </>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      )}
     </div>
   )
 }

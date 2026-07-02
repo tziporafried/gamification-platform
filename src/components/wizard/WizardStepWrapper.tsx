@@ -8,7 +8,7 @@ import { WizardFooterDots } from './WizardFooterDots'
 
 interface WizardStepWrapperProps {
   title: string
-  subtitle?: string
+  subtitle?: React.ReactNode
   currentStep: number
   totalSteps?: number
   canAdvance?: boolean
@@ -101,7 +101,7 @@ export function WizardStepWrapper({
                 className="pointer-events-none absolute -bottom-32 -right-32 h-80 w-80 rounded-full blur-3xl"
                 style={{ background: 'var(--gradient-wizard-panel-orb-secondary)' }}
               />
-              <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 py-5 sm:px-8 sm:py-6">
+              <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 pt-5 pb-2 sm:px-8 sm:pt-6 sm:pb-2">
                 <div className="shrink-0 space-y-2 pb-4 text-center sm:pb-5">
                   <h2
                     className={cn(
@@ -126,6 +126,7 @@ export function WizardStepWrapper({
                 <div
                   className={cn(
                     'flex min-h-0 flex-1 flex-col',
+                    !!footerBar && 'overflow-hidden',
                     playIntro && 'animate-wizard-content-in motion-reduce:animate-none',
                   )}
                   onAnimationEnd={playIntro ? handleIntroComplete : undefined}
@@ -140,7 +141,7 @@ export function WizardStepWrapper({
       </div>
 
       <footer className="fixed inset-x-0 bottom-0 z-30 w-full bg-surface/50 py-4 shadow-[0_-4px_12px_rgba(171,53,0,0.08)] backdrop-blur-[20px]">
-        <div className="mx-auto grid w-[80%] grid-cols-3 items-center gap-2">
+        <div className="mx-auto grid w-full max-w-3xl grid-cols-3 items-center gap-2 px-4 md:min-w-[42rem]">
           {/* RTL col-1 → visual right: back link */}
           <div className="flex justify-start">
             {!isFirst && onBack ? (

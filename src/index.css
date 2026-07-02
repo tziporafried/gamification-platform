@@ -45,6 +45,16 @@
   *::-webkit-scrollbar-corner {
     background: transparent;
   }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
 }
 
 @layer utilities {
@@ -58,7 +68,7 @@
     background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-warning) 100%);
   }
   .gradient-silver {
-    background: linear-gradient(135deg, var(--color-muted) 0%, var(--color-border) 100%);
+    background: linear-gradient(135deg, var(--color-secondary) 0%, color-mix(in srgb, var(--color-secondary) 55%, var(--color-success)) 100%);
   }
   .gradient-bronze {
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
@@ -66,8 +76,38 @@
   .gradient-diamond {
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 50%, var(--color-primary-hover) 100%);
   }
+  /* Wizard cards — solid single-color backgrounds */
+  .gradient-reward-starter {
+    background-color: var(--color-success);
+  }
+  .gradient-reward-medium {
+    background-color: var(--color-secondary);
+  }
+  .gradient-reward-rich {
+    background-color: var(--color-warning);
+  }
+  .gradient-reward-legendary {
+    background-color: var(--color-primary);
+  }
+  .gradient-action-card {
+    background-color: var(--color-secondary);
+  }
+  .gradient-participant-card {
+    background-color: color-mix(in srgb, var(--color-warning) 38%, transparent);
+  }
+  .gradient-action-penalty {
+    background-color: var(--color-danger);
+  }
   .bg-wizard-panel {
     background-color: var(--color-surface-elevated);
+  }
+  .bg-modal {
+    background-color: var(--color-surface-modal);
+  }
+  .shadow-modal {
+    box-shadow:
+      0 25px 50px -12px rgba(46, 34, 30, 0.32),
+      0 12px 28px -8px rgba(171, 53, 0, 0.2);
   }
   .bg-app-radial {
     background-color: var(--color-background);

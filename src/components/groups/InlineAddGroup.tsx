@@ -55,9 +55,10 @@ export function InlineAddGroup({ eventId, usedColors = [], onAdded, onPlanLimit,
       value={name}
       onChange={setName}
       onKeyDown={handleKeyDown}
-      placeholder="הקלד שם קבוצה ולחץ Enter..."
+      placeholder="שם הקבוצה..."
       disabled={saving}
       onSubmit={addGroup}
+      submitLabel="הוסף קבוצה"
       inputRef={inputRef}
     />
   )

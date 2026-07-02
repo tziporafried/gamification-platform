@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Printer } from 'lucide-react'
+import { Eye } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { ScrollContainer } from '@/components/ui/ScrollContainer'
 import { ReadinessChecklist } from './ReadinessChecklist'
@@ -53,6 +53,8 @@ export function StepReviewGenerate({
     : calculateReadiness(event, counts, groupType)
 
   const [generateFn, setGenerateFn] = useState<(() => void) | null>(null)
+  const [totalCards, setTotalCards] = useState(0)
+  const [cardsGenerated, setCardsGenerated] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const { celebrate, animationKey } = useStepEntryCelebration(isActive, ready && !isTemplate)
@@ -61,10 +63,18 @@ export function StepReviewGenerate({
     setGenerateFn(() => fn)
   }, [])
 
+  const handleTotalCardsChange = useCallback((total: number) => {
+    setTotalCards(total)
+  }, [])
+
+  const handleGeneratedChange = useCallback((generated: boolean) => {
+    setCardsGenerated(generated)
+  }, [])
+
   const footerBar = !isTemplate && generateFn ? (
     <AnimatedPrintFooter key={animationKey} celebrate={celebrate}>
       <Button onClick={generateFn} className="w-full">
-        <Printer size={16} className="ml-1.5" />הדפס כרטיסים
+        <Eye size={16} className="ml-1.5" />סקור כרטיסים
       </Button>
     </AnimatedPrintFooter>
   ) : null
@@ -93,99 +103,137 @@ export function StepReviewGenerate({
 
   return (
     <>
-      {isActive && !isTemplate && <ReadyCelebrationOverlay celebrate={celebrate} burstKey={animationKey} />}
+      {isActive && !isTemplate && (
+        <ReadyCelebrationOverlay celebrate={celebrate} burstKey={animationKey} confettiLoop={ready} />
+      )}
 
       <WizardStepWrapper
-        title={isTemplate ? 'סיכום התבנית' : 'מוכנים להתחיל?'}
+        title={isTemplate ? 'סיכום התבנית' : 'מוכנים לצאת לדרך?'}
         subtitle={isTemplate
           ? 'השינויים נשמרים אוטומטית — בדקו שהכל נראה טוב'
-          : 'בדקו שהכל מוכן לפני תחילת הפעילות'}
+          : 'עברו על הסיכום האחרון. אם הכול נראה תקין, אפשר להתחיל את המשחק ולהזמין את המשתתפים.'}
         currentStep={6}
         canAdvance={ready && !saving}
         onNext={handleFinish}
         onBack={onBack}
-        nextLabel={isTemplate ? 'סיום עריכה' : 'התחל פעילות'}
+        nextLabel={isTemplate ? 'סיום עריכה' : 'התחל את הפעילות'}
         footerBar={footerBar}
       >
         {isActive ? (
-        <div key={animationKey} className="flex h-full min-h-0 flex-col px-1">
-          <div className="shrink-0 space-y-4 pb-3">
-            {saveError && (
-              <p className="rounded-lg bg-surface-elevated border border-danger px-3 py-2 text-sm text-danger">
-                {saveError}
-              </p>
-            )}
+        <div key={animationKey} className="flex min-h-0 flex-1 flex-col overflow-hidden px-1">
+          {saveError && (
+            <p className="mb-3 shrink-0 rounded-lg bg-surface-elevated border border-danger px-3 py-2 text-sm text-danger">
+              {saveError}
+            </p>
+          )}
 
-            <div className={`grid gap-2 overflow-visible ${isTemplate ? 'grid-cols-2' : 'grid-cols-3'}`}>
-              {!isTemplate && (
-                <SummaryCard type="participants" value={counts.participants} index={0} ready={ready} animationKey={animationKey} />
-              )}
-              <SummaryCard type="activities" value={counts.tasks} index={isTemplate ? 0 : 1} ready={ready} animationKey={animationKey} />
-              <SummaryCard type="groups" value={counts.groups} index={isTemplate ? 1 : 2} ready={ready} animationKey={animationKey} />
-            </div>
-          </div>
-
-          <ScrollContainer className="flex-1 min-h-0 px-0">
           <AnimatePresence mode="wait">
             {!ready ? (
               <motion.div
                 key={`checklist-${animationKey}`}
+                className="flex min-h-0 flex-1 flex-col"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8, scale: 0.98 }}
                 transition={{ duration: 0.25 }}
               >
-                <ReadinessChecklist
-                  checks={checks}
-                  eventId={event.id}
-                  onGoToStep={onGoToStep}
-                />
+                <div className="shrink-0 pb-3">
+                  <SummaryGrid counts={counts} isTemplate={isTemplate} ready={ready} animationKey={animationKey} />
+                </div>
+                <ScrollContainer className="flex-1 min-h-0 px-0">
+                  <ReadinessChecklist
+                    checks={checks}
+                    eventId={event.id}
+                    onGoToStep={onGoToStep}
+                  />
+                </ScrollContainer>
               </motion.div>
             ) : isTemplate ? (
               <motion.div
                 key={`template-ready-${animationKey}`}
+                className="flex min-h-0 flex-1 flex-col gap-3"
                 initial={{ opacity: 0, scale: 0.92, y: 16 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 280, damping: 22 }}
               >
                 <ReadyCelebrationBanner
-                  replayKey={animationKey}
                   title="התבנית מוכנה"
                   description="השינויים נשמרים אוטומטית. לחצו «סיום עריכה» לחזרה לניהול התבניות."
                   celebrate={false}
-                />
-                <div className="pt-3">
-                  <Button onClick={handleFinish} loading={saving} className="w-full sm:w-auto">
-                    סיום עריכה
-                  </Button>
-                </div>
+                >
+                  <SummaryGrid counts={counts} isTemplate ready={ready} animationKey={animationKey} />
+                </ReadyCelebrationBanner>
+                <Button onClick={handleFinish} loading={saving} className="w-full shrink-0 sm:w-auto">
+                  סיום עריכה
+                </Button>
               </motion.div>
             ) : (
               <motion.div
                 key={`event-ready-${animationKey}`}
-                className="space-y-4"
+                className="flex min-h-0 flex-1 flex-col overflow-hidden"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3, delay: 0.15 }}
               >
-                <ReadyCelebrationBanner
-                  replayKey={animationKey}
-                  title="הפעילות מוכנה"
-                  description="הכל מוכן! אפשר להדפיס את הכרטיסים ולהתחיל את הפעילות."
-                  celebrate={celebrate}
-                />
-                <motion.div
-                  key={`qr-${animationKey}`}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ type: 'spring', stiffness: 260, damping: 24, delay: 0.35 }}
+                {cardsGenerated && (
+                  <div className="mb-5 shrink-0">
+                    <ReadyCelebrationBanner
+                      title="🎉 הכול מוכן!"
+                      description="המשחק מוכן להפעלה. אפשר להדפיס את הכרטיסים ולהתחיל את הפעילות."
+                      celebrate={celebrate}
+                      collapsed
+                    >
+                      <SummaryGrid
+                        counts={counts}
+                        isTemplate={false}
+                        ready={ready}
+                        animationKey={animationKey}
+                        showCards
+                        totalCards={totalCards}
+                        compact
+                      />
+                    </ReadyCelebrationBanner>
+                  </div>
+                )}
+
+                <div
+                  className={cn(
+                    'flex min-h-0 flex-1 flex-col',
+                    !cardsGenerated && 'overflow-y-auto',
+                  )}
+                  style={!cardsGenerated ? { scrollbarGutter: 'stable' } : undefined}
                 >
-                  <QrCardGenerator event={event} onReadyChange={handleReadyChange} />
-                </motion.div>
+                  {!cardsGenerated && (
+                    <div className="mb-3 shrink-0">
+                      <ReadyCelebrationBanner
+                        title="🎉 הכול מוכן!"
+                        description="המשחק מוכן להפעלה. אפשר להדפיס את הכרטיסים ולהתחיל את הפעילות."
+                        celebrate={celebrate}
+                        footerNote="לכל משתתף יודפס כרטיס אישי עם כל הפעילויות שהגדרתם."
+                      >
+                        <SummaryGrid
+                          counts={counts}
+                          isTemplate={false}
+                          ready={ready}
+                          animationKey={animationKey}
+                          showCards
+                          totalCards={totalCards}
+                        />
+                      </ReadyCelebrationBanner>
+                    </div>
+                  )}
+                  <div className={cn(cardsGenerated && 'flex min-h-0 flex-1 flex-col')}>
+                    <QrCardGenerator
+                      event={event}
+                      onReadyChange={handleReadyChange}
+                      onTotalCardsChange={handleTotalCardsChange}
+                      onGeneratedChange={handleGeneratedChange}
+                    />
+                  </div>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
-          </ScrollContainer>
         </div>
         ) : null}
       </WizardStepWrapper>
@@ -195,6 +243,50 @@ export function StepReviewGenerate({
 
 type SummaryCardType = SummaryCardVariant
 
+function SummaryGrid({
+  counts,
+  isTemplate,
+  ready,
+  animationKey,
+  showCards = false,
+  totalCards = 0,
+  compact = false,
+}: {
+  counts: EventCounts
+  isTemplate: boolean
+  ready: boolean
+  animationKey: number
+  showCards?: boolean
+  totalCards?: number
+  compact?: boolean
+}) {
+  const withCards = showCards && !isTemplate
+
+  return (
+    <div className={cn(
+      'grid gap-2 overflow-visible',
+      withCards ? 'grid-cols-2 sm:grid-cols-4' : isTemplate ? 'grid-cols-2' : 'grid-cols-3',
+      compact && 'gap-1.5',
+    )}>
+      {!isTemplate && (
+        <SummaryCard type="participants" value={counts.participants} index={0} ready={ready} animationKey={animationKey} compact={compact} />
+      )}
+      <SummaryCard type="activities" value={counts.tasks} index={isTemplate ? 0 : 1} ready={ready} animationKey={animationKey} compact={compact} />
+      <SummaryCard
+        type={counts.groups === 0 ? 'groupsTogether' : 'groups'}
+        value={counts.groups}
+        index={isTemplate ? 1 : 2}
+        ready={ready}
+        animationKey={animationKey}
+        compact={compact}
+      />
+      {withCards && (
+        <SummaryCard type="cards" value={totalCards} index={3} ready={ready} animationKey={animationKey} compact={compact} />
+      )}
+    </div>
+  )
+}
+
 function formatSummaryLabel(type: SummaryCardType, value: number): string {
   switch (type) {
     case 'participants':
@@ -203,6 +295,10 @@ function formatSummaryLabel(type: SummaryCardType, value: number): string {
       return value === 1 ? '1 פעילות' : `${value} פעילויות`
     case 'groups':
       return value === 1 ? '1 קבוצה' : `${value} קבוצות`
+    case 'groupsTogether':
+      return 'כולם יחד'
+    case 'cards':
+      return value === 1 ? '1 כרטיס' : `${value} כרטיסים`
   }
 }
 
@@ -212,29 +308,39 @@ function SummaryCard({
   index,
   ready,
   animationKey,
+  compact = false,
 }: {
   type: SummaryCardType
   value: number
   index: number
   ready: boolean
   animationKey: number
+  compact?: boolean
 }) {
-  const isAllTogether = type === 'groups' && value === 0
-  const label = isAllTogether ? 'כולם יחד' : formatSummaryLabel(type, value)
+  const isAllTogether = type === 'groupsTogether'
+  const label = formatSummaryLabel(type, value)
   const variantStyles = getSummaryCardVariantStyles(type)
 
   const content = (
-    <span className={isAllTogether ? 'text-sm text-muted' : 'text-sm font-bold text-foreground'}>
+    <span className={cn(
+      'font-semibold',
+      variantStyles.text,
+      compact ? 'text-xs' : 'text-sm',
+      isAllTogether && 'font-medium',
+    )}>
       {label}
     </span>
   )
 
-  if (!ready) {
+  const cardClass = cn(
+    'rounded-xl flex items-center justify-center shadow-sm',
+    compact ? 'px-2 py-1' : 'px-3 py-2',
+    ready ? variantStyles.cardHighlight : variantStyles.card,
+  )
+
+  if (!ready || compact) {
     return (
-      <div className={cn(
-        'rounded-xl px-3 py-2 flex items-center justify-center',
-        variantStyles.card,
-      )}>
+      <div className={cardClass}>
         {content}
       </div>
     )

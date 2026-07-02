@@ -32,19 +32,19 @@ export function InlineAddField({
   trailing,
   className,
 }: InlineAddFieldProps) {
-  const shouldShowSubmit = showSubmit ?? Boolean(value.trim())
+  const hasContent = Boolean(value.trim())
+  const canSubmit = !disabled && hasContent
 
   return (
     <div
       className={cn(
-        'flex items-center gap-2 rounded-xl border border-dashed p-3 transition-colors',
+        'flex items-center gap-2 rounded-xl p-1.5',
         theme.bgCardMuted,
-        theme.border,
-        theme.focusWithinBorder,
+        theme.borderInteractiveDashed,
+        'focus-within:border-accent',
         className,
       )}
     >
-      <Plus size={18} className={cn('shrink-0', theme.textSubtle)} />
       <input
         ref={inputRef as RefObject<HTMLInputElement>}
         type="text"
@@ -53,26 +53,29 @@ export function InlineAddField({
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         className={cn(
-          'flex-1 bg-transparent text-sm outline-none',
+          'min-w-0 flex-1 h-9 rounded-lg border border-border bg-surface px-3 text-sm outline-none transition-colors',
           theme.text,
           theme.inputPlaceholder,
+          'focus:border-secondary',
           disabled && 'opacity-50',
         )}
         disabled={disabled}
         autoFocus={autoFocus}
       />
       {trailing}
-      {shouldShowSubmit && onSubmit && (
+      {onSubmit && showSubmit !== false && (
         <button
           type="button"
           onClick={onSubmit}
-          disabled={disabled}
+          disabled={!canSubmit}
           className={cn(
-            'shrink-0 text-xs font-medium transition-colors disabled:opacity-50',
-            theme.accentText,
-            'hover:text-accent',
+            'inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-lg border px-3 text-xs font-semibold transition-all',
+            canSubmit
+              ? 'border-transparent bg-primary text-[var(--color-on-primary)] hover:bg-primary-hover active:scale-[0.97]'
+              : 'cursor-not-allowed border-border bg-surface text-muted',
           )}
         >
+          <Plus size={14} strokeWidth={2.5} />
           {submitLabel}
         </button>
       )}
