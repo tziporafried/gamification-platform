@@ -159,6 +159,8 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
     })
   }
 
+  const usedGroupColors = groups.map((g) => g.color)
+
   if (loading) {
     return <CenteredLoader />
   }
@@ -195,6 +197,7 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
           />
           <InlineAddGroup
             eventId={eventId}
+            usedColors={usedGroupColors}
             onAdded={handleAdded}
             onPlanLimit={() => setUpgradeOpen(true)}
             nameInputRef={addInputRef}
@@ -225,7 +228,7 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
             )}
           </div>
           <div className="pt-3">
-            <InlineAddGroup eventId={eventId} onAdded={handleAdded} onPlanLimit={() => setUpgradeOpen(true)} />
+            <InlineAddGroup eventId={eventId} usedColors={usedGroupColors} onAdded={handleAdded} onPlanLimit={() => setUpgradeOpen(true)} />
           </div>
         </>
       ) : (
@@ -255,7 +258,7 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
 
       {!embedded && (groups.length > 0 || hasLocked) && (
       <div className="shrink-0 pt-3">
-        <InlineAddGroup eventId={eventId} onAdded={handleAdded} onPlanLimit={() => setUpgradeOpen(true)} />
+        <InlineAddGroup eventId={eventId} usedColors={usedGroupColors} onAdded={handleAdded} onPlanLimit={() => setUpgradeOpen(true)} />
       </div>
       )}
 
@@ -263,6 +266,7 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
         <GroupForm
           eventId={eventId}
           group={editingGroup ?? undefined}
+          usedColors={usedGroupColors}
           isOpen={formOpen}
           onClose={handleFormClose}
           onSaved={handleSaved}

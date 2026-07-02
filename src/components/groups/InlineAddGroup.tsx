@@ -2,26 +2,22 @@ import { useState, useRef, KeyboardEvent } from 'react'
 import { supabase } from '@/lib/supabase'
 import { isPlanLimitError } from '@/lib/plans'
 import { InlineAddField } from '@/components/ui/InlineAddField'
+import { getNextPresetColor } from '@/lib/paletteColors'
 import type { Group } from '@/types'
 
 interface InlineAddGroupProps {
   eventId: string
+  usedColors?: string[]
   onAdded: (group: Group) => void
   onPlanLimit?: () => void
   nameInputRef?: React.RefObject<HTMLInputElement | null>
 }
 
-const PRESET_COLORS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#14b8a6']
-
-export function InlineAddGroup({ eventId, onAdded, onPlanLimit, nameInputRef }: InlineAddGroupProps) {
+export function InlineAddGroup({ eventId, usedColors = [], onAdded, onPlanLimit, nameInputRef }: InlineAddGroupProps) {
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
   const internalInputRef = useRef<HTMLInputElement>(null)
   const inputRef = nameInputRef ?? internalInputRef
-
-  function getRandomColor() {
-    return PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]
-  }
 
   async function addGroup() {
     const trimmed = name.trim()
@@ -30,7 +26,7 @@ export function InlineAddGroup({ eventId, onAdded, onPlanLimit, nameInputRef }: 
     setSaving(true)
     const { data, error } = await supabase
       .from('groups')
-      .insert({ name: trimmed, event_id: eventId, color: getRandomColor() })
+      .insert({ name: trimmed, event_id: eventId, color: getNextPresetColor(usedColors) })
       .select('id, event_id, name, color, created_at, updated_at')
       .single()
 

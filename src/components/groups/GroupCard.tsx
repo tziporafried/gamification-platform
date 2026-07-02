@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, useLayoutEffect, KeyboardEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { Users, Palette } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
+import { ColorPicker } from '@/components/ui/ColorPicker'
 import { DeleteButton } from '@/components/ui/IconButton'
 import { cn } from '@/lib/utils'
-import { useClickOutside } from '@/hooks/useClickOutside'
+import { isPresetColor } from '@/lib/paletteColors'
 import type { GroupWithCount } from '@/types'
 
 interface GroupCardProps {
@@ -13,10 +15,11 @@ interface GroupCardProps {
   onDelete: () => void
 }
 
-const PRESET_COLORS = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
-  '#f97316', '#eab308', '#22c55e', '#06b6d4',
-]
+const COLOR_PANEL_WIDTH = 288
+
+function clampPanelLeft(triggerLeft: number) {
+  return Math.max(8, Math.min(triggerLeft, window.innerWidth - COLOR_PANEL_WIDTH - 8))
+}
 
 export function GroupCard({ group, onDelete }: GroupCardProps) {
   const [editing, setEditing] = useState(false)
@@ -24,8 +27,10 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
   const [color, setColor] = useState(group.color)
   const [saving, setSaving] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
+  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const colorRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setName(group.name) }, [group.name])
   useEffect(() => { setColor(group.color) }, [group.color])
@@ -37,8 +42,45 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
     }
   }, [editing])
 
-  const closeColorPicker = useCallback(() => setShowColorPicker(false), [])
-  useClickOutside(colorRef, closeColorPicker)
+  const updatePanelPosition = useCallback(() => {
+    const rect = buttonRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setPanelStyle({
+      top: rect.bottom + 6,
+      left: clampPanelLeft(rect.left),
+    })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!showColorPicker) {
+      setPanelStyle(null)
+      return
+    }
+    updatePanelPosition()
+  }, [showColorPicker, updatePanelPosition])
+
+  useEffect(() => {
+    if (!showColorPicker) return
+
+    function handlePointerDown(e: MouseEvent) {
+      const target = e.target as Node
+      if (buttonRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      setShowColorPicker(false)
+    }
+
+    function handleReposition() {
+      updatePanelPosition()
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    window.addEventListener('resize', handleReposition)
+    window.addEventListener('scroll', handleReposition, true)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      window.removeEventListener('resize', handleReposition)
+      window.removeEventListener('scroll', handleReposition, true)
+    }
+  }, [showColorPicker, updatePanelPosition])
 
   async function saveEdit() {
     const trimmed = name.trim()
@@ -54,9 +96,9 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
     setEditing(false)
   }
 
-  async function changeColor(newColor: string) {
+  async function changeColor(newColor: string, closePicker = false) {
     setColor(newColor)
-    setShowColorPicker(false)
+    if (closePicker) setShowColorPicker(false)
     await supabase.from('groups').update({ color: newColor }).eq('id', group.id)
   }
 
@@ -79,9 +121,10 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             {/* Color dot + picker */}
-            <div className="relative" ref={colorRef}>
+            <div className="relative">
               <button
-                onClick={() => setShowColorPicker(!showColorPicker)}
+                ref={buttonRef}
+                onClick={() => setShowColorPicker((prev) => !prev)}
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-transparent hover:border-border transition-all"
                 style={{ backgroundColor: color }}
                 title="שנה צבע"
@@ -89,22 +132,19 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
                 <Palette size={12} className="text-foreground/70" />
               </button>
 
-              {showColorPicker && (
-                <div className="absolute top-full mt-2 right-0 z-50 rounded-xl border border-border bg-surface p-3 shadow-podium animate-scale-in">
-                  <div className="flex gap-1.5">
-                    {PRESET_COLORS.map((c) => (
-                      <button
-                        key={c}
-                        onClick={() => changeColor(c)}
-                        className={cn(
-                          'w-6 h-6 rounded-full border-2 transition-transform hover:scale-110',
-                          color === c ? 'border-foreground scale-110' : 'border-transparent',
-                        )}
-                        style={{ backgroundColor: c }}
-                      />
-                    ))}
-                  </div>
-                </div>
+              {showColorPicker && panelStyle && createPortal(
+                <div
+                  ref={panelRef}
+                  style={{ position: 'fixed', top: panelStyle.top, left: panelStyle.left }}
+                  className="z-[200] w-max rounded-xl border border-border bg-surface p-3 shadow-podium animate-scale-in"
+                >
+                  <ColorPicker
+                    compact
+                    value={color}
+                    onChange={(c) => changeColor(c, isPresetColor(c))}
+                  />
+                </div>,
+                document.body,
               )}
             </div>
 

@@ -1,27 +1,36 @@
-import { useState, FormEvent } from 'react'
+import { useState, FormEvent, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { ColorPicker } from '@/components/ui/ColorPicker'
+import { getNextPresetColor } from '@/lib/paletteColors'
 import type { Group } from '@/types'
 
 interface GroupFormProps {
   eventId: string
   group?: Group
+  usedColors?: string[]
   isOpen: boolean
   onClose: () => void
   onSaved: (group: Group) => void
 }
 
-export function GroupForm({ eventId, group, isOpen, onClose, onSaved }: GroupFormProps) {
+export function GroupForm({ eventId, group, usedColors = [], isOpen, onClose, onSaved }: GroupFormProps) {
   const [name, setName] = useState(group?.name ?? '')
-  const [color, setColor] = useState(group?.color ?? '#6366f1')
+  const [color, setColor] = useState(group?.color ?? getNextPresetColor(usedColors))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
   const isEdit = !!group
+
+  useEffect(() => {
+    if (!isOpen) return
+    setName(group?.name ?? '')
+    setColor(group?.color ?? getNextPresetColor(usedColors))
+    setError('')
+  }, [isOpen, group?.id, group?.name, group?.color, usedColors])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
