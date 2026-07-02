@@ -25,8 +25,8 @@ export function StepRewards({ eventId, counts, isActive, onCountsPatch, onNext, 
 
   return (
     <WizardStepWrapper
-      title="פרסים והפתעות"
-      subtitle="הוסיפו פרסים שמשתתפים יוכלו לקבל לפי הנקודות שיצברו"
+      title="אילו פרסים יחכו למשתתפים?"
+      subtitle="צרו פרסים שייפתחו כאשר המשתתפים יגיעו למספר הנקודות שהגדרתם. כל יעד חדש נותן למשתתפים עוד סיבה להמשיך לשחק."
       currentStep={5}
       canAdvance={true}
       nextLabel={localRewardCount === 0 ? 'דלג' : 'המשך'}

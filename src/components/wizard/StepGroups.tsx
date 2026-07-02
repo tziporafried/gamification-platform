@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Users, Layers, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { Button } from '@/components/ui/Button'
@@ -155,12 +155,17 @@ export function StepGroups({
   counts,
   onGroupTypeSelect,
   onCountsPatch,
+  onCountsRefresh,
   onNext,
   onBack,
 }: StepGroupsProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [localGroupCount, setLocalGroupCount] = useState(counts.groups)
+
+  useEffect(() => {
+    setLocalGroupCount(counts.groups)
+  }, [counts.groups])
 
   const showGroupSetup = groupType === 'custom'
   const canAdvance = groupType === 'none' || localGroupCount > 0
@@ -198,6 +203,7 @@ export function StepGroups({
     onGroupTypeSelect('none')
     setLocalGroupCount(0)
     onCountsPatch({ groups: 0 })
+    onCountsRefresh()
   }
 
   const compactGroupModeHeader = (
@@ -263,6 +269,7 @@ export function StepGroups({
         >
           <WizardUsageScroll className="h-full min-h-0 flex-1">
             <GroupList
+              key={groupType ?? 'unset'}
               embedded
               eventId={eventId}
               header={compactGroupModeHeader}

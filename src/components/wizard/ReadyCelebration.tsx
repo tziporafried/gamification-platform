@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -56,13 +56,32 @@ export function useStepEntryCelebration(isActive: boolean, celebrateEnabled: boo
   return { celebrate, animationKey }
 }
 
+const CONFETTI_BURST_INTERVAL_MS = 2800
+
 interface ConfettiBurstProps {
   active: boolean
   burstKey: number
+  loop?: boolean
 }
 
-function ConfettiBurst({ active, burstKey }: ConfettiBurstProps) {
+function ConfettiBurst({ active, burstKey, loop = false }: ConfettiBurstProps) {
   const reducedMotion = usePrefersReducedMotion()
+  const [cycle, setCycle] = useState(0)
+
+  useEffect(() => {
+    if (!active || !loop || reducedMotion) {
+      setCycle(0)
+      return
+    }
+
+    const interval = window.setInterval(() => {
+      setCycle((c) => c + 1)
+    }, CONFETTI_BURST_INTERVAL_MS)
+
+    return () => window.clearInterval(interval)
+  }, [active, loop, reducedMotion])
+
+  const effectiveBurstKey = burstKey + cycle
   const particles = useMemo(
     () =>
       Array.from({ length: 36 }, (_, i) => ({
@@ -75,7 +94,7 @@ function ConfettiBurst({ active, burstKey }: ConfettiBurstProps) {
         isCircle: Math.random() > 0.45,
         delay: Math.random() * 0.15,
       })),
-    [burstKey],
+    [effectiveBurstKey],
   )
 
   if (reducedMotion) return null
@@ -84,6 +103,7 @@ function ConfettiBurst({ active, burstKey }: ConfettiBurstProps) {
     <AnimatePresence>
       {active && (
         <motion.div
+          key={effectiveBurstKey}
           className="pointer-events-none fixed inset-0 z-40 overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -116,19 +136,34 @@ interface ReadyCelebrationBannerProps {
   description: string
   celebrate: boolean
   replayKey: number
+  collapsed?: boolean
+  footerNote?: string
+  children?: ReactNode
 }
 
-export function ReadyCelebrationBanner({ title, description, celebrate, replayKey }: ReadyCelebrationBannerProps) {
+export function ReadyCelebrationBanner({
+  title,
+  description,
+  celebrate,
+  replayKey,
+  collapsed = false,
+  footerNote,
+  children,
+}: ReadyCelebrationBannerProps) {
   const reducedMotion = usePrefersReducedMotion()
 
   return (
     <motion.div
-      className="relative overflow-hidden rounded-2xl border border-border bg-surface-elevated px-5 py-5 shadow-card"
+      layout
+      className={cn(
+        'relative overflow-visible rounded-2xl border border-border bg-surface-elevated shadow-card',
+        collapsed ? 'px-4 py-3' : 'px-5 py-5',
+      )}
       initial={reducedMotion ? false : { opacity: 0, scale: 0.88, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 280, damping: 22, delay: 0.1 }}
+      transition={{ type: 'spring', stiffness: 280, damping: 22, delay: collapsed ? 0 : 0.1 }}
     >
-      {!reducedMotion && celebrate && (
+      {!reducedMotion && celebrate && !collapsed && (
         <motion.div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 rounded-2xl border-2 border-success/60"
@@ -138,27 +173,68 @@ export function ReadyCelebrationBanner({ title, description, celebrate, replayKe
         />
       )}
 
-      <div className="relative flex flex-col items-center gap-3 text-center">
-        <FestiveSuccessIcon celebrate={celebrate} replayKey={replayKey} />
+      <div className={cn('relative flex flex-col items-center text-center', collapsed ? 'gap-2' : 'gap-3')}>
+        <AnimatePresence initial={false}>
+          {!collapsed && (
+            <motion.div
+              key="festive-icon"
+              initial={reducedMotion ? false : { opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={reducedMotion ? undefined : { opacity: 0, scale: 0.85 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+              className="overflow-visible py-1"
+            >
+              <FestiveSuccessIcon key={replayKey} celebrate={celebrate} replayKey={replayKey} />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <div className="space-y-1">
+        <div className={cn('w-full', !collapsed && 'space-y-1')}>
           <motion.p
-            className="text-base font-semibold text-success"
+            layout
+            className={cn(
+              'font-semibold text-success',
+              collapsed ? 'text-sm' : 'text-base',
+            )}
             initial={reducedMotion ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25, duration: 0.35 }}
+            transition={{ delay: collapsed ? 0 : 0.25, duration: 0.35 }}
           >
             {title}
           </motion.p>
-          <motion.p
-            className="text-sm text-muted max-w-sm mx-auto"
-            initial={reducedMotion ? false : { opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35, duration: 0.4 }}
-          >
-            {description}
-          </motion.p>
+          <AnimatePresence initial={false}>
+            {!collapsed && (
+              <motion.p
+                key="description"
+                className="text-sm text-muted"
+                initial={reducedMotion ? false : { opacity: 0, y: 6, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={reducedMotion ? undefined : { opacity: 0, y: -4, height: 0 }}
+                transition={{ duration: 0.25 }}
+              >
+                {description}
+              </motion.p>
+            )}
+          </AnimatePresence>
         </div>
+
+        {children && (
+          <motion.div
+            layout
+            className={cn(
+              'w-full',
+              collapsed ? 'pt-0' : 'border-t border-border/50 pt-4',
+            )}
+            initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: collapsed ? 0 : 0.45, duration: 0.4 }}
+          >
+            {children}
+            {footerNote && !collapsed && (
+              <p className="mt-3 text-sm text-muted">{footerNote}</p>
+            )}
+          </motion.div>
+        )}
       </div>
     </motion.div>
   )
@@ -180,75 +256,95 @@ const ICON_ORBIT_FLASHES = [
   { color: 'var(--color-success)', radius: 26, size: 2.5 },
 ] as const
 
-function FestiveSuccessIcon({ celebrate, replayKey }: { celebrate: boolean; replayKey: number }) {
+function FestiveSuccessIcon({
+  celebrate,
+  replayKey,
+  compact = false,
+}: {
+  celebrate: boolean
+  replayKey: number
+  compact?: boolean
+}) {
   const reducedMotion = usePrefersReducedMotion()
   const burstParticles = useMemo(
     () =>
       Array.from({ length: 10 }, (_, i) => ({
         id: i,
         angle: (i / 10) * Math.PI * 2 + Math.random() * 0.4,
-        distance: 28 + Math.random() * 18,
+        distance: compact ? 20 + Math.random() * 12 : 28 + Math.random() * 18,
         size: 3 + Math.random() * 3,
         color: ICON_BURST_COLORS[i % ICON_BURST_COLORS.length],
         delay: Math.random() * 0.08,
       })),
-    [replayKey],
+    [replayKey, compact],
   )
+
+  const outerSize = compact ? 'h-[3.25rem] w-[3.25rem]' : 'h-[4.5rem] w-[4.5rem]'
+  const innerSize = compact ? 'h-9 w-9' : 'h-12 w-12'
+  const svgSize = compact ? 'h-5 w-5' : 'h-7 w-7'
+  const rippleSize = compact ? '2.25rem' : '3rem'
 
   if (reducedMotion) {
     return (
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/15 ring-2 ring-success/30">
-        <CheckCircle2 size={28} className="text-success" strokeWidth={2.25} />
+      <div className={cn('flex items-center justify-center rounded-full bg-success/15 ring-2 ring-success/30', innerSize)}>
+        <CheckCircle2 size={compact ? 20 : 28} className="text-success" strokeWidth={2.25} />
       </div>
     )
   }
 
   return (
-    <div className="relative flex h-[4.5rem] w-[4.5rem] items-center justify-center">
+    <div className={cn('relative flex items-center justify-center overflow-visible', outerSize)}>
       {[0, 1, 2].map((i) => (
-        <motion.div
-          key={`ripple-${replayKey}-${i}`}
-          aria-hidden="true"
-          className="pointer-events-none absolute rounded-full border-2"
-          style={{
-            width: '3rem',
-            height: '3rem',
-            borderColor:
-              i === 0
-                ? 'color-mix(in srgb, var(--color-secondary) 45%, transparent)'
-                : 'color-mix(in srgb, var(--color-success) 40%, transparent)',
-          }}
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: [0.8, 2.3 + i * 0.2], opacity: [0.55, 0] }}
-          transition={{
-            duration: 2.4,
-            repeat: Infinity,
-            delay: i * 0.75,
-            ease: 'easeOut',
-          }}
-        />
+        <div key={`ripple-wrap-${replayKey}-${i}`} className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
+          <motion.div
+            className="rounded-full border-2"
+            style={{
+              width: rippleSize,
+              height: rippleSize,
+              borderColor:
+                i === 0
+                  ? 'color-mix(in srgb, var(--color-secondary) 45%, transparent)'
+                  : 'color-mix(in srgb, var(--color-success) 40%, transparent)',
+            }}
+            initial={{ scale: 0.75, opacity: 0 }}
+            animate={{ scale: [0.75, compact ? 2 + i * 0.15 : 2.5 + i * 0.2], opacity: [0.65, 0] }}
+            transition={{
+              duration: 1.8,
+              repeat: Infinity,
+              delay: i * 0.5,
+              ease: 'easeOut',
+            }}
+          />
+        </div>
       ))}
 
       <motion.div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         animate={{ rotate: 360 }}
-        transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
       >
         {ICON_ORBIT_FLASHES.map((flash, i) => (
           <div
-            key={`orbit-a-${i}`}
+            key={`orbit-${i}`}
             className="absolute inset-0"
             style={{ transform: `rotate(${(360 / ICON_ORBIT_FLASHES.length) * i}deg)` }}
           >
-            <div
+            <motion.div
               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
               style={{
                 width: flash.size,
                 height: flash.size,
-                transform: `translate(-50%, -50%) translateY(-${flash.radius}px)`,
+                transform: `translate(-50%, -50%) translateY(-${compact ? flash.radius - 10 : flash.radius}px)`,
                 backgroundColor: flash.color,
-                boxShadow: `0 0 6px color-mix(in srgb, ${flash.color} 55%, transparent)`,
+                boxShadow: `0 0 8px color-mix(in srgb, ${flash.color} 60%, transparent)`,
+              }}
+              animate={{ scale: [0.85, 1.4, 0.85], opacity: [0.55, 1, 0.55] }}
+              transition={{
+                duration: 1.2 + i * 0.08,
+                repeat: Infinity,
+                ease: 'easeInOut',
+                delay: i * 0.1,
               }}
             />
           </div>
@@ -259,48 +355,52 @@ function FestiveSuccessIcon({ celebrate, replayKey }: { celebrate: boolean; repl
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         animate={{ rotate: -360 }}
-        transition={{ duration: 5.5, repeat: Infinity, ease: 'linear' }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
       >
         {[0, 1, 2, 3].map((i) => (
           <div
-            key={`orbit-b-${i}`}
+            key={`orbit-inner-${i}`}
             className="absolute inset-0"
             style={{ transform: `rotate(${i * 90 + 45}deg)` }}
           >
-            <div
-              className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-success/70"
+            <motion.div
+              className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-success/80"
               style={{
-                transform: 'translate(-50%, -50%) translateY(-22px)',
-                boxShadow: '0 0 5px color-mix(in srgb, var(--color-success) 50%, transparent)',
+                transform: `translate(-50%, -50%) translateY(-${compact ? 30 : 36}px)`,
+                boxShadow: '0 0 6px color-mix(in srgb, var(--color-success) 55%, transparent)',
               }}
+              animate={{ scale: [0.6, 1.2, 0.6], opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut', delay: i * 0.15 }}
             />
           </div>
         ))}
       </motion.div>
 
-      <motion.div
-        aria-hidden="true"
-        className="pointer-events-none absolute h-14 w-14 rounded-full border-2 border-secondary/35"
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1, rotate: 360 }}
-        transition={{
-          scale: { duration: 0.9, delay: 0.08, ease: [0.22, 1, 0.36, 1] },
-          opacity: { duration: 0.9, delay: 0.08 },
-          rotate: { duration: 11, repeat: Infinity, ease: 'linear', delay: 0.08 },
-        }}
-      />
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
+        <motion.div
+          className={cn('rounded-full border-2 border-secondary/40', compact ? 'h-10 w-10' : 'h-14 w-14')}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: [1, 1.06, 1], opacity: [0.45, 0.9, 0.45], rotate: 360 }}
+          transition={{
+            scale: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.08 },
+            opacity: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.08 },
+            rotate: { duration: 8, repeat: Infinity, ease: 'linear', delay: 0.08 },
+          }}
+        />
+      </div>
 
-      <motion.div
-        aria-hidden="true"
-        className="pointer-events-none absolute h-[3.25rem] w-[3.25rem] rounded-full border-2 border-success/45"
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1, rotate: -360 }}
-        transition={{
-          scale: { duration: 0.95, delay: 0.14, ease: [0.22, 1, 0.36, 1] },
-          opacity: { duration: 0.95, delay: 0.14 },
-          rotate: { duration: 7.5, repeat: Infinity, ease: 'linear', delay: 0.14 },
-        }}
-      />
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
+        <motion.div
+          className={cn('rounded-full border-2 border-success/50', compact ? 'h-9 w-9' : 'h-[3.25rem] w-[3.25rem]')}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: [1, 1.08, 1], opacity: [0.4, 1, 0.4], rotate: -360 }}
+          transition={{
+            scale: { duration: 1.6, repeat: Infinity, ease: 'easeInOut', delay: 0.14 },
+            opacity: { duration: 1.6, repeat: Infinity, ease: 'easeInOut', delay: 0.14 },
+            rotate: { duration: 5.5, repeat: Infinity, ease: 'linear', delay: 0.14 },
+          }}
+        />
+      </div>
 
       {celebrate &&
         burstParticles.map((p) => (
@@ -325,30 +425,42 @@ function FestiveSuccessIcon({ celebrate, replayKey }: { celebrate: boolean; repl
         ))}
 
       <motion.div
-        className="relative flex h-12 w-12 items-center justify-center rounded-full bg-success/15 ring-2 ring-success/30"
-        style={{
-          boxShadow: '0 0 24px color-mix(in srgb, var(--color-success) 30%, transparent)',
-        }}
+        className={cn(
+          'relative z-10 flex items-center justify-center rounded-full bg-success/15 ring-2 ring-success/30',
+          innerSize,
+        )}
         initial={{ scale: 0.2 }}
-        animate={{ scale: 1, rotate: 360 }}
+        animate={{
+          scale: [1, 1.05, 1],
+          boxShadow: [
+            '0 0 18px color-mix(in srgb, var(--color-success) 25%, transparent)',
+            '0 0 36px color-mix(in srgb, var(--color-success) 55%, transparent)',
+            '0 0 18px color-mix(in srgb, var(--color-success) 25%, transparent)',
+          ],
+        }}
         transition={{
           scale: { duration: 0.9, delay: 0.12, ease: [0.22, 1, 0.36, 1] },
-          rotate: { duration: 7, repeat: Infinity, ease: 'linear', delay: 0.12 },
+          boxShadow: { duration: 1.8, repeat: Infinity, ease: 'easeInOut', delay: 0.5 },
         }}
       >
         <motion.div
           animate={
             celebrate
               ? { scale: [1, 1.18, 0.96, 1.05, 1] }
-              : { scale: [1, 1.06, 1] }
+              : { scale: [1, 1.1, 1] }
           }
           transition={
             celebrate
               ? { duration: 1.05, delay: 1.05, ease: [0.22, 1, 0.36, 1] }
-              : { duration: 2.2, repeat: Infinity, repeatDelay: 2.5, ease: 'easeInOut' }
+              : { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }
           }
         >
-          <svg viewBox="0 0 24 24" className="h-7 w-7 text-success" aria-hidden="true">
+          <svg
+            key={`check-${replayKey}`}
+            viewBox="0 0 24 24"
+            className={cn('text-success', svgSize)}
+            aria-hidden="true"
+          >
             <motion.circle
               cx="12"
               cy="12"
@@ -379,25 +491,34 @@ function FestiveSuccessIcon({ celebrate, replayKey }: { celebrate: boolean; repl
 }
 
 const SUMMARY_CARD_TINTS = {
-  warning: {
-    card: 'bg-[color-mix(in_srgb,var(--color-warning)_22%,var(--color-surface))]',
-    cardHighlight: 'bg-[color-mix(in_srgb,var(--color-warning)_32%,var(--color-surface))]',
+  participants: {
+    card: 'gradient-reward-rich',
+    cardHighlight: 'gradient-reward-rich brightness-[1.04]',
+    text: 'text-white',
   },
   secondary: {
-    card: 'bg-[color-mix(in_srgb,var(--color-secondary)_22%,var(--color-surface))]',
-    cardHighlight: 'bg-[color-mix(in_srgb,var(--color-secondary)_32%,var(--color-surface))]',
+    card: 'gradient-action-card',
+    cardHighlight: 'gradient-action-card brightness-[1.04]',
+    text: 'text-white',
   },
   tertiary: {
-    card: 'bg-[color-mix(in_srgb,var(--color-tertiary)_22%,var(--color-surface))]',
-    cardHighlight: 'bg-[color-mix(in_srgb,var(--color-tertiary)_32%,var(--color-surface))]',
+    card: 'bg-tertiary',
+    cardHighlight: 'bg-tertiary brightness-[1.04]',
+    text: 'text-white',
+  },
+  primary: {
+    card: 'gradient-reward-legendary',
+    cardHighlight: 'gradient-reward-legendary brightness-[1.04]',
+    text: 'text-white',
   },
 } as const
 
 const SUMMARY_CARD_VARIANTS = {
-  participants: SUMMARY_CARD_TINTS.warning,
+  participants: SUMMARY_CARD_TINTS.participants,
   activities: SUMMARY_CARD_TINTS.secondary,
   groups: SUMMARY_CARD_TINTS.tertiary,
   groupsTogether: SUMMARY_CARD_TINTS.secondary,
+  cards: SUMMARY_CARD_TINTS.primary,
 } as const
 
 export type SummaryCardVariant = keyof typeof SUMMARY_CARD_VARIANTS
@@ -418,7 +539,7 @@ export function AnimatedSummaryCard({ children, index, variant, highlight }: Ani
   const styles = SUMMARY_CARD_VARIANTS[variant]
 
   return (
-    <div className="overflow-visible py-1.5 -my-1.5">
+    <div className="overflow-visible py-1 -my-1">
       <motion.div
         className={cn(
           'rounded-xl px-3 py-2 flex items-center justify-center',
@@ -451,7 +572,7 @@ export function AnimatedPrintFooter({ children, celebrate }: AnimatedPrintFooter
 
   return (
     <motion.div
-      className="border-t border-border px-4 py-3"
+      className="border-t border-border px-4 pt-3 pb-2"
       initial={reducedMotion ? false : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 260, damping: 24, delay: 0.5 }}
@@ -473,14 +594,6 @@ export function AnimatedPrintFooter({ children, celebrate }: AnimatedPrintFooter
       >
         {children}
       </motion.div>
-      <motion.p
-        className="text-center text-xs text-muted mt-2"
-        initial={reducedMotion ? false : { opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.7 }}
-      >
-        אפשר תמיד לחזור ולהדפיס שוב בהמשך.
-      </motion.p>
     </motion.div>
   )
 }
@@ -488,14 +601,15 @@ export function AnimatedPrintFooter({ children, celebrate }: AnimatedPrintFooter
 interface ReadyCelebrationOverlayProps {
   celebrate: boolean
   burstKey: number
+  confettiLoop?: boolean
 }
 
-export function ReadyCelebrationOverlay({ celebrate, burstKey }: ReadyCelebrationOverlayProps) {
+export function ReadyCelebrationOverlay({ celebrate, burstKey, confettiLoop = false }: ReadyCelebrationOverlayProps) {
   const reducedMotion = usePrefersReducedMotion()
 
   return (
     <>
-      <ConfettiBurst active={celebrate} burstKey={burstKey} />
+      <ConfettiBurst active={confettiLoop || celebrate} burstKey={burstKey} loop={confettiLoop} />
       <AnimatePresence>
         {celebrate && !reducedMotion && (
           <motion.div

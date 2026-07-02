@@ -13,13 +13,17 @@ import { ActionRow } from './ActionRow'
 import { InlineAddAction } from './InlineAddAction'
 import { ScrollableListLayout } from '@/components/ui/ScrollableListLayout'
 import { getLockedTemplate, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
-import type { Action, ActionWithGroups, Group, TemplateTask } from '@/types'
+import type { Action, ActionWithGroups, Group, GroupType, TemplateTask } from '@/types'
 
 interface ActionListProps {
   eventId: string
   onCountChange: (count: number) => void
   /** Wizard step: list scrolls in parent; usage bar shares the same scroll width. */
   embedded?: boolean
+  /** Wizard: hide group assignments when competition is individual. */
+  groupType?: GroupType | null
+  /** Wizard: refetch groups when the count changes (e.g. after deleting all groups). */
+  groupCount?: number
 }
 
 interface ActionGroupJoin {
@@ -56,7 +60,7 @@ function LockedActionCard({ task }: { task: TemplateTask }) {
   )
 }
 
-export function ActionList({ eventId, onCountChange, embedded = false }: ActionListProps) {
+export function ActionList({ eventId, onCountChange, embedded = false, groupType, groupCount }: ActionListProps) {
   const [actions, setActions] = useState<ActionWithGroups[]>([])
   const [lockedTasks, setLockedTasks] = useState<TemplateTask[]>([])
   const [groups, setGroups] = useState<Group[]>([])
@@ -134,6 +138,31 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
     fetchActions()
   }, [eventId])
 
+  const hasGroups = groupType !== 'none' && (groupCount ?? 1) > 0
+
+  useEffect(() => {
+    if (!hasGroups) {
+      setGroups([])
+      setActions((prev) => prev.map((a) => (a.groups.length > 0 ? { ...a, groups: [] } : a)))
+      return
+    }
+
+    let cancelled = false
+
+    async function refreshGroups() {
+      const { data } = await supabase
+        .from('groups')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true })
+
+      if (!cancelled) setGroups((data as Group[]) ?? [])
+    }
+
+    refreshGroups()
+    return () => { cancelled = true }
+  }, [eventId, hasGroups, groupCount])
+
   useEffect(() => {
     if (actions.length > prevCountRef.current && listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight
@@ -191,7 +220,7 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
         <ActionRow
           key={action.id}
           action={action}
-          groups={groups}
+          groups={hasGroups ? groups : []}
           onEdit={() => {}}
           onDeleted={() => handleDeleted(action.id)}
           onUpdated={(patch) => handleActionPatched(action.id, patch)}

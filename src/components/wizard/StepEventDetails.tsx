@@ -224,7 +224,7 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
               onDragOver={(e) => e.preventDefault()}
               onClick={() => fileInputRef.current?.click()}
               className={cn(
-                'w-[85%] rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:bg-surface-elevated',
+                'w-full rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:bg-surface-elevated',
                 'border border-dashed border-accent transition-colors',
               )}
             >

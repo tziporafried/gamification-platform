@@ -84,15 +84,16 @@ export function ParticipantList({
   }, [eventId])
 
   useEffect(() => {
+    if (!hasGroups) {
+      setGroups([])
+      setParticipants((prev) => prev.map((p) => (p.groups.length > 0 ? { ...p, groups: [] } : p)))
+      return
+    }
+
     if (!isActive) return
 
     let cancelled = false
     async function fetchGroups() {
-      if (!hasGroups) {
-        setGroups([])
-        return
-      }
-
       const { data } = await supabase
         .from('groups')
         .select('*')
@@ -198,7 +199,7 @@ export function ParticipantList({
   }
 
   const participantList = participants.length > 0 && (
-    <div className="space-y-2 px-1 py-0.5">
+    <div className="space-y-1 px-1 py-0.5">
       {participants.map((p) => (
         <ParticipantRow
           key={p.id}
@@ -277,7 +278,7 @@ export function ParticipantList({
         <ScrollableListLayout
           className="flex-1 min-h-0"
           listRef={listRef}
-          listClassName="space-y-2"
+          listClassName="space-y-1"
           footer={
             <InlineAddParticipant
               eventId={eventId}
@@ -291,7 +292,7 @@ export function ParticipantList({
         </ScrollableListLayout>
       ) : (
         <>
-          <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-2">
+          <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-1">
             {participantList}
           </div>
           <div className="shrink-0">

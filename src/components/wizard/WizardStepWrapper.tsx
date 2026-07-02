@@ -126,6 +126,7 @@ export function WizardStepWrapper({
                 <div
                   className={cn(
                     'flex min-h-0 flex-1 flex-col',
+                    !!footerBar && 'overflow-hidden',
                     playIntro && 'animate-wizard-content-in motion-reduce:animate-none',
                   )}
                   onAnimationEnd={playIntro ? handleIntroComplete : undefined}

@@ -69,6 +69,7 @@ export function RewardList({ eventId, onCountChange, embedded = false, isActive,
   const [showAddInput, setShowAddInput] = useState(false)
   const [addInputFocusRequest, setAddInputFocusRequest] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
+  const prevCountRef = useRef(0)
   const addInputRef = useRef<HTMLInputElement>(null)
   const onCountChangeRef = useRef(onCountChange)
   const lastReportedCountRef = useRef<number | null>(null)
@@ -88,6 +89,13 @@ export function RewardList({ eventId, onCountChange, embedded = false, isActive,
       setTimeout(() => addInputRef.current?.focus(), 0)
     }
   }, [showAddInput, addInputFocusRequest])
+
+  useEffect(() => {
+    if (rewards.length > prevCountRef.current && listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight
+    }
+    prevCountRef.current = rewards.length
+  }, [rewards.length])
 
   useEffect(() => {
     function syncLocked() {
@@ -148,6 +156,12 @@ export function RewardList({ eventId, onCountChange, embedded = false, isActive,
   }, [eventId])
 
   useEffect(() => {
+    if (groupCount === 0) {
+      setGroups([])
+      setRewards((prev) => prev.map((r) => (r.groups.length > 0 ? { ...r, groups: [] } : r)))
+      return
+    }
+
     if (isActive === false) return
 
     let cancelled = false
@@ -236,8 +250,8 @@ export function RewardList({ eventId, onCountChange, embedded = false, isActive,
   const emptyState = (
     <EmptyState
       icon={<Gift size={32} strokeWidth={1.75} />}
-      title="אין פרסים עדיין"
-      description="צרו הפתעות שהשחקנים שלכם יוכלו לקבל."
+      title="עדיין לא הוספתם פרסים"
+      description="כל פרס הוא יעד נוסף שהמשתתפים יוכלו להגיע אליו במהלך המשחק."
       action={
         <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
           <Plus size={16} className="shrink-0" strokeWidth={2.5} />

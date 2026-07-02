@@ -93,7 +93,7 @@ export function InlineAddReward({
       value={name}
       onChange={setName}
       onKeyDown={handleNameKeyDown}
-      placeholder="שם הפרס..."
+      placeholder="שם הפרס - לדוגמה: מארז שוקולד, ספל ממותג, מתנה..."
       disabled={saving}
       onSubmit={addReward}
       submitLabel="הוסף פרס"

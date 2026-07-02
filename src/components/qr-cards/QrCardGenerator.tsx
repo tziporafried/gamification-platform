@@ -12,6 +12,8 @@ import type { Action, Group, ParticipantWithGroups, Event } from '@/types'
 interface QrCardGeneratorProps {
   event: Event
   onReadyChange?: (fn: (() => void) | null) => void
+  onTotalCardsChange?: (total: number) => void
+  onGeneratedChange?: (generated: boolean) => void
 }
 
 interface ActionGroupJoin { group_id: string; groups: Group }
@@ -27,11 +29,10 @@ const CARD_PALETTE = {
   surface: '#FFFFFF',
 } as const
 
-function formatCardsReadyLabel(count: number): string {
-  return count === 1 ? '1 כרטיס מוכן להדפסה' : `${count} כרטיסים מוכנים להדפיסה`
-}
+/** Set to true to show the participant/group accordion before card generation. */
+const SHOW_PARTICIPANT_ACCORDION = false
 
-export function QrCardGenerator({ event, onReadyChange }: QrCardGeneratorProps) {
+export function QrCardGenerator({ event, onReadyChange, onTotalCardsChange, onGeneratedChange }: QrCardGeneratorProps) {
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [actions, setActions] = useState<ActionWithGroupIds[]>([])
   const [groups, setGroups] = useState<Group[]>([])
@@ -73,6 +74,20 @@ export function QrCardGenerator({ event, onReadyChange }: QrCardGeneratorProps) 
     return actions.filter((action) => action.groupIds.length === 0 || action.groupIds.some((gid) => participantGroupIds.has(gid)))
   }, [actions])
 
+  const previewTotalCards = useMemo(
+    () => participants.reduce((sum, p) => sum + getRelevantActions(p).length, 0),
+    [participants, getRelevantActions],
+  )
+
+  useEffect(() => {
+    if (loading) return
+    onTotalCardsChange?.(previewTotalCards)
+  }, [loading, previewTotalCards, onTotalCardsChange])
+
+  useEffect(() => {
+    onGeneratedChange?.(generated)
+  }, [generated, onGeneratedChange])
+
   const handleGenerate = useCallback(() => {
     const built: ParticipantSheet[] = participants.map((p) => ({ participant: p, actions: getRelevantActions(p) })).filter((s) => s.actions.length > 0)
     setSheets(built); setGenerated(true)
@@ -106,10 +121,10 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
 .participant-divider .group-dots { display: flex; gap: 4px; }
 .participant-divider .group-dot { width: 9px; height: 9px; border-radius: 50%; }
 
-.cards-grid { display: flex; flex-wrap: wrap; gap: 12px; }
+.cards-grid { display: flex !important; flex-wrap: wrap !important; gap: 12px; }
 
 .card {
-  width: 310px; border-radius: 16px; overflow: hidden; display: flex; direction: ltr;
+  width: 310px !important; border-radius: 16px; overflow: hidden; display: flex; direction: ltr;
   border: 1.5px solid ${CARD_PALETTE.border}; background: ${CARD_PALETTE.surface}; break-inside: avoid;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   transition: transform 0.2s, box-shadow 0.2s;
@@ -163,9 +178,6 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
     setTimeout(() => printWindow.print(), 300)
   }
 
-  const totalCards = sheets.reduce((sum, s) => sum + s.actions.length, 0)
-  const previewTotalCards = participants.reduce((sum, p) => sum + getRelevantActions(p).length, 0)
-
   if (loading) return <CenteredLoader />
 
   if (participants.length === 0 || actions.length === 0) {
@@ -180,13 +192,11 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
   }
 
   return (
-    <div>
+    <div className={cn(generated && 'flex min-h-0 flex-1 flex-col')}>
       {!generated ? (
-        <div>
-          <PanelCard size="md" className="space-y-3 overflow-y-auto max-h-[42vh]" style={{ scrollbarGutter: 'stable' }}>
-            <p className={cn('text-sm', theme.label)}>לכל משתתף ייווצר דף כרטיסים אישי עם כל הפעילויות הזמינות עבורו.</p>
-
-            {groups.length === 0 ? (
+        SHOW_PARTICIPANT_ACCORDION ? (
+        <div className="space-y-3">
+          {groups.length === 0 ? (
               <div className={theme.surfaceInset}>
                 <button type="button" onClick={() => setExpandedGroup(expandedGroup === '__flat__' ? null : '__flat__')} className="flex w-full items-center gap-2 px-3 py-2 text-right">
                   <User size={14} className="text-muted shrink-0" /><span className="text-sm text-foreground flex-1">{participants.length} משתתפים</span>
@@ -232,22 +242,22 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
               </div>
             )}
 
-            <div className={cn(theme.surfaceInset, 'bg-surface-elevated p-3 text-center')}>
-              <p className={cn('text-sm', theme.textMuted)}>{formatCardsReadyLabel(previewTotalCards)}</p>
-            </div>
-          </PanelCard>
         </div>
+        ) : null
       ) : (
-        <div>
-          <div className="mb-4 flex items-center gap-3">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="mb-4 flex shrink-0 items-center gap-3">
             <button type="button" onClick={() => setGenerated(false)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted hover:bg-surface-elevated hover:text-foreground transition-colors"><X size={16} /></button>
             <Button onClick={handlePrint}><Printer size={16} className="ml-1.5" />הדפס כרטיסים</Button>
-            <span className="text-sm text-muted">{sheets.length} משתתפים • {totalCards} כרטיסים</span>
+            <span className="text-xs text-muted">אפשר להדפיס שוב כרטיסים בכל שלב במהלך הפעילות.</span>
           </div>
 
-          <div className="rounded-2xl border border-border bg-surface overflow-auto max-h-[70vh]" style={{ scrollbarGutter: 'stable' }}>
+          <div
+            className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-surface"
+            style={{ scrollbarGutter: 'stable' }}
+          >
             <div ref={printRef} className="p-6">
-              {sheets.map((sheet) => (<ParticipantPage key={sheet.participant.id} sheet={sheet} event={event} />))}
+              {sheets.map((sheet) => (<ParticipantPage key={sheet.participant.id} sheet={sheet} event={event} wizardPreview />))}
             </div>
           </div>
         </div>
@@ -256,7 +266,15 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
   )
 }
 
-function ParticipantPage({ sheet, event }: { sheet: ParticipantSheet; event: Event }) {
+function ParticipantPage({
+  sheet,
+  event,
+  wizardPreview = false,
+}: {
+  sheet: ParticipantSheet
+  event: Event
+  wizardPreview?: boolean
+}) {
   const { participant, actions } = sheet
   const c = CARD_PALETTE.primary
 
@@ -271,20 +289,45 @@ function ParticipantPage({ sheet, event }: { sheet: ParticipantSheet; event: Eve
         )}
       </div>
 
-      <div className="cards-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+      <div
+        className="cards-grid"
+        style={{
+          display: wizardPreview ? 'grid' : 'flex',
+          gridTemplateColumns: wizardPreview ? 'repeat(2, minmax(0, 1fr))' : undefined,
+          flexWrap: wizardPreview ? undefined : 'wrap',
+          gap: '12px',
+        }}
+      >
         {actions.map((action) => (
-          <div key={action.id} className="card" style={{ width: '310px', borderRadius: '16px', border: `1.5px solid ${CARD_PALETTE.border}`, overflow: 'hidden', display: 'flex', direction: 'ltr', background: CARD_PALETTE.surface, breakInside: 'avoid', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <div
+            key={action.id}
+            className="card"
+            style={{
+              width: wizardPreview ? '100%' : '310px',
+              minWidth: 0,
+              borderRadius: '16px',
+              border: `1.5px solid ${CARD_PALETTE.border}`,
+              overflow: 'hidden',
+              display: 'flex',
+              direction: 'ltr',
+              background: CARD_PALETTE.surface,
+              breakInside: 'avoid',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            }}
+          >
             {/* QR side */}
-            <div className="qr-side" style={{ flexShrink: 0, width: '120px', padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', background: `linear-gradient(135deg, ${c}08 0%, ${c}03 100%)`, borderLeft: `3px solid ${c}` }}>
+            <div className="qr-side" style={{ flexShrink: 0, width: wizardPreview ? '96px' : '120px', padding: wizardPreview ? '10px' : '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', background: `linear-gradient(135deg, ${c}08 0%, ${c}03 100%)`, borderLeft: `3px solid ${c}` }}>
               <QRCodeSVG
                 value={JSON.stringify({ participantCode: participant.external_id, actionCode: action.code })}
-                size={90} level="M" fgColor={CARD_PALETTE.foreground}
+                size={wizardPreview ? 72 : 90}
+                level="M"
+                fgColor={CARD_PALETTE.foreground}
               />
               <span className="scan-text" style={{ fontSize: '7px', color: CARD_PALETTE.muted, textAlign: 'center', direction: 'rtl', letterSpacing: '0.3px' }}>סרקו לקבלת הנקודות</span>
             </div>
 
             {/* Info side */}
-            <div className="info-side" style={{ flex: 1, padding: '14px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center', direction: 'rtl', minWidth: 0, gap: '2px' }}>
+            <div className="info-side" style={{ flex: 1, padding: wizardPreview ? '10px 12px' : '14px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center', direction: 'rtl', minWidth: 0, gap: '2px' }}>
               {/* Event row */}
               <div className="event-row" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                 {event.logo_url && <img src={event.logo_url} alt="" className="event-logo" style={{ width: '18px', height: '18px', borderRadius: '4px', objectFit: 'cover' }} />}
@@ -292,7 +335,7 @@ function ParticipantPage({ sheet, event }: { sheet: ParticipantSheet; event: Eve
               </div>
 
               {/* Task title */}
-              <div className="action-name" style={{ fontSize: '16px', fontWeight: 800, color: CARD_PALETTE.foreground, marginBottom: '4px', lineHeight: 1.2 }}>
+              <div className="action-name" style={{ fontSize: wizardPreview ? '14px' : '16px', fontWeight: 800, color: CARD_PALETTE.foreground, marginBottom: '4px', lineHeight: 1.2 }}>
                 {action.name}
               </div>
 
@@ -305,7 +348,7 @@ function ParticipantPage({ sheet, event }: { sheet: ParticipantSheet; event: Eve
               {/* Points */}
               <div className="points-row" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
                 <span className="points-icon" style={{ fontSize: '14px' }}>⭐</span>
-                <span className="points-value" style={{ fontSize: '18px', fontWeight: 900, color: c, letterSpacing: '-0.5px' }}>
+                <span className="points-value" style={{ fontSize: wizardPreview ? '16px' : '18px', fontWeight: 900, color: c, letterSpacing: '-0.5px' }}>
                   +{action.points}
                 </span>
                 <span className="points-label" style={{ fontSize: '10px', color: CARD_PALETTE.muted, fontWeight: 500 }}>נקודות</span>

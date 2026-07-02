@@ -100,7 +100,6 @@ export function InlineAddAction({
           onKeyDown={handlePointsKeyDown}
           inputRef={pointsRef}
           disabled={saving}
-          placeholder="כמה נקודות?"
         />
       }
     />

@@ -254,6 +254,7 @@ export function EventWizard() {
             eventId={event.id}
             plan={isSuperAdmin ? 'full' : event.plan}
             counts={counts}
+            groupType={groupType}
             onCountsPatch={patchCounts}
             onCountsRefresh={refreshCounts}
             onNext={goNext}
