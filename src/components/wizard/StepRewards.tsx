@@ -33,16 +33,15 @@ export function StepRewards({ eventId, counts, isActive, onCountsPatch, onNext, 
       onNext={onNext}
       onBack={onBack}
     >
-      <div className="flex h-full min-h-0 flex-col">
-        <WizardUsageScroll>
-          <RewardList
-            eventId={eventId}
-            isActive={isActive}
-            groupCount={counts.groups}
-            onCountChange={handleCountChange}
-          />
-        </WizardUsageScroll>
-      </div>
+      <WizardUsageScroll>
+        <RewardList
+          embedded
+          eventId={eventId}
+          isActive={isActive}
+          groupCount={counts.groups}
+          onCountChange={handleCountChange}
+        />
+      </WizardUsageScroll>
     </WizardStepWrapper>
   )
 }

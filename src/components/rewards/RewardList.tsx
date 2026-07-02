@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/Button'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { ScrollableListLayout } from '@/components/ui/ScrollableListLayout'
+import { Toast } from '@/components/ui/Toast'
 import { TruncatedTooltipText } from '@/components/ui/Tooltip'
 import { UpgradeModal } from '@/components/UpgradeModal'
-import { RewardForm } from './RewardForm'
+import { InlineAddReward } from './InlineAddReward'
 import { RewardRow } from './RewardRow'
 import { getLockedTemplate, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import type { RewardWithGroups, Reward, Group, TemplateReward } from '@/types'
@@ -15,6 +17,8 @@ import type { RewardWithGroups, Reward, Group, TemplateReward } from '@/types'
 interface RewardListProps {
   eventId: string
   onCountChange: (count: number) => void
+  /** Wizard step: list scrolls in parent; add field pinned at bottom. */
+  embedded?: boolean
   /** Wizard: refetch groups when the step becomes active again. */
   isActive?: boolean
   groupCount?: number
@@ -29,10 +33,10 @@ function LockedRewardCard({ reward }: { reward: TemplateReward }) {
   return (
     <div className="relative">
       <div className="relative overflow-hidden rounded-2xl bg-surface opacity-50 select-none">
-        <div className="pointer-events-none absolute top-3 right-3 z-20 flex h-7 w-7 items-center justify-center rounded-xl bg-surface-elevated opacity-50 shadow-sm">
-          <Lock size={14} className="text-muted" />
-        </div>
-        <div className="relative z-10 flex min-h-[6.5rem] flex-col items-center justify-center gap-1.5 px-4 py-4 pl-8 pr-10 text-center">
+        <div className="relative z-10 flex min-h-[8.5rem] flex-col items-center justify-center gap-2 px-4 py-5 text-center">
+          <div className="pointer-events-none flex h-8 w-8 items-center justify-center rounded-xl bg-surface-elevated opacity-50 shadow-sm">
+            <Lock size={16} className="text-muted" />
+          </div>
           <div className="text-[9px] font-bold uppercase tracking-widest text-muted">
             פרמיום
           </div>
@@ -54,17 +58,36 @@ function LockedRewardCard({ reward }: { reward: TemplateReward }) {
   )
 }
 
-export function RewardList({ eventId, onCountChange, isActive, groupCount }: RewardListProps) {
+export function RewardList({ eventId, onCountChange, embedded = false, isActive, groupCount }: RewardListProps) {
   const [rewards, setRewards] = useState<RewardWithGroups[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [lockedRewards, setLockedRewards] = useState<TemplateReward[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [formOpen, setFormOpen] = useState(false)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
+  const [showAddInput, setShowAddInput] = useState(false)
+  const [addInputFocusRequest, setAddInputFocusRequest] = useState(0)
+  const listRef = useRef<HTMLDivElement>(null)
+  const addInputRef = useRef<HTMLInputElement>(null)
   const onCountChangeRef = useRef(onCountChange)
   const lastReportedCountRef = useRef<number | null>(null)
   onCountChangeRef.current = onCountChange
+
+  function revealAddInput() {
+    setShowAddInput(true)
+    setAddInputFocusRequest((n) => n + 1)
+  }
+
+  const showFeedback = useCallback((message: string, feedbackVariant: 'success' | 'error') => {
+    setToast({ message, variant: feedbackVariant })
+  }, [])
+
+  useEffect(() => {
+    if (showAddInput) {
+      setTimeout(() => addInputRef.current?.focus(), 0)
+    }
+  }, [showAddInput, addInputFocusRequest])
 
   useEffect(() => {
     function syncLocked() {
@@ -150,8 +173,7 @@ export function RewardList({ eventId, onCountChange, isActive, groupCount }: Rew
     return () => { cancelled = true }
   }, [eventId, isActive, groupCount])
 
-  const handleSaved = useCallback((saved: Reward) => {
-    setFormOpen(false)
+  const handleAdded = useCallback((saved: Reward) => {
     setRewards((prev) => {
       const next = [...prev, { ...saved, groups: [] }]
       lastReportedCountRef.current = next.length
@@ -159,10 +181,6 @@ export function RewardList({ eventId, onCountChange, isActive, groupCount }: Rew
       return next
     })
   }, [])
-
-  function handleCreate() {
-    setFormOpen(true)
-  }
 
   function handleUpdated(rewardId: string, patch: Partial<RewardWithGroups>) {
     setRewards((prev) => prev.map((r) => (
@@ -199,11 +217,54 @@ export function RewardList({ eventId, onCountChange, isActive, groupCount }: Rew
     return <CenteredLoader />
   }
 
+  const existingNames = rewards.map((r) => r.name)
   const hasLocked = lockedRewards.length > 0
 
   const rewardGridClass = 'grid gap-4 px-1 py-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
 
-  const lockedGrid = (
+  const inlineAdd = (
+    <InlineAddReward
+      eventId={eventId}
+      onAdded={handleAdded}
+      onPlanLimit={() => setUpgradeOpen(true)}
+      existingNames={existingNames}
+      onFeedback={showFeedback}
+      nameInputRef={addInputRef}
+    />
+  )
+
+  const emptyState = (
+    <EmptyState
+      icon={<Gift size={32} strokeWidth={1.75} />}
+      title="אין פרסים עדיין"
+      description="צרו הפתעות שהשחקנים שלכם יוכלו לקבל."
+      action={
+        <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
+          <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+          הוספת פרס
+        </Button>
+      }
+    />
+  )
+
+  const rewardGrid = rewards.length > 0 && (
+    <div className={rewardGridClass}>
+      {rewards.map((reward) => (
+        <RewardRow
+          key={reward.id}
+          reward={reward}
+          groups={groups}
+          siblingNames={rewards.filter((r) => r.id !== reward.id).map((r) => r.name)}
+          onDelete={() => handleDelete(reward)}
+          onUpdated={(patch) => handleUpdated(reward.id, patch)}
+          onGroupsChange={(nextGroups) => handleGroupsChange(reward.id, nextGroups)}
+          onError={setError}
+        />
+      ))}
+    </div>
+  )
+
+  const lockedGrid = hasLocked && (
     <div className={rewardGridClass}>
       {lockedRewards.map((reward) => (
         <LockedRewardCard key={reward.id} reward={reward} />
@@ -211,74 +272,60 @@ export function RewardList({ eventId, onCountChange, isActive, groupCount }: Rew
     </div>
   )
 
-  const addButton = (
-    <div className="flex justify-center pt-1">
-      <Button size="sm" className="gap-1.5" onClick={handleCreate}>
-        <Plus size={16} className="shrink-0" strokeWidth={2.5} />
-        {rewards.length === 0 ? 'הוספת פרס' : 'הוספת פרס נוסף'}
-      </Button>
-    </div>
-  )
-
-  const content = (
-    <div className="pb-2">
-      {error && <ErrorAlert message={error} className="mb-4" />}
-
-      {rewards.length === 0 ? (
-        hasLocked ? (
-          <div className="space-y-3">
-            {lockedGrid}
-            {addButton}
-          </div>
-        ) : (
-          <EmptyState
-            icon={<Gift size={32} strokeWidth={1.75} />}
-            title="אין פרסים עדיין"
-            description="צרו הפתעות שהשחקנים שלכם יוכלו לקבל."
-            action={
-              <Button size="sm" className="gap-1.5" onClick={handleCreate}>
-                <Plus size={16} className="shrink-0" strokeWidth={2.5} />
-                הוספת פרס
-              </Button>
-            }
-          />
-        )
-      ) : (
-        <div className="space-y-3">
-          <div className={rewardGridClass}>
-            {rewards.map((reward) => (
-              <RewardRow
-                key={reward.id}
-                reward={reward}
-                groups={groups}
-                siblingNames={rewards.filter((r) => r.id !== reward.id).map((r) => r.name)}
-                onDelete={() => handleDelete(reward)}
-                onUpdated={(patch) => handleUpdated(reward.id, patch)}
-                onGroupsChange={(nextGroups) => handleGroupsChange(reward.id, nextGroups)}
-                onError={setError}
-              />
-            ))}
-          </div>
-          {hasLocked && lockedGrid}
-          {addButton}
-        </div>
-      )}
-    </div>
-  )
-
   return (
-    <>
-      {content}
-      {formOpen && (
-        <RewardForm
-          eventId={eventId}
-          isOpen={formOpen}
-          onClose={() => setFormOpen(false)}
-          onSaved={handleSaved}
-          onPlanLimit={() => setUpgradeOpen(true)}
+    <div className="flex h-full flex-col">
+      {error && <ErrorAlert message={error} className="shrink-0 mb-4" />}
+
+      {rewards.length === 0 && !hasLocked ? (
+        embedded ? (
+          <ScrollableListLayout
+            listRef={listRef}
+            footer={showAddInput ? inlineAdd : undefined}
+          >
+            {emptyState}
+          </ScrollableListLayout>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div ref={listRef} className="flex-1 overflow-y-auto min-h-0">
+              {emptyState}
+            </div>
+            {showAddInput && (
+              <div className="shrink-0 pt-2">
+                {inlineAdd}
+              </div>
+            )}
+          </div>
+        )
+      ) : embedded ? (
+        <ScrollableListLayout
+          listRef={listRef}
+          listClassName="space-y-3"
+          footer={inlineAdd}
+        >
+          {rewardGrid}
+          {lockedGrid}
+        </ScrollableListLayout>
+      ) : (
+        <>
+          <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-3">
+            {rewardGrid}
+            {lockedGrid}
+          </div>
+          <div className="shrink-0 pt-2">
+            {inlineAdd}
+          </div>
+        </>
+      )}
+
+      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} eventId={eventId} />
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          autoDismissMs={3000}
+          onDismiss={() => setToast(null)}
         />
       )}
-      <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} eventId={eventId} />
-    </>
+    </div>
   )
 }

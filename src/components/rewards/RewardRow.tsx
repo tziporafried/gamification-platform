@@ -171,21 +171,21 @@ export function RewardRow({
     <div className="group/card relative">
       <div
         className={cn(
-          'relative overflow-hidden rounded-2xl text-white transition-all duration-200 hover:shadow-card-hover',
+          'relative overflow-hidden rounded-2xl text-white transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card-hover hover:brightness-[1.03] motion-reduce:hover:transform-none motion-reduce:hover:brightness-100',
           tier.gradient,
         )}
       >
-        <TierIcon
-          size={28}
-          strokeWidth={2}
-          className="pointer-events-none absolute top-3 right-3 z-20 shrink-0 animate-reward-icon-float text-white motion-reduce:animate-none"
-          style={{
-            animationDelay: iconMotion.animationDelay,
-            animationDuration: iconMotion.animationDuration,
-          }}
-        />
-
-        <div className="relative z-10 flex min-h-[6.5rem] flex-col items-center justify-center gap-1.5 px-4 py-4 pl-8 pr-10 text-center">
+        <div className="relative z-10 flex min-h-[8.5rem] flex-col items-center justify-center gap-1.5 px-4 py-5 text-center">
+          <div className="flex w-full flex-col items-center gap-0.5">
+            <TierIcon
+              size={32}
+              strokeWidth={2}
+              className="pointer-events-none shrink-0 animate-reward-icon-float text-white transition-transform duration-300 ease-out group-hover/card:scale-110 motion-reduce:animate-none motion-reduce:group-hover/card:scale-100"
+              style={{
+                animationDelay: iconMotion.animationDelay,
+                animationDuration: iconMotion.animationDuration,
+              }}
+            />
           <Tooltip
             content={name}
             hidden={editingName || !isNameTruncated}
@@ -221,6 +221,7 @@ export function RewardRow({
               )}
             </div>
           </Tooltip>
+          </div>
 
           <div className="flex justify-center">
             {editingPoints ? (

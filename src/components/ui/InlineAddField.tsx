@@ -32,7 +32,8 @@ export function InlineAddField({
   trailing,
   className,
 }: InlineAddFieldProps) {
-  const shouldShowSubmit = showSubmit ?? Boolean(value.trim())
+  const hasContent = Boolean(value.trim())
+  const canSubmit = !disabled && hasContent
 
   return (
     <div
@@ -62,15 +63,16 @@ export function InlineAddField({
         autoFocus={autoFocus}
       />
       {trailing}
-      {shouldShowSubmit && onSubmit && (
+      {onSubmit && showSubmit !== false && (
         <button
           type="button"
           onClick={onSubmit}
-          disabled={disabled}
+          disabled={!canSubmit}
           className={cn(
-            'shrink-0 text-xs font-medium transition-colors disabled:opacity-50',
-            theme.accentText,
-            'hover:text-accent',
+            'shrink-0 text-xs font-medium transition-colors',
+            canSubmit
+              ? 'text-primary hover:text-primary-hover'
+              : 'text-muted cursor-default',
           )}
         >
           {submitLabel}

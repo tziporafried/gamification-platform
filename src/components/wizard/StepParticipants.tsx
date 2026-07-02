@@ -220,7 +220,6 @@ export function StepParticipants({ eventId, counts, groupType, isActive, onCount
                   eventId={eventId}
                   onAdded={handleAdded}
                   onPlanLimit={() => setUpgradeOpen(true)}
-                  placeholder="הקלידו שם משתתף ולחצו Enter"
                   nameInputRef={addInputRef}
                 />
               ) : undefined
@@ -248,7 +247,6 @@ export function StepParticipants({ eventId, counts, groupType, isActive, onCount
                 eventId={eventId}
                 onAdded={handleAdded}
                 onPlanLimit={() => setUpgradeOpen(true)}
-                placeholder="הקלידו שם משתתף ולחצו Enter"
               />
             }
           >

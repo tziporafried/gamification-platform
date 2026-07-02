@@ -16,7 +16,7 @@ export function InlineAddParticipant({
   eventId,
   onAdded,
   onPlanLimit,
-  placeholder = 'הקלד שם ולחץ Enter להוספה...',
+  placeholder = 'שם המשתתף...',
   nameInputRef,
 }: InlineAddParticipantProps) {
   const [name, setName] = useState('')
@@ -63,6 +63,7 @@ export function InlineAddParticipant({
       placeholder={placeholder}
       disabled={saving}
       onSubmit={addParticipant}
+      submitLabel="הוסף משתתף"
       inputRef={inputRef}
       autoFocus
     />
