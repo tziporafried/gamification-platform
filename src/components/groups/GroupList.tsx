@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { Layers, Lock, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
@@ -22,6 +22,7 @@ interface GroupListProps {
   eventId: string
   onCountChange: (count: number) => void
   embedded?: boolean
+  header?: ReactNode
 }
 
 function LockedGroupCard({ group }: { group: ActivityTemplateGroup }) {
@@ -49,7 +50,7 @@ function LockedGroupCard({ group }: { group: ActivityTemplateGroup }) {
   )
 }
 
-export function GroupList({ eventId, onCountChange, embedded = false }: GroupListProps) {
+export function GroupList({ eventId, onCountChange, embedded = false, header }: GroupListProps) {
   const [groups, setGroups] = useState<GroupWithCount[]>([])
   const [lockedGroups, setLockedGroups] = useState<ActivityTemplateGroup[]>([])
   const [loading, setLoading] = useState(true)
@@ -195,7 +196,7 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
   const hasLocked = lockedGroups.length > 0
 
   return (
-    <div className={cn('flex flex-col h-full min-h-0', embedded && 'min-h-0')}>
+    <div className={cn('flex h-full min-h-0 flex-1 flex-col', embedded && 'min-h-0')}>
       {!embedded && (
         <SectionHeader
           icon={<Layers size={18} className="text-tertiary" />}
@@ -211,7 +212,9 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
       {groups.length === 0 && !hasLocked ? (
         embedded ? (
           <ScrollableListLayout
+            className="flex-1 min-h-0"
             listRef={listRef}
+            header={header}
             listClassName="py-1"
             footer={
               showAddInput ? (
@@ -255,7 +258,7 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
               />
             </ScrollContainer>
             {showAddInput && (
-              <div className="shrink-0 pt-3">
+              <div className="shrink-0">
                 <InlineAddGroup
                   eventId={eventId}
                   usedColors={usedGroupColors}
@@ -269,7 +272,9 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
         )
       ) : embedded ? (
         <ScrollableListLayout
+          className="flex-1 min-h-0"
           listRef={listRef}
+          header={header}
           listClassName="space-y-3 py-1"
           footer={
             <InlineAddGroup eventId={eventId} usedColors={usedGroupColors} onAdded={handleAdded} onPlanLimit={() => setUpgradeOpen(true)} />
@@ -322,7 +327,7 @@ export function GroupList({ eventId, onCountChange, embedded = false }: GroupLis
       )}
 
       {!embedded && (groups.length > 0 || hasLocked) && (
-      <div className="shrink-0 pt-3">
+      <div className="shrink-0">
         <InlineAddGroup eventId={eventId} usedColors={usedGroupColors} onAdded={handleAdded} onPlanLimit={() => setUpgradeOpen(true)} />
       </div>
       )}

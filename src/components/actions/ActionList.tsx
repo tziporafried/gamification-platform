@@ -6,6 +6,7 @@ import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Toast } from '@/components/ui/Toast'
+import { TruncatedTooltipText } from '@/components/ui/Tooltip'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { ActionForm } from './ActionForm'
 import { ActionRow } from './ActionRow'
@@ -26,17 +27,28 @@ interface ActionGroupJoin {
   groups: Group
 }
 
-function LockedActionRow({ task }: { task: TemplateTask }) {
+function LockedActionCard({ task }: { task: TemplateTask }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 opacity-50 select-none">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-elevated">
-        <Lock size={13} className="text-muted" />
+    <div className="relative">
+      <div className="relative overflow-hidden rounded-xl bg-surface opacity-50 shadow-card select-none">
+        <div className="relative z-10 flex items-center gap-2 px-3 py-2">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <TruncatedTooltipText
+              text={task.name}
+              className="truncate text-sm font-semibold leading-tight text-muted"
+            />
+            <span className="inline-flex w-fit rounded-full border border-warning bg-surface-elevated px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-warning">
+              שדרוג נדרש
+            </span>
+          </div>
+          <div className="inline-flex h-7 shrink-0 items-center justify-center rounded-full bg-surface-elevated px-2.5 text-xs font-bold text-muted">
+            +{task.points.toLocaleString()} נק׳
+          </div>
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-elevated">
+            <Lock size={12} className="text-muted" />
+          </div>
+        </div>
       </div>
-      <span className="flex-1 truncate text-sm text-muted">{task.name}</span>
-      <span className="shrink-0 text-sm font-semibold text-muted">+{task.points}</span>
-      <span className="shrink-0 rounded-full border border-warning bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
-        פרמיום
-      </span>
     </div>
   )
 }
@@ -161,8 +173,7 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
 
   const handleActionPatched = useCallback((actionId: string, patch: Partial<ActionWithGroups>) => {
     setActions((prev) => prev.map((a) => (a.id === actionId ? { ...a, ...patch } : a)))
-    showFeedback('הפעילות עודכנה', 'success')
-  }, [showFeedback])
+  }, [])
 
   if (loading) {
     return <CenteredLoader />
@@ -171,13 +182,39 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
   const existingNames = actions.map((a) => a.name)
   const hasLocked = lockedTasks.length > 0
 
+  const actionList = actions.length > 0 && (
+    <div className="space-y-1.5 px-1 py-0.5">
+      {actions.map((action) => (
+        <ActionRow
+          key={action.id}
+          action={action}
+          groups={groups}
+          onEdit={() => {}}
+          onDeleted={() => handleDeleted(action.id)}
+          onUpdated={(patch) => handleActionPatched(action.id, patch)}
+          onError={setError}
+          siblingNames={existingNames.filter((n) => n !== action.name)}
+        />
+      ))}
+    </div>
+  )
+
+  const lockedList = hasLocked && (
+    <div className="space-y-1.5 px-1 py-0.5">
+      {lockedTasks.map((task) => (
+        <LockedActionCard key={task.id} task={task} />
+      ))}
+    </div>
+  )
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
       {error && <ErrorAlert message={error} className="shrink-0 mb-4" />}
 
       {actions.length === 0 && !hasLocked ? (
         embedded ? (
           <ScrollableListLayout
+            className="flex-1 min-h-0"
             listRef={listRef}
             footer={
               showAddInput ? (
@@ -220,7 +257,7 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
               />
             </div>
             {showAddInput && (
-              <div className="shrink-0 pt-2">
+              <div className="shrink-0">
                 <InlineAddAction
                   eventId={eventId}
                   onAdded={handleAdded}
@@ -235,7 +272,9 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
         )
       ) : embedded ? (
         <ScrollableListLayout
+          className="flex-1 min-h-0"
           listRef={listRef}
+          listClassName="space-y-1.5"
           footer={
             <InlineAddAction
               eventId={eventId}
@@ -247,44 +286,16 @@ export function ActionList({ eventId, onCountChange, embedded = false }: ActionL
             />
           }
         >
-          {actions.map((action) => (
-            <ActionRow
-              key={action.id}
-              action={action}
-              groups={groups}
-              onEdit={() => {}}
-              onDeleted={() => handleDeleted(action.id)}
-              onUpdated={(patch) => handleActionPatched(action.id, patch)}
-              onError={setError}
-              siblingNames={existingNames.filter((n) => n !== action.name)}
-            />
-          ))}
-
-          {hasLocked && lockedTasks.map((task) => (
-            <LockedActionRow key={task.id} task={task} />
-          ))}
+          {actionList}
+          {lockedList}
         </ScrollableListLayout>
       ) : (
         <>
-          <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-2">
-            {actions.map((action) => (
-              <ActionRow
-                key={action.id}
-                action={action}
-                groups={groups}
-                onEdit={() => {}}
-                onDeleted={() => handleDeleted(action.id)}
-                onUpdated={(patch) => handleActionPatched(action.id, patch)}
-                onError={setError}
-                siblingNames={existingNames.filter((n) => n !== action.name)}
-              />
-            ))}
-
-            {hasLocked && lockedTasks.map((task) => (
-              <LockedActionRow key={task.id} task={task} />
-            ))}
+          <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-1.5">
+            {actionList}
+            {lockedList}
           </div>
-          <div className="shrink-0 pt-2">
+          <div className="shrink-0">
             <InlineAddAction
               eventId={eventId}
               onAdded={handleAdded}

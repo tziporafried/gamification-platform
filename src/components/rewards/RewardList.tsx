@@ -273,12 +273,13 @@ export function RewardList({ eventId, onCountChange, embedded = false, isActive,
   )
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
       {error && <ErrorAlert message={error} className="shrink-0 mb-4" />}
 
       {rewards.length === 0 && !hasLocked ? (
         embedded ? (
           <ScrollableListLayout
+            className="flex-1 min-h-0"
             listRef={listRef}
             footer={showAddInput ? inlineAdd : undefined}
           >
@@ -290,7 +291,7 @@ export function RewardList({ eventId, onCountChange, embedded = false, isActive,
               {emptyState}
             </div>
             {showAddInput && (
-              <div className="shrink-0 pt-2">
+              <div className="shrink-0">
                 {inlineAdd}
               </div>
             )}
@@ -298,6 +299,7 @@ export function RewardList({ eventId, onCountChange, embedded = false, isActive,
         )
       ) : embedded ? (
         <ScrollableListLayout
+          className="flex-1 min-h-0"
           listRef={listRef}
           listClassName="space-y-3"
           footer={inlineAdd}
@@ -311,7 +313,7 @@ export function RewardList({ eventId, onCountChange, embedded = false, isActive,
             {rewardGrid}
             {lockedGrid}
           </div>
-          <div className="shrink-0 pt-2">
+          <div className="shrink-0">
             {inlineAdd}
           </div>
         </>

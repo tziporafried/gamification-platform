@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, memo, KeyboardEvent } from 'react'
-import { Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { WizardDeleteButton } from '@/components/wizard/WizardDeleteButton'
 import { cn } from '@/lib/utils'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
 import { TaskLimitSelect } from './TaskLimitSelect'
 import { Tooltip, useIsTruncated } from '@/components/ui/Tooltip'
+import { ACTION_CARD_GRADIENT, getActionIcon, getActionIconMotion, getActionIconPlacement } from '@/lib/actionTiers'
 import type { ActionWithGroups, Group } from '@/types'
 
 type LimitMode = 'unlimited' | 'once' | 'limited'
@@ -46,7 +47,7 @@ export const ActionRow = memo(function ActionRow({
   const [points, setPoints] = useState(action.points.toString())
   const [saving, setSaving] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
-  const nameTextRef = useRef<HTMLSpanElement>(null)
+  const nameTextRef = useRef<HTMLParagraphElement>(null)
   const pointsRef = useRef<HTMLInputElement>(null)
 
   const [limitMode, setLimitMode] = useState<LimitMode>(toLimitMode(action.max_completions))
@@ -57,8 +58,10 @@ export const ActionRow = memo(function ActionRow({
   const [localGroups, setLocalGroups] = useState(action.groups)
 
   const pointsNum = parseInt(points, 10) || 0
-  const isPositive = pointsNum >= 0
-  const pointsLabel = `${pointsNum < 0 ? '−' : ''}${Math.abs(pointsNum)} נק'`
+  const ActionIcon = getActionIcon(action.id)
+  const iconMotion = getActionIconMotion(action.id)
+  const iconPlacement = getActionIconPlacement(action.id)
+  const pointsLabel = `${pointsNum < 0 ? '−' : ''}${Math.abs(pointsNum).toLocaleString()} נק׳`
   const assignedGroupIds = new Set(localGroups.map(g => g.id))
   const isAllGroups = localGroups.length === 0
   const isNameTruncated = useIsTruncated(nameTextRef, name)
@@ -176,116 +179,135 @@ export const ActionRow = memo(function ActionRow({
   }
 
   return (
-    <div
-      className={cn(
-        'rounded-xl border bg-surface transition-all duration-200 group/row',
-        isPositive
-          ? 'border-border hover:border-tertiary'
-          : 'border-danger/20',
-      )}
-    >
-      <div className="px-4 py-3">
-      <div className="flex items-center gap-3">
-        {/* Points badge */}
-        {editingPoints ? (
-          <input
-            ref={pointsRef}
-            type="number"
-            value={points}
-            onChange={(e) => setPoints(e.target.value)}
-            onKeyDown={handlePointsKey}
-            onBlur={savePoints}
-            className={cn(
-              'h-11 w-11 rounded-xl text-center text-sm font-bold outline-none border border-tertiary bg-surface-elevated text-foreground',
-              saving && 'opacity-50',
-            )}
-            disabled={saving}
-          />
-        ) : (
-          <button
-            onClick={() => setEditingPoints(true)}
-            className={cn(
-              'flex shrink-0 items-center justify-center rounded-xl text-sm font-bold cursor-text transition-colors',
-              'h-11 min-w-[3.25rem] px-2',
-              isPositive
-                ? 'bg-surface-elevated text-success hover:bg-surface border border-success/20'
-                : 'bg-surface-elevated text-danger hover:bg-surface border border-danger/20',
-            )}
-          >
-            {pointsLabel}
-          </button>
+    <div className="group/card relative">
+      <div
+        className={cn(
+          'relative overflow-hidden rounded-xl text-white transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card-hover hover:brightness-[1.03] motion-reduce:hover:transform-none motion-reduce:hover:brightness-100',
+          ACTION_CARD_GRADIENT,
         )}
-
-        {/* Name */}
-        <Tooltip
-          content={name}
-          hidden={editingName || !isNameTruncated}
-          className="min-w-0 flex-1"
-        >
+      >
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-xl" aria-hidden>
           <div
-            className="min-w-0 flex-1"
-            onClick={() => !editingName && setEditingName(true)}
-            role="button"
-            tabIndex={-1}
+            className="absolute top-1/2"
+            style={{
+              left: iconPlacement.left,
+              transform: `translateY(-50%) translateX(${iconPlacement.translateX})`,
+            }}
           >
-            {editingName ? (
-              <input
-                ref={nameRef}
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={handleNameKey}
-                onBlur={saveName}
-                className={cn(
-                  'w-full bg-transparent text-sm font-semibold text-foreground outline-none border-b border-tertiary pb-0.5',
-                  saving && 'opacity-50',
-                )}
-                disabled={saving}
-              />
-            ) : (
-              <span
-                ref={nameTextRef}
-                className="block w-full text-sm font-semibold text-foreground hover:text-tertiary transition-colors cursor-text truncate"
-              >
-                {name}
-              </span>
-            )}
-          </div>
-        </Tooltip>
-
-        {/* Task limit dropdown */}
-        <TaskLimitSelect
-          limitMode={limitMode}
-          customLimit={customLimit}
-          editingLimit={editingLimit}
-          limitRef={limitRef}
-          onSaveLimitMode={saveLimitMode}
-          onSetEditingLimit={setEditingLimit}
-          onSetCustomLimit={setCustomLimit}
-          onResetLimit={() => setLimitMode(toLimitMode(action.max_completions))}
-        />
-
-        {groups.length > 0 && (
-          <div className="shrink-0">
-            <GroupSelectDropdown
-              groups={groups}
-              selectedGroupIds={assignedGroupIds}
-              isAllSelected={isAllGroups}
-              tooltip="על אילו קבוצות חלה הפעילות"
-              onSelectAll={selectAllGroups}
-              onToggleGroup={(groupId) => toggleGroup(groupId)}
+            <ActionIcon
+              size={48}
+              strokeWidth={1.5}
+              className="text-white/[0.1] animate-action-icon-float motion-reduce:animate-none"
+              style={{
+                animationDelay: iconMotion.animationDelay,
+                animationDuration: iconMotion.animationDuration,
+              }}
             />
           </div>
-        )}
+        </div>
 
-        <button
+        <WizardDeleteButton
+          variant="card"
+          containerClassName="absolute left-2 top-1/2 z-20 -translate-y-1/2"
+          fixedSize
           onClick={handleDelete}
-          className="shrink-0 p-1.5 rounded-lg text-muted opacity-0 group-hover/row:opacity-100 hover:bg-surface-elevated hover:text-danger transition-all"
-          title="מחיקה"
-        >
-          <Trash2 size={16} />
-        </button>
-      </div>
+        />
+
+        <div className="relative z-10 flex min-h-[3.25rem] items-center gap-2 py-2 pl-10 pr-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <Tooltip
+              content={name}
+              hidden={editingName || !isNameTruncated}
+              className="min-w-0"
+            >
+              <div
+                className="flex h-5 min-w-0 items-center"
+                onClick={() => !editingName && setEditingName(true)}
+                role="button"
+                tabIndex={-1}
+              >
+                {editingName ? (
+                  <input
+                    ref={nameRef}
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onKeyDown={handleNameKey}
+                    onBlur={saveName}
+                    className={cn(
+                      'h-full w-full min-w-0 bg-transparent text-sm font-semibold leading-5 text-white outline-none border-0 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.5)]',
+                      saving && 'opacity-50',
+                    )}
+                    disabled={saving}
+                  />
+                ) : (
+                  <p
+                    ref={nameTextRef}
+                    className="h-full w-full min-w-0 truncate text-sm font-semibold leading-5 cursor-text hover:text-white/90 transition-colors"
+                  >
+                    {name}
+                  </p>
+                )}
+              </div>
+            </Tooltip>
+
+            <div className="flex min-h-[1.375rem] flex-wrap items-center gap-1">
+              <TaskLimitSelect
+                limitMode={limitMode}
+                customLimit={customLimit}
+                editingLimit={editingLimit}
+                limitRef={limitRef}
+                onSaveLimitMode={saveLimitMode}
+                onSetEditingLimit={setEditingLimit}
+                onSetCustomLimit={setCustomLimit}
+                onResetLimit={() => setLimitMode(toLimitMode(action.max_completions))}
+                tone="onColor"
+                size="compact"
+              />
+
+              {groups.length > 0 && (
+                <GroupSelectDropdown
+                  groups={groups}
+                  selectedGroupIds={assignedGroupIds}
+                  isAllSelected={isAllGroups}
+                  tooltip="על אילו קבוצות חלה הפעילות"
+                  onSelectAll={selectAllGroups}
+                  onToggleGroup={(groupId) => toggleGroup(groupId)}
+                  tone="onColor"
+                  size="compact"
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center">
+            <div className="h-7 w-24 shrink-0">
+              {editingPoints ? (
+                <input
+                  ref={pointsRef}
+                  type="number"
+                  value={points}
+                  onChange={(e) => setPoints(e.target.value)}
+                  onKeyDown={handlePointsKey}
+                  onBlur={savePoints}
+                  className={cn(
+                    'h-full w-full rounded-full bg-white/25 text-center text-xs font-bold leading-none text-white outline-none border border-white/40',
+                    saving && 'opacity-50',
+                  )}
+                  disabled={saving}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditingPoints(true)}
+                  className="inline-flex h-full w-full min-w-0 cursor-text items-center justify-center rounded-full bg-white/20 px-1 text-xs font-bold leading-none transition-colors hover:bg-white/30"
+                >
+                  <span className="truncate">{pointsLabel}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -1,9 +1,10 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useLayoutEffect, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Repeat, RotateCcw, Hash, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useClickOutside } from '@/hooks/useClickOutside'
-import { DropdownDivider, DropdownHeader, DropdownPanel } from '@/components/ui/DropdownPanel'
+import { DropdownDivider, DropdownHeader } from '@/components/ui/DropdownPanel'
 import { ChipButton } from '@/components/ui/ChipButton'
+import { theme } from '@/lib/theme'
 
 type LimitMode = 'unlimited' | 'once' | 'limited'
 
@@ -16,6 +17,14 @@ interface TaskLimitSelectProps {
   onSetEditingLimit: (v: boolean) => void
   onSetCustomLimit: (v: number) => void
   onResetLimit: () => void
+  tone?: 'default' | 'onColor'
+  size?: 'default' | 'compact'
+}
+
+const PANEL_WIDTH = 208
+
+function clampPanelLeft(triggerLeft: number) {
+  return Math.max(8, Math.min(triggerLeft, window.innerWidth - PANEL_WIDTH - 8))
 }
 
 export function TaskLimitSelect({
@@ -27,11 +36,13 @@ export function TaskLimitSelect({
   onSetEditingLimit,
   onSetCustomLimit,
   onResetLimit,
+  tone = 'default',
+  size = 'default',
 }: TaskLimitSelectProps) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const closeSelect = useCallback(() => { setOpen(false); onSetEditingLimit(false) }, [onSetEditingLimit])
-  useClickOutside(ref, closeSelect)
+  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number } | null>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   const unlimitedLabel = 'ניתן לבצע ללא הגבלה'
   const limitTooltip = 'כמה פעמים כל משתתף יכול לבצע את הפעילות'
@@ -41,20 +52,99 @@ export function TaskLimitSelect({
     : `${customLimit} פעמים`
 
   const Icon = limitMode === 'unlimited' ? Repeat : limitMode === 'once' ? RotateCcw : Hash
+  const compact = size === 'compact'
+
+  const updatePosition = useCallback(() => {
+    const rect = buttonRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setPanelStyle({
+      top: rect.bottom + 4,
+      left: clampPanelLeft(rect.left),
+    })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPanelStyle(null)
+      return
+    }
+    updatePosition()
+  }, [open, updatePosition])
+
+  useEffect(() => {
+    if (!open) return
+
+    function handlePointerDown(e: MouseEvent) {
+      const target = e.target as Node
+      if (buttonRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      setOpen(false)
+      onSetEditingLimit(false)
+    }
+
+    function handleReposition() {
+      updatePosition()
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    window.addEventListener('resize', handleReposition)
+    window.addEventListener('scroll', handleReposition, true)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      window.removeEventListener('resize', handleReposition)
+      window.removeEventListener('scroll', handleReposition, true)
+    }
+  }, [open, updatePosition, onSetEditingLimit])
+
+  function close() {
+    setOpen(false)
+    onSetEditingLimit(false)
+  }
 
   return (
-    <div ref={ref} className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
-      <ChipButton color="default" onClick={() => setOpen(!open)} title={limitTooltip} className="max-w-[9rem]">
-        <Icon size={10} className="shrink-0" />
-        <span className="truncate">{label}</span>
-        <ChevronDown size={12} className={cn('transition-transform', open && 'rotate-180')} />
-      </ChipButton>
+    <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+      {tone === 'onColor' ? (
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={() => setOpen((prev) => !prev)}
+          title={limitTooltip}
+          className={cn(
+            'inline-flex items-center rounded-full bg-white/20 font-medium text-white transition-colors hover:bg-white/30',
+            compact ? 'gap-1 px-2 py-0.5 text-[10px]' : 'gap-1.5 px-2.5 py-1 text-[11px]',
+          )}
+        >
+          <Icon size={compact ? 9 : 10} className="shrink-0" />
+          <span className="whitespace-nowrap">{label}</span>
+          <ChevronDown size={compact ? 10 : 12} className={cn('shrink-0 transition-transform', open && 'rotate-180')} />
+        </button>
+      ) : (
+        <ChipButton
+          ref={buttonRef}
+          color="default"
+          onClick={() => setOpen((prev) => !prev)}
+          title={limitTooltip}
+          className="max-w-[9rem]"
+        >
+          <Icon size={10} className="shrink-0" />
+          <span className="truncate">{label}</span>
+          <ChevronDown size={12} className={cn('transition-transform', open && 'rotate-180')} />
+        </ChipButton>
+      )}
 
-      {open && (
-        <DropdownPanel width="w-52">
+      {open && panelStyle && createPortal(
+        <div
+          ref={panelRef}
+          style={{ position: 'fixed', top: panelStyle.top, left: panelStyle.left, width: PANEL_WIDTH }}
+          className={cn(
+            'z-[100] rounded-xl border py-1 shadow-podium',
+            'animate-[fade-in_150ms_ease-out,slide-down_150ms_ease-out]',
+            theme.bgCard,
+            theme.border,
+          )}
+        >
           <DropdownHeader>כמה פעמים כל משתתף יכול לבצע</DropdownHeader>
           <button
-            onClick={() => { onSaveLimitMode('unlimited'); setOpen(false) }}
+            onClick={() => { onSaveLimitMode('unlimited'); close() }}
             className={cn(
               'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
               limitMode === 'unlimited' ? 'text-foreground' : 'text-muted',
@@ -67,7 +157,7 @@ export function TaskLimitSelect({
             </div>
           </button>
           <button
-            onClick={() => { onSaveLimitMode('once'); setOpen(false) }}
+            onClick={() => { onSaveLimitMode('once'); close() }}
             className={cn(
               'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
               limitMode === 'once' ? 'text-foreground' : 'text-muted',
@@ -90,8 +180,8 @@ export function TaskLimitSelect({
                 value={customLimit}
                 onChange={(e) => onSetCustomLimit(Math.max(2, parseInt(e.target.value, 10) || 2))}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') { e.preventDefault(); onSaveLimitMode('limited', Math.max(2, customLimit)); onSetEditingLimit(false); setOpen(false) }
-                  if (e.key === 'Escape') { onSetEditingLimit(false); onResetLimit() }
+                  if (e.key === 'Enter') { e.preventDefault(); onSaveLimitMode('limited', Math.max(2, customLimit)); close() }
+                  if (e.key === 'Escape') { close(); onResetLimit() }
                 }}
                 onBlur={() => { onSaveLimitMode('limited', Math.max(2, customLimit)); onSetEditingLimit(false) }}
                 className="w-12 rounded border border-border bg-surface-elevated px-1.5 py-0.5 text-xs text-center font-medium text-foreground outline-none focus:border-tertiary"
@@ -114,7 +204,8 @@ export function TaskLimitSelect({
               </div>
             </button>
           )}
-        </DropdownPanel>
+        </div>,
+        document.body,
       )}
     </div>
   )

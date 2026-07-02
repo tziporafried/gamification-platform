@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, KeyboardEvent } from 'react'
 import { supabase } from '@/lib/supabase'
-import { DeleteButton } from '@/components/ui/IconButton'
+import { WizardDeleteButton } from '@/components/wizard/WizardDeleteButton'
 import { Tooltip, useIsTruncated } from '@/components/ui/Tooltip'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
 import { cn } from '@/lib/utils'
@@ -265,14 +265,7 @@ export function RewardRow({
           )}
         </div>
 
-        <div className="absolute left-2 top-2 z-20">
-          <DeleteButton
-            revealOnHover="card"
-            iconSize={14}
-            onClick={onDelete}
-            className="text-white/70 hover:bg-white/15 hover:text-white"
-          />
-        </div>
+        <WizardDeleteButton variant="card" onClick={onDelete} />
       </div>
     </div>
   )

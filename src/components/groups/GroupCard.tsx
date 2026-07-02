@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Users, Palette } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { ColorPicker } from '@/components/ui/ColorPicker'
-import { DeleteButton } from '@/components/ui/IconButton'
+import { WizardDeleteButton } from '@/components/wizard/WizardDeleteButton'
 import { Tooltip, useIsTruncated } from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
 import { isPresetColor } from '@/lib/paletteColors'
@@ -21,10 +21,8 @@ function clampPanelLeft(triggerLeft: number) {
   return Math.max(8, Math.min(triggerLeft, window.innerWidth - COLOR_PANEL_WIDTH - 8))
 }
 
-function getGroupGradientStyle(color: string): React.CSSProperties {
-  return {
-    background: `linear-gradient(145deg, color-mix(in srgb, ${color} 82%, white) 0%, ${color} 45%, color-mix(in srgb, ${color} 58%, black) 100%)`,
-  }
+function getGroupCardStyle(color: string): React.CSSProperties {
+  return { backgroundColor: color }
 }
 
 export function GroupCard({ group, onDelete }: GroupCardProps) {
@@ -123,7 +121,7 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
         className={cn(
           'relative overflow-hidden rounded-2xl text-white transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card-hover hover:brightness-[1.03] motion-reduce:hover:transform-none motion-reduce:hover:brightness-100',
         )}
-        style={getGroupGradientStyle(color)}
+        style={getGroupCardStyle(color)}
       >
         <div className="relative z-10 flex min-h-[8.5rem] flex-col items-center justify-center gap-1.5 px-4 py-5 text-center">
           <Users
@@ -201,14 +199,7 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
           )}
         </div>
 
-        <div className="absolute left-2 top-2 z-20">
-          <DeleteButton
-            revealOnHover="card"
-            iconSize={14}
-            onClick={onDelete}
-            className="text-white/70 hover:bg-white/15 hover:text-white"
-          />
-        </div>
+        <WizardDeleteButton variant="card" onClick={onDelete} />
       </div>
     </div>
   )

@@ -28,7 +28,7 @@ export function ScrollableListLayout({
       >
         {children}
       </ScrollContainer>
-      {footer && <div className="shrink-0 pt-3">{footer}</div>}
+      {footer && <div className="shrink-0 mt-auto pt-2">{footer}</div>}
     </div>
   )
 }

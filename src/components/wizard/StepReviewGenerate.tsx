@@ -121,7 +121,13 @@ export function StepReviewGenerate({
                 <SummaryCard type="participants" value={counts.participants} index={0} ready={ready} animationKey={animationKey} />
               )}
               <SummaryCard type="activities" value={counts.tasks} index={isTemplate ? 0 : 1} ready={ready} animationKey={animationKey} />
-              <SummaryCard type="groups" value={counts.groups} index={isTemplate ? 1 : 2} ready={ready} animationKey={animationKey} />
+              <SummaryCard
+                type={counts.groups === 0 ? 'groupsTogether' : 'groups'}
+                value={counts.groups}
+                index={isTemplate ? 1 : 2}
+                ready={ready}
+                animationKey={animationKey}
+              />
             </div>
           </div>
 
@@ -203,6 +209,8 @@ function formatSummaryLabel(type: SummaryCardType, value: number): string {
       return value === 1 ? '1 פעילות' : `${value} פעילויות`
     case 'groups':
       return value === 1 ? '1 קבוצה' : `${value} קבוצות`
+    case 'groupsTogether':
+      return 'כולם יחד'
   }
 }
 
@@ -219,8 +227,8 @@ function SummaryCard({
   ready: boolean
   animationKey: number
 }) {
-  const isAllTogether = type === 'groups' && value === 0
-  const label = isAllTogether ? 'כולם יחד' : formatSummaryLabel(type, value)
+  const isAllTogether = type === 'groupsTogether'
+  const label = formatSummaryLabel(type, value)
   const variantStyles = getSummaryCardVariantStyles(type)
 
   const content = (

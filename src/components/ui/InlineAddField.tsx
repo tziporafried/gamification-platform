@@ -38,14 +38,13 @@ export function InlineAddField({
   return (
     <div
       className={cn(
-        'flex items-center gap-2 rounded-xl p-3',
+        'flex items-center gap-2 rounded-xl p-1.5',
         theme.bgCardMuted,
         theme.borderInteractiveDashed,
         'focus-within:border-accent',
         className,
       )}
     >
-      <Plus size={18} className={cn('shrink-0', theme.textSubtle)} />
       <input
         ref={inputRef as RefObject<HTMLInputElement>}
         type="text"
@@ -54,9 +53,10 @@ export function InlineAddField({
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         className={cn(
-          'flex-1 bg-transparent text-sm outline-none',
+          'min-w-0 flex-1 h-9 rounded-lg border border-border bg-surface px-3 text-sm outline-none transition-colors',
           theme.text,
           theme.inputPlaceholder,
+          'focus:border-secondary',
           disabled && 'opacity-50',
         )}
         disabled={disabled}
@@ -64,24 +64,20 @@ export function InlineAddField({
       />
       {trailing}
       {onSubmit && showSubmit !== false && (
-        <>
-          {trailing != null && (
-            <span className="mx-0.5 h-4 w-px shrink-0 bg-border" aria-hidden />
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={!canSubmit}
+          className={cn(
+            'inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-lg border px-3 text-xs font-semibold transition-all',
+            canSubmit
+              ? 'border-transparent bg-primary text-[var(--color-on-primary)] hover:bg-primary-hover active:scale-[0.97]'
+              : 'cursor-not-allowed border-border bg-surface text-muted',
           )}
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={!canSubmit}
-            className={cn(
-              'shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-all',
-              canSubmit
-                ? 'border-transparent bg-primary text-[var(--color-on-primary)] hover:bg-primary-hover active:scale-[0.97]'
-                : 'cursor-not-allowed border-border bg-surface text-muted',
-            )}
-          >
-            {submitLabel}
-          </button>
-        </>
+        >
+          <Plus size={14} strokeWidth={2.5} />
+          {submitLabel}
+        </button>
       )}
     </div>
   )

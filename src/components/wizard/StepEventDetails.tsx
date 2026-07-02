@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { X, Image as ImageIcon } from 'lucide-react'
+import { Image as ImageIcon } from 'lucide-react'
+import { WizardDeleteButton } from './WizardDeleteButton'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { ScrollContainer } from '@/components/ui/ScrollContainer'
 import { Input } from '@/components/ui/Input'
@@ -152,21 +153,27 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
       title={templateMode ? 'פרטי התבנית' : 'פרטי הפעילות'}
       subtitle={templateMode
         ? 'תנו שם ותיאור קצר שיעזרו למשתמשים לבחור את התבנית'
-        : 'תנו שם לפעילות וסמל שילוו את המשתתפים לאורך כל המשחק'}
+        : (
+          <>
+            תנו למשחק את הזהות שלו –
+            <br />
+            שם ייחודי ולוגו שילווה את המשתתפים לאורך כל החוויה.
+          </>
+        )}
       currentStep={1}
       canAdvance={canAdvance && !saving}
       onNext={handleNext}
     >
-      <ScrollContainer className="flex-1">
-      <div className="space-y-6">
+      <ScrollContainer className="flex flex-1 flex-col justify-center">
+      <div className="mx-auto w-full max-w-sm py-2">
         <div>
-          <FormLabel>
-            {templateMode ? 'שם התבנית' : 'שם הפעילות'}
+          <FormLabel className="text-center">
+            {templateMode ? 'שם התבנית' : 'איך נקרא המשחק?'}
           </FormLabel>
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={templateMode ? 'נופש משפחתי' : 'נופש משפחתי באילת'}
+            placeholder={templateMode ? 'נופש משפחתי' : 'אולימפיאדת הקיץ שלנו'}
             className="text-lg"
             autoFocus
             disabled={saving}
@@ -177,6 +184,7 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
           <Textarea
             id="template-description"
             label="תיאור התבנית"
+            className="mt-6 [&_label]:text-center"
             rows={3}
             placeholder="תבנית מוכנה לנופש משפחתי הכוללת קבוצות, משימות ופרסי ניקוד."
             value={description}
@@ -187,25 +195,28 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
 
         {!templateMode && (
         <>
-        <div>
-          <FormLabel>סמל הפעילות</FormLabel>
+        <div className="mt-3 flex flex-col items-center">
+          <FormLabel className="text-center leading-tight">
+            <span className="flex flex-col items-center gap-px">
+              לוגו האירוע
+              <span className="text-xs font-normal text-muted">לא חובה</span>
+            </span>
+          </FormLabel>
 
           {logoPreview ? (
-            <div className="relative inline-block">
+            <div className="relative">
               <div className={cn('w-28 h-28 rounded-xl border bg-surface flex items-center justify-center overflow-hidden', theme.border)}>
                 <img
                   src={logoPreview}
-                  alt="סמל הפעילות"
+                  alt="לוגו האירוע"
                   className="max-w-full max-h-full object-contain p-2"
                 />
               </div>
-              <button
-                type="button"
+              <WizardDeleteButton
+                containerClassName="absolute -top-2 -left-2 z-20"
+                title="הסרת הלוגו"
                 onClick={handleRemoveLogo}
-                className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-danger text-foreground flex items-center justify-center hover:bg-danger transition-colors"
-              >
-                <X size={14} />
-              </button>
+              />
             </div>
           ) : (
             <div
@@ -213,17 +224,17 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
               onDragOver={(e) => e.preventDefault()}
               onClick={() => fileInputRef.current?.click()}
               className={cn(
-                'w-full max-w-sm rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:bg-surface-elevated',
-                theme.borderInteractiveDashed,
+                'w-[85%] rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:bg-surface-elevated',
+                'border border-dashed border-accent transition-colors',
               )}
             >
-              <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center">
-                <ImageIcon size={24} className="text-tertiary" />
+              <div className="w-14 h-14 rounded-full bg-surface-elevated flex items-center justify-center">
+                <ImageIcon size={28} className="text-tertiary" />
               </div>
               <div className="text-center">
                 <p className="text-sm text-foreground">
-                  גרור לוגו לכאן או{' '}
-                  <span className="text-accent underline underline-offset-2">בחר קובץ</span>
+                  גררו לוגו לכאן או{' '}
+                  <span className="text-accent underline underline-offset-2">בחרו מהמכשיר</span>
                 </p>
                 <p className="text-xs text-muted mt-1">
                   PNG, JPG, WebP או SVG • עד 2MB
@@ -244,14 +255,14 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
           />
 
           {uploadError && (
-            <p className="mt-2 text-sm text-danger">{uploadError}</p>
+            <p className="mt-2 text-center text-sm text-danger">{uploadError}</p>
           )}
         </div>
         </>
         )}
 
         {templateMode && (
-          <PanelCard size="sm" className="bg-surface-elevated border-border">
+          <PanelCard size="sm" className="mt-6 bg-surface-elevated border-border text-center">
             <p className="text-xs text-muted mb-3">כך התבנית תוצג</p>
             <div>
               <p className="text-foreground font-semibold text-sm leading-tight">

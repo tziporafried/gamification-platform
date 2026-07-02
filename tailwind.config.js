@@ -78,6 +78,18 @@ export default {
           '71%': { transform: 'translate(1px, -8px) rotate(-3deg) scale(1.08)' },
           '100%': { transform: 'translate(0, 0) rotate(0deg) scale(1)' },
         },
+        'action-icon-float': {
+          '0%, 100%': { transform: 'translateY(0) rotate(0deg) scale(1)' },
+          '40%': { transform: 'translateY(-4px) rotate(3deg) scale(1.04)' },
+          '70%': { transform: 'translateY(-2px) rotate(-2deg) scale(1.02)' },
+        },
+        'participant-icon-float': {
+          '0%': { transform: 'translateY(0) rotate(0deg) scale(1)' },
+          '18%': { transform: 'translateY(-6px) rotate(-4deg) scale(1.08)' },
+          '42%': { transform: 'translateY(-2px) rotate(3deg) scale(1.04)' },
+          '68%': { transform: 'translateY(-7px) rotate(-3deg) scale(1.1)' },
+          '100%': { transform: 'translateY(0) rotate(0deg) scale(1)' },
+        },
         'glow-pulse': {
           '0%, 100%': { boxShadow: '0 0 20px color-mix(in srgb, var(--color-primary) 30%, transparent)' },
           '50%': { boxShadow: '0 0 40px color-mix(in srgb, var(--color-primary) 60%, transparent)' },
@@ -185,6 +197,8 @@ export default {
         'celebration-bounce': 'celebration-bounce 1.5s ease-in-out infinite',
         'wizard-step-pulse': 'wizard-step-pulse 2s ease-in-out infinite',
         'reward-icon-float': 'reward-icon-float 3.1s cubic-bezier(0.42, 0, 0.58, 1) infinite',
+        'action-icon-float': 'action-icon-float 3.8s ease-in-out infinite',
+        'participant-icon-float': 'participant-icon-float 2.8s cubic-bezier(0.42, 0, 0.58, 1) infinite',
         'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
         'glow-pulse-gold': 'glow-pulse-gold 2s ease-in-out infinite',
         'confetti-fall': 'confetti-fall 3s ease-in forwards',

@@ -33,7 +33,7 @@ export function StepRewards({ eventId, counts, isActive, onCountsPatch, onNext, 
       onNext={onNext}
       onBack={onBack}
     >
-      <WizardUsageScroll>
+      <WizardUsageScroll className="h-full min-h-0 flex-1">
         <RewardList
           embedded
           eventId={eventId}

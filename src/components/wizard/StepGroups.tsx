@@ -94,6 +94,84 @@ export function StepGroups({
     onCountsPatch({ groups: 0 })
   }
 
+  function renderGroupOptions(compact: boolean) {
+    return GROUP_OPTIONS.map(({ type, label, description, icon: Icon }) => {
+      const optionStyles = GROUP_OPTION_STYLES[type]
+      const isSelected = groupType === type
+
+      return (
+        <button
+          key={type}
+          type="button"
+          onClick={() => handleOptionClick(type)}
+          className={cn('w-full text-right', !compact && 'h-full')}
+        >
+          <div
+            className={cn(
+              'rounded-xl border shadow-none',
+              'flex h-full w-full cursor-pointer transition-all duration-200 justify-center',
+              compact
+                ? cn(
+                    'min-h-0 py-1.5 px-2.5 flex-row items-center gap-1.5 text-right rounded-lg',
+                    isSelected
+                      ? cn(
+                          'ring-1 shadow-sm font-semibold',
+                          'bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-surface))] ring-primary border-primary',
+                        )
+                      : cn(
+                          'bg-surface opacity-75',
+                          theme.borderInteractive,
+                        ),
+                  )
+                : cn(
+                    'p-6 flex-col items-center gap-3 text-center',
+                    'hover:shadow-card-hover hover:-translate-y-0.5',
+                    optionStyles.card,
+                    isSelected
+                      ? optionStyles.cardSelected
+                      : theme.borderInteractive,
+                  ),
+            )}
+          >
+            <Icon
+              size={compact ? 16 : 32}
+              className={cn(
+                'shrink-0 transition-colors',
+                compact
+                  ? isSelected ? 'text-primary' : 'text-muted'
+                  : isSelected ? optionStyles.iconSelected : 'text-muted',
+              )}
+            />
+            <div className={cn(!compact && 'flex flex-1 flex-col items-center')}>
+              <span className={cn(
+                'font-medium',
+                compact
+                  ? isSelected
+                    ? 'font-semibold text-primary'
+                    : 'font-medium text-muted'
+                  : 'text-foreground',
+                compact ? 'text-xs' : 'text-base',
+              )}>
+                {label}
+              </span>
+              {!compact && (
+                <span className="mt-1 block min-h-[2.75rem] text-xs text-muted">{description}</span>
+              )}
+            </div>
+          </div>
+        </button>
+      )
+    })
+  }
+
+  const compactGroupModeHeader = (
+    <div className="shrink-0 px-1 pb-3">
+      <div className="grid grid-cols-2 gap-4 px-1">
+        {renderGroupOptions(true)}
+      </div>
+    </div>
+  )
+
   return (
     <WizardStepWrapper
       title="איך תרצו לשחק?"
@@ -104,75 +182,23 @@ export function StepGroups({
       onBack={onBack}
     >
       <div className="flex h-full flex-col min-h-0">
-        <div className="shrink-0 space-y-4">
-          <div className="grid grid-cols-2 items-stretch gap-3 p-1">
-            {GROUP_OPTIONS.map(({ type, label, description, icon: Icon }) => {
-              const optionStyles = GROUP_OPTION_STYLES[type]
-              const isSelected = groupType === type
-
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => handleOptionClick(type)}
-                  className="h-full w-full text-right"
-                >
-                  <div
-                    className={cn(
-                      'rounded-xl border shadow-none',
-                      'flex h-full w-full cursor-pointer transition-all duration-200 justify-center',
-                      showGroupSetup
-                        ? cn(
-                            'p-3 flex-row items-center gap-2 text-right',
-                            'bg-[color-mix(in_srgb,var(--color-primary)_7%,var(--color-surface))]',
-                            isSelected
-                              ? 'border-primary'
-                              : theme.borderInteractive,
-                          )
-                        : cn(
-                            'p-6 flex-col items-center gap-3 text-center',
-                            'hover:shadow-card-hover hover:-translate-y-0.5',
-                            optionStyles.card,
-                            isSelected
-                              ? optionStyles.cardSelected
-                              : theme.borderInteractive,
-                          ),
-                    )}
-                  >
-                    <Icon
-                      size={showGroupSetup ? 20 : 32}
-                      className={cn(
-                        'shrink-0 transition-colors',
-                        showGroupSetup
-                          ? isSelected ? 'text-primary' : 'text-muted'
-                          : isSelected ? optionStyles.iconSelected : 'text-muted',
-                      )}
-                    />
-                    <div className={cn(!showGroupSetup && 'flex flex-1 flex-col items-center')}>
-                      <span className={cn(
-                        'font-medium',
-                        showGroupSetup
-                          ? isSelected ? 'text-primary' : 'text-foreground'
-                          : 'text-foreground',
-                        showGroupSetup ? 'text-sm' : 'text-base',
-                      )}>
-                        {label}
-                      </span>
-                      {!showGroupSetup && (
-                        <span className="mt-1 block min-h-[2.75rem] text-xs text-muted">{description}</span>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
+        {!showGroupSetup && (
+          <div className="shrink-0 space-y-4">
+            <div className="grid grid-cols-2 items-stretch gap-3 p-1">
+              {renderGroupOptions(false)}
+            </div>
           </div>
-        </div>
+        )}
 
         {showGroupSetup && (
-          <div className="mt-4 flex min-h-0 flex-1 flex-col">
-            <WizardUsageScroll>
-              <GroupList embedded eventId={eventId} onCountChange={handleCountChange} />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <WizardUsageScroll className="h-full min-h-0 flex-1">
+              <GroupList
+                embedded
+                eventId={eventId}
+                header={compactGroupModeHeader}
+                onCountChange={handleCountChange}
+              />
             </WizardUsageScroll>
           </div>
         )}
@@ -193,7 +219,7 @@ export function StepGroups({
             </div>
           </div>
           <ModalActions className="pt-0">
-            <Button variant="danger" loading={deleting} className="bg-danger text-foreground hover:bg-danger" onClick={handleConfirmDeleteGroups}>
+            <Button variant="danger" loading={deleting} className="bg-danger text-white hover:bg-danger hover:text-white" onClick={handleConfirmDeleteGroups}>
               אשר מחיקה
             </Button>
             <Button variant="outline" className="border-border text-foreground hover:bg-surface-elevated" onClick={() => setConfirmDelete(false)}>

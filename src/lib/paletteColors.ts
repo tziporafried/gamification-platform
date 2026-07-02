@@ -5,7 +5,7 @@
 
 export const PALETTE_BRAND_PRIMARY = '#AB3500'
 export const PALETTE_BRAND_ACCENT = '#FF6B35'
-export const PALETTE_SECONDARY = '#008080'
+export const PALETTE_SECONDARY = '#50A49D'
 export const PALETTE_TERTIARY = '#FF9500'
 export const PALETTE_SUCCESS = '#45CF6B'
 export const PALETTE_WARNING = '#FFB800'

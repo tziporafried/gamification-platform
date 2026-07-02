@@ -32,7 +32,7 @@ export function StepTasks({ eventId, counts, onCountsPatch, onNext, onBack }: St
       onNext={onNext}
       onBack={onBack}
     >
-      <WizardUsageScroll>
+      <WizardUsageScroll className="h-full min-h-0 flex-1">
         <ActionList embedded eventId={eventId} onCountChange={handleCountChange} />
       </WizardUsageScroll>
     </WizardStepWrapper>

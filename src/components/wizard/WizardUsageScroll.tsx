@@ -18,13 +18,21 @@ export function WizardUsageScroll({
   className,
   children,
 }: WizardUsageScrollProps) {
+  const hasFooter = footer != null
+
   return (
-    <div className={cn('flex h-full min-h-0 flex-col', className)}>
+    <div className={cn('flex h-full min-h-0 flex-1 flex-col', className)}>
       {usageBar && <div className="shrink-0 pb-3">{usageBar}</div>}
-      <ScrollContainer ref={scrollRef} className="min-h-0 flex-1">
-        {children}
-      </ScrollContainer>
-      {footer && <div className="shrink-0 pt-2">{footer}</div>}
+      {hasFooter ? (
+        <>
+          <ScrollContainer ref={scrollRef} className="min-h-0 flex-1">
+            {children}
+          </ScrollContainer>
+          <div className="shrink-0 mt-auto pt-2">{footer}</div>
+        </>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      )}
     </div>
   )
 }

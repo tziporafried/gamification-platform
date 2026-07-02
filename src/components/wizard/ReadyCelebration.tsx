@@ -128,21 +128,6 @@ export function ReadyCelebrationBanner({ title, description, celebrate, replayKe
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 280, damping: 22, delay: 0.1 }}
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,color-mix(in_srgb,var(--color-success)_18%,transparent)_0%,transparent_65%)]"
-      />
-
-      {!reducedMotion && celebrate && (
-        <motion.div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 w-1/3 bg-gradient-to-l from-transparent via-success/20 to-transparent"
-          initial={{ x: '150%' }}
-          animate={{ x: '-150%' }}
-          transition={{ duration: 0.9, ease: 'easeInOut' }}
-        />
-      )}
-
       {!reducedMotion && celebrate && (
         <motion.div
           aria-hidden="true"
@@ -393,19 +378,26 @@ function FestiveSuccessIcon({ celebrate, replayKey }: { celebrate: boolean; repl
   )
 }
 
-const SUMMARY_CARD_VARIANTS = {
-  participants: {
+const SUMMARY_CARD_TINTS = {
+  warning: {
+    card: 'bg-[color-mix(in_srgb,var(--color-warning)_22%,var(--color-surface))]',
+    cardHighlight: 'bg-[color-mix(in_srgb,var(--color-warning)_32%,var(--color-surface))]',
+  },
+  secondary: {
     card: 'bg-[color-mix(in_srgb,var(--color-secondary)_22%,var(--color-surface))]',
     cardHighlight: 'bg-[color-mix(in_srgb,var(--color-secondary)_32%,var(--color-surface))]',
   },
-  activities: {
-    card: 'bg-[color-mix(in_srgb,var(--color-primary)_20%,var(--color-surface))]',
-    cardHighlight: 'bg-[color-mix(in_srgb,var(--color-primary)_30%,var(--color-surface))]',
-  },
-  groups: {
+  tertiary: {
     card: 'bg-[color-mix(in_srgb,var(--color-tertiary)_22%,var(--color-surface))]',
     cardHighlight: 'bg-[color-mix(in_srgb,var(--color-tertiary)_32%,var(--color-surface))]',
   },
+} as const
+
+const SUMMARY_CARD_VARIANTS = {
+  participants: SUMMARY_CARD_TINTS.warning,
+  activities: SUMMARY_CARD_TINTS.secondary,
+  groups: SUMMARY_CARD_TINTS.tertiary,
+  groupsTogether: SUMMARY_CARD_TINTS.secondary,
 } as const
 
 export type SummaryCardVariant = keyof typeof SUMMARY_CARD_VARIANTS
