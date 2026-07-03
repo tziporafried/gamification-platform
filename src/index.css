@@ -128,6 +128,19 @@
       radial-gradient(ellipse 72% 58% at 50% 54%, color-mix(in srgb, var(--palette-secondary) 3%, var(--palette-background)), transparent 76%);
   }
 
+  /* Control center — vibrant game-hub atmosphere */
+  .atmosphere-control {
+    --atmosphere-orb-top-orange: color-mix(in srgb, var(--palette-brand-accent) 32%, var(--palette-background));
+    --atmosphere-orb-top-yellow: color-mix(in srgb, var(--palette-warning) 46%, var(--palette-background));
+    --atmosphere-orb-bottom-left: color-mix(in srgb, var(--palette-brand-accent) 30%, var(--palette-background));
+    --atmosphere-orb-bottom-right: color-mix(in srgb, var(--palette-secondary) 22%, var(--palette-background));
+    --atmosphere-orb-bottom-teal-wash: color-mix(in srgb, var(--palette-secondary) 10%, var(--palette-background));
+    --gradient-background:
+      radial-gradient(ellipse 115% 90% at 82% -4%, color-mix(in srgb, var(--palette-brand-accent) 28%, var(--palette-surface-elevated)) 0%, transparent 55%),
+      radial-gradient(ellipse 100% 80% at 18% -4%, color-mix(in srgb, var(--palette-warning) 32%, transparent) 0%, transparent 58%),
+      radial-gradient(ellipse 85% 68% at 50% 58%, color-mix(in srgb, var(--palette-secondary) 12%, var(--palette-background)), transparent 65%);
+  }
+
   /* Wizard — softer glows than the events list, with a light cream veil */
   .atmosphere-wizard {
     --atmosphere-orb-top-orange: color-mix(in srgb, var(--palette-brand-accent) 15%, var(--palette-surface-elevated));

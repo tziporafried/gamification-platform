@@ -29,11 +29,11 @@ export default function App() {
           <Route path="/events" element={<ProtectedRoute><AppShell atmosphere="dashboard"><MyEvents /></AppShell></ProtectedRoute>} />
           <Route path="/events/:id" element={<ProtectedRoute><AppShell atmosphere="wizard"><EventWizard /></AppShell></ProtectedRoute>} />
           <Route path="/events/:id/step/:step" element={<ProtectedRoute><AppShell atmosphere="wizard"><EventWizard /></AppShell></ProtectedRoute>} />
-          <Route path="/events/:id/control" element={<ProtectedRoute><AppShell><EventControlCenterPage /></AppShell></ProtectedRoute>} />
+          <Route path="/events/:id/control" element={<ProtectedRoute><AppShell atmosphere="control"><EventControlCenterPage /></AppShell></ProtectedRoute>} />
           <Route path="/events/:id/display" element={<ProtectedRoute><EventDisplayPage /></ProtectedRoute>} />
           <Route path="/events/:id/ops" element={<ProtectedRoute><EventOpsPage /></ProtectedRoute>} />
           <Route path="/events/:id/kiosk" element={<ProtectedRoute><EventKioskPage /></ProtectedRoute>} />
-          <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell><EventBySlugControl /></AppShell></ProtectedRoute>} />
+          <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell atmosphere="control"><EventBySlugControl /></AppShell></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />
           <Route path="/plans" element={<AppShell><PlansPage /></AppShell>} />
 

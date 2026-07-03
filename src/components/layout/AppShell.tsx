@@ -5,7 +5,7 @@ import { AtmosphericBackground } from './AtmosphericBackground'
 
 interface AppShellProps {
   children: React.ReactNode
-  atmosphere?: 'default' | 'wizard' | 'dashboard'
+  atmosphere?: 'default' | 'wizard' | 'dashboard' | 'control'
 }
 
 export function AppShell({ children, atmosphere = 'default' }: AppShellProps) {
@@ -16,6 +16,7 @@ export function AppShell({ children, atmosphere = 'default' }: AppShellProps) {
           'relative min-h-screen bg-[var(--color-background)] text-foreground',
           atmosphere === 'wizard' && 'atmosphere-wizard',
           atmosphere === 'dashboard' && 'atmosphere-dashboard bg-app-radial',
+          atmosphere === 'control' && 'atmosphere-control bg-app-radial',
         )}
       >
         <AtmosphericBackground />

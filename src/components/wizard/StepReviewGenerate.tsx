@@ -8,12 +8,10 @@ import { ReadinessChecklist } from './ReadinessChecklist'
 import {
   ReadyCelebrationBanner,
   ReadyCelebrationOverlay,
-  AnimatedSummaryCard,
   AnimatedPrintFooter,
   useStepEntryCelebration,
-  getSummaryCardVariantStyles,
-  type SummaryCardVariant,
 } from './ReadyCelebration'
+import { EventSummaryGrid } from './EventSummaryGrid'
 import { QrCardGenerator } from '@/components/qr-cards/QrCardGenerator'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
@@ -138,7 +136,7 @@ export function StepReviewGenerate({
                 transition={{ duration: 0.25 }}
               >
                 <div className="shrink-0 pb-3">
-                  <SummaryGrid counts={counts} isTemplate={isTemplate} ready={ready} animationKey={animationKey} />
+                  <EventSummaryGrid counts={counts} isTemplate={isTemplate} ready={ready} animationKey={animationKey} />
                 </div>
                 <ScrollContainer className="flex-1 min-h-0 px-0">
                   <ReadinessChecklist
@@ -161,7 +159,7 @@ export function StepReviewGenerate({
                   description="השינויים נשמרים אוטומטית. לחצו «סיום עריכה» לחזרה לניהול התבניות."
                   celebrate={false}
                 >
-                  <SummaryGrid counts={counts} isTemplate ready={ready} animationKey={animationKey} />
+                  <EventSummaryGrid counts={counts} isTemplate ready={ready} animationKey={animationKey} />
                 </ReadyCelebrationBanner>
                 <Button onClick={handleFinish} loading={saving} className="w-full shrink-0 sm:w-auto">
                   סיום עריכה
@@ -183,9 +181,8 @@ export function StepReviewGenerate({
                       celebrate={celebrate}
                       collapsed
                     >
-                      <SummaryGrid
+                  <EventSummaryGrid
                         counts={counts}
-                        isTemplate={false}
                         ready={ready}
                         animationKey={animationKey}
                         showCards
@@ -211,9 +208,8 @@ export function StepReviewGenerate({
                         celebrate={celebrate}
                         footerNote="לכל משתתף יודפס כרטיס אישי עם כל הפעילויות שהגדרתם."
                       >
-                        <SummaryGrid
+                        <EventSummaryGrid
                           counts={counts}
-                          isTemplate={false}
                           ready={ready}
                           animationKey={animationKey}
                           showCards
@@ -238,117 +234,5 @@ export function StepReviewGenerate({
         ) : null}
       </WizardStepWrapper>
     </>
-  )
-}
-
-type SummaryCardType = SummaryCardVariant
-
-function SummaryGrid({
-  counts,
-  isTemplate,
-  ready,
-  animationKey,
-  showCards = false,
-  totalCards = 0,
-  compact = false,
-}: {
-  counts: EventCounts
-  isTemplate: boolean
-  ready: boolean
-  animationKey: number
-  showCards?: boolean
-  totalCards?: number
-  compact?: boolean
-}) {
-  const withCards = showCards && !isTemplate
-
-  return (
-    <div className={cn(
-      'grid gap-2 overflow-visible',
-      withCards ? 'grid-cols-2 sm:grid-cols-4' : isTemplate ? 'grid-cols-2' : 'grid-cols-3',
-      compact && 'gap-1.5',
-    )}>
-      {!isTemplate && (
-        <SummaryCard type="participants" value={counts.participants} index={0} ready={ready} animationKey={animationKey} compact={compact} />
-      )}
-      <SummaryCard type="activities" value={counts.tasks} index={isTemplate ? 0 : 1} ready={ready} animationKey={animationKey} compact={compact} />
-      <SummaryCard
-        type={counts.groups === 0 ? 'groupsTogether' : 'groups'}
-        value={counts.groups}
-        index={isTemplate ? 1 : 2}
-        ready={ready}
-        animationKey={animationKey}
-        compact={compact}
-      />
-      {withCards && (
-        <SummaryCard type="cards" value={totalCards} index={3} ready={ready} animationKey={animationKey} compact={compact} />
-      )}
-    </div>
-  )
-}
-
-function formatSummaryLabel(type: SummaryCardType, value: number): string {
-  switch (type) {
-    case 'participants':
-      return value === 1 ? '1 משתתף' : `${value} משתתפים`
-    case 'activities':
-      return value === 1 ? '1 פעילות' : `${value} פעילויות`
-    case 'groups':
-      return value === 1 ? '1 קבוצה' : `${value} קבוצות`
-    case 'groupsTogether':
-      return 'כולם יחד'
-    case 'cards':
-      return value === 1 ? '1 כרטיס' : `${value} כרטיסים`
-  }
-}
-
-function SummaryCard({
-  type,
-  value,
-  index,
-  ready,
-  animationKey,
-  compact = false,
-}: {
-  type: SummaryCardType
-  value: number
-  index: number
-  ready: boolean
-  animationKey: number
-  compact?: boolean
-}) {
-  const isAllTogether = type === 'groupsTogether'
-  const label = formatSummaryLabel(type, value)
-  const variantStyles = getSummaryCardVariantStyles(type)
-
-  const content = (
-    <span className={cn(
-      'font-semibold',
-      variantStyles.text,
-      compact ? 'text-xs' : 'text-sm',
-      isAllTogether && 'font-medium',
-    )}>
-      {label}
-    </span>
-  )
-
-  const cardClass = cn(
-    'rounded-xl flex items-center justify-center shadow-sm',
-    compact ? 'px-2 py-1' : 'px-3 py-2',
-    ready ? variantStyles.cardHighlight : variantStyles.card,
-  )
-
-  if (!ready || compact) {
-    return (
-      <div className={cardClass}>
-        {content}
-      </div>
-    )
-  }
-
-  return (
-    <AnimatedSummaryCard key={`${animationKey}-${index}`} index={index} variant={type} highlight={ready}>
-      {content}
-    </AnimatedSummaryCard>
   )
 }

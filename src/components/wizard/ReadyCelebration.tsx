@@ -275,6 +275,7 @@ const SUMMARY_CARD_VARIANTS = {
   activities: SUMMARY_CARD_TINTS.secondary,
   groups: SUMMARY_CARD_TINTS.tertiary,
   groupsTogether: SUMMARY_CARD_TINTS.secondary,
+  scans: SUMMARY_CARD_TINTS.tertiary,
   cards: SUMMARY_CARD_TINTS.primary,
 } as const
 
