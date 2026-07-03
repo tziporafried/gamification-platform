@@ -13,6 +13,7 @@ export interface ScoreSubmitResult {
   participantName: string
   actionName: string
   points: number
+  participantTotalPoints: number
   celebrationRewards: NewlyAwardedReward[]
 }
 
@@ -122,6 +123,19 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
 
       if (insertError) throw insertError
 
+      const { data: participantTransactions, error: totalError } = await supabase
+        .from('point_transactions')
+        .select('points')
+        .eq('event_id', eventId)
+        .eq('participant_id', participant.id)
+
+      if (totalError) throw totalError
+
+      const participantTotalPoints = (participantTransactions ?? []).reduce(
+        (sum, tx) => sum + (tx.points ?? 0),
+        0
+      )
+
       let celebrationRewards: NewlyAwardedReward[] = []
       try {
         const { data: newRewards, error: rewardError } = await supabase
@@ -144,6 +158,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
         participantName: participant.name,
         actionName: action.name,
         points: action.points,
+        participantTotalPoints,
         celebrationRewards,
       }
     } catch (err) {

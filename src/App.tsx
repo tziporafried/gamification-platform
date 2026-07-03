@@ -9,7 +9,6 @@ import { MyEvents } from '@/pages/MyEvents'
 import { EventWizard } from '@/pages/EventWizard'
 import { EventControlCenterPage } from '@/pages/EventControlCenter'
 import { EventDisplayPage } from '@/pages/EventDisplay'
-import { EventOpsPage } from '@/pages/EventOps'
 import { EventKioskPage } from '@/pages/EventKioskPage'
 import { AdminPanel } from '@/pages/AdminPanel'
 import { EventBySlugControl } from '@/pages/EventBySlug'
@@ -31,7 +30,6 @@ export default function App() {
           <Route path="/events/:id/step/:step" element={<ProtectedRoute><AppShell atmosphere="wizard"><EventWizard /></AppShell></ProtectedRoute>} />
           <Route path="/events/:id/control" element={<ProtectedRoute><AppShell atmosphere="control"><EventControlCenterPage /></AppShell></ProtectedRoute>} />
           <Route path="/events/:id/display" element={<ProtectedRoute><EventDisplayPage /></ProtectedRoute>} />
-          <Route path="/events/:id/ops" element={<ProtectedRoute><EventOpsPage /></ProtectedRoute>} />
           <Route path="/events/:id/kiosk" element={<ProtectedRoute><EventKioskPage /></ProtectedRoute>} />
           <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell atmosphere="control"><EventBySlugControl /></AppShell></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />

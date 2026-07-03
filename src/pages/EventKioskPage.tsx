@@ -2,9 +2,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
-import { useRotatingView } from '@/hooks/useRotatingView'
 import { computeRanks } from '@/lib/missionUtils'
-import { ManualEntryForm } from '@/components/ops/ManualEntryForm'
+import { ManualEntryForm } from '@/components/scoring/ManualEntryForm'
 import { useHardwareScanner } from '@/hooks/useHardwareScanner'
 import { useScoreSubmit } from '@/hooks/useScoreSubmit'
 import { useEventCatalog } from '@/hooks/useEventCatalog'
@@ -48,8 +47,9 @@ const QR_MATRIX = makeQrMatrix(21, 41)
 type RankRow = { id: string; name: string; initial: string; score: number; barPct: number; medal?: 1 | 2 | 3 }
 type ActivityRow = { id: string; icon: string; title: string; subtitle: string; points: string; accent: string }
 type RewardRow = { id: string; icon: string; title: string; recipient: string; score: number; accent: string }
+type TopPrizeRow = { id: string; name: string; icon: string; requiredPoints: number; accent: string }
 type KioskAction = { id: string; name: string; points: number }
-type ScanResultDisplay = { name: string; action: string; initial: string; emoji: string; points: number; tone: string }
+type ScanResultDisplay = { name: string; action: string; initial: string; emoji: string; points: number; totalPoints: number; tone: string }
 type RewardWinDisplay = { emoji: string; title: string; sub: string; points: number }
 
 interface KioskStats {
@@ -63,12 +63,19 @@ interface KioskData {
   topPlayers: RankRow[]
   recentActivity: ActivityRow[]
   rewards: RewardRow[]
+  topPrizes: TopPrizeRow[]
+  configuredRewardsCount: number
+  newestRewardId: string | null
   actions: KioskAction[]
   stats: KioskStats
   totalScans: number
   loading: boolean
   error: boolean
   refetch: () => void
+}
+
+function isGameStarted(event: Event): boolean {
+  return event.status === 'active'
 }
 
 function rewardTier(pts: number): { icon: string; accent: string } {
@@ -150,21 +157,26 @@ const COIN_PARTICLES = (() => {
 })()
 
 // ─── Data hook ────────────────────────────────────────────────────────────────
-function useKioskData(eventId: string): KioskData {
+function useKioskData(eventId: string, gameStarted: boolean): KioskData {
   const [groupData, setGroupData] = useState<GroupLeaderboardEntry[]>([])
   const [participantData, setParticipantData] = useState<ParticipantLeaderboardEntry[]>([])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [txData, setTxData] = useState<any[]>([])
   const [txCount, setTxCount] = useState(0)
+  const [txPointsTotal, setTxPointsTotal] = useState(0)
   const [actionsData, setActionsData] = useState<KioskAction[]>([])
   const [rewardsData, setRewardsData] = useState<RewardRow[]>([])
+  const [topPrizesData, setTopPrizesData] = useState<TopPrizeRow[]>([])
+  const [configuredRewardsCount, setConfiguredRewardsCount] = useState(0)
+  const [newestRewardId, setNewestRewardId] = useState<string | null>(null)
+  const newestClearTimer = useRef<ReturnType<typeof setTimeout>>()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
   const fetchAll = useCallback(async () => {
     if (!eventId) return
     try {
-      const [gRes, pRes, txRes, countRes, actRes, rwRes] = await Promise.all([
+      const [gRes, pRes, txRes, countRes, pointsRes, actRes, rwRes, tpRes, configuredRwRes] = await Promise.all([
         supabase.rpc('get_group_leaderboard', { p_event_id: eventId }),
         supabase.rpc('get_participant_leaderboard', { p_event_id: eventId }),
         supabase
@@ -178,6 +190,10 @@ function useKioskData(eventId: string): KioskData {
           .select('*', { count: 'exact', head: true })
           .eq('event_id', eventId),
         supabase
+          .from('point_transactions')
+          .select('points')
+          .eq('event_id', eventId),
+        supabase
           .from('actions')
           .select('id, name, points')
           .eq('event_id', eventId)
@@ -189,7 +205,18 @@ function useKioskData(eventId: string): KioskData {
           .select('id, awarded_at, reward:rewards(name, required_points), participant:participants(name)' as any)
           .eq('event_id', eventId)
           .order('awarded_at', { ascending: false })
+          .limit(5),
+        supabase
+          .from('rewards')
+          .select('id, name, required_points')
+          .eq('event_id', eventId)
+          .eq('is_active', true)
+          .order('required_points', { ascending: false })
           .limit(3),
+        supabase
+          .from('rewards')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventId),
       ])
 
       if (gRes.error && pRes.error) { setError(true); return }
@@ -199,6 +226,7 @@ function useKioskData(eventId: string): KioskData {
       if (pRes.data) setParticipantData(pRes.data as ParticipantLeaderboardEntry[])
       if (txRes.data) setTxData(txRes.data as unknown as any[]) // eslint-disable-line @typescript-eslint/no-explicit-any
       setTxCount(countRes.count ?? 0)
+      setTxPointsTotal((pointsRes.data ?? []).reduce((sum, tx) => sum + (tx.points ?? 0), 0))
 
       if (actRes.data) {
         setActionsData(actRes.data.map(a => ({ id: a.id, name: a.name, points: a.points })))
@@ -214,6 +242,15 @@ function useKioskData(eventId: string): KioskData {
           return { id: r.id, icon, title: reward?.name ?? '---', recipient: participant?.name ?? '---', score: pts, accent }
         }))
       }
+
+      if (tpRes.data) {
+        setTopPrizesData(tpRes.data.map(r => {
+          const pts: number = r.required_points ?? 0
+          const { icon, accent } = rewardTier(pts)
+          return { id: r.id, name: r.name, icon, requiredPoints: pts, accent }
+        }))
+      }
+      setConfiguredRewardsCount(configuredRwRes.count ?? 0)
     } catch {
       setError(true)
     } finally {
@@ -223,9 +260,67 @@ function useKioskData(eventId: string): KioskData {
 
   useEffect(() => { fetchAll() }, [fetchAll])
   useEffect(() => {
+    if (gameStarted) fetchAll()
+  }, [fetchAll, gameStarted])
+  useEffect(() => {
+    if (!gameStarted) return
     const t = setInterval(fetchAll, 30_000)
     return () => clearInterval(t)
-  }, [fetchAll])
+  }, [fetchAll, gameStarted])
+
+  // Realtime subscription: new participant_rewards INSERT → prepend to feed
+  useEffect(() => {
+    if (!eventId || !gameStarted) return
+    const channel = supabase
+      .channel(`kiosk_transactions_${eventId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'point_transactions', filter: `event_id=eq.${eventId}` },
+        () => { fetchAll() }
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [eventId, fetchAll, gameStarted])
+
+  // Realtime subscription: new point_transactions INSERT -> refresh activity and leaderboards
+  useEffect(() => {
+    if (!eventId || !gameStarted) return
+    const channel = supabase
+      .channel(`kiosk_rewards_${eventId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'participant_rewards', filter: `event_id=eq.${eventId}` },
+        async (payload) => {
+          const id: string = (payload.new as { id: string }).id
+          // Fetch joined data for the new row
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data } = await supabase
+            .from('participant_rewards')
+            .select('id, awarded_at, reward:rewards(name, required_points), participant:participants(name)' as any)
+            .eq('id', id)
+            .single()
+          if (!data) return
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const r = data as any
+          const reward = Array.isArray(r.reward) ? r.reward[0] : r.reward
+          const participant = Array.isArray(r.participant) ? r.participant[0] : r.participant
+          const pts: number = reward?.required_points ?? 0
+          const { icon, accent } = rewardTier(pts)
+          const newRow: RewardRow = { id: r.id, icon, title: reward?.name ?? '---', recipient: participant?.name ?? '---', score: pts, accent }
+          setRewardsData(prev => [newRow, ...prev].slice(0, 5))
+          clearTimeout(newestClearTimer.current)
+          setNewestRewardId(newRow.id)
+          newestClearTimer.current = setTimeout(() => setNewestRewardId(null), 2200)
+        }
+      )
+      .subscribe()
+    return () => {
+      clearTimeout(newestClearTimer.current)
+      supabase.removeChannel(channel)
+    }
+  }, [eventId, gameStarted])
 
   const rankedGroups = useMemo<RankRow[]>(() => {
     const ranked = computeRanks(groupData)
@@ -271,12 +366,13 @@ function useKioskData(eventId: string): KioskData {
 
   const stats = useMemo<KioskStats>(() => ({
     totalMissions: txCount,
-    totalPoints: groupData.reduce((s, g) => s + g.total_points, 0),
+    totalPoints: txPointsTotal,
     totalGroups: groupData.length,
-  }), [txCount, groupData])
+  }), [txCount, txPointsTotal, groupData.length])
 
   return {
     rankedGroups, topPlayers, recentActivity, rewards: rewardsData,
+    topPrizes: topPrizesData, configuredRewardsCount, newestRewardId,
     actions: actionsData, stats, totalScans: txCount,
     loading, error, refetch: fetchAll,
   }
@@ -469,7 +565,21 @@ function ScanSuccessOverlay({
               fontSize: 26, fontWeight: 900, color: '#fff',
               boxShadow: '0 6px 16px rgba(0,0,0,0.15)',
             }}>{result.initial}</div>
-            <div style={{ position: 'absolute', bottom: -4, right: -4, fontSize: 20 }}>{result.emoji}</div>
+            <div style={{
+              position: 'absolute',
+              bottom: -5,
+              right: -5,
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg,#F2B33C,#FF9366)',
+              border: '2px solid #FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 15,
+              boxShadow: '0 4px 12px rgba(242,179,60,0.38)',
+            }}>{result.emoji}</div>
           </div>
           <div style={{ fontWeight: 900, fontSize: 'clamp(18px, 2vw, 24px)', color: '#2E221E' }}>{result.name}</div>
         </div>
@@ -487,6 +597,9 @@ function ScanSuccessOverlay({
           minWidth: 120,
         }}>
           +{pointsShown} נק׳
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 900, color: '#3E8F88' }}>
+          יש לך {result.totalPoints.toLocaleString('he-IL')} נקודות
         </div>
       </div>
     </div>
@@ -656,120 +769,6 @@ function GlowingStarsTeal() {
   )
 }
 
-function ChampionCard({ row, medalEmoji }: { row: RankRow; medalEmoji: string }) {
-  const avatarGrad = 'linear-gradient(135deg,#FF8A4D,#F26A2E)'
-  return (
-    <div className="kiosk-fadeUp kiosk-cardBreathe" style={{
-      position: 'relative', borderRadius: 22, overflow: 'hidden',
-      background: 'linear-gradient(135deg,#FFFDF7,#FFF1D2)',
-      border: '2px solid #F2B33C',
-      boxShadow: '0 12px 28px rgba(242,140,20,0.4), 0 0 0 4px rgba(255,255,255,0.4)',
-    }}>
-      <div className="kiosk-pulseGlow" style={{ position: 'absolute', top: -46, left: -34, width: 150, height: 150, borderRadius: '50%', background: 'radial-gradient(circle,rgba(255,196,74,0.5),transparent 70%)' }} />
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 13, padding: '14px 16px' }}>
-        <div style={{ position: 'relative', flex: '0 0 auto' }}>
-          <div style={{ width: 58, height: 58, borderRadius: '50%', background: avatarGrad, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 900, color: '#fff', boxShadow: '0 5px 14px rgba(242,106,46,0.5)' }}>
-            {row.initial}
-          </div>
-          <div className="kiosk-crownPop" style={{ position: 'absolute', bottom: -5, left: -5, width: 26, height: 26, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, boxShadow: '0 2px 7px rgba(0,0,0,0.25)' }}>
-            {medalEmoji}
-          </div>
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 900, fontSize: 20, color: '#2E221E' }}>{row.name}</span>
-            <span style={{ background: '#F2B33C', color: '#fff', fontWeight: 900, fontSize: 11, padding: '2px 9px', borderRadius: 999 }}>👑 מוביל/ת</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 1 }}>
-            <span className="kiosk-numberGlow" style={{ fontWeight: 900, fontSize: 24, color: '#C8890B', display: 'inline-block' }}>{row.score.toLocaleString('he-IL')}</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: '#B08A3C' }}>נק׳</span>
-          </div>
-          <div style={{ height: 9, borderRadius: 999, background: 'rgba(0,0,0,0.06)', marginTop: 7, overflow: 'hidden' }}>
-            <div className="kiosk-raceGrow" style={{ height: '100%', width: `${row.barPct}%`, borderRadius: 999, background: 'linear-gradient(90deg,#F2B33C,#FF9366)' }} />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const RANK_AVATAR_GRADS: Record<number, string> = {
-  1: 'linear-gradient(135deg,#FF8A4D,#F26A2E)',
-  2: 'linear-gradient(135deg,#5FB8B1,#3E8F88)',
-  3: 'linear-gradient(135deg,#FBC552,#E09A1F)',
-  4: 'linear-gradient(135deg,#7FCF98,#4C9E6E)',
-}
-const RANK_SCORE_COLORS: Record<number, string> = {
-  1: '#C8890B', 2: '#3E8F88', 3: '#C8890B', 4: '#4C9E6E',
-}
-const RANK_BAR_COLORS: Record<number, string> = {
-  1: '#F2B33C', 2: '#4FA6A0', 3: '#F2B33C', 4: '#62B584',
-}
-const RANK_SHADOW: Record<number, string> = {
-  1: '0 7px 18px rgba(79,166,160,0.32)',
-  2: '0 7px 18px rgba(79,166,160,0.32)',
-  3: '0 7px 18px rgba(242,179,60,0.32)',
-  4: '0 7px 18px rgba(98,181,132,0.32)',
-}
-const MEDALS = ['🥇', '🥈', '🥉']
-
-function RankCard({ row, rank, delay }: { row: RankRow; rank: number; delay: string }) {
-  const avatarGrad = RANK_AVATAR_GRADS[rank] || RANK_AVATAR_GRADS[4]
-  const scoreColor = RANK_SCORE_COLORS[rank] || '#4C9E6E'
-  const barColor = RANK_BAR_COLORS[rank] || '#62B584'
-
-  return (
-    <div className="kiosk-fadeUp" style={{
-      animationDelay: delay,
-      display: 'flex', alignItems: 'center', gap: 13, padding: '12px 15px',
-      borderRadius: 20, background: '#FFFFFF', boxShadow: RANK_SHADOW[rank] || RANK_SHADOW[4],
-    }}>
-      <div style={{ position: 'relative', flex: '0 0 auto' }}>
-        <div style={{
-          width: 50, height: 50, borderRadius: '50%', background: avatarGrad,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 23, fontWeight: 900, color: '#fff',
-        }}>
-          {row.initial}
-        </div>
-        <div style={{
-          position: 'absolute', bottom: -5, left: -5, width: 24, height: 24, borderRadius: '50%',
-          background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: rank <= 3 ? 14 : 13, fontWeight: rank > 3 ? 900 : undefined,
-          color: rank > 3 ? '#4C9E6E' : undefined,
-          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-        }}>
-          {rank <= 3 ? MEDALS[rank - 1] : String(rank)}
-        </div>
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontWeight: 900, fontSize: 18 }}>{row.name}</span>
-          <span style={{ fontWeight: 900, fontSize: 19, color: scoreColor }}>{row.score.toLocaleString('he-IL')}</span>
-        </div>
-        <div style={{ height: 8, borderRadius: 999, background: 'rgba(0,0,0,0.06)', marginTop: 7, overflow: 'hidden' }}>
-          <div className="kiosk-raceGrow" style={{ height: '100%', width: `${row.barPct}%`, borderRadius: 999, background: barColor }} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function BattlePill({ text, delay }: { text: string; delay?: string }) {
-  return (
-    <div className="kiosk-fadeUp" style={{
-      animationDelay: delay,
-      alignSelf: 'center', display: 'flex', alignItems: 'center', gap: 8,
-      background: 'linear-gradient(135deg,#FF8A3D,#FF7350)', color: '#fff',
-      fontWeight: 900, fontSize: 15, padding: '9px 20px', borderRadius: 999,
-      boxShadow: '0 6px 16px rgba(255,115,80,0.32)',
-    }}>
-      <span className="kiosk-fireFlicker" style={{ display: 'inline-block' }}>🔥</span>
-      {text}
-    </div>
-  )
-}
-
 function LivePill() {
   return (
     <span className="kiosk-tickTap" style={{
@@ -780,9 +779,317 @@ function LivePill() {
   )
 }
 
+function TopPrizes({ prizes }: { prizes: TopPrizeRow[] }) {
+  if (prizes.length === 0) return null
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '1.5px', color: 'rgba(255,255,255,0.85)' }}>✦ הפרסים הגדולים</div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {prizes.map((p, i) => {
+          const isTop = i === 0
+          return (
+            <div key={p.id} style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              padding: '10px 6px', borderRadius: 14, textAlign: 'center',
+              background: isTop ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.15)',
+              border: isTop ? '2px solid #F2B33C' : '1.5px solid rgba(255,255,255,0.25)',
+              boxShadow: isTop ? '0 4px 14px rgba(242,179,60,0.25)' : 'none',
+            }}>
+              <span style={{ fontSize: isTop ? 28 : 22 }}>{p.icon}</span>
+              <span style={{ fontSize: 12, fontWeight: 900, color: '#FFFFFF', lineHeight: 1.2 }}>{p.name}</span>
+              <span style={{ fontSize: 13, fontWeight: 900, color: isTop ? '#F2B33C' : 'rgba(255,255,255,0.9)' }}>
+                {p.requiredPoints.toLocaleString('he-IL')} נק׳
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function AwardedRewardsFeed({ rewards, newestId }: { rewards: RewardRow[]; newestId: string | null }) {
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Section label */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+        <span className="kiosk-blink" style={{ width: 8, height: 8, borderRadius: '50%', background: '#F2B33C', display: 'inline-block', flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: '1px', color: 'rgba(255,255,255,0.9)' }}>זכו זה עתה 🎉</span>
+      </div>
+
+      {/* Rows */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
+        {rewards.map((r, i) => {
+          const isNew = r.id === newestId
+          return (
+            <div
+              key={r.id}
+              className={isNew ? 'kiosk-rewardIn kiosk-goldPulse' : 'kiosk-fadeUp'}
+              style={{
+                position: 'relative', overflow: 'hidden',
+                display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px',
+                borderRadius: 14, background: 'rgba(255,255,255,0.18)',
+                backdropFilter: 'blur(4px)',
+                border: isNew ? '1.5px solid rgba(242,179,60,0.6)' : '1px solid rgba(255,255,255,0.28)',
+                animationDelay: isNew ? '0s' : `${0.05 + i * 0.07}s`,
+              }}
+            >
+              {/* Shimmer sweep — only on newest row, one-shot */}
+              {isNew && (
+                <div style={{
+                  position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden',
+                }}>
+                  <div className="kiosk-shimmerSweep" style={{
+                    position: 'absolute', top: 0, bottom: 0, width: '40%',
+                    background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.45),transparent)',
+                    animationIterationCount: 1,
+                  }} />
+                </div>
+              )}
+
+              {/* Icon in gold disc */}
+              <div style={{
+                width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                background: 'linear-gradient(135deg,#F2B33C,#E09A1F)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 20, boxShadow: '0 3px 10px rgba(242,179,60,0.4)',
+              }}>
+                {r.icon}
+              </div>
+
+              {/* Title + recipient */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 900, fontSize: 15, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.78)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.recipient}</div>
+              </div>
+
+              {/* Points pill */}
+              <div style={{
+                flexShrink: 0, padding: '4px 10px', borderRadius: 999,
+                background: 'linear-gradient(135deg,#F2B33C,#C8890B)',
+                color: '#fff', fontWeight: 900, fontSize: 13,
+                boxShadow: '0 2px 8px rgba(242,179,60,0.35)',
+              }}>
+                {r.score.toLocaleString('he-IL')} נק׳
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ─── Right panel views ────────────────────────────────────────────────────────
 
+function SkeletonRows({ count = 3 }: { count?: number }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+      {Array.from({ length: count }, (_, i) => (
+        <div
+          key={i}
+          className="kiosk-skeleton"
+          style={{
+            height: i === 0 ? 56 : 50,
+            borderRadius: 16,
+            border: '1px solid rgba(255,255,255,0.22)',
+            opacity: 0.82 - i * 0.12,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function MissionPreGamePanel() {
+  return (
+    <>
+      <div className="kiosk-fadeUp kiosk-cardBreathe" style={{
+        position: 'relative', zIndex: 1, borderRadius: 22, padding: 22,
+        background: '#FFFFFF', boxShadow: '0 10px 24px rgba(120,50,10,0.18)',
+        color: '#2E221E', border: '1.5px solid #FFD8BC', overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+          <div className="kiosk-shimmerSweep" style={{ position: 'absolute', top: 0, bottom: 0, width: '42%', background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.58),transparent)' }} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative' }}>
+          <div className="kiosk-bob" style={{ fontSize: 46, lineHeight: 1 }}>🎯</div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 2, color: '#E07A3E' }}>משימה ראשונה</div>
+            <div style={{ fontSize: 24, fontWeight: 900, lineHeight: 1.2, marginTop: 3 }}>השלימו את המשימה הראשונה</div>
+          </div>
+        </div>
+        <div style={{ position: 'relative', marginTop: 14, color: '#7D706A', fontSize: 15, fontWeight: 800, lineHeight: 1.45 }}>
+          כל סריקה פותחת נקודות ופרסים.
+        </div>
+      </div>
+
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16 }}>
+        <SkeletonRows count={4} />
+      </div>
+
+      <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', fontSize: 13, fontWeight: 900, color: 'rgba(255,255,255,0.9)' }}>
+        ✨ הפעילות תופיע כאן ברגע שתתחילו
+      </div>
+    </>
+  )
+}
+
+function RewardsPreGameFeed() {
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{
+        borderRadius: 18,
+        background: 'rgba(255,255,255,0.18)',
+        border: '1px solid rgba(255,255,255,0.28)',
+        padding: '18px 16px',
+        textAlign: 'center',
+        color: '#FFFFFF',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.16)',
+      }}>
+        <div style={{ fontSize: 32, lineHeight: 1 }}>🎉</div>
+        <div style={{ marginTop: 8, fontSize: 17, fontWeight: 900, lineHeight: 1.3 }}>
+          עדיין לא חולקו פרסים
+        </div>
+        <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800, color: 'rgba(255,255,255,0.82)' }}>
+          היו הראשונים לזכות!
+        </div>
+      </div>
+      <SkeletonRows count={2} />
+    </div>
+  )
+}
+
+function RewardsStartedEmptyFeed() {
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{
+        borderRadius: 18,
+        background: 'rgba(255,255,255,0.2)',
+        border: '1px solid rgba(255,255,255,0.32)',
+        padding: '18px 16px',
+        textAlign: 'center',
+        color: '#FFFFFF',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
+      }}>
+        <div style={{ fontSize: 32, lineHeight: 1 }}>🏆</div>
+        <div style={{ marginTop: 8, fontSize: 17, fontWeight: 900, lineHeight: 1.3 }}>
+          עוד רגע נראה כאן זוכים
+        </div>
+        <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800, color: 'rgba(255,255,255,0.84)', lineHeight: 1.35 }}>
+          כל משימה שתושלם מקרבת את המשתתפים לפרס הבא.
+        </div>
+      </div>
+      <SkeletonRows count={2} />
+    </div>
+  )
+}
+
+function RewardsActiveNoAwardsFeed() {
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{
+        borderRadius: 18,
+        background: 'rgba(255,255,255,0.2)',
+        border: '1px solid rgba(255,255,255,0.32)',
+        padding: '18px 16px',
+        textAlign: 'center',
+        color: '#FFFFFF',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
+      }}>
+        <div style={{ fontSize: 32, lineHeight: 1 }}>🏁</div>
+        <div style={{ marginTop: 8, fontSize: 17, fontWeight: 900, lineHeight: 1.3 }}>
+          המרוץ לפרסים כבר התחיל
+        </div>
+        <div style={{ marginTop: 5, fontSize: 14, fontWeight: 800, color: 'rgba(255,255,255,0.86)', lineHeight: 1.35 }}>
+          המשתתפים כבר צוברים נקודות. עוד קצת, והפרס הראשון ייפתח!
+        </div>
+        <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.76)', lineHeight: 1.35 }}>
+          ברגע שמישהו יגיע ליעד הניקוד, הזכייה תופיע כאן בזמן אמת.
+        </div>
+      </div>
+      <SkeletonRows count={2} />
+    </div>
+  )
+}
+
+function RewardsNotConfiguredState({ onCreate }: { onCreate: () => void }) {
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="kiosk-fadeUp kiosk-cardBreathe" style={{
+        borderRadius: 18,
+        background: 'rgba(255,255,255,0.2)',
+        border: '1px solid rgba(255,255,255,0.32)',
+        padding: '18px 16px',
+        textAlign: 'center',
+        color: '#FFFFFF',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
+        overflow: 'hidden',
+      }}>
+        <div className="kiosk-bob" style={{ fontSize: 34, lineHeight: 1 }}>🎁</div>
+        <div style={{ marginTop: 9, fontSize: 17, fontWeight: 900, lineHeight: 1.3 }}>
+          הפרס הראשון מתחיל כאן
+        </div>
+        <div style={{ marginTop: 6, fontSize: 14, fontWeight: 800, color: 'rgba(255,255,255,0.86)', lineHeight: 1.42 }}>
+          צרו את הפרס הראשון והפכו כל נקודה לרגע של התרגשות.
+        </div>
+        <button
+          onClick={onCreate}
+          style={{
+            marginTop: 14,
+            border: 'none',
+            borderRadius: 999,
+            background: 'linear-gradient(135deg,#F2B33C,#FF9366)',
+            color: '#FFFFFF',
+            cursor: 'pointer',
+            fontSize: 14,
+            fontWeight: 900,
+            padding: '10px 18px',
+            boxShadow: '0 6px 16px rgba(242,179,60,0.28)',
+          }}
+        >
+          יצירת הפרס הראשון
+        </button>
+      </div>
+      <SkeletonRows count={2} />
+    </div>
+  )
+}
+
+function StartedNoActivityState() {
+  return (
+    <div style={{
+      flex: 1,
+      minHeight: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'flex-start',
+      gap: 14,
+    }}>
+      <div className="kiosk-fadeUp" style={{
+        borderRadius: 18,
+        background: 'rgba(255,255,255,0.22)',
+        border: '1px solid rgba(255,255,255,0.32)',
+        padding: '20px 18px',
+        textAlign: 'center',
+        color: '#FFFFFF',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
+      }}>
+        <div className="kiosk-bob" style={{ fontSize: 36, lineHeight: 1 }}>🎯</div>
+        <div style={{ marginTop: 10, fontSize: 20, fontWeight: 900, lineHeight: 1.25 }}>
+          הלוח מחכה לפעולה הראשונה
+        </div>
+        <div style={{ marginTop: 6, fontSize: 14, fontWeight: 800, color: 'rgba(255,255,255,0.84)', lineHeight: 1.45 }}>
+          ברגע שתתבצע הסריקה הראשונה, המשימות יתחילו להתמלא כאן בזמן אמת.
+        </div>
+      </div>
+      <SkeletonRows count={3} />
+    </div>
+  )
+}
+
 function ActivityView({ rows, active }: { rows: ActivityRow[]; active: boolean }) {
+  const hasRows = rows.length > 0
   const style: React.CSSProperties = {
     position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', gap: 9,
     transition: 'opacity 0.6s ease, transform 0.6s ease',
@@ -792,17 +1099,20 @@ function ActivityView({ rows, active }: { rows: ActivityRow[]; active: boolean }
   }
   return (
     <div style={style}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="kiosk-blink" style={{ width: 9, height: 9, borderRadius: '50%', background: '#FFFFFF', display: 'inline-block' }} />
-        <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: '1.5px', color: '#FFFFFF' }}>פעילות אחרונה</span>
-      </div>
-      {rows.length === 0 ? (
-        <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 700, textAlign: 'center', paddingTop: 16 }}>אין פעילות עדיין</div>
-      ) : rows.map(r => (
-        <div key={r.id} style={{
+      {hasRows && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="kiosk-blink" style={{ width: 9, height: 9, borderRadius: '50%', background: '#FFFFFF', display: 'inline-block' }} />
+          <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: '1.5px', color: '#FFFFFF' }}>פעילות אחרונה</span>
+        </div>
+      )}
+      {!hasRows ? (
+        <StartedNoActivityState />
+      ) : rows.map((r, i) => (
+        <div key={r.id} className="kiosk-fadeUp" style={{
           display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px',
           borderRadius: 16, background: '#fff', borderRight: `5px solid ${r.accent}`,
           boxShadow: '0 4px 12px rgba(120,50,10,0.14)',
+          animationDelay: `${0.05 + i * 0.07}s`,
         }}>
           <span style={{ fontSize: 24 }}>{r.icon}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -816,157 +1126,25 @@ function ActivityView({ rows, active }: { rows: ActivityRow[]; active: boolean }
   )
 }
 
-function RewardsView({ rewards, active }: { rewards: RewardRow[]; active: boolean }) {
-  const style: React.CSSProperties = {
-    position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', gap: 9,
-    transition: 'opacity 0.6s ease, transform 0.6s ease',
-    opacity: active ? 1 : 0,
-    transform: active ? 'translateY(0)' : 'translateY(10px)',
-    pointerEvents: active ? 'auto' : 'none',
-  }
-  return (
-    <div style={style}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="kiosk-blink" style={{ width: 9, height: 9, borderRadius: '50%', background: '#FFFFFF', display: 'inline-block' }} />
-        <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: '1.5px', color: '#FFFFFF' }}>🎁 פרסים שחולקו</span>
-      </div>
-      {rewards.length === 0 ? (
-        <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 700, textAlign: 'center', paddingTop: 16 }}>אין פרסים עדיין</div>
-      ) : rewards.map(r => (
-        <div key={r.id} style={{
-          display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px',
-          borderRadius: 16, background: '#fff', borderRight: `5px solid ${r.accent}`,
-          boxShadow: '0 4px 12px rgba(120,50,10,0.14)',
-        }}>
-          <span style={{ fontSize: 26 }}>{r.icon}</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 900, fontSize: 16 }}>{r.title}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#7D706A' }}>{r.recipient}</div>
-          </div>
-          <span style={{ fontWeight: 900, fontSize: 16, color: r.accent }}>{r.score.toLocaleString('he-IL')}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ─── Left panel views ─────────────────────────────────────────────────────────
-
-function GroupLeaderboardView({ rows, totalPoints, totalScans, active }: {
-  rows: RankRow[]; totalPoints: number; totalScans: number; active: boolean
-}) {
-  const style: React.CSSProperties = {
-    position: 'absolute', inset: 0, zIndex: 1, padding: 18,
-    display: 'flex', flexDirection: 'column', gap: 11, boxSizing: 'border-box',
-    transition: 'opacity 0.6s ease, transform 0.6s ease',
-    opacity: active ? 1 : 0,
-    transform: active ? 'translateY(0)' : 'translateY(-10px)',
-    pointerEvents: active ? 'auto' : 'none',
-  }
-  const champ = rows[0]
-  const rest = rows.slice(1)
-  const battleDiff = rows.length >= 2 ? rows[0].score - rows[1].score : null
-
-  return (
-    <div style={style}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontSize: 22, fontWeight: 900, color: '#FFFFFF', textShadow: '0 1px 6px rgba(0,0,0,0.18)' }}>דירוג הקבוצות 🏆</div>
-        <LivePill />
-      </div>
-      {rows.length === 0 ? (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.75)', fontSize: 16, fontWeight: 700 }}>
-          אין קבוצות עדיין
-        </div>
-      ) : (
-        <>
-          {champ && <ChampionCard row={champ} medalEmoji="🥇" />}
-          {battleDiff !== null && battleDiff <= 50 && (
-            <BattlePill text={`רק ${battleDiff} נקודות הפרש!`} delay="0.35s" />
-          )}
-          {rest.map((r, i) => (
-            <RankCard key={r.id} row={r} rank={i + 2} delay={`${0.15 + i * 0.1}s`} />
-          ))}
-        </>
-      )}
-      <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, paddingTop: 6, color: 'rgba(255,255,255,0.95)', fontWeight: 800, fontSize: 14, textShadow: '0 1px 4px rgba(0,0,0,0.15)' }}>
-        🎉 {totalPoints.toLocaleString('he-IL')} נקודות חולקו · {totalScans} סריקות
-      </div>
-    </div>
-  )
-}
-
-function TopPlayersView({ rows, totalScans, active }: {
-  rows: RankRow[]; totalScans: number; active: boolean
-}) {
-  const style: React.CSSProperties = {
-    position: 'absolute', inset: 0, zIndex: 1, padding: 18,
-    display: 'flex', flexDirection: 'column', gap: 11, boxSizing: 'border-box',
-    transition: 'opacity 0.6s ease, transform 0.6s ease',
-    opacity: active ? 1 : 0,
-    transform: active ? 'translateY(0)' : 'translateY(10px)',
-    pointerEvents: active ? 'auto' : 'none',
-  }
-  const champ = rows[0]
-  const rest = rows.slice(1)
-
-  return (
-    <div style={style}>
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0 }}>
-        <div className="kiosk-floatY-1" style={{ position: 'absolute', top: 66, left: 22, fontSize: 20 }}>✨</div>
-        <div className="kiosk-floatY-2" style={{ position: 'absolute', top: 150, right: 26, fontSize: 17 }}>⭐</div>
-        <div className="kiosk-floatY-3" style={{ position: 'absolute', bottom: 70, left: 30, fontSize: 18 }}>🎉</div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
-        <div style={{ fontSize: 22, fontWeight: 900, color: '#FFFFFF', textShadow: '0 1px 6px rgba(0,0,0,0.18)' }}>שחקנים מובילים 🏆</div>
-        <LivePill />
-      </div>
-      {rows.length === 0 ? (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.75)', fontSize: 16, fontWeight: 700, position: 'relative', zIndex: 1 }}>
-          אין שחקנים עדיין
-        </div>
-      ) : (
-        <>
-          {champ && (
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <ChampionCard row={champ} medalEmoji="🥇" />
-            </div>
-          )}
-          {champ && (
-            <div style={{ alignSelf: 'center', display: 'flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg,#FF8A3D,#FF7350)', color: '#fff', fontWeight: 900, fontSize: 15, padding: '9px 20px', borderRadius: 999, boxShadow: '0 6px 16px rgba(255,115,80,0.32)', position: 'relative', zIndex: 1 }}>
-              <span className="kiosk-fireFlicker" style={{ display: 'inline-block' }}>⭐</span>
-              {champ.name} שובר/ת שיאים!
-            </div>
-          )}
-          {rest.map((r, i) => (
-            <div key={r.id} style={{ position: 'relative', zIndex: 1 }}>
-              <RankCard row={r} rank={i + 2} delay={`${0.15 + i * 0.1}s`} />
-            </div>
-          ))}
-        </>
-      )}
-      <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, paddingTop: 6, color: 'rgba(255,255,255,0.95)', fontWeight: 800, fontSize: 14, textShadow: '0 1px 4px rgba(0,0,0,0.15)', position: 'relative', zIndex: 1 }}>
-        🎉 {rows.length} שחקנים פעילים · {totalScans} סריקות
-      </div>
-    </div>
-  )
-}
 
 // ─── Main kiosk display ───────────────────────────────────────────────────────
 
-function KioskDisplay({ event, data }: { event: Event; data: KioskData }) {
-  const view = useRotatingView(10000)
+function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskData; gameStarted: boolean }) {
   const navigate = useNavigate()
   const reducedMotion = useReducedMotion()
 
-  const { rankedGroups, topPlayers, recentActivity, rewards, stats, totalScans, actions } = data
+  const { recentActivity, rewards, topPrizes, configuredRewardsCount, newestRewardId, stats, totalScans, actions, refetch } = data
+  const hasActivity = recentActivity.length > 0
+  const hasAwardedRewards = rewards.length > 0
+  const hasConfiguredRewards = configuredRewardsCount > 0
 
   // Recommended mission — rotates every 30 s
   const [recommendedIdx, setRecommendedIdx] = useState(0)
   useEffect(() => {
-    if (actions.length <= 1) return
+    if (!gameStarted || actions.length <= 1) return
     const t = setInterval(() => setRecommendedIdx(i => (i + 1) % actions.length), 30_000)
     return () => clearInterval(t)
-  }, [actions.length])
+  }, [actions.length, gameStarted])
   const recommendedAction = actions[recommendedIdx] ?? null
 
   // Scanner state
@@ -979,6 +1157,7 @@ function KioskDisplay({ event, data }: { event: Event; data: KioskData }) {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const scanDismissTimer = useRef<ReturnType<typeof setTimeout>>()
   const rewardDismissTimer = useRef<ReturnType<typeof setTimeout>>()
+  const rewardQueueRef = useRef<RewardWinDisplay[]>([])
 
   // Clean up timers on unmount
   useEffect(() => () => {
@@ -987,10 +1166,29 @@ function KioskDisplay({ event, data }: { event: Event; data: KioskData }) {
     clearTimeout(rewardDismissTimer.current)
   }, [])
 
+  useEffect(() => {
+    if (gameStarted) return
+    clearTimeout(scanDismissTimer.current)
+    clearTimeout(rewardDismissTimer.current)
+    rewardQueueRef.current = []
+    setScanResult(null)
+    setRewardWin(null)
+    setShowManual(false)
+  }, [gameStarted])
+
   const showToast = useCallback((msg: string) => {
     clearTimeout(toastTimerRef.current)
     setToastMsg(msg)
     toastTimerRef.current = setTimeout(() => setToastMsg(null), 4000)
+  }, [])
+
+  // Pops the next queued celebration or clears the overlay
+  const showNextReward = useCallback(() => {
+    clearTimeout(rewardDismissTimer.current)
+    const next = rewardQueueRef.current.shift()
+    if (!next) { setRewardWin(null); return }
+    setRewardWin(next)
+    rewardDismissTimer.current = setTimeout(() => showNextReward(), 6200)
   }, [])
 
   const triggerScanSuccess = useCallback((result: ScoreSubmitResult, rm: boolean) => {
@@ -1002,37 +1200,66 @@ function KioskDisplay({ event, data }: { event: Event; data: KioskData }) {
       initial: result.participantName.charAt(0),
       emoji: '🎯',
       points: result.points,
+      totalPoints: result.participantTotalPoints,
       tone: '#EF8A4E',
     })
     const { celebrationRewards } = result
     scanDismissTimer.current = setTimeout(() => {
       setScanResult(null)
       if (celebrationRewards.length > 0) {
-        const rw = celebrationRewards[0]
-        const { icon } = rewardTier(rw.out_required_points)
         if (!rm) playSuccessChime()
-        setRewardWin({ emoji: icon, title: rw.out_reward_name, sub: result.participantName, points: rw.out_required_points })
-        rewardDismissTimer.current = setTimeout(() => setRewardWin(null), 6200)
+        const wins = celebrationRewards.map(rw => {
+          const { icon } = rewardTier(rw.out_required_points)
+          return { emoji: icon, title: rw.out_reward_name, sub: result.participantName, points: rw.out_required_points }
+        })
+        rewardQueueRef.current.push(...wins)
+        showNextReward()
       }
     }, 4200)
+  }, [showNextReward])
+
+  const logScoreSubmit = useCallback((source: 'qr_scan' | 'manual_entry', result: ScoreSubmitResult) => {
+    console.log('[kiosk score submit]', {
+      source,
+      participantId: result.participantId,
+      participantCode: result.participantExternalId,
+      participantName: result.participantName,
+      actionId: result.actionId,
+      actionCode: result.actionCode,
+      actionName: result.actionName,
+      addedPoints: result.points,
+      participantTotalPoints: result.participantTotalPoints,
+    })
   }, [])
 
   const handleScan = useCallback(async (raw: string) => {
+    if (!gameStarted) {
+      showToast('התחרות עדיין לא התחילה')
+      return
+    }
     const parsed = parseQrPayload(raw)
     if (!parsed.ok) { showToast('קוד QR לא תקין'); return }
     const result = await submit(parsed.data.participantCode, parsed.data.actionCode)
     if (!result) { showToast('שגיאה בשליחת הנקודות'); return }
+    await refetch()
+    logScoreSubmit('qr_scan', result)
     triggerScanSuccess(result, reducedMotion)
-  }, [submit, showToast, triggerScanSuccess, reducedMotion])
+  }, [gameStarted, submit, showToast, refetch, logScoreSubmit, triggerScanSuccess, reducedMotion])
 
-  const bind = useHardwareScanner(!showManual && !submitting, handleScan)
+  const bind = useHardwareScanner(gameStarted && !showManual && !submitting, handleScan)
 
   const handleManualSubmit = useCallback(async (participantCode: string, actionCode: string) => {
+    if (!gameStarted) {
+      showToast('התחרות עדיין לא התחילה')
+      return
+    }
     const result = await submit(participantCode, actionCode)
     if (!result) { showToast('שגיאה בשליחת הנקודות'); return }
+    await refetch()
+    logScoreSubmit('manual_entry', result)
     setShowManual(false)
     triggerScanSuccess(result, reducedMotion)
-  }, [submit, showToast, triggerScanSuccess, reducedMotion])
+  }, [gameStarted, submit, showToast, refetch, logScoreSubmit, triggerScanSuccess, reducedMotion])
 
   return (
     <div style={{
@@ -1087,10 +1314,11 @@ function KioskDisplay({ event, data }: { event: Event; data: KioskData }) {
         </div>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8, marginRight: 20,
-          background: 'rgba(98,181,132,0.14)', border: '1px solid rgba(98,181,132,0.4)',
-          color: '#3F8A5E', padding: '8px 16px', borderRadius: 999, fontWeight: 800, fontSize: 14,
+          background: gameStarted ? 'rgba(98,181,132,0.14)' : 'rgba(242,179,60,0.16)', border: gameStarted ? '1px solid rgba(98,181,132,0.4)' : '1px solid rgba(242,179,60,0.46)',
+          color: gameStarted ? '#3F8A5E' : '#A36F00', padding: '8px 16px', borderRadius: 999, fontWeight: 800, fontSize: 0,
         }}>
-          <span className="kiosk-blink" style={{ width: 10, height: 10, borderRadius: '50%', background: '#62B584', display: 'inline-block' }} />
+          <span className="kiosk-blink" style={{ width: 10, height: 10, borderRadius: '50%', background: gameStarted ? '#62B584' : '#F2B33C', display: 'inline-block' }} />
+          <span style={{ fontSize: 14 }}>{gameStarted ? 'המשחק פעיל' : 'לפני התחלה'}</span>
           המשחק פעיל
         </div>
         <div style={{ flex: 1 }} />
@@ -1122,8 +1350,11 @@ function KioskDisplay({ event, data }: { event: Event; data: KioskData }) {
         }}>
           <GlowingStarsOrange />
 
+          {!gameStarted && <MissionPreGamePanel />}
+
           {/* Recommended mission hero card */}
           <div className="kiosk-fadeUp kiosk-cardBreathe" style={{
+            display: gameStarted ? 'block' : 'none',
             position: 'relative', zIndex: 1, borderRadius: 22, padding: 20,
             background: '#FFFFFF', boxShadow: '0 10px 24px rgba(120,50,10,0.18)',
             overflow: 'hidden', color: '#2E221E', border: '1.5px solid #FFD8BC',
@@ -1153,7 +1384,7 @@ function KioskDisplay({ event, data }: { event: Event; data: KioskData }) {
           </div>
 
           {/* Stat tiles */}
-          <div style={{ display: 'flex', gap: 10, position: 'relative', zIndex: 1 }}>
+          <div style={{ display: gameStarted && hasActivity ? 'flex' : 'none', gap: 10, position: 'relative', zIndex: 1 }}>
             {[
               { value: stats.totalMissions, label: 'משימות', color: '#E07A3E' },
               { value: stats.totalPoints, label: 'נקודות', color: '#4C9E6E' },
@@ -1170,10 +1401,14 @@ function KioskDisplay({ event, data }: { event: Event; data: KioskData }) {
             ))}
           </div>
 
-          {/* Rotating activity / rewards */}
-          <div style={{ flex: 1, minHeight: 0, position: 'relative', zIndex: 1 }}>
-            <ActivityView rows={recentActivity} active={view === 0} />
-            <RewardsView rewards={rewards} active={view === 1} />
+          {/* Recent activity feed — static (no rotation) */}
+          <div style={{ display: gameStarted ? 'block' : 'none', flex: 1, minHeight: 0, position: 'relative', zIndex: 1 }}>
+            <ActivityView rows={recentActivity} active={true} />
+          </div>
+
+          {/* Footer summary */}
+          <div style={{ display: gameStarted && hasActivity ? 'block' : 'none', position: 'relative', zIndex: 1, textAlign: 'center', fontSize: 13, fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>
+            🎉 {stats.totalPoints.toLocaleString('he-IL')} נקודות חולקו · {totalScans} סריקות
           </div>
         </div>
 
@@ -1187,7 +1422,31 @@ function KioskDisplay({ event, data }: { event: Event; data: KioskData }) {
           <div className="kiosk-floatY-4" style={{ position: 'absolute', bottom: 90, left: 100, width: 18, height: 18, borderRadius: 6, background: '#8FCFA0' }} />
           <div className="kiosk-floatY-2" style={{ position: 'absolute', bottom: 200, left: 50, width: 12, height: 12, borderRadius: 5, background: '#FFCB9A' }} />
 
-          <div style={{ textAlign: 'center' }}>
+          {!gameStarted && (
+            <div style={{ textAlign: 'center', maxWidth: 620 }}>
+              <div style={{ fontSize: 42, fontWeight: 900, color: '#FF8A3D' }}>מוכנים לשחק?</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#7D706A', marginTop: 8, lineHeight: 1.45 }}>
+                הלוח, המשימות והפרסים יופיעו ברגע שהתחרות תתחיל.
+              </div>
+              <div className="kiosk-arrowBounce" style={{ marginTop: 18, fontSize: 24, fontWeight: 900, color: '#3E8F88' }}>
+                👇 סרקו כאן כדי להתחיל
+              </div>
+            </div>
+          )}
+
+          {gameStarted && !hasActivity && (
+            <div style={{ textAlign: 'center', maxWidth: 620 }}>
+              <div style={{ fontSize: 40, fontWeight: 900, color: '#FF8A3D' }}>🎉 הכול מוכן לרגע הגדול</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#7D706A', marginTop: 8, lineHeight: 1.45 }}>
+                סרקו את המשתתף הראשון ותנו לתחרות להתחיל!
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#3E8F88', marginTop: 8, lineHeight: 1.45 }}>
+                הסריקה הראשונה היא רק ההתחלה...
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: gameStarted && hasActivity ? 'block' : 'none', textAlign: 'center' }}>
             <div style={{ fontSize: 40, fontWeight: 900 }}>
               <span style={{ color: '#FF8A3D' }}>סרקו</span>{' '}
               <span style={{ color: '#F2A03C' }}>וזכו</span>{' '}
@@ -1199,19 +1458,25 @@ function KioskDisplay({ event, data }: { event: Event; data: KioskData }) {
             </div>
           </div>
 
-          <ScannerFrame processing={submitting} />
+          <ScannerFrame processing={gameStarted && submitting} />
 
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 19, fontWeight: 800, color: '#2E221E' }}>כוונו את כרטיס ה-QR של המשתתף למסגרת</div>
             <button
               onClick={() => setShowManual(true)}
               style={{
+                display: gameStarted ? 'inline' : 'none',
                 fontSize: 15, fontWeight: 800, color: '#3E8F88', marginTop: 8,
                 textDecoration: 'underline', textUnderlineOffset: 3,
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0,
               }}>
               או בחרו הזנה ידנית — שחקן · משימה
             </button>
+            {!gameStarted && (
+              <div style={{ fontSize: 15, fontWeight: 900, color: '#7D706A', marginTop: 8 }}>
+                התחרות מתחילה ברגע שהמשתתף הראשון סורק 🚀
+              </div>
+            )}
           </div>
 
           {/* Scan-success overlay — covers center column */}
@@ -1222,53 +1487,57 @@ function KioskDisplay({ event, data }: { event: Event; data: KioskData }) {
           />
         </div>
 
-        {/* LEFT PANEL — teal */}
+        {/* LEFT PANEL — teal / rewards */}
         <div className="kiosk-fadeUp" style={{
           flex: '0 0 clamp(300px, 27vw, 580px)', position: 'relative', overflow: 'hidden',
           borderRadius: 24, background: 'linear-gradient(165deg,#7CCBC3,#4FA6A0)',
           boxShadow: '0 14px 32px rgba(59,136,128,0.28)',
+          display: 'flex', flexDirection: 'column',
         }}>
-          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle,rgba(255,255,255,0.16) 1.5px,transparent 1.6px)', backgroundSize: '22px 22px', opacity: 0.55 }} />
-          <div style={{ position: 'absolute', top: -70, right: -50, width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle,rgba(255,255,255,0.28),transparent 70%)' }} />
-          <div style={{ position: 'absolute', bottom: -90, left: -60, width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle,rgba(255,214,138,0.22),transparent 70%)' }} />
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle,rgba(255,255,255,0.16) 1.5px,transparent 1.6px)', backgroundSize: '22px 22px', opacity: 0.55, pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', top: -70, right: -50, width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle,rgba(255,255,255,0.28),transparent 70%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: -90, left: -60, width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle,rgba(255,214,138,0.22),transparent 70%)', pointerEvents: 'none' }} />
           <GlowingStarsTeal />
 
-          <GroupLeaderboardView
-            rows={rankedGroups}
-            totalPoints={stats.totalPoints}
-            totalScans={totalScans}
-            active={view === 0}
-          />
-          <TopPlayersView
-            rows={topPlayers}
-            totalScans={totalScans}
-            active={view === 1}
-          />
-        </div>
-      </div>
+          {/* Rewards section */}
+          <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, padding: 18, display: 'flex', flexDirection: 'column', gap: 11 }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 22 }}>🎁</span>
+                <span style={{ fontSize: 22, fontWeight: 900, color: '#FFFFFF', textShadow: '0 1px 6px rgba(0,0,0,0.18)' }}>פרסים שחולקו</span>
+              </div>
+              {gameStarted && <LivePill />}
+            </div>
 
-      {/* View rotation indicator dots */}
-      <div style={{ position: 'absolute', zIndex: 2, bottom: 16, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{
-          display: 'inline-block', height: 8, borderRadius: 999,
-          background: view === 0 ? '#EF8A4E' : 'rgba(255,255,255,0.45)',
-          width: view === 0 ? 28 : 10,
-          transition: 'width 0.5s ease, background 0.5s ease',
-          boxShadow: view === 0 ? '0 0 8px rgba(239,138,78,0.6)' : 'none',
-        }} />
-        <span style={{
-          display: 'inline-block', height: 8, borderRadius: 999,
-          background: view === 1 ? '#4FA6A0' : 'rgba(255,255,255,0.45)',
-          width: view === 1 ? 28 : 10,
-          transition: 'width 0.5s ease, background 0.5s ease',
-          boxShadow: view === 1 ? '0 0 8px rgba(79,166,160,0.6)' : 'none',
-        }} />
+            {/* Top prizes */}
+            {hasConfiguredRewards && <TopPrizes prizes={topPrizes} />}
+
+            {/* Awarded rewards feed */}
+            {!hasConfiguredRewards ? (
+              <RewardsNotConfiguredState onCreate={() => navigate(`/events/${event.id}/step/5`)} />
+            ) : hasAwardedRewards ? (
+              <AwardedRewardsFeed rewards={rewards} newestId={newestRewardId} />
+            ) : gameStarted && hasActivity ? (
+              <RewardsActiveNoAwardsFeed />
+            ) : gameStarted ? (
+              <RewardsStartedEmptyFeed />
+            ) : (
+              <RewardsPreGameFeed />
+            )}
+
+            {/* Footer */}
+            <div style={{ display: gameStarted && hasActivity ? 'block' : 'none', textAlign: 'center', fontSize: 13, fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>
+              🎉 {stats.totalPoints.toLocaleString('he-IL')} נקודות חולקו · {totalScans} סריקות
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Reward celebration — full-screen takeover, z-index 40 */}
       <RewardCelebration
         win={rewardWin}
-        onDismiss={() => { clearTimeout(rewardDismissTimer.current); setRewardWin(null) }}
+        onDismiss={showNextReward}
         reducedMotion={reducedMotion}
       />
 
@@ -1325,10 +1594,10 @@ function KioskDisplay({ event, data }: { event: Event; data: KioskData }) {
 }
 
 // ─── Viewport wrapper ─────────────────────────────────────────────────────────
-function KioskViewport({ event, data }: { event: Event; data: KioskData }) {
+function KioskViewport({ event, data, gameStarted }: { event: Event; data: KioskData; gameStarted: boolean }) {
   return (
     <div style={{ width: '100vw', height: '100dvh', overflow: 'hidden', background: '#FFF8F3' }}>
-      <KioskDisplay event={event} data={data} />
+      <KioskDisplay event={event} data={data} gameStarted={gameStarted} />
     </div>
   )
 }
@@ -1352,7 +1621,21 @@ export function EventKioskPage() {
     fetchEvent()
   }, [id, navigate])
 
-  const data = useKioskData(id ?? '')
+  const gameStarted = event ? isGameStarted(event) : false
+  const data = useKioskData(id ?? '', gameStarted)
+
+  useEffect(() => {
+    if (!id) return
+    const channel = supabase
+      .channel(`kiosk_event_${id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'events', filter: `id=eq.${id}` },
+        (payload) => setEvent(payload.new as Event)
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [id])
 
   if (loading || !event) return <FullPageLoader />
 
@@ -1373,6 +1656,5 @@ export function EventKioskPage() {
     )
   }
 
-  return <KioskViewport event={event} data={data} />
+  return <KioskViewport event={event} data={data} gameStarted={gameStarted} />
 }
-

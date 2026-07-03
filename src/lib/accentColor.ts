@@ -6,10 +6,14 @@ export interface AccentRgb {
 
 export function hexToRgb(hex: string): AccentRgb {
   const h = hex.replace('#', '')
+  const r = parseInt(h.substring(0, 2), 16)
+  const g = parseInt(h.substring(2, 4), 16)
+  const b = parseInt(h.substring(4, 6), 16)
+  // Fall back to brand orange (#AB3500) if the hex string is invalid
   return {
-    r: parseInt(h.substring(0, 2), 16) || 139,
-    g: parseInt(h.substring(2, 4), 16) || 92,
-    b: parseInt(h.substring(4, 6), 16) || 246,
+    r: isNaN(r) ? 171 : r,
+    g: isNaN(g) ? 53 : g,
+    b: isNaN(b) ? 0 : b,
   }
 }
 
