@@ -9,6 +9,7 @@ import { useScoreSubmit } from '@/hooks/useScoreSubmit'
 import { useEventCatalog } from '@/hooks/useEventCatalog'
 import { parseQrPayload } from '@/lib/qrPayload'
 import { hexToRgb } from '@/lib/accentColor'
+import { getIsraelSecond } from '@/lib/israelTime'
 import {
   buildActionCompletionIndex,
   filterActionsWithAvailableParticipants,
@@ -18,7 +19,7 @@ import {
 import {
   formatRemainingAsTimer,
   getDailyTimeWindow,
-  getDailyWindowRemainingMinutes,
+  getDailyWindowRemainingSeconds,
   hasDailyTimeWindow,
   isInDailyTimeWindow,
 } from '@/lib/taskLimit'
@@ -1910,18 +1911,24 @@ function RecommendedMissionCard({
   const inDailyWindow = action ? isInDailyTimeWindow(action, now) : false
   const dailyWindow = action ? getDailyTimeWindow(action) : { start: null, end: null }
   const hasTimeWindow = Boolean(action?.daily_limit && hasDailyTimeWindow(dailyWindow))
-  const remainingMinutes = action && hasTimeWindow && inDailyWindow
-    ? getDailyWindowRemainingMinutes(action, now)
+  const remainingSeconds = action && hasTimeWindow && inDailyWindow
+    ? getDailyWindowRemainingSeconds(action, now)
     : null
-  const showCountdown = remainingMinutes !== null
+  const showCountdown = remainingSeconds !== null
   const hasGroups = Boolean(action && action.groups.length > 0)
-  const timer = remainingMinutes !== null ? formatRemainingAsTimer(remainingMinutes) : null
-  const isUrgent = remainingMinutes !== null && remainingMinutes <= 15
+  const timer = remainingSeconds !== null ? formatRemainingAsTimer(remainingSeconds) : null
+  const isUrgent = remainingSeconds !== null && remainingSeconds <= 15 * 60
 
-  const blinkClass = !reducedMotion && showCountdown
-    ? (isUrgent ? 'kiosk-timerTitleUrgent' : 'kiosk-timerTitleFlash')
-    : undefined
-  const blinkKey = `${action?.id ?? 'none'}-${isUrgent ? 'u' : 'a'}`
+  const colonDimmed = !reducedMotion && showCountdown && getIsraelSecond(now) % 2 === 1
+  const colonStyle = { marginBottom: 4, opacity: colonDimmed ? 0.15 : 1 }
+  const urgentLabelStyle = {
+    fontSize: 10,
+    fontWeight: 900,
+    letterSpacing: 1.5,
+    color: isUrgent ? '#B82018' : '#B5623C',
+    marginBottom: 4,
+    opacity: isUrgent && colonDimmed ? 0.15 : 1,
+  }
   const accentHot = showCountdown && isUrgent
   const badgeLabel = showCountdown ? 'משימה פעילה' : 'משימה מומלצת'
 
@@ -1993,7 +2000,11 @@ function RecommendedMissionCard({
                 : '0 10px 26px rgba(120,50,10,0.28), 0 0 0 5px rgba(255,255,255,0.9), 0 0 20px rgba(255,147,102,0.3)',
             }}
           >
-            🎯
+            {showCountdown ? (
+              <span aria-hidden style={{ fontSize: 64, lineHeight: 1 }}>⏳</span>
+            ) : (
+              <span aria-hidden>🎯</span>
+            )}
           </div>
         </div>
       )}
@@ -2040,10 +2051,7 @@ function RecommendedMissionCard({
 
         {showCountdown && timer && (
           <div style={{ marginTop: 10, width: '100%' }}>
-            <div style={{
-              fontSize: 10, fontWeight: 900, letterSpacing: 1.5,
-              color: isUrgent ? '#B82018' : '#B5623C', marginBottom: 4,
-            }}>
+            <div style={urgentLabelStyle}>
               {isUrgent ? '⚡ זמן אוזל!' : 'זמן נותר לביצוע'}
             </div>
             <div
@@ -2056,9 +2064,15 @@ function RecommendedMissionCard({
                 letterSpacing: '0.04em',
               }}
             >
-              <span>{timer.hours}</span>
-              <span key={`colon-${blinkKey}`} className={blinkClass} style={{ marginBottom: 4 }}>:</span>
+              {timer.showHours && (
+                <>
+                  <span>{timer.hours}</span>
+                  <span style={colonStyle}>:</span>
+                </>
+              )}
               <span>{timer.minutes}</span>
+              <span style={colonStyle}>:</span>
+              <span>{timer.seconds}</span>
             </div>
           </div>
         )}
@@ -2086,7 +2100,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     const tick = () => setNow(new Date())
-    const t = setInterval(tick, 30_000)
+    const t = setInterval(tick, 1_000)
     return () => clearInterval(t)
   }, [])
 

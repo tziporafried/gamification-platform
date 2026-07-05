@@ -1,8 +1,9 @@
 import {
   formatTimeRange,
   getIsraelMinutesSinceMidnight,
+  getIsraelSecondsSinceMidnight,
   isTimeInRange,
-  toMinutesSinceMidnight,
+  toSecondsSinceMidnight,
 } from '@/lib/israelTime'
 import type { Action } from '@/types'
 
@@ -180,11 +181,24 @@ export function getDailyWindowRemainingMinutes(
   action: DailyWindowAction,
   now: Date = new Date(),
 ): number | null {
+  const remainingSeconds = getDailyWindowRemainingSeconds(action, now)
+  if (remainingSeconds === null) return null
+  return Math.ceil(remainingSeconds / 60)
+}
+
+export function getDailyWindowRemainingSeconds(
+  action: DailyWindowAction,
+  now: Date = new Date(),
+): number | null {
   if (!isInDailyTimeWindow(action, now)) return null
   const dailyWindow = getDailyTimeWindow(action)
-  const currentMinutes = getIsraelMinutesSinceMidnight(now)
-  const endMinutes = toMinutesSinceMidnight(dailyWindow.end!.hour, dailyWindow.end!.minute)
-  return Math.max(0, endMinutes - currentMinutes)
+  const currentSeconds = getIsraelSecondsSinceMidnight(now)
+  const endSeconds = toSecondsSinceMidnight(
+    dailyWindow.end!.hour,
+    dailyWindow.end!.minute,
+    59,
+  )
+  return Math.max(0, endSeconds - currentSeconds)
 }
 
 export function formatRemainingDuration(totalMinutes: number): string {
@@ -198,13 +212,21 @@ export function formatRemainingDuration(totalMinutes: number): string {
   return `${hourPart} ו-${minutePart}`
 }
 
-export function formatRemainingAsTimer(totalMinutes: number): { hours: string; minutes: string } {
-  const safeMinutes = Math.max(0, totalMinutes)
-  const hours = Math.floor(safeMinutes / 60)
-  const minutes = safeMinutes % 60
+export function formatRemainingAsTimer(totalSeconds: number): {
+  hours: string
+  minutes: string
+  seconds: string
+  showHours: boolean
+} {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds))
+  const hours = Math.floor(safeSeconds / 3600)
+  const minutes = Math.floor((safeSeconds % 3600) / 60)
+  const seconds = safeSeconds % 60
   return {
     hours: hours.toString().padStart(2, '0'),
     minutes: minutes.toString().padStart(2, '0'),
+    seconds: seconds.toString().padStart(2, '0'),
+    showHours: hours > 0,
   }
 }
 

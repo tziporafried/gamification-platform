@@ -81,6 +81,13 @@ export function TaskLimitSelect({
   const [draftEnd, setDraftEnd] = useState<TimeOfDay>(() => getEditorTimeDraft(dailyWindow).end)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const draftStartRef = useRef(draftStart)
+  const draftEndRef = useRef(draftEnd)
+  const dailyTimeModeRef = useRef(dailyTimeMode)
+
+  draftStartRef.current = draftStart
+  draftEndRef.current = draftEnd
+  dailyTimeModeRef.current = dailyTimeMode
 
   const limitTooltip = 'כמה סריקות כל משתתף יכול לבצע'
   const label = getLimitLabel(limitMode, customLimit, dailyWindow)
@@ -131,9 +138,19 @@ export function TaskLimitSelect({
     function handlePointerDown(e: MouseEvent) {
       const target = e.target as Node
       if (buttonRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      if (dailyTimeModeRef.current === 'between') {
+        const window: DailyTimeWindow = {
+          start: draftStartRef.current,
+          end: draftEndRef.current,
+        }
+        if (isDailyTimeWindowValid(window)) {
+          onSaveLimitMode('daily', { dailyWindow: window })
+        }
+      }
       setOpen(false)
       onSetEditingLimit(false)
       setEditingDailyHour(false)
+      setOpenTimeField(null)
     }
 
     function handleReposition() {
@@ -148,7 +165,7 @@ export function TaskLimitSelect({
       window.removeEventListener('resize', handleReposition)
       window.removeEventListener('scroll', handleReposition, true)
     }
-  }, [open, updatePosition, onSetEditingLimit])
+  }, [open, updatePosition, onSetEditingLimit, onSaveLimitMode])
 
   useEffect(() => {
     if (!open) return
@@ -162,31 +179,42 @@ export function TaskLimitSelect({
       setEditingDailyHour(false)
     }
     onSetEditingLimit(limitMode === 'limited')
-  }, [open, limitMode, dailyWindow, onSetEditingLimit])
-
-  function close() {
-    setOpen(false)
-    onSetEditingLimit(false)
-    setEditingDailyHour(false)
-    setOpenTimeField(null)
-  }
+  }, [open, limitMode, onSetEditingLimit])
 
   function persistDailyWindow(window: DailyTimeWindow) {
     if (!isDailyTimeWindowValid(window)) return
     onSaveLimitMode('daily', { dailyWindow: window })
   }
 
+  function persistDraftRange(
+    start: TimeOfDay = draftStart,
+    end: TimeOfDay = draftEnd,
+    mode: DailyTimeMode = dailyTimeMode,
+  ) {
+    if (mode !== 'between') return
+    persistDailyWindow({ start, end })
+  }
+
+  function flushDailyDraft() {
+    persistDraftRange()
+  }
+
+  function close() {
+    flushDailyDraft()
+    setOpen(false)
+    onSetEditingLimit(false)
+    setEditingDailyHour(false)
+    setOpenTimeField(null)
+  }
+
   function updateDraftStart(next: TimeOfDay) {
     setDraftStart(next)
+    persistDraftRange(next, draftEnd)
   }
 
   function updateDraftEnd(next: TimeOfDay) {
     setDraftEnd(next)
-  }
-
-  function persistDraftRange() {
-    if (dailyTimeMode !== 'between') return
-    persistDailyWindow({ start: draftStart, end: draftEnd })
+    persistDraftRange(draftStart, next)
   }
 
   function setDailyTimeModeAndPersist(mode: DailyTimeMode) {

@@ -4,20 +4,23 @@ export function getIsraelLocalDateString(date: Date): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: ISRAEL_TIMEZONE }).format(date)
 }
 
-function getIsraelTimeParts(date: Date): { hour: number; minute: number } {
+function getIsraelTimeParts(date: Date): { hour: number; minute: number; second: number } {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: ISRAEL_TIMEZONE,
     hour: 'numeric',
     minute: 'numeric',
+    second: 'numeric',
     hour12: false,
   }).formatToParts(date)
 
   const hour = parseInt(parts.find((part) => part.type === 'hour')?.value ?? '0', 10)
   const minute = parseInt(parts.find((part) => part.type === 'minute')?.value ?? '0', 10)
+  const second = parseInt(parts.find((part) => part.type === 'second')?.value ?? '0', 10)
 
   return {
     hour: hour === 24 ? 0 : hour,
     minute,
+    second,
   }
 }
 
@@ -27,6 +30,19 @@ export function getIsraelHour(date: Date): number {
 
 export function getIsraelMinute(date: Date): number {
   return getIsraelTimeParts(date).minute
+}
+
+export function getIsraelSecond(date: Date): number {
+  return getIsraelTimeParts(date).second
+}
+
+export function toSecondsSinceMidnight(hour: number, minute: number, second = 0): number {
+  return hour * 3600 + minute * 60 + second
+}
+
+export function getIsraelSecondsSinceMidnight(date: Date): number {
+  const { hour, minute, second } = getIsraelTimeParts(date)
+  return toSecondsSinceMidnight(hour, minute, second)
 }
 
 export function toMinutesSinceMidnight(hour: number, minute: number): number {

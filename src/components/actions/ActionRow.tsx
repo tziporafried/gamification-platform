@@ -155,7 +155,10 @@ export const ActionRow = memo(function ActionRow({
     if (error) {
       resetLimit()
       onError?.('שגיאה בעדכון מגבלה')
+      return
     }
+
+    onUpdated?.(dbValues)
   }
 
   function resetLimit() {
