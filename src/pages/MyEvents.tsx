@@ -268,7 +268,7 @@ function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: Ev
       className={EVENT_CARD_CLASS}
     >
       <div
-        className="absolute right-0 top-0 h-full w-1 rounded-r-none transition-opacity duration-[180ms] ease-out opacity-35 group-hover:opacity-48"
+        className="absolute right-0 top-0 h-full w-1.5 rounded-r-none transition-opacity duration-[180ms] ease-out opacity-70 group-hover:opacity-90"
         style={{ backgroundColor: statusColor }}
       />
 
@@ -293,7 +293,7 @@ function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: Ev
       </div>
 
       <div className="flex shrink-0 items-center self-stretch py-0.5">
-        <EventPlayStatus status={playStatus} variant="badge" />
+        <EventPlayStatus status={playStatus} />
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 self-center" onClick={e => e.stopPropagation()}>

@@ -1,5 +1,4 @@
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/Badge'
 
 export type EventPlayStatusKind = 'preparing' | 'ready' | 'active'
 
@@ -53,7 +52,6 @@ function StatusDot({ status, pulse }: { status: EventPlayStatusKind; pulse?: boo
 
 interface EventPlayStatusProps {
   status: EventPlayStatusKind
-  variant?: 'inline' | 'badge'
 }
 
 export function EventPlayStatusPreparing(props: Omit<EventPlayStatusProps, 'status'>) {
@@ -68,19 +66,8 @@ export function EventPlayStatusActive(props: Omit<EventPlayStatusProps, 'status'
   return <EventPlayStatus status="active" {...props} />
 }
 
-export function EventPlayStatus({ status, variant = 'inline' }: EventPlayStatusProps) {
+export function EventPlayStatus({ status }: EventPlayStatusProps) {
   const config = EVENT_PLAY_STATUS[status]
-
-  if (variant === 'badge') {
-    return (
-      <Badge
-        label={config.label}
-        color={config.color}
-        variant="quiet"
-        icon={<StatusDot status={status} />}
-      />
-    )
-  }
 
   return (
     <div className="flex items-center gap-2">

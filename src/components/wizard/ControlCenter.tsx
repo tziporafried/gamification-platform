@@ -124,16 +124,12 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
         )}
       >
           <motion.div className="mb-14 flex shrink-0 flex-col items-center text-center" initial={false}>
-            {event.logo_url ? (
+            {event.logo_url && (
               <img
                 src={event.logo_url}
                 alt={event.name}
                 className="mb-3 h-16 w-16 rounded-2xl border border-border object-cover shadow-card"
               />
-            ) : (
-              <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-surface-elevated text-xl font-black text-primary shadow-card">
-                {event.name.slice(0, 2)}
-              </div>
             )}
 
             <h1
