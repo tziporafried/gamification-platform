@@ -22,12 +22,49 @@ import {
   hasDailyTimeWindow,
   isInDailyTimeWindow,
 } from '@/lib/taskLimit'
+import { formatDistanceToNow } from 'date-fns'
+import { he } from 'date-fns/locale'
 import type { Event, GroupLeaderboardEntry, ParticipantLeaderboardEntry } from '@/types'
 import type { ScoreSubmitResult } from '@/hooks/useScoreSubmit'
 import '@/styles/kiosk.css'
 
 const KIOSK_ACCENT = hexToRgb('#AB3500') ?? { r: 171, g: 53, b: 0 }
 const ACTIVITY_ACCENTS = ['#FF8A4D', '#4FA6A0', '#F2B33C']
+const ACTIVITY_ICONS = ['🎯', '⭐', '🏆', '✨', '🔥', '💪', '🌟', '🎊', '👏', '🚀', '💫', '🎖️', '✅', '🙌', '⚡']
+
+function stableHash(id: string): number {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0
+  }
+  return hash
+}
+
+function activityIconForId(id: string): string {
+  return ACTIVITY_ICONS[stableHash(id) % ACTIVITY_ICONS.length]
+}
+
+function activityAccentForId(id: string): string {
+  return ACTIVITY_ACCENTS[stableHash(id) % ACTIVITY_ACCENTS.length]
+}
+
+function activityRowMotionForId(id: string) {
+  const h = stableHash(id)
+  return {
+    iconDuration: `${(3.4 + (h % 5) * 0.32).toFixed(2)}s`,
+    iconDelay: `${(((h >> 3) % 10) * 0.19).toFixed(2)}s`,
+    pointsDuration: `${(3.2 + ((h >> 6) % 5) * 0.4).toFixed(2)}s`,
+    pointsDelay: `${(((h >> 9) % 12) * 0.23).toFixed(2)}s`,
+  }
+}
+
+function formatActivityRelativeTime(createdAt: string, reference = new Date()): string {
+  const created = new Date(createdAt)
+  if (Number.isNaN(created.getTime())) return ''
+  const diffMs = reference.getTime() - created.getTime()
+  if (diffMs < 60_000) return 'ממש עכשיו'
+  return formatDistanceToNow(created, { addSuffix: true, locale: he })
+}
 
 // Generates the decorative QR matrix shown in the scanner frame.
 // Deterministic LCG seeded to 41 — same result every render.
@@ -58,7 +95,15 @@ const QR_MATRIX = makeQrMatrix(21, 41)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type RankRow = { id: string; name: string; initial: string; score: number; barPct: number; medal?: 1 | 2 | 3 }
-type ActivityRow = { id: string; icon: string; title: string; subtitle: string; points: string; accent: string }
+type ActivityRow = {
+  id: string
+  icon: string
+  title: string
+  subtitle: string
+  points: string
+  accent: string
+  createdAt: string
+}
 type RewardRow = { id: string; icon: string; title: string; recipient: string; score: number; accent: string }
 type TopPrizeRow = { id: string; name: string; icon: string; requiredPoints: number; accent: string }
 type KioskGroup = { id: string; name: string; color: string }
@@ -210,7 +255,7 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
         supabase.rpc('get_participant_leaderboard', { p_event_id: eventId }),
         supabase
           .from('point_transactions')
-          .select('id, points, created_at, participant:participants(name), action:actions(name, code)')
+          .select('id, points, created_at, participant:participants(name), action:actions(id, name, code)')
           .eq('event_id', eventId)
           .order('created_at', { ascending: false })
           .limit(10),
@@ -421,16 +466,18 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
 
   const recentActivity = useMemo<ActivityRow[]>(() =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    txData.slice(0, 8).map((tx: any, i: number) => {
+    txData.slice(0, 10).map((tx: any) => {
       const action = Array.isArray(tx.action) ? tx.action[0] : tx.action
       const participant = Array.isArray(tx.participant) ? tx.participant[0] : tx.participant
+      const visualKey = action?.id ?? tx.id
       return {
         id: tx.id,
-        icon: '🎯',
+        icon: activityIconForId(visualKey),
         title: action?.name ?? 'משימה',
         subtitle: participant?.name ?? '',
         points: tx.points > 0 ? `+${tx.points}` : String(tx.points),
-        accent: ACTIVITY_ACCENTS[i % ACTIVITY_ACCENTS.length],
+        accent: activityAccentForId(visualKey),
+        createdAt: tx.created_at ?? '',
       }
     })
   , [txData])
@@ -1162,10 +1209,15 @@ function StartedNoActivityState() {
   )
 }
 
-const ACTIVITY_ROTATE_MS = 4200
-const ACTIVITY_ROW_STEP = 91
+const ACTIVITY_MAX_SLOTS = 10
+const ACTIVITY_ROTATE_MS = 4_200
+const ACTIVITY_ROW_EST_HEIGHT = 52
+const ACTIVITY_ROW_GAP = 7
+const ACTIVITY_ROW_STEP = ACTIVITY_ROW_EST_HEIGHT + ACTIVITY_ROW_GAP
 const ACTIVITY_SPOTLIGHT_MS = 60_000
 const ACTIVITY_CELEBRATE_MS = 3_500
+const ACTIVITY_STRIP_MS = 8_000
+const ACTIVITY_STRIP_OUT_MS = 400
 const SCAN_SUCCESS_MS = 4200
 
 const SPOTLIGHT_SPARKS = [
@@ -1203,21 +1255,39 @@ function SpotlightCelebrationFX({ reducedMotion }: { reducedMotion: boolean }) {
   )
 }
 
-function ActivityPointsBadge({ points, celebrate = false }: { points: string; celebrate?: boolean }) {
+function ActivityPointsBadge({
+  points, celebrate = false, reducedMotion = false, motion,
+}: {
+  points: string
+  celebrate?: boolean
+  reducedMotion?: boolean
+  motion?: ReturnType<typeof activityRowMotionForId>
+}) {
   return (
     <div
-      className={celebrate ? 'kiosk-activityPointsCelebrate' : undefined}
+      className={[
+        celebrate ? 'kiosk-activityPointsCelebrate' : '',
+        !celebrate && !reducedMotion ? 'kiosk-activityPointsPulse' : '',
+      ].filter(Boolean).join(' ') || undefined}
       style={{
       display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0,
       background: 'linear-gradient(145deg,#FFFFFF,#FFF4E0)',
       border: celebrate ? '2px solid rgba(242,179,60,0.95)' : '1.5px solid rgba(242,179,60,0.75)',
       borderRadius: 999,
-      padding: celebrate ? '5px 11px 5px 8px' : '4px 9px 4px 6px',
-      boxShadow: celebrate ? '0 4px 16px rgba(242,179,60,0.45)' : '0 2px 8px rgba(242,179,60,0.2)',
+      padding: celebrate ? '3px 7px 3px 5px' : '2px 6px 2px 4px',
+      boxShadow: celebrate ? '0 4px 16px rgba(242,179,60,0.45)' : undefined,
+      ...(motion && !celebrate && !reducedMotion ? {
+        ['--kiosk-points-dur' as string]: motion.pointsDuration,
+        ['--kiosk-points-delay' as string]: motion.pointsDelay,
+      } : {}),
     }}>
       <span
         className={celebrate ? 'kiosk-fireFlicker' : undefined}
-        style={{ fontSize: celebrate ? 13 : 11, lineHeight: 1, filter: 'drop-shadow(0 0 4px rgba(242,179,60,0.5))' }}
+        style={{
+          fontSize: celebrate ? 11 : 9,
+          lineHeight: 1,
+          filter: 'drop-shadow(0 0 4px rgba(242,179,60,0.5))',
+        }}
       >
         ⭐
       </span>
@@ -1225,7 +1295,7 @@ function ActivityPointsBadge({ points, celebrate = false }: { points: string; ce
         className={celebrate ? 'kiosk-numberGlow' : undefined}
         style={{
         display: 'inline-flex', direction: 'ltr', alignItems: 'baseline',
-        fontSize: celebrate ? 18 : 14, fontWeight: 900, color: '#C8941A', lineHeight: 1,
+        fontSize: celebrate ? 14 : 12, fontWeight: 900, color: '#C8941A', lineHeight: 1,
         fontVariantNumeric: 'tabular-nums',
       }}>
         {points}
@@ -1235,39 +1305,66 @@ function ActivityPointsBadge({ points, celebrate = false }: { points: string; ce
 }
 
 function ActivityCard({
-  row, spotlight = false, celebrating = false,
+  row, spotlight = false, celebrating = false, now, reducedMotion = false,
 }: {
   row: ActivityRow
   spotlight?: boolean
   celebrating?: boolean
+  now: Date
+  reducedMotion?: boolean
 }) {
+  const relativeTime = formatActivityRelativeTime(row.createdAt, now)
+  const motion = activityRowMotionForId(row.id)
+  const iconClass = celebrating && !reducedMotion
+    ? 'kiosk-activityIconCelebrate'
+    : spotlight && !reducedMotion
+      ? 'kiosk-activityIconPulse'
+      : !reducedMotion
+        ? 'kiosk-activityIconSpin'
+        : undefined
   return (
     <div className="kiosk-activityRowContent">
       <span
-        className={celebrating ? 'kiosk-activityIconCelebrate' : spotlight ? 'kiosk-activityIconPulse' : undefined}
-        style={{ fontSize: celebrating ? 30 : 24, lineHeight: 1, flexShrink: 0 }}
+        className={iconClass}
+        style={{
+          fontSize: celebrating ? 22 : 18,
+          lineHeight: 1,
+          flexShrink: 0,
+          display: 'inline-block',
+          ...(iconClass === 'kiosk-activityIconSpin' ? {
+            ['--kiosk-icon-dur' as string]: motion.iconDuration,
+            ['--kiosk-icon-delay' as string]: motion.iconDelay,
+          } : {}),
+        }}
       >
-        {celebrating ? '🎉' : row.icon}
+        {row.icon}
       </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0 }} className="kiosk-activityRowText">
         <div
-          className={celebrating ? 'kiosk-activityTitleCelebrate' : undefined}
-          style={{ fontWeight: 900, fontSize: celebrating ? 17 : 16, color: '#2E221E' }}
+          className={[
+            'kiosk-activityRowTitle',
+            celebrating ? 'kiosk-activityTitleCelebrate' : '',
+          ].filter(Boolean).join(' ') || undefined}
+          style={{ fontWeight: 900, fontSize: 13, color: '#2E221E' }}
         >
           {row.title}
         </div>
-        <div
-          className={celebrating ? 'kiosk-activitySubtitleCelebrate' : undefined}
-          style={{
-            fontSize: celebrating ? 14 : 13,
-            fontWeight: celebrating ? 900 : 700,
-            color: celebrating ? '#3E9E6B' : '#7D706A',
-          }}
-        >
-          {celebrating ? `${row.subtitle} · השלים/ה משימה!` : row.subtitle}
+        <div className="kiosk-activityRowSubtitle">
+          <span className="kiosk-activityRowName">{row.subtitle}</span>
+          {relativeTime && (
+            <>
+              <span className="kiosk-activityRowMetaSep"> · </span>
+              <span className="kiosk-activityRowTime">{relativeTime}</span>
+            </>
+          )}
         </div>
       </div>
-      <ActivityPointsBadge points={row.points} celebrate={celebrating || spotlight} />
+      <ActivityPointsBadge
+        points={row.points}
+        celebrate={celebrating || spotlight}
+        reducedMotion={reducedMotion}
+        motion={motion}
+      />
     </div>
   )
 }
@@ -1280,34 +1377,82 @@ function ActivityView({
   reducedMotion?: boolean
 }) {
   const hasRows = rows.length > 0
-  const slots = Math.min(3, rows.length)
-  const [displayIdx, setDisplayIdx] = useState(0)
+  const listRef = useRef<HTMLDivElement>(null)
+  const [fitSlots, setFitSlots] = useState(ACTIVITY_MAX_SLOTS)
+  const slots = Math.min(fitSlots, ACTIVITY_MAX_SLOTS, rows.length)
+  const [visibleIndices, setVisibleIndices] = useState<number[]>([])
   const [phase, setPhase] = useState<'idle' | 'push'>('idle')
+  const [pushReason, setPushReason] = useState<'new' | 'rotate'>('new')
+  const [rotateIncomingIdx, setRotateIncomingIdx] = useState<number | null>(null)
+  const [pushSnapshot, setPushSnapshot] = useState<{
+    newRows: ActivityRow[]
+    previousVisible: ActivityRow[]
+  } | null>(null)
   const [spotlightUntil, setSpotlightUntil] = useState<Record<string, number>>({})
   const [celebratingIds, setCelebratingIds] = useState<Set<string>>(() => new Set())
+  const [stripIds, setStripIds] = useState<Set<string>>(() => new Set())
+  const [stripExitingIds, setStripExitingIds] = useState<Set<string>>(() => new Set())
   const [now, setNow] = useState(() => Date.now())
   const prevRowIdsRef = useRef<Set<string> | null>(null)
   const celebratedOnceRef = useRef<Set<string>>(new Set())
-  const stableOrderRef = useRef<Map<string, number>>(new Map())
-  const nextStableOrderRef = useRef(0)
   const enterClearTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  const seedExistingRows = useCallback((ids: string[]) => {
+    prevRowIdsRef.current = new Set(ids)
+    for (const id of ids) {
+      celebratedOnceRef.current.add(id)
+    }
+  }, [])
 
   useEffect(() => () => {
     enterClearTimersRef.current.forEach(clearTimeout)
   }, [])
 
   useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 1000)
-    return () => window.clearInterval(t)
-  }, [])
+    const el = listRef.current
+    if (!el || !hasRows) return
+
+    const measure = () => {
+      const height = el.getBoundingClientRect().height
+      if (height <= 0) return
+      const fullRows = Math.floor((height + ACTIVITY_ROW_GAP) / ACTIVITY_ROW_STEP)
+      const usedByFull = fullRows > 0
+        ? fullRows * ACTIVITY_ROW_EST_HEIGHT + (fullRows - 1) * ACTIVITY_ROW_GAP
+        : 0
+      const remaining = height - usedByFull
+      const fit = remaining > 0 ? fullRows + 1 : fullRows
+      setFitSlots(Math.max(1, Math.min(ACTIVITY_MAX_SLOTS, fit)))
+    }
+
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [hasRows])
+
+  const resetVisibleIndices = useCallback(() => {
+    setVisibleIndices(Array.from({ length: slots }, (_, i) => i))
+  }, [slots])
+
+  useEffect(() => {
+    resetVisibleIndices()
+  }, [rows.length, slots, resetVisibleIndices])
 
   useEffect(() => {
     const prev = prevRowIdsRef.current
     const currentIds = rows.map((r) => r.id)
+
     if (prev === null) {
-      prevRowIdsRef.current = new Set(currentIds)
+      seedExistingRows(currentIds)
       return
     }
+
+    // Data arrived after initial empty state — treat as baseline, not new scans.
+    if (prev.size === 0 && currentIds.length > 0) {
+      seedExistingRows(currentIds)
+      return
+    }
+
     const ts = Date.now()
     const updates: Record<string, number> = {}
     let hasNew = false
@@ -1320,86 +1465,154 @@ function ActivityView({
     }
     prevRowIdsRef.current = new Set(currentIds)
     if (hasNew) {
+      const newIds = new Set(Object.keys(updates))
+      const newRows = rows.filter((r) => newIds.has(r.id))
+      const previousVisible = rows.filter((r) => !newIds.has(r.id)).slice(0, slots)
+      setRotateIncomingIdx(null)
+      resetVisibleIndices()
+      setPushReason('new')
+      setPushSnapshot({ newRows, previousVisible })
+      setPhase('push')
       setSpotlightUntil((su) => ({ ...su, ...updates }))
-      setCelebratingIds((prev) => {
-        const next = new Set(prev)
+      setCelebratingIds((prevCelebrating) => {
+        const next = new Set(prevCelebrating)
+        for (const id of Object.keys(updates)) next.add(id)
+        return next
+      })
+      setStripIds((prevStrip) => {
+        const next = new Set(prevStrip)
         for (const id of Object.keys(updates)) next.add(id)
         return next
       })
       for (const id of Object.keys(updates)) {
-        const t = setTimeout(() => {
+        const celebrateTimer = setTimeout(() => {
           celebratedOnceRef.current.add(id)
-          setCelebratingIds((prev) => {
-            if (!prev.has(id)) return prev
-            const next = new Set(prev)
+          setCelebratingIds((prevCelebrating) => {
+            if (!prevCelebrating.has(id)) return prevCelebrating
+            const next = new Set(prevCelebrating)
             next.delete(id)
             return next
           })
         }, ACTIVITY_CELEBRATE_MS)
-        enterClearTimersRef.current.push(t)
+        enterClearTimersRef.current.push(celebrateTimer)
+
+        const stripTimer = setTimeout(() => {
+          setStripExitingIds((prevExiting) => {
+            const next = new Set(prevExiting)
+            next.add(id)
+            return next
+          })
+          const stripOutTimer = setTimeout(() => {
+            setStripIds((prevStrip) => {
+              if (!prevStrip.has(id)) return prevStrip
+              const next = new Set(prevStrip)
+              next.delete(id)
+              return next
+            })
+            setStripExitingIds((prevExiting) => {
+              if (!prevExiting.has(id)) return prevExiting
+              const next = new Set(prevExiting)
+              next.delete(id)
+              return next
+            })
+          }, ACTIVITY_STRIP_OUT_MS)
+          enterClearTimersRef.current.push(stripOutTimer)
+        }, ACTIVITY_STRIP_MS)
+        enterClearTimersRef.current.push(stripTimer)
       }
     }
-  }, [rows])
+  }, [rows, seedExistingRows, slots])
+
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(t)
+  }, [])
 
   const isSpotlightRow = useCallback(
     (id: string) => (spotlightUntil[id] ?? 0) > now,
     [spotlightUntil, now],
   )
 
-  const spotlightRows = useMemo(
-    () => rows.filter((r) => isSpotlightRow(r.id)),
-    [rows, isSpotlightRow],
-  )
-  const inSpotlightMode = spotlightRows.length > 0
+  const hasRecentActivity = useMemo(() => {
+    const newest = rows[0]?.createdAt
+    if (!newest) return false
+    const created = new Date(newest)
+    if (Number.isNaN(created.getTime())) return false
+    return now - created.getTime() < 60_000
+  }, [rows, now])
+
+  const canRotate = hasRows
+    && !hasRecentActivity
+    && rows.length > slots
+    && !reducedMotion
 
   useEffect(() => {
-    setDisplayIdx(0)
-    setPhase('idle')
-  }, [rows.length, rows[0]?.id, inSpotlightMode])
+    if (hasRecentActivity) resetVisibleIndices()
+  }, [hasRecentActivity, resetVisibleIndices])
 
   useEffect(() => {
-    if (!hasRows || inSpotlightMode || rows.length <= slots || reducedMotion) return
-    const t = window.setInterval(() => setPhase('push'), ACTIVITY_ROTATE_MS)
+    if (!canRotate || phase === 'push' || visibleIndices.length < slots) return
+    const t = window.setInterval(() => {
+      const bottomIdx = visibleIndices[slots - 1]
+      const incomingIdx = (bottomIdx + 1) % rows.length
+      setRotateIncomingIdx(incomingIdx)
+      setPushReason('rotate')
+      setPhase('push')
+    }, ACTIVITY_ROTATE_MS)
     return () => window.clearInterval(t)
-  }, [hasRows, inSpotlightMode, rows.length, slots, reducedMotion])
+  }, [canRotate, phase, visibleIndices, slots, rows.length])
 
   useEffect(() => {
     if (phase !== 'push') return
     const t = window.setTimeout(() => {
-      setDisplayIdx((i) => (i + 1) % rows.length)
+      if (pushReason === 'rotate' && rotateIncomingIdx !== null) {
+        setVisibleIndices((prev) => [rotateIncomingIdx, ...prev.slice(0, slots - 1)])
+        setRotateIncomingIdx(null)
+      } else {
+        resetVisibleIndices()
+      }
+      setPushSnapshot(null)
       setPhase('idle')
     }, reducedMotion ? 0 : 720)
     return () => window.clearTimeout(t)
-  }, [phase, rows.length, reducedMotion])
+  }, [phase, pushReason, rotateIncomingIdx, rows.length, slots, reducedMotion, resetVisibleIndices])
 
   const stackRows = useMemo(() => {
-    for (const row of rows) {
-      if (!stableOrderRef.current.has(row.id)) {
-        stableOrderRef.current.set(row.id, nextStableOrderRef.current++)
-      }
-    }
     let items: { row: ActivityRow; spotlight: boolean }[]
-    if (inSpotlightMode) {
-      const spotlightIds = new Set(spotlightRows.map((r) => r.id))
-      const pinned = spotlightRows
-      const below = rows.filter((r) => !spotlightIds.has(r.id))
-      items = [...pinned, ...below].slice(0, slots).map((row) => ({
+    if (phase === 'push' && pushReason === 'new' && pushSnapshot) {
+      items = [
+        ...pushSnapshot.newRows.map((row) => ({ row, spotlight: true })),
+        ...pushSnapshot.previousVisible.map((row) => ({ row, spotlight: false })),
+      ]
+    } else if (phase === 'push' && pushReason === 'rotate' && rotateIncomingIdx !== null) {
+      const current = visibleIndices.slice(0, slots).map((idx) => ({
+        row: rows[idx],
+        spotlight: false,
+      }))
+      items = [{ row: rows[rotateIncomingIdx], spotlight: false }, ...current]
+    } else if (hasRecentActivity) {
+      items = rows.slice(0, slots).map((row) => ({
         row,
-        spotlight: spotlightIds.has(row.id),
+        spotlight: isSpotlightRow(row.id),
       }))
     } else {
-      const stackStart = phase === 'push' ? displayIdx + 1 : displayIdx
-      items = Array.from({ length: slots }, (_, i) => ({
-        row: rows[(stackStart + i) % rows.length],
+      items = visibleIndices.slice(0, slots).map((idx) => ({
+        row: rows[idx],
         spotlight: false,
       }))
     }
     return items.map((item, visualIndex) => ({
       ...item,
       visualIndex,
-      stableOrder: stableOrderRef.current.get(item.row.id) ?? 0,
     }))
-  }, [inSpotlightMode, spotlightRows, slots, phase, displayIdx, rows])
+  }, [hasRecentActivity, isSpotlightRow, slots, phase, pushReason, pushSnapshot, rotateIncomingIdx, visibleIndices, rows])
+
+  const topStripRow = useMemo(() => {
+    for (const item of stackRows) {
+      if (item.visualIndex === 0 && stripIds.has(item.row.id)) return item
+    }
+    return null
+  }, [stackRows, stripIds])
 
   const style: React.CSSProperties = {
     position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', gap: 9,
@@ -1407,6 +1620,7 @@ function ActivityView({
     opacity: active ? 1 : 0,
     transform: active ? 'translateY(0)' : 'translateY(-10px)',
     pointerEvents: active ? 'auto' : 'none',
+    overflow: 'visible',
   }
 
   return (
@@ -1420,51 +1634,69 @@ function ActivityView({
       {!hasRows ? (
         <StartedNoActivityState />
       ) : (
-        <div
-          style={{
-            overflow: inSpotlightMode ? 'visible' : 'hidden',
-            paddingTop: inSpotlightMode ? 28 : 0,
-            height: ACTIVITY_ROW_STEP * slots - 9 + (inSpotlightMode ? 20 : 0),
-            ['--kiosk-activity-row-step' as string]: `${ACTIVITY_ROW_STEP}px`,
-          }}
-        >
+        <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+          {!reducedMotion && topStripRow && (
+            <div className="kiosk-activityCelebrateStripAnchor" aria-hidden="true">
+              <div
+                className={[
+                  'kiosk-activityCelebrateStrip',
+                  stripExitingIds.has(topStripRow.row.id) ? 'kiosk-activityCelebrateStrip--out' : '',
+                ].filter(Boolean).join(' ')}
+              >
+                ✓ משימה בוצעה!
+              </div>
+            </div>
+          )}
           <div
-            className={phase === 'push' && !reducedMotion && !inSpotlightMode ? 'kiosk-activityStackPush' : undefined}
-            style={{ display: 'flex', flexDirection: 'column', gap: 9 }}
+            ref={listRef}
+            style={{
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            ['--kiosk-activity-row-step' as string]: `${ACTIVITY_ROW_STEP}px`,
+            }}
           >
-            {[...stackRows]
-              .sort((a, b) => (
-                inSpotlightMode ? a.stableOrder - b.stableOrder : a.visualIndex - b.visualIndex
-              ))
-              .map(({ row: r, spotlight, visualIndex }) => {
+          <div
+            className={phase === 'push' && !reducedMotion ? 'kiosk-activityStackPush' : undefined}
+            style={{ display: 'flex', flexDirection: 'column', gap: ACTIVITY_ROW_GAP, flexShrink: 0 }}
+          >
+            {stackRows.map(({ row: r, spotlight, visualIndex }) => {
+              const isPush = phase === 'push' && !reducedMotion
+              const pushCount = stackRows.length
+              const isEntering = isPush && visualIndex === 0
               const celebrating = spotlight && celebratingIds.has(r.id)
               const rowClasses = [
                 'kiosk-activityRow',
                 spotlight ? 'kiosk-activityRow--spotlight' : '',
-                celebrating && !reducedMotion ? 'kiosk-activityCelebrateIn' : '',
+                celebrating && !reducedMotion && !isEntering ? 'kiosk-activityCelebrateIn' : '',
                 spotlight && !celebrating && !reducedMotion ? 'kiosk-activitySpotlightLive' : '',
-                phase === 'push' && !reducedMotion && !inSpotlightMode && visualIndex === 0
-                  ? 'kiosk-activityEnterSide' : '',
+                isEntering ? 'kiosk-activityEnterSide' : '',
+                isPush && visualIndex === pushCount - 1 && pushCount > slots ? 'kiosk-activityExitBottom' : '',
               ].filter(Boolean).join(' ')
+              const rowKey = phase === 'push' && pushReason === 'rotate'
+                ? `${rotateIncomingIdx}-${r.id}-${visualIndex}`
+                : r.id
               return (
               <div
-                key={inSpotlightMode ? r.id : `${displayIdx}-${r.id}-${visualIndex}`}
+                key={rowKey}
                 className={rowClasses}
                 style={{
-                  ...(inSpotlightMode ? { order: visualIndex } : undefined),
                   '--kiosk-row-accent': r.accent,
                 } as React.CSSProperties}
               >
-                {celebrating && !reducedMotion && (
-                  <>
-                    <SpotlightCelebrationFX reducedMotion={reducedMotion} />
-                    <div className="kiosk-activityCelebrateStrip">✓ משימה בוצעה!</div>
-                  </>
-                )}
-                <ActivityCard row={r} spotlight={spotlight} celebrating={celebrating} />
+                {celebrating && !reducedMotion && <SpotlightCelebrationFX reducedMotion={reducedMotion} />}
+                <ActivityCard
+                  row={r}
+                  spotlight={spotlight}
+                  celebrating={celebrating}
+                  now={new Date(now)}
+                  reducedMotion={reducedMotion}
+                />
               </div>
               )
             })}
+          </div>
           </div>
         </div>
       )}
@@ -1497,7 +1729,7 @@ function FloatingPointsBadge({
       return
     }
     setShowPoints(false)
-    const t = window.setTimeout(() => setShowPoints(true), 1000)
+    const t = window.setTimeout(() => setShowPoints(true), 550)
     return () => window.clearTimeout(t)
   }, [actionId, reducedMotion, swapPhase])
 
@@ -1515,7 +1747,7 @@ function FloatingPointsBadge({
   if (!showPoints) return null
 
   return (
-    <div style={{ position: 'absolute', bottom: -10, left: -18, zIndex: 7 }}>
+    <div style={{ position: 'absolute', bottom: -14, left: -26, zIndex: 30 }}>
       <div
         key={actionId ?? 'none'}
         className={reducedMotion ? undefined : 'kiosk-pointsFlyIn'}
@@ -1544,6 +1776,43 @@ function FloatingPointsBadge({
 }
 
 
+const MISSION_SWAP_MS = 520
+
+const MISSION_SWAP_SPARKS = [
+  { msx: '-58px', msy: '-42px', size: 9, color: '#FF9366', delay: '0.02s' },
+  { msx: '62px', msy: '-36px', size: 7, color: '#F2B33C', delay: '0.04s' },
+  { msx: '-44px', msy: '48px', size: 8, color: '#FFB84D', delay: '0.03s' },
+  { msx: '52px', msy: '44px', size: 6, color: '#FF7030', delay: '0.05s' },
+  { msx: '0px', msy: '-58px', size: 7, color: '#FFD68A', delay: '0s' },
+  { msx: '-68px', msy: '8px', size: 5, color: '#E88530', delay: '0.06s' },
+] as const
+
+function MissionSwapFx() {
+  return (
+    <div className="kiosk-missionSwapFx" aria-hidden>
+      <div className="kiosk-missionSwapFlash" />
+      <div className="kiosk-missionSwapRing" />
+      <div className="kiosk-missionSwapRing kiosk-missionSwapRing--2" />
+      {MISSION_SWAP_SPARKS.map((spark, i) => (
+        <span
+          key={i}
+          className="kiosk-missionSwapSpark"
+          style={{
+            width: spark.size,
+            height: spark.size,
+            background: spark.color,
+            boxShadow: `0 0 10px ${spark.color}`,
+            animationDelay: spark.delay,
+            ['--msx' as string]: spark.msx,
+            ['--msy' as string]: spark.msy,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+
 function RecommendedMissionSwap({
   action, now, reducedMotion,
 }: {
@@ -1551,60 +1820,71 @@ function RecommendedMissionSwap({
   now: Date
   reducedMotion: boolean
 }) {
-  const [rendered, setRendered] = useState(action)
-  const [phase, setPhase] = useState<'idle' | 'out' | 'in'>('idle')
+  const [displayed, setDisplayed] = useState(action)
+  const [exiting, setExiting] = useState<KioskAction | null>(null)
+  const [swapping, setSwapping] = useState(false)
   const skipAnimRef = useRef(true)
 
   useEffect(() => {
-    if (action?.id === rendered?.id) {
-      setRendered(action)
+    if (action?.id === displayed?.id) {
+      setDisplayed(action)
       return
     }
     if (reducedMotion || skipAnimRef.current) {
       skipAnimRef.current = false
-      setRendered(action)
-      setPhase('idle')
+      setDisplayed(action)
+      setExiting(null)
+      setSwapping(false)
       return
     }
-    setPhase('out')
-  }, [action, action?.id, rendered?.id, reducedMotion])
+    setExiting(displayed)
+    setDisplayed(action)
+    setSwapping(true)
+  }, [action, action?.id, displayed, displayed?.id, reducedMotion])
 
   useEffect(() => {
-    if (phase !== 'out') return
+    if (!swapping) return
     const t = setTimeout(() => {
-      setRendered(action)
-      setPhase('in')
-    }, 340)
+      setExiting(null)
+      setSwapping(false)
+    }, MISSION_SWAP_MS)
     return () => clearTimeout(t)
-  }, [phase, action])
+  }, [swapping, displayed?.id])
 
-  useEffect(() => {
-    if (phase !== 'in') return
-    const t = setTimeout(() => setPhase('idle'), 580)
-    return () => clearTimeout(t)
-  }, [phase])
-
-  const animClass = phase === 'out'
-    ? 'kiosk-missionSwapOut'
-    : phase === 'in'
-      ? 'kiosk-missionSwapIn'
-      : undefined
+  const swapPhase: 'idle' | 'out' | 'in' = swapping ? 'in' : 'idle'
 
   return (
-    <div className={animClass} style={{ position: 'relative', overflow: 'visible' }}>
-      <RecommendedMissionCard action={rendered} now={now} reducedMotion={reducedMotion} />
-      <FloatingPointsBadge action={rendered} reducedMotion={reducedMotion} swapPhase={phase} />
+    <div className="kiosk-missionSwapStage">
+      {swapping && !reducedMotion && <MissionSwapFx />}
+      {exiting && (
+        <div key={exiting.id} className="kiosk-missionSwapLayer kiosk-missionSwapLayer--exit">
+          <RecommendedMissionCard action={exiting} now={now} reducedMotion={reducedMotion} />
+        </div>
+      )}
+      <div
+        key={displayed?.id ?? 'none'}
+        className={swapping ? 'kiosk-missionSwapLayer kiosk-missionSwapLayer--enter' : 'kiosk-missionSwapLayer'}
+      >
+        <RecommendedMissionCard
+          action={displayed}
+          now={now}
+          reducedMotion={reducedMotion}
+          entering={swapping && !reducedMotion}
+        />
+        <FloatingPointsBadge action={displayed} reducedMotion={reducedMotion} swapPhase={swapPhase} />
+      </div>
     </div>
   )
 }
 
 
 function RecommendedMissionCard({
-  action, now, reducedMotion = false,
+  action, now, reducedMotion = false, entering = false,
 }: {
   action: KioskAction | null
   now: Date
   reducedMotion?: boolean
+  entering?: boolean
 }) {
   const inDailyWindow = action ? isInDailyTimeWindow(action, now) : false
   const dailyWindow = action ? getDailyTimeWindow(action) : { start: null, end: null }
@@ -1624,8 +1904,9 @@ function RecommendedMissionCard({
   const accentHot = showCountdown && isUrgent
 
   return (
-    <div style={{
+    <div className="kiosk-missionCard" style={{
       position: 'relative', zIndex: 1, borderRadius: 22,
+      boxSizing: 'border-box', width: '100%',
       padding: showCountdown ? 20 : '28px 20px',
       background: '#FFFFFF', boxShadow: '0 10px 24px rgba(120,50,10,0.18)',
       overflow: 'visible', color: '#2E221E',
@@ -1640,7 +1921,7 @@ function RecommendedMissionCard({
         <div
           className="kiosk-floatY-2"
           style={{
-            position: 'absolute', top: -16, right: -14, zIndex: 20,
+            position: 'absolute', top: -24, right: -22, zIndex: 30,
             width: 74, height: 74,
           }}
         >
@@ -1722,7 +2003,13 @@ function RecommendedMissionCard({
 
         <div style={{ marginTop: 14, maxWidth: '100%' }}>
           <div
-            className={reducedMotion ? undefined : 'kiosk-missionNameFlash'}
+            className={
+              reducedMotion
+                ? undefined
+                : entering
+                  ? 'kiosk-missionSwapTitleIn'
+                  : 'kiosk-missionNameFlash'
+            }
             style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.15 }}
           >
             {action?.name ?? '---'}
@@ -1737,8 +2024,9 @@ function RecommendedMissionCard({
             }}>
               {isUrgent ? '⚡ זמן אוזל!' : 'זמן נותר לביצוע'}
             </div>
-            <div
-              style={{
+          <div
+            className={entering ? 'kiosk-missionSwapIconPop' : undefined}
+            style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3,
                 direction: 'ltr',
                 fontSize: 'clamp(34px, 4.2vw, 44px)', fontWeight: 900, lineHeight: 1,
@@ -1821,17 +2109,10 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const [rewardWin, setRewardWin] = useState<RewardWinDisplay | null>(null)
   const [showManual, setShowManual] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
-  const [heldActivityIds, setHeldActivityIds] = useState<string[]>([])
   const toastTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const scanDismissTimer = useRef<ReturnType<typeof setTimeout>>()
   const rewardDismissTimer = useRef<ReturnType<typeof setTimeout>>()
   const rewardQueueRef = useRef<RewardWinDisplay[]>([])
-  const pendingScanTxIdRef = useRef<string | null>(null)
-
-  const visibleActivity = useMemo(
-    () => recentActivity.filter((row) => !heldActivityIds.includes(row.id)),
-    [recentActivity, heldActivityIds],
-  )
 
   // Clean up timers on unmount
   useEffect(() => () => {
@@ -1865,19 +2146,10 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     rewardDismissTimer.current = setTimeout(() => showNextReward(), 6200)
   }, [])
 
-  const releaseHeldActivity = useCallback(() => {
-    const txId = pendingScanTxIdRef.current
-    if (!txId) return
-    pendingScanTxIdRef.current = null
-    setHeldActivityIds((prev) => prev.filter((id) => id !== txId))
-    refetch()
-  }, [refetch])
-
-  const triggerScanSuccess = useCallback((result: ScoreSubmitResult, txId: string, rm: boolean) => {
+  const triggerScanSuccess = useCallback((result: ScoreSubmitResult, _txId: string, rm: boolean) => {
     clearTimeout(scanDismissTimer.current)
     clearTimeout(rewardDismissTimer.current)
-    pendingScanTxIdRef.current = txId
-    setHeldActivityIds((prev) => (prev.includes(txId) ? prev : [...prev, txId]))
+    refetch()
     setScanResult({
       name: result.participantName,
       action: `השלים/ה · ${result.actionName}`,
@@ -1890,7 +2162,6 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     const { celebrationRewards } = result
     scanDismissTimer.current = setTimeout(() => {
       setScanResult(null)
-      releaseHeldActivity()
       if (celebrationRewards.length > 0) {
         if (!rm) playSuccessChime()
         const wins = celebrationRewards.map(rw => {
@@ -1901,7 +2172,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
         showNextReward()
       }
     }, SCAN_SUCCESS_MS)
-  }, [showNextReward, releaseHeldActivity])
+  }, [showNextReward, refetch])
 
   const logScoreSubmit = useCallback((source: 'qr_scan' | 'manual_entry', result: ScoreSubmitResult) => {
     console.log('[kiosk score submit]', {
@@ -2042,7 +2313,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           {!gameStarted && <MissionPreGamePanel />}
 
           {/* Recommended mission hero card */}
-          <div style={{ display: gameStarted ? 'block' : 'none', marginBottom: 36, position: 'relative', zIndex: 4, overflow: 'visible' }}>
+          <div style={{ display: gameStarted ? 'block' : 'none', marginBottom: 36, position: 'relative', zIndex: 20, overflow: 'visible' }}>
             <RecommendedMissionSwap action={recommendedAction} now={now} reducedMotion={reducedMotion} />
           </div>
 
@@ -2066,12 +2337,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
 
           {/* Recent activity feed */}
           <div style={{ display: gameStarted ? 'block' : 'none', flex: 1, minHeight: 0, position: 'relative', zIndex: 1, overflow: 'hidden' }}>
-            <ActivityView rows={visibleActivity} active={true} reducedMotion={reducedMotion} />
-          </div>
-
-          {/* Footer summary */}
-          <div style={{ display: gameStarted && hasActivity ? 'block' : 'none', position: 'relative', zIndex: 1, textAlign: 'center', fontSize: 13, fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>
-            🎉 {stats.totalPoints.toLocaleString('he-IL')} נקודות חולקו · {totalScans} סריקות
+            <ActivityView rows={recentActivity} active={true} reducedMotion={reducedMotion} />
           </div>
         </div>
 
@@ -2148,7 +2414,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             onDismiss={() => {
               clearTimeout(scanDismissTimer.current)
               setScanResult(null)
-              releaseHeldActivity()
+              refetch()
             }}
             reducedMotion={reducedMotion}
           />
