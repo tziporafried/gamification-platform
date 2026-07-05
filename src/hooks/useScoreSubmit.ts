@@ -6,6 +6,7 @@ import { countCompletionsOnIsraelDate } from '@/lib/israelTime'
 import type { NewlyAwardedReward } from '@/types'
 
 export interface ScoreSubmitResult {
+  transactionId: string
   participantId: string
   participantExternalId: string
   participantGroupIds: string[]
@@ -148,7 +149,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
         return { ok: false, error: check.message }
       }
 
-      const { error: insertError } = await supabase
+      const { data: insertedTx, error: insertError } = await supabase
         .from('point_transactions')
         .insert({
           event_id: eventId,
@@ -157,6 +158,8 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
           points: action.points,
           created_by: user!.id,
         })
+        .select('id')
+        .single()
 
       if (insertError) throw insertError
 
@@ -189,6 +192,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
       return {
         ok: true,
         result: {
+          transactionId: insertedTx.id,
           participantId: participant.id,
           participantExternalId: pCode,
           participantGroupIds,
