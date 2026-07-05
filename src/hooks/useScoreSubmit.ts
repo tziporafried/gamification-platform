@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { canPerformAction } from '@/lib/canPerformAction'
+import { countCompletionsOnIsraelDate } from '@/lib/israelTime'
 import type { NewlyAwardedReward } from '@/types'
 
 export interface ScoreSubmitResult {
@@ -62,7 +63,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
 
       const { data: action, error: aError } = await supabase
         .from('actions')
-        .select('id, name, code, points, is_active, max_completions')
+        .select('id, name, code, points, is_active, max_completions, daily_limit, daily_start_hour, daily_start_minute, daily_end_hour, daily_end_minute')
         .eq('event_id', eventId)
         .eq('code', aCode)
         .maybeSingle()
@@ -75,12 +76,20 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
       }
 
       // Fetch validation data in parallel: previous completions, action groups, participant groups
+      const completionsPromise = action.daily_limit
+        ? supabase
+            .from('point_transactions')
+            .select('created_at')
+            .eq('participant_id', participant.id)
+            .eq('action_id', action.id)
+        : supabase
+            .from('point_transactions')
+            .select('id', { count: 'exact', head: true })
+            .eq('participant_id', participant.id)
+            .eq('action_id', action.id)
+
       const [completionsRes, actionGroupsRes, participantGroupsRes] = await Promise.all([
-        supabase
-          .from('point_transactions')
-          .select('id', { count: 'exact', head: true })
-          .eq('participant_id', participant.id)
-          .eq('action_id', action.id),
+        completionsPromise,
         supabase
           .from('action_groups')
           .select('group_id')
@@ -91,7 +100,17 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
           .eq('participant_id', participant.id),
       ])
 
-      const previousCompletions = completionsRes.count ?? 0
+      const now = new Date()
+      let previousCompletions = 0
+      let previousCompletionsToday = 0
+
+      if (action.daily_limit) {
+        const timestamps = ((completionsRes.data ?? []) as { created_at: string }[]).map((tx) => tx.created_at)
+        previousCompletions = timestamps.length
+        previousCompletionsToday = countCompletionsOnIsraelDate(timestamps, now)
+      } else {
+        previousCompletions = completionsRes.count ?? 0
+      }
       const allowedGroupIds = (actionGroupsRes.data ?? []).map((r) => r.group_id)
       const participantGroupIds = (participantGroupsRes.data ?? []).map((r) => r.group_id)
 
@@ -99,10 +118,17 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
         action: {
           is_active: action.is_active,
           max_completions: action.max_completions,
+          daily_limit: action.daily_limit,
+          daily_start_hour: action.daily_start_hour,
+          daily_start_minute: action.daily_start_minute,
+          daily_end_hour: action.daily_end_hour,
+          daily_end_minute: action.daily_end_minute,
           allowedGroupIds,
         },
         participantGroupIds,
         previousCompletions,
+        previousCompletionsToday,
+        now,
       })
 
       if (!check.allowed) {

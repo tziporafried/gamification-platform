@@ -171,6 +171,11 @@ export interface Action {
   description: string | null;
   is_active: boolean;
   max_completions: number | null;
+  daily_limit: boolean;
+  daily_start_hour: number | null;
+  daily_start_minute: number | null;
+  daily_end_hour: number | null;
+  daily_end_minute: number | null;
   created_at: string;
   updated_at: string;
 }

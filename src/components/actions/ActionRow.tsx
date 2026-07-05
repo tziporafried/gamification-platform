@@ -7,21 +7,8 @@ import { TaskLimitSelect } from './TaskLimitSelect'
 import { Tooltip, useIsTruncated } from '@/components/ui/Tooltip'
 import { ACTION_CARD_GRADIENT, getActionIcon, getActionIconMotion, getActionIconPlacement } from '@/lib/actionTiers'
 import { theme } from '@/lib/theme'
+import { toLimitDbValues, toLimitMode, getDailyTimeWindow, isSameLimitDbValues, type DailyTimeWindow, type LimitMode } from '@/lib/taskLimit'
 import type { ActionWithGroups, Group } from '@/types'
-
-type LimitMode = 'unlimited' | 'once' | 'limited'
-
-function toLimitMode(max: number | null): LimitMode {
-  if (max === null) return 'unlimited'
-  if (max === 1) return 'once'
-  return 'limited'
-}
-
-function toMaxCompletions(mode: LimitMode, customLimit: number): number | null {
-  if (mode === 'unlimited') return null
-  if (mode === 'once') return 1
-  return customLimit
-}
 
 interface ActionRowProps {
   action: ActionWithGroups
@@ -51,8 +38,9 @@ export const ActionRow = memo(function ActionRow({
   const nameTextRef = useRef<HTMLParagraphElement>(null)
   const pointsRef = useRef<HTMLInputElement>(null)
 
-  const [limitMode, setLimitMode] = useState<LimitMode>(toLimitMode(action.max_completions))
+  const [limitMode, setLimitMode] = useState<LimitMode>(toLimitMode(action))
   const [customLimit, setCustomLimit] = useState(action.max_completions && action.max_completions > 1 ? action.max_completions : 5)
+  const [dailyWindow, setDailyWindow] = useState<DailyTimeWindow>(getDailyTimeWindow(action))
   const [editingLimit, setEditingLimit] = useState(false)
   const limitRef = useRef<HTMLInputElement>(null)
 
@@ -71,9 +59,10 @@ export const ActionRow = memo(function ActionRow({
   useEffect(() => { setPoints(action.points.toString()) }, [action.points])
   useEffect(() => { setLocalGroups(action.groups) }, [action.groups])
   useEffect(() => {
-    setLimitMode(toLimitMode(action.max_completions))
+    setLimitMode(toLimitMode(action))
     if (action.max_completions && action.max_completions > 1) setCustomLimit(action.max_completions)
-  }, [action.max_completions])
+    setDailyWindow(getDailyTimeWindow(action))
+  }, [action.id])
 
   useEffect(() => {
     if (editingName) { nameRef.current?.focus(); nameRef.current?.select() }
@@ -133,13 +122,45 @@ export const ActionRow = memo(function ActionRow({
     if (e.key === 'Escape') { setPoints(action.points.toString()); setEditingPoints(false) }
   }
 
-  async function saveLimitMode(mode: LimitMode, limit?: number) {
-    const val = toMaxCompletions(mode, limit ?? customLimit)
+  async function saveLimitMode(
+    mode: LimitMode,
+    options?: { limit?: number; dailyWindow?: DailyTimeWindow },
+  ) {
+    const nextCustomLimit = options?.limit ?? customLimit
+    const nextDailyWindow = mode === 'daily'
+      ? (options?.dailyWindow !== undefined ? options.dailyWindow : dailyWindow)
+      : { start: null, end: null }
+    const dbValues = toLimitDbValues(mode, nextCustomLimit, nextDailyWindow)
+    const currentDbValues = toLimitDbValues(limitMode, customLimit, dailyWindow)
+
+    if (isSameLimitDbValues(
+      {
+        max_completions: currentDbValues.max_completions,
+        daily_limit: currentDbValues.daily_limit,
+        daily_start_hour: currentDbValues.daily_start_hour,
+        daily_start_minute: currentDbValues.daily_start_minute,
+        daily_end_hour: currentDbValues.daily_end_hour,
+        daily_end_minute: currentDbValues.daily_end_minute,
+      },
+      dbValues,
+    )) {
+      return
+    }
+
     setLimitMode(mode)
-    if (mode === 'limited' && limit) setCustomLimit(limit)
-    await supabase.from('actions').update({ max_completions: val }).eq('id', action.id)
-    if (onUpdated) onUpdated({ max_completions: val })
-    else onEdit()
+    if (mode === 'limited' && options?.limit) setCustomLimit(options.limit)
+    if (mode === 'daily') setDailyWindow(nextDailyWindow)
+
+    const { error } = await supabase.from('actions').update(dbValues).eq('id', action.id)
+    if (error) {
+      resetLimit()
+      onError?.('שגיאה בעדכון מגבלה')
+    }
+  }
+
+  function resetLimit() {
+    setLimitMode(toLimitMode(action))
+    setDailyWindow(getDailyTimeWindow(action))
   }
 
   async function handleDelete() {
@@ -282,12 +303,13 @@ export const ActionRow = memo(function ActionRow({
             <TaskLimitSelect
               limitMode={limitMode}
               customLimit={customLimit}
+              dailyWindow={dailyWindow}
               editingLimit={editingLimit}
               limitRef={limitRef}
               onSaveLimitMode={saveLimitMode}
               onSetEditingLimit={setEditingLimit}
               onSetCustomLimit={setCustomLimit}
-              onResetLimit={() => setLimitMode(toLimitMode(action.max_completions))}
+              onResetLimit={resetLimit}
               tone="onColor"
               size="compact"
             />

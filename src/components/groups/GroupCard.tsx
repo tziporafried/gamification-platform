@@ -6,6 +6,7 @@ import { ColorPicker } from '@/components/ui/ColorPicker'
 import { WizardDeleteButton } from '@/components/wizard/WizardDeleteButton'
 import { Tooltip, useIsTruncated } from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
+import { getPanelLeftAlignedToTriggerRight } from '@/lib/floatingPanel'
 import { isPresetColor } from '@/lib/paletteColors'
 import type { GroupWithCount } from '@/types'
 
@@ -16,10 +17,7 @@ interface GroupCardProps {
 }
 
 const COLOR_PANEL_WIDTH = 288
-
-function clampPanelLeft(triggerLeft: number) {
-  return Math.max(8, Math.min(triggerLeft, window.innerWidth - COLOR_PANEL_WIDTH - 8))
-}
+const VIEWPORT_PADDING = 8
 
 function getGroupCardStyle(color: string): React.CSSProperties {
   return { backgroundColor: color }
@@ -55,7 +53,7 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
     if (!rect) return
     setPanelStyle({
       top: rect.bottom + 6,
-      left: clampPanelLeft(rect.left),
+      left: getPanelLeftAlignedToTriggerRight(rect.right, COLOR_PANEL_WIDTH, VIEWPORT_PADDING),
     })
   }, [])
 

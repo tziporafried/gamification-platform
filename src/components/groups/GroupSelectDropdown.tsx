@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useLayoutEffect, useEffect, type CSSProp
 import { createPortal } from 'react-dom'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getPanelLeftAlignedToTriggerRight } from '@/lib/floatingPanel'
 import type { Group } from '@/types'
 import { theme } from '@/lib/theme'
 
@@ -21,10 +22,7 @@ interface GroupSelectDropdownProps {
 
 const PANEL_WIDTH = 192
 export const WIZARD_GROUP_CHIP_MAX_WIDTH = 140
-
-function clampPanelLeft(triggerLeft: number) {
-  return Math.max(8, Math.min(triggerLeft, window.innerWidth - PANEL_WIDTH - 8))
-}
+const VIEWPORT_PADDING = 8
 
 export function GroupSelectDropdown({
   groups,
@@ -49,7 +47,7 @@ export function GroupSelectDropdown({
     if (!rect) return
     setPanelStyle({
       top: rect.bottom + 4,
-      left: clampPanelLeft(rect.left),
+      left: getPanelLeftAlignedToTriggerRight(rect.right, PANEL_WIDTH, VIEWPORT_PADDING),
     })
   }, [])
 

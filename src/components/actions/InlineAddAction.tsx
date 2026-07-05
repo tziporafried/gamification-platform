@@ -51,7 +51,7 @@ export function InlineAddAction({
     const { data, error } = await supabase
       .from('actions')
       .insert({ name: trimmed, event_id: eventId, points: pointsNum })
-      .select('id, event_id, code, name, points, description, is_active, max_completions, created_at, updated_at')
+      .select('id, event_id, code, name, points, description, is_active, max_completions, daily_limit, daily_start_hour, daily_start_minute, daily_end_hour, daily_end_minute, created_at, updated_at')
       .single()
 
     setSaving(false)
