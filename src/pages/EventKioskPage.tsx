@@ -30,6 +30,7 @@ import type { ScoreSubmitResult } from '@/hooks/useScoreSubmit'
 import '@/styles/kiosk.css'
 
 const KIOSK_ACCENT = hexToRgb('#AB3500') ?? { r: 171, g: 53, b: 0 }
+const KIOSK_CENTER_GAP = 32
 const ACTIVITY_ACCENTS = ['#FF8A4D', '#4FA6A0', '#F2B33C']
 const ACTIVITY_ICONS = ['🎯', '⭐', '🏆', '✨', '🔥', '💪', '🌟', '🎊', '👏', '🚀', '💫', '🎖️', '✅', '🙌', '⚡']
 
@@ -502,6 +503,7 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
 
 // ─── Event branding above scanner ─────────────────────────────────────────────
 function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () => void }) {
+  const hasLogo = !!event.logo_url
   const logoSize = 'clamp(120px, 22vh, 220px)'
   const logoStyle = {
     width: logoSize,
@@ -509,6 +511,10 @@ function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () 
     borderRadius: 30,
     opacity: 0.82,
     boxShadow: '0 10px 32px rgba(255,147,102,0.24)',
+  } as const
+  const nameSlotStyle = {
+    width: 'clamp(220px, 33vw, 520px)',
+    minHeight: 'clamp(44px, 6.5vh, 56px)',
   } as const
   const logoButtonStyle = {
     border: 'none',
@@ -522,7 +528,6 @@ function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () 
   return (
     <div className="kiosk-fadeUp" style={{
       flexShrink: 0,
-      marginBottom: 24,
       position: 'relative',
       display: 'inline-block',
       overflow: 'visible',
@@ -533,19 +538,14 @@ function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () 
         aria-label="חזרה למרכז הבקרה"
         style={{ ...logoButtonStyle, position: 'relative' }}
       >
-        {event.logo_url ? (
+        {hasLogo ? (
           <img
-            src={event.logo_url}
+            src={event.logo_url!}
             alt=""
             style={{ ...logoStyle, objectFit: 'cover', display: 'block' }}
           />
         ) : (
-          <div style={{
-            ...logoStyle,
-            background: 'linear-gradient(135deg,#FF9366,#F2B33C)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 'clamp(56px, 9vh, 88px)',
-          }}>🏝️</div>
+          <div aria-hidden="true" style={{ ...nameSlotStyle, visibility: 'hidden' }} />
         )}
         <span style={{
           position: 'absolute',
@@ -553,7 +553,7 @@ function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () 
           top: '50%',
           transform: 'translate(-50%, -50%)',
           display: 'block',
-          width: 'clamp(220px, 33vw, 520px)',
+          width: nameSlotStyle.width,
           fontWeight: 900,
           fontSize: 'clamp(16px, 2.2vh, 24px)',
           color: '#2E221E',
@@ -2419,15 +2419,12 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           <div className="kiosk-floatY-4" style={{ position: 'absolute', bottom: 90, left: 100, width: 18, height: 18, borderRadius: 6, background: '#8FCFA0' }} />
           <div className="kiosk-floatY-2" style={{ position: 'absolute', bottom: 200, left: 50, width: 12, height: 12, borderRadius: 5, background: '#FFCB9A' }} />
 
-          <EventBrandMark event={event} onLogoClick={() => navigate(`/events/${event.id}/control`)} />
+          <div className="kiosk-centerStack" style={{ gap: KIOSK_CENTER_GAP, paddingBottom: KIOSK_CENTER_GAP }}>
+            <EventBrandMark event={event} onLogoClick={() => navigate(`/events/${event.id}/control`)} />
 
-          <div style={{
-            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-            width: '100%', minHeight: 0, overflow: 'hidden',
-          }}>
             {/* Headlines */}
             {!gameStarted && (
-              <div style={{ textAlign: 'center', maxWidth: 620, marginBottom: 32, flexShrink: 0 }}>
+              <div style={{ textAlign: 'center', maxWidth: 620, flexShrink: 0 }}>
                 <div style={{ fontSize: 42, fontWeight: 900, color: '#FF8A3D' }}>מוכנים לשחק?</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#7D706A', marginTop: 10, lineHeight: 1.5 }}>
                   הלוח, המשימות והפרסים יופיעו ברגע שהתחרות תתחיל.
@@ -2439,26 +2436,26 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             )}
 
             {gameStarted && !hasActivity && (
-              <div style={{ textAlign: 'center', maxWidth: 620, marginBottom: 32, flexShrink: 0 }}>
+              <div style={{ textAlign: 'center', maxWidth: 620, flexShrink: 0 }}>
                 <div style={{ fontSize: 40, fontWeight: 900, color: '#FF8A3D' }}>🎉 הכול מוכן לרגע הגדול</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#7D706A', marginTop: 0, lineHeight: 1.45 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#7D706A', lineHeight: 1.45 }}>
                   סרקו את הכרטיס הראשון ותנו לתחרות להתחיל!
                 </div>
-                <div style={{ fontSize: 17, fontWeight: 800, color: '#3E8F88', marginTop: 0, lineHeight: 1.45 }}>
+                <div style={{ fontSize: 17, fontWeight: 800, color: '#3E8F88', lineHeight: 1.45 }}>
                   הסריקה הראשונה היא רק ההתחלה...
                 </div>
               </div>
             )}
 
             {gameStarted && hasActivity && (
-              <div style={{ textAlign: 'center', maxWidth: 620, marginBottom: 32, flexShrink: 0 }}>
+              <div style={{ textAlign: 'center', maxWidth: 620, flexShrink: 0 }}>
                 <div className="kiosk-scanWinHeadline" style={{ fontSize: 40, fontWeight: 900 }}>
                   <span className="kiosk-scanWinWord" style={{ color: '#FF8A3D', animationDelay: '0s' }}>סרקו</span>
                   <span className="kiosk-scanWinWord" style={{ color: '#F2A03C', animationDelay: '0.35s' }}>וזכו</span>
                   <span className="kiosk-scanWinWord" style={{ color: '#E8A93C', animationDelay: '0.7s' }}>בנקודות!</span>
                   <span className="kiosk-scanWinWord" style={{ animationDelay: '1.05s' }}>🎯</span>
                 </div>
-                <div className="kiosk-scanWinSubtitle" style={{ fontSize: 18, fontWeight: 700, color: '#7D706A', marginTop: 0 }}>
+                <div className="kiosk-scanWinSubtitle" style={{ fontSize: 18, fontWeight: 700, color: '#7D706A' }}>
                   {stats.totalGroups > 0
                     ? 'כל משימה שתשלימו מקרבת את הקבוצה שלכם לנצחון'
                     : 'כל משימה שתשלימו מקרבת אתכם לנצחון'}
@@ -2466,29 +2463,31 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
               </div>
             )}
 
-            <div className="kiosk-scannerSlot">
-              <ScannerFrame processing={gameStarted && submitting} />
-            </div>
+            <div className="kiosk-centerScannerGroup">
+              <div className="kiosk-scannerSlot">
+                <ScannerFrame processing={gameStarted && submitting} />
+              </div>
 
-            <div style={{ textAlign: 'center', maxWidth: 620, marginTop: 10, width: '100%', flexShrink: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#9A8E88' }}>כוונו את כרטיס ה-QR של המשתתף למסגרת</div>
-              {gameStarted && (
-                <button
-                  onClick={() => setShowManual(true)}
-                  style={{
-                    display: 'inline',
-                    fontSize: 15, fontWeight: 800, color: '#3E8F88', marginTop: 0,
-                    textDecoration: 'underline', textUnderlineOffset: 3,
-                    background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                  }}>
-                  או בחרו הזנה ידנית — שחקן · משימה
-                </button>
-              )}
-              {!gameStarted && (
-                <div style={{ fontSize: 15, fontWeight: 900, color: '#7D706A', marginTop: 16 }}>
-                  התחרות מתחילה ברגע שהמשתתף הראשון סורק 🚀
-                </div>
-              )}
+              <div style={{ textAlign: 'center', maxWidth: 620, width: '100%', flexShrink: 0 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#9A8E88' }}>כוונו את כרטיס ה-QR של המשתתף למסגרת</div>
+                {gameStarted && (
+                  <button
+                    onClick={() => setShowManual(true)}
+                    style={{
+                      display: 'inline',
+                      fontSize: 15, fontWeight: 800, color: '#3E8F88',
+                      textDecoration: 'underline', textUnderlineOffset: 3,
+                      background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                    }}>
+                    או בחרו הזנה ידנית — שחקן · משימה
+                  </button>
+                )}
+                {!gameStarted && (
+                  <div style={{ fontSize: 15, fontWeight: 900, color: '#7D706A', marginTop: 8 }}>
+                    התחרות מתחילה ברגע שהמשתתף הראשון סורק 🚀
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
