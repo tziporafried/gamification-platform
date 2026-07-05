@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Trophy, Crown, ScanLine, Lock, Zap, Settings } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { ModalActions } from '@/components/ui/ModalActions'
 import { ReadinessChecklist } from './ReadinessChecklist'
-import { EventSummaryGrid } from './EventSummaryGrid'
-import { ControlCenterBackground } from './ControlCenterBackground'
+import { getControlCenterSummaryItems, LiveStatsCaption } from './EventSummaryGrid'
+import { useControlCenterLiveStats } from '@/hooks/useControlCenterLiveStats'
+import { EventPlayStatus, resolveEventPlayStatus } from '@/components/event/EventPlayStatus'
 import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
-import { calculateReadiness, isEventReady, getWizardPrefs } from '@/lib/wizard'
+import { calculateReadiness, isEventReady, getWizardPrefs, resolveGroupType } from '@/lib/wizard'
 import { getLockedTemplate, clearLockedTemplate, completeTemplateImport, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -51,6 +52,32 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   const ready = isEventReady(event, counts)
   const checks = calculateReadiness(event, counts)
 
+  const cardAnim = useMemo(() => ({
+    kioskFloat: Math.random(),
+    displayFloat: Math.random(),
+    scanLine: -3 * Math.random(),
+    borderPulse: -3 * Math.random(),
+    crown: -(2.2 + 2.5 * Math.random()),
+    pulseGlow: -2.5 * Math.random(),
+    statsInterval: 2600 + Math.random() * 900,
+  }), [])
+
+  const liveStats = useControlCenterLiveStats(event.id, true)
+
+  const isGroupsMode = useMemo(
+    () => resolveGroupType(event.id, counts) === 'custom',
+    [event.id, counts],
+  )
+
+  const summaryItems = useMemo(
+    () => getControlCenterSummaryItems(liveStats, {
+      showActiveGroups: isGroupsMode,
+      hasRewards: counts.rewards > 0,
+    }),
+    [liveStats, isGroupsMode, counts.rewards],
+  )
+  const playStatus = resolveEventPlayStatus(ready, liveStats.totalScans)
+
   function handleAction(route: string) {
     window.open(`/events/${event.id}/${route}`, '_blank', 'noopener,noreferrer')
   }
@@ -68,8 +95,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   }
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] overflow-hidden">
-      <ControlCenterBackground />
+    <div className="relative flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
       <Modal
         isOpen={settingsWarningOpen}
         onClose={() => setSettingsWarningOpen(false)}
@@ -91,58 +117,47 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
         </div>
       </Modal>
 
-      <main className="relative z-10 mx-auto max-w-4xl px-4 py-10">
-          <motion.div className="mb-12 flex flex-col items-center text-center"
-            initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+      <main
+        className={cn(
+          'relative z-10 mx-auto flex h-full w-full max-w-4xl flex-col justify-center px-4 pt-5',
+          ready && summaryItems.length > 0 ? 'pb-[4.5rem]' : 'pb-5',
+        )}
+      >
+          <motion.div className="mb-14 flex shrink-0 flex-col items-center text-center" initial={false}>
             {event.logo_url ? (
-              <motion.img src={event.logo_url} alt={event.name}
-                className="mb-4 h-20 w-20 rounded-3xl object-cover shadow-card border border-border"
-                animate={{ boxShadow: [
-                  '0 0 0 1px var(--color-border)',
-                  '0 0 0 2px color-mix(in srgb, var(--color-primary) 30%, transparent)',
-                  '0 0 0 1px var(--color-border)',
-                ] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} />
+              <img
+                src={event.logo_url}
+                alt={event.name}
+                className="mb-3 h-16 w-16 rounded-2xl border border-border object-cover shadow-card"
+              />
             ) : (
-              <motion.div
-                className="mb-4 flex h-20 w-20 items-center justify-center rounded-3xl border border-border bg-surface-elevated text-2xl font-black text-primary shadow-card"
-                animate={{ boxShadow: [
-                  '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
-                  '0 0 0 2px color-mix(in srgb, var(--color-primary) 25%, transparent)',
-                  '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
-                ] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}>
+              <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-surface-elevated text-xl font-black text-primary shadow-card">
                 {event.name.slice(0, 2)}
-              </motion.div>
+              </div>
             )}
 
-            <motion.h1 className="mb-2 text-3xl font-black text-foreground sm:text-4xl"
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+            <h1
+              className={cn(
+                'mb-1.5 bg-[length:250%_100%] bg-clip-text text-2xl font-black text-transparent sm:text-3xl',
+                'animate-[shimmer_8s_ease-in-out_infinite] motion-reduce:animate-none',
+                '[background-image:linear-gradient(110deg,var(--color-foreground)_0%,var(--color-foreground)_38%,color-mix(in_srgb,var(--color-primary)_85%,white)_50%,var(--color-foreground)_62%,var(--color-foreground)_100%)]',
+              )}
+            >
               {event.name}
-            </motion.h1>
+            </h1>
 
-            <motion.div className="flex items-center gap-2"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
-              </span>
-              <span className="text-xs font-semibold text-success">
-                {ready ? 'מוכן למשחק' : 'בהכנה'}
-              </span>
-            </motion.div>
+            <EventPlayStatus status={playStatus} />
           </motion.div>
 
           {!ready && (
-            <motion.div className="mb-10" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+            <div className="mb-4 shrink-0">
               <ReadinessChecklist checks={checks} eventId={event.id} />
-            </motion.div>
+            </div>
           )}
 
           {!isFreePlan && lockedTemplate && (
-            <motion.div
-              className="mb-8 rounded-2xl border border-warning bg-surface-elevated p-5"
-              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+            <div
+              className="mb-4 shrink-0 rounded-2xl border border-warning bg-surface-elevated p-4"
             >
               <div className="flex items-start gap-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface border border-warning">
@@ -179,13 +194,12 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                   </button>
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
 
-          <div className="grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid shrink-0 items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <ControlActionCard
               onClick={handleSettings}
-              delay={0.3}
               dimmed
               title="הגדרות"
               description="לא מומלץ במהלך המשחק"
@@ -199,7 +213,6 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
 
             <ControlActionCard
               onClick={() => handleAction('kiosk')}
-              delay={0.45}
               gradient="gradient-reward-legendary"
               title="🔥 שחקו בלי להפסיק"
               description="סרקו משימות וצברו נקודות"
@@ -208,11 +221,11 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                 <motion.div
                   className="pointer-events-none absolute left-6 right-6 z-10 h-[2px] bg-white/35"
                   animate={{ top: ['18%', '82%', '18%'] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: cardAnim.scanLine }}
                 />
               }
               icon={
-                <FloatingActionIcon delay={0.4} pulse>
+                <FloatingActionIcon phase={cardAnim.kioskFloat} pulsePhase={cardAnim.pulseGlow} pulse>
                   <ScanLine size={32} className="text-white" strokeWidth={2.25} />
                 </FloatingActionIcon>
               }
@@ -220,7 +233,6 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
 
             <ControlActionCard
               onClick={() => handleAction('display')}
-              delay={0.55}
               gradient="gradient-reward-rich"
               title="שיאים"
               description="צפו בדירוג המתעדכן בזמן אמת"
@@ -233,17 +245,17 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                     '0 0 0 6px color-mix(in srgb, white 14%, transparent)',
                     '0 0 0 0 color-mix(in srgb, white 0%, transparent)',
                   ] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: cardAnim.borderPulse }}
                 />
               }
               icon={
-                <FloatingActionIcon delay={0.8} pulse>
+                <FloatingActionIcon phase={cardAnim.displayFloat} pulsePhase={cardAnim.pulseGlow} pulse>
                   <div className="relative">
                     <Trophy size={32} className="text-white" strokeWidth={2.25} />
                     <motion.div
                       className="absolute -left-2 -top-2"
                       animate={{ rotate: [0, -12, 12, 0], y: [0, -3, 0] }}
-                      transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 2.5 }}
+                      transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 2.5, delay: cardAnim.crown }}
                     >
                       <Crown size={18} className="text-white/90" strokeWidth={2.25} />
                     </motion.div>
@@ -253,11 +265,12 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
             />
           </div>
 
-          {ready && (
-            <motion.div className="mt-10 max-w-md mx-auto"
-              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
-              <EventSummaryGrid counts={counts} ready showScans animationKey={0} />
-            </motion.div>
+          {ready && summaryItems.length > 0 && (
+            <LiveStatsCaption
+              items={summaryItems}
+              ready={ready}
+              intervalMs={cardAnim.statsInterval}
+            />
           )}
       </main>
     </div>
@@ -266,7 +279,6 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
 
 interface ControlActionCardProps {
   onClick: () => void
-  delay: number
   gradient?: string
   title: string
   description: string
@@ -278,7 +290,6 @@ interface ControlActionCardProps {
 
 function ControlActionCard({
   onClick,
-  delay,
   gradient,
   title,
   description,
@@ -291,10 +302,8 @@ function ControlActionCard({
     <motion.button
       type="button"
       onClick={onClick}
-      className="group h-full w-full text-right"
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay }}
+      className="group w-full text-right"
+      initial={false}
       whileHover={{
         scale: dimmed ? 1.02 : 1.03,
         y: dimmed ? -2 : -4,
@@ -304,7 +313,7 @@ function ControlActionCard({
     >
       <div
         className={cn(
-          'relative h-full overflow-visible rounded-3xl transition-[box-shadow,border-color,transform] duration-100 ease-out',
+          'relative overflow-visible rounded-3xl transition-[box-shadow,border-color,transform] duration-100 ease-out',
           dimmed
             ? 'border border-dashed border-neutral-300 bg-neutral-200 shadow-card group-hover:border-neutral-400 group-hover:bg-neutral-100'
             : 'shadow-card group-hover:shadow-card-hover',
@@ -355,16 +364,18 @@ function ControlActionCard({
 
 interface FloatingActionIconProps {
   children: ReactNode
-  delay?: number
   duration?: number
+  phase?: number
+  pulsePhase?: number
   rotate?: boolean
   pulse?: boolean
 }
 
 function FloatingActionIcon({
   children,
-  delay = 0,
   duration = 4.5,
+  phase = 0.5,
+  pulsePhase = 0.5,
   rotate = false,
   pulse = false,
 }: FloatingActionIconProps) {
@@ -380,7 +391,7 @@ function FloatingActionIcon({
         duration,
         repeat: Infinity,
         ease: 'easeInOut',
-        delay,
+        delay: -duration * phase,
       }}
     >
       <motion.div
@@ -396,7 +407,7 @@ function FloatingActionIcon({
               }
             : undefined
         }
-        transition={pulse ? { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } : undefined}
+        transition={pulse ? { duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: -2.5 * pulsePhase } : undefined}
       >
         {children}
       </motion.div>

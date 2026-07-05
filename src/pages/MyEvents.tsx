@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Calendar, ExternalLink, Share2, Settings2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -14,10 +14,11 @@ import { DeleteButton } from '@/components/ui/IconButton'
 import { PageTitle } from '@/components/ui/PageTitle'
 import { ShareEventModal } from '@/components/ShareEventModal'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
-import { STATUS_COLORS } from '@/components/ui/StatusBadge'
-import type { Event } from '@/types'
-import { getWizardPrefs } from '@/lib/wizard'
+import { fetchEventsPlayMeta, type EventPlayMeta } from '@/lib/eventsPlayMeta'
+import { EventPlayStatus, resolveEventPlayStatus, EVENT_PLAY_STATUS } from '@/components/event/EventPlayStatus'
+import { isEventReady, getWizardPrefs } from '@/lib/wizard'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
+import type { Event as GameEvent } from '@/types'
 import { cn } from '@/lib/utils'
 
 const ROW_ACTION_CLASS = cn(
@@ -45,10 +46,11 @@ const CREATE_EVENT_BTN_CLASS = cn(
 export function MyEvents() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [events, setEvents] = useState<Event[]>([])
+  const [events, setEvents] = useState<GameEvent[]>([])
+  const [playMeta, setPlayMeta] = useState<Record<string, EventPlayMeta>>({})
   const [loading, setLoading] = useState(true)
-  const [deletingEvent, setDeletingEvent] = useState<Event | null>(null)
-  const [sharingEvent, setSharingEvent] = useState<Event | null>(null)
+  const [deletingEvent, setDeletingEvent] = useState<GameEvent | null>(null)
+  const [sharingEvent, setSharingEvent] = useState<GameEvent | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
@@ -67,7 +69,7 @@ export function MyEvents() {
           .select('event_id')
           .eq('user_id', user!.id)
           .then(async ({ data: collabs }) => {
-            if (!collabs?.length) return { data: [] as Event[] }
+            if (!collabs?.length) return { data: [] as GameEvent[] }
             return supabase
               .from('events')
               .select('*')
@@ -82,6 +84,10 @@ export function MyEvents() {
         .filter((event) => !draftIds.has(event.id))
       all.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       setEvents(all)
+      if (all.length > 0) {
+        const meta = await fetchEventsPlayMeta(all.map((event) => event.id))
+        setPlayMeta(meta)
+      }
       setLoading(false)
     }
     fetchEvents()
@@ -168,6 +174,7 @@ export function MyEvents() {
               <EventRow
                 key={event.id}
                 event={event}
+                playMeta={playMeta[event.id]}
                 isOwner={event.owner_admin_id === user!.id}
                 onDelete={() => setDeletingEvent(event)}
                 onShare={() => setSharingEvent(event)}
@@ -218,34 +225,35 @@ export function MyEvents() {
 }
 
 interface EventRowProps {
-  event: Event
+  event: GameEvent
+  playMeta?: EventPlayMeta
   isOwner: boolean
   onDelete: () => void
   onShare: () => void
 }
 
-function EventRow({ event, isOwner, onDelete, onShare }: EventRowProps) {
+function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: EventRowProps) {
   const { isSuperAdmin } = useAuth()
-  const isFreePlan = !isSuperAdmin && event.plan === 'free'
+  const isFreePlan = !isSuperAdmin && gameEvent.plan === 'free'
   const navigate = useNavigate()
 
-  const statusLabels: Record<string, { label: string; color: string }> = {
-    editing: { label: 'בעריכה', color: STATUS_COLORS.editing },
-    active: { label: 'פעיל', color: STATUS_COLORS.active },
-    archived: { label: 'בארכיון', color: STATUS_COLORS.archived },
-  }
+  const playStatus = useMemo(() => {
+    if (!playMeta) return 'preparing' as const
+    const ready = isEventReady(gameEvent, playMeta.counts)
+    return resolveEventPlayStatus(ready, playMeta.totalScans)
+  }, [gameEvent, playMeta])
 
-  const status = statusLabels[event.status] || statusLabels.editing
+  const statusColor = EVENT_PLAY_STATUS[playStatus].color
 
   function handleOpenControl(e: React.MouseEvent) {
     e.stopPropagation()
-    navigate(`/events/${event.id}/control`)
+    navigate(`/events/${gameEvent.id}/control`)
   }
 
   function handleOpenSettings(e: React.MouseEvent) {
     e.stopPropagation()
-    const lastStep = getWizardPrefs(event.id).lastStep
-    navigate(`/events/${event.id}/step/${lastStep}`)
+    const lastStep = getWizardPrefs(gameEvent.id).lastStep
+    navigate(`/events/${gameEvent.id}/step/${lastStep}`)
   }
 
   function handleDelete(e: React.MouseEvent) {
@@ -258,24 +266,24 @@ function EventRow({ event, isOwner, onDelete, onShare }: EventRowProps) {
     onShare()
   }
 
-  const isWip = event.status === 'editing'
+  const isWip = gameEvent.status === 'editing'
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => isWip ? navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`) : navigate(`/events/${event.id}/control`)}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isWip ? navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`) : navigate(`/events/${event.id}/control`) } }}
+      onClick={() => isWip ? navigate(`/events/${gameEvent.id}/step/${getWizardPrefs(gameEvent.id).lastStep}`) : navigate(`/events/${gameEvent.id}/control`)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isWip ? navigate(`/events/${gameEvent.id}/step/${getWizardPrefs(gameEvent.id).lastStep}`) : navigate(`/events/${gameEvent.id}/control`) } }}
       className={EVENT_CARD_CLASS}
     >
       <div
         className="absolute right-0 top-0 h-full w-1 rounded-r-none transition-opacity duration-[180ms] ease-out opacity-35 group-hover:opacity-48"
-        style={{ backgroundColor: status.color }}
+        style={{ backgroundColor: statusColor }}
       />
 
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/20 bg-surface-elevated/50">
-        {event.logo_url ? (
-          <img src={event.logo_url} alt="" className="h-9 w-9 rounded-xl object-cover" />
+        {gameEvent.logo_url ? (
+          <img src={gameEvent.logo_url} alt="" className="h-9 w-9 rounded-xl object-cover" />
         ) : (
           <Calendar size={16} className="shrink-0 text-muted/50" />
         )}
@@ -284,16 +292,16 @@ function EventRow({ event, isOwner, onDelete, onShare }: EventRowProps) {
       <div className="min-w-0 flex-1 self-center">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate text-base font-extrabold tracking-tight text-foreground leading-snug">
-            {event.name || 'אירוע ללא שם'}
+            {gameEvent.name || 'אירוע ללא שם'}
           </p>
           {isFreePlan && <Badge label="משחק התנסות" color="var(--color-primary)" variant="quiet" />}
         </div>
       </div>
 
       <div className="flex shrink-0 flex-col items-end justify-center gap-1 self-stretch py-0.5">
-        <Badge label={status.label} color={status.color} variant="quiet" />
+        <EventPlayStatus status={playStatus} variant="badge" />
         <p className="text-[11px] leading-none text-muted/45">
-          נוצר {new Date(event.created_at).toLocaleDateString('he-IL')}
+          נוצר {new Date(gameEvent.created_at).toLocaleDateString('he-IL')}
         </p>
       </div>
 
