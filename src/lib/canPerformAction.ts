@@ -66,7 +66,7 @@ export function canPerformAction({
         return {
           allowed: false,
           reason: 'DAILY_HOURS_OUT_OF_RANGE',
-          message: `המשימה זמינה ${formatTimeRange(
+          message: `הסריקה זמינה ${formatTimeRange(
             dailyWindow.start!.hour,
             dailyWindow.start!.minute,
             dailyWindow.end!.hour,
@@ -77,10 +77,25 @@ export function canPerformAction({
     }
 
     if (previousCompletionsToday >= 1) {
-      return { allowed: false, reason: 'LIMIT_REACHED', message: 'כבר ביצעת את המשימה היום.' }
+      return {
+        allowed: false,
+        reason: 'LIMIT_REACHED',
+        message: 'כבר בוצעה סריקה אחת למשימה זו היום.',
+      }
     }
   } else if (action.max_completions !== null && previousCompletions >= action.max_completions) {
-    return { allowed: false, reason: 'LIMIT_REACHED', message: 'הגעת למגבלת הביצועים למשימה זו.' }
+    if (action.max_completions === 1) {
+      return {
+        allowed: false,
+        reason: 'LIMIT_REACHED',
+        message: 'המשימה מוגבלת לסריקה אחת - כבר בוצעה.',
+      }
+    }
+    return {
+      allowed: false,
+      reason: 'LIMIT_REACHED',
+      message: `הגעת למגבלה של ${action.max_completions} סריקות למשימה זו.`,
+    }
   }
 
   if (action.allowedGroupIds.length > 0) {

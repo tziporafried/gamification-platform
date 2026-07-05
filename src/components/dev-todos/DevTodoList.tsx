@@ -3,6 +3,7 @@ import { Plus, CheckCircle2, Circle, Clock, ChevronDown, Trash2 } from 'lucide-r
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
+import { DropdownHeader } from '@/components/ui/DropdownPanel'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import type { DevTodo, DevTodoStatus, DevTodoPriority } from '@/types'
 
@@ -257,7 +258,7 @@ function TodoRow({
         </button>
         {priorityOpen && (
           <DropdownMenu onClose={() => setPriorityOpen(false)}>
-            <div className="px-3 py-1.5 text-[10px] text-muted">עדיפות</div>
+            <DropdownHeader>עדיפות</DropdownHeader>
             {(['high', 'medium', 'low'] as DevTodoPriority[]).map(p => (
               <button
                 key={p}
@@ -290,7 +291,7 @@ function TodoRow({
         </button>
         {assigneeOpen && (
           <DropdownMenu onClose={() => setAssigneeOpen(false)}>
-            <div className="px-3 py-1.5 text-[10px] text-muted">שיוך לאחראי</div>
+            <DropdownHeader>שיוך לאחראי</DropdownHeader>
             <button
               onClick={() => { onUpdate(todo.id, 'assigned_to', null); setAssigneeOpen(false) }}
               className={cn(
@@ -331,7 +332,7 @@ function TodoRow({
         </button>
         {statusOpen && (
           <DropdownMenu onClose={() => setStatusOpen(false)}>
-            <div className="px-3 py-1.5 text-[10px] text-muted">סטטוס</div>
+            <DropdownHeader>סטטוס</DropdownHeader>
             {(['todo', 'in_progress', 'done'] as DevTodoStatus[]).map(s => {
               const conf = STATUS_CONFIG[s]
               const Icon = conf.icon

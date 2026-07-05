@@ -1239,11 +1239,14 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     }
     const parsed = parseQrPayload(raw)
     if (!parsed.ok) { showToast('קוד QR לא תקין'); return }
-    const result = await submit(parsed.data.participantCode, parsed.data.actionCode)
-    if (!result) { showToast('שגיאה בשליחת הנקודות'); return }
+    const response = await submit(parsed.data.participantCode, parsed.data.actionCode)
+    if (!response.ok) {
+      showToast(response.error)
+      return
+    }
     await refetch()
-    logScoreSubmit('qr_scan', result)
-    triggerScanSuccess(result, reducedMotion)
+    logScoreSubmit('qr_scan', response.result)
+    triggerScanSuccess(response.result, reducedMotion)
   }, [gameStarted, submit, showToast, refetch, logScoreSubmit, triggerScanSuccess, reducedMotion])
 
   const bind = useHardwareScanner(gameStarted && !showManual && !submitting, handleScan)
@@ -1253,12 +1256,15 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
       showToast('התחרות עדיין לא התחילה')
       return
     }
-    const result = await submit(participantCode, actionCode)
-    if (!result) { showToast('שגיאה בשליחת הנקודות'); return }
+    const response = await submit(participantCode, actionCode)
+    if (!response.ok) {
+      showToast(response.error)
+      return
+    }
     await refetch()
-    logScoreSubmit('manual_entry', result)
+    logScoreSubmit('manual_entry', response.result)
     setShowManual(false)
-    triggerScanSuccess(result, reducedMotion)
+    triggerScanSuccess(response.result, reducedMotion)
   }, [gameStarted, submit, showToast, refetch, logScoreSubmit, triggerScanSuccess, reducedMotion])
 
   return (

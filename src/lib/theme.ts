@@ -37,6 +37,9 @@ export const theme = {
   iconBg: 'bg-surface-elevated',
   iconBgSubtle: 'bg-surface-elevated',
 
+  /** Dropdown / select panel section titles */
+  dropdownHeader: 'px-3 py-1.5 text-[11px] font-semibold text-primary text-right',
+
   // Composite surfaces
   surfaceCard: 'rounded-xl border border-border bg-surface shadow-card',
   surfaceCardElevated: 'rounded-xl border border-border bg-surface-elevated shadow-podium',

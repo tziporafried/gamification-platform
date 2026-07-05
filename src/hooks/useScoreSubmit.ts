@@ -18,8 +18,12 @@ export interface ScoreSubmitResult {
   celebrationRewards: NewlyAwardedReward[]
 }
 
+export type ScoreSubmitResponse =
+  | { ok: true; result: ScoreSubmitResult }
+  | { ok: false; error: string }
+
 interface UseScoreSubmitReturn {
-  submit: (participantCode: string, actionCode: string) => Promise<ScoreSubmitResult | null>
+  submit: (participantCode: string, actionCode: string) => Promise<ScoreSubmitResponse>
   submitting: boolean
   lastError: string | null
 }
@@ -29,19 +33,21 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
   const [submitting, setSubmitting] = useState(false)
   const [lastError, setLastError] = useState<string | null>(null)
 
-  const submit = useCallback(async (participantCode: string, actionCode: string): Promise<ScoreSubmitResult | null> => {
+  const submit = useCallback(async (participantCode: string, actionCode: string): Promise<ScoreSubmitResponse> => {
     setLastError(null)
 
     const pCode = participantCode.trim()
     const aCode = actionCode.trim()
 
     if (!pCode) {
-      setLastError('קוד משתתף הוא שדה חובה.')
-      return null
+      const error = 'קוד משתתף הוא שדה חובה.'
+      setLastError(error)
+      return { ok: false, error }
     }
     if (!aCode) {
-      setLastError('קוד משימה הוא שדה חובה.')
-      return null
+      const error = 'קוד משימה הוא שדה חובה.'
+      setLastError(error)
+      return { ok: false, error }
     }
 
     setSubmitting(true)
@@ -56,9 +62,10 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
 
       if (pError) throw pError
       if (!participant) {
-        setLastError('קוד לא תקין')
+        const error = 'קוד לא תקין'
+        setLastError(error)
         setSubmitting(false)
-        return null
+        return { ok: false, error }
       }
 
       const { data: action, error: aError } = await supabase
@@ -70,12 +77,12 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
 
       if (aError) throw aError
       if (!action) {
-        setLastError(`משימה "${aCode}" לא נמצאה.`)
+        const error = `משימה "${aCode}" לא נמצאה.`
+        setLastError(error)
         setSubmitting(false)
-        return null
+        return { ok: false, error }
       }
 
-      // Fetch validation data in parallel: previous completions, action groups, participant groups
       const completionsPromise = action.daily_limit
         ? supabase
             .from('point_transactions')
@@ -99,6 +106,10 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
           .select('group_id')
           .eq('participant_id', participant.id),
       ])
+
+      if (completionsRes.error) throw completionsRes.error
+      if (actionGroupsRes.error) throw actionGroupsRes.error
+      if (participantGroupsRes.error) throw participantGroupsRes.error
 
       const now = new Date()
       let previousCompletions = 0
@@ -134,7 +145,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
       if (!check.allowed) {
         setLastError(check.message)
         setSubmitting(false)
-        return null
+        return { ok: false, error: check.message }
       }
 
       const { error: insertError } = await supabase
@@ -159,7 +170,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
 
       const participantTotalPoints = (participantTransactions ?? []).reduce(
         (sum, tx) => sum + (tx.points ?? 0),
-        0
+        0,
       )
 
       let celebrationRewards: NewlyAwardedReward[] = []
@@ -176,21 +187,25 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
 
       setSubmitting(false)
       return {
-        participantId: participant.id,
-        participantExternalId: pCode,
-        participantGroupIds,
-        actionId: action.id,
-        actionCode: action.code,
-        participantName: participant.name,
-        actionName: action.name,
-        points: action.points,
-        participantTotalPoints,
-        celebrationRewards,
+        ok: true,
+        result: {
+          participantId: participant.id,
+          participantExternalId: pCode,
+          participantGroupIds,
+          actionId: action.id,
+          actionCode: action.code,
+          participantName: participant.name,
+          actionName: action.name,
+          points: action.points,
+          participantTotalPoints,
+          celebrationRewards,
+        },
       }
     } catch (err) {
-      setLastError(err instanceof Error ? err.message : 'משהו השתבש.')
+      const error = err instanceof Error ? err.message : 'משהו השתבש.'
+      setLastError(error)
       setSubmitting(false)
-      return null
+      return { ok: false, error }
     }
   }, [eventId, user])
 

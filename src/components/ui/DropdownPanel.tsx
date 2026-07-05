@@ -33,7 +33,7 @@ export function DropdownPanel({
 }
 
 export function DropdownHeader({ children }: { children: ReactNode }) {
-  return <div className={cn('px-3 py-1.5 text-[10px]', theme.textSubtle)}>{children}</div>
+  return <div className={theme.dropdownHeader}>{children}</div>
 }
 
 export function DropdownDivider() {

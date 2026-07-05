@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getPanelLeftAlignedToTriggerRight } from '@/lib/floatingPanel'
+import { DropdownHeader } from '@/components/ui/DropdownPanel'
 import type { Group } from '@/types'
 import { theme } from '@/lib/theme'
 
@@ -166,7 +167,7 @@ export function GroupSelectDropdown({
           style={{ position: 'fixed', top: panelStyle.top, left: panelStyle.left, width: PANEL_WIDTH }}
           className="z-[100] rounded-xl border border-border bg-surface shadow-dropdown py-1 animate-in fade-in slide-in-from-top-1 duration-150"
         >
-          <div className="px-3 py-1.5 text-[10px] text-muted">{tooltip}</div>
+          <DropdownHeader>{tooltip}</DropdownHeader>
           <button
             onClick={() => { onSelectAll(); setOpen(false) }}
             className={cn(
