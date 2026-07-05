@@ -1,4 +1,9 @@
-import { formatTimeRange } from '@/lib/israelTime'
+import {
+  formatTimeRange,
+  getIsraelMinutesSinceMidnight,
+  isTimeInRange,
+  toMinutesSinceMidnight,
+} from '@/lib/israelTime'
 import type { Action } from '@/types'
 
 export type LimitMode = 'unlimited' | 'once' | 'daily' | 'limited'
@@ -145,6 +150,61 @@ export function getDailyTimeWindow(
   return {
     start: { hour: startHour, minute: snapToQuarterHour(startMinute) },
     end: { hour: endHour, minute: snapToQuarterHour(endMinute) },
+  }
+}
+
+type DailyWindowAction = Pick<
+  Action,
+  | 'daily_limit'
+  | 'daily_start_hour'
+  | 'daily_start_minute'
+  | 'daily_end_hour'
+  | 'daily_end_minute'
+>
+
+export function isInDailyTimeWindow(action: DailyWindowAction, now: Date = new Date()): boolean {
+  if (!action.daily_limit) return false
+  const dailyWindow = getDailyTimeWindow(action)
+  if (!hasDailyTimeWindow(dailyWindow)) return false
+  const currentMinutes = getIsraelMinutesSinceMidnight(now)
+  return isTimeInRange(
+    currentMinutes,
+    dailyWindow.start!.hour,
+    dailyWindow.start!.minute,
+    dailyWindow.end!.hour,
+    dailyWindow.end!.minute,
+  )
+}
+
+export function getDailyWindowRemainingMinutes(
+  action: DailyWindowAction,
+  now: Date = new Date(),
+): number | null {
+  if (!isInDailyTimeWindow(action, now)) return null
+  const dailyWindow = getDailyTimeWindow(action)
+  const currentMinutes = getIsraelMinutesSinceMidnight(now)
+  const endMinutes = toMinutesSinceMidnight(dailyWindow.end!.hour, dailyWindow.end!.minute)
+  return Math.max(0, endMinutes - currentMinutes)
+}
+
+export function formatRemainingDuration(totalMinutes: number): string {
+  if (totalMinutes <= 0) return 'פחות מדקה'
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours === 0) return minutes === 1 ? 'דקה אחת' : `${minutes} דקות`
+  if (minutes === 0) return hours === 1 ? 'שעה אחת' : `${hours} שעות`
+  const hourPart = hours === 1 ? 'שעה' : `${hours} שעות`
+  const minutePart = minutes === 1 ? 'דקה' : `${minutes} דקות`
+  return `${hourPart} ו-${minutePart}`
+}
+
+export function formatRemainingAsTimer(totalMinutes: number): { hours: string; minutes: string } {
+  const safeMinutes = Math.max(0, totalMinutes)
+  const hours = Math.floor(safeMinutes / 60)
+  const minutes = safeMinutes % 60
+  return {
+    hours: hours.toString().padStart(2, '0'),
+    minutes: minutes.toString().padStart(2, '0'),
   }
 }
 

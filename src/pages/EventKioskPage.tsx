@@ -9,6 +9,13 @@ import { useScoreSubmit } from '@/hooks/useScoreSubmit'
 import { useEventCatalog } from '@/hooks/useEventCatalog'
 import { parseQrPayload } from '@/lib/qrPayload'
 import { hexToRgb } from '@/lib/accentColor'
+import {
+  formatRemainingAsTimer,
+  getDailyTimeWindow,
+  getDailyWindowRemainingMinutes,
+  hasDailyTimeWindow,
+  isInDailyTimeWindow,
+} from '@/lib/taskLimit'
 import type { Event, GroupLeaderboardEntry, ParticipantLeaderboardEntry } from '@/types'
 import type { ScoreSubmitResult } from '@/hooks/useScoreSubmit'
 import '@/styles/kiosk.css'
@@ -48,7 +55,18 @@ type RankRow = { id: string; name: string; initial: string; score: number; barPc
 type ActivityRow = { id: string; icon: string; title: string; subtitle: string; points: string; accent: string }
 type RewardRow = { id: string; icon: string; title: string; recipient: string; score: number; accent: string }
 type TopPrizeRow = { id: string; name: string; icon: string; requiredPoints: number; accent: string }
-type KioskAction = { id: string; name: string; points: number }
+type KioskGroup = { id: string; name: string; color: string }
+type KioskAction = {
+  id: string
+  name: string
+  points: number
+  daily_limit: boolean
+  daily_start_hour: number | null
+  daily_start_minute: number | null
+  daily_end_hour: number | null
+  daily_end_minute: number | null
+  groups: KioskGroup[]
+}
 type ScanResultDisplay = { name: string; action: string; initial: string; emoji: string; points: number; totalPoints: number; tone: string }
 type RewardWinDisplay = { emoji: string; title: string; sub: string; points: number }
 
@@ -195,7 +213,7 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
           .eq('event_id', eventId),
         supabase
           .from('actions')
-          .select('id, name, points')
+          .select('id, name, points, daily_limit, daily_start_hour, daily_start_minute, daily_end_hour, daily_end_minute, action_groups(group_id, groups(id, name, color))')
           .eq('event_id', eventId)
           .eq('is_active', true)
           .order('name'),
@@ -229,7 +247,26 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
       setTxPointsTotal((pointsRes.data ?? []).reduce((sum, tx) => sum + (tx.points ?? 0), 0))
 
       if (actRes.data) {
-        setActionsData(actRes.data.map(a => ({ id: a.id, name: a.name, points: a.points })))
+        setActionsData(actRes.data.map((a) => {
+          const joins = (a.action_groups as unknown as { groups: { id: string; name: string; color: string } | { id: string; name: string; color: string }[] }[]) ?? []
+          const groups = joins
+            .map((join) => {
+              const group = join.groups
+              return Array.isArray(group) ? group[0] : group
+            })
+            .filter((group): group is KioskGroup => Boolean(group?.id && group?.name && group?.color))
+          return {
+            id: a.id,
+            name: a.name,
+            points: a.points,
+            daily_limit: a.daily_limit,
+            daily_start_hour: a.daily_start_hour,
+            daily_start_minute: a.daily_start_minute,
+            daily_end_hour: a.daily_end_hour,
+            daily_end_minute: a.daily_end_minute,
+            groups,
+          }
+        }))
       }
 
       if (rwRes.data) {
@@ -1127,6 +1164,292 @@ function ActivityView({ rows, active }: { rows: ActivityRow[]; active: boolean }
 }
 
 
+const MISSION_ROTATE_MS = 15_000
+
+function FloatingPointsBadge({
+  action,
+  reducedMotion,
+  swapPhase,
+}: {
+  action: KioskAction | null
+  reducedMotion: boolean
+  swapPhase: 'idle' | 'out' | 'in'
+}) {
+  const [showPoints, setShowPoints] = useState(reducedMotion)
+  const actionId = action?.id ?? null
+
+  useEffect(() => {
+    if (reducedMotion) {
+      setShowPoints(true)
+      return
+    }
+    if (swapPhase !== 'idle') {
+      setShowPoints(false)
+      return
+    }
+    setShowPoints(false)
+    const t = window.setTimeout(() => setShowPoints(true), 1000)
+    return () => window.clearTimeout(t)
+  }, [actionId, reducedMotion, swapPhase])
+
+  const points = action?.points ?? null
+
+  const pillStyle: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    background: 'linear-gradient(145deg,#FFFFFF,#FFF4E0)',
+    border: '2.5px solid rgba(242,179,60,0.9)', borderRadius: 999,
+    padding: '7px 14px 7px 10px',
+    boxShadow: '0 10px 28px rgba(242,179,60,0.48), 0 0 0 4px rgba(255,255,255,0.95), 0 0 24px rgba(242,179,60,0.32)',
+    whiteSpace: 'nowrap',
+  }
+
+  if (!showPoints) return null
+
+  return (
+    <div style={{ position: 'absolute', bottom: -10, left: -18, zIndex: 7 }}>
+      <div
+        key={actionId ?? 'none'}
+        className={reducedMotion ? undefined : 'kiosk-pointsFlyIn'}
+        style={pillStyle}
+      >
+        <span className="kiosk-fireFlicker" style={{ fontSize: 14, lineHeight: 1, filter: 'drop-shadow(0 0 6px rgba(242,179,60,0.7))' }}>
+          ⭐
+        </span>
+        <span
+          className="kiosk-numberGlow"
+          style={{
+            display: 'inline-flex', direction: 'ltr', alignItems: 'baseline',
+            fontSize: 28, fontWeight: 900, color: '#C8941A', fontVariantNumeric: 'tabular-nums', lineHeight: 1,
+          }}
+        >
+          {points === null ? '---' : (
+            <>
+              {points > 0 && '+'}
+              {points}
+            </>
+          )}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+
+function RecommendedMissionSwap({
+  action, now, reducedMotion,
+}: {
+  action: KioskAction | null
+  now: Date
+  reducedMotion: boolean
+}) {
+  const [rendered, setRendered] = useState(action)
+  const [phase, setPhase] = useState<'idle' | 'out' | 'in'>('idle')
+  const skipAnimRef = useRef(true)
+
+  useEffect(() => {
+    if (action?.id === rendered?.id) {
+      setRendered(action)
+      return
+    }
+    if (reducedMotion || skipAnimRef.current) {
+      skipAnimRef.current = false
+      setRendered(action)
+      setPhase('idle')
+      return
+    }
+    setPhase('out')
+  }, [action, action?.id, rendered?.id, reducedMotion])
+
+  useEffect(() => {
+    if (phase !== 'out') return
+    const t = setTimeout(() => {
+      setRendered(action)
+      setPhase('in')
+    }, 340)
+    return () => clearTimeout(t)
+  }, [phase, action])
+
+  useEffect(() => {
+    if (phase !== 'in') return
+    const t = setTimeout(() => setPhase('idle'), 580)
+    return () => clearTimeout(t)
+  }, [phase])
+
+  const animClass = phase === 'out'
+    ? 'kiosk-missionSwapOut'
+    : phase === 'in'
+      ? 'kiosk-missionSwapIn'
+      : undefined
+
+  return (
+    <div className={animClass} style={{ position: 'relative', overflow: 'visible' }}>
+      <RecommendedMissionCard action={rendered} now={now} reducedMotion={reducedMotion} />
+      <FloatingPointsBadge action={rendered} reducedMotion={reducedMotion} swapPhase={phase} />
+    </div>
+  )
+}
+
+
+function RecommendedMissionCard({
+  action, now, reducedMotion = false,
+}: {
+  action: KioskAction | null
+  now: Date
+  reducedMotion?: boolean
+}) {
+  const inDailyWindow = action ? isInDailyTimeWindow(action, now) : false
+  const dailyWindow = action ? getDailyTimeWindow(action) : { start: null, end: null }
+  const hasTimeWindow = Boolean(action?.daily_limit && hasDailyTimeWindow(dailyWindow))
+  const remainingMinutes = action && hasTimeWindow && inDailyWindow
+    ? getDailyWindowRemainingMinutes(action, now)
+    : null
+  const showCountdown = remainingMinutes !== null
+  const hasGroups = Boolean(action && action.groups.length > 0)
+  const timer = remainingMinutes !== null ? formatRemainingAsTimer(remainingMinutes) : null
+  const isUrgent = remainingMinutes !== null && remainingMinutes <= 15
+
+  const blinkClass = !reducedMotion
+    ? (showCountdown && isUrgent ? 'kiosk-timerTitleUrgent' : 'kiosk-timerTitleFlash')
+    : undefined
+  const blinkKey = `${action?.id ?? 'none'}-${showCountdown ? (isUrgent ? 'u' : 'a') : 'r'}`
+  const accentHot = showCountdown && isUrgent
+
+  return (
+    <div style={{
+      position: 'relative', zIndex: 1, borderRadius: 22,
+      padding: showCountdown ? 20 : '28px 20px',
+      background: '#FFFFFF', boxShadow: '0 10px 24px rgba(120,50,10,0.18)',
+      overflow: 'visible', color: '#2E221E',
+      border: showCountdown ? '2px solid rgba(255,120,50,0.55)' : '1.5px solid #FFD8BC',
+    }}>
+      <div style={{ position: 'absolute', top: -30, left: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,147,102,0.1)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: 22, pointerEvents: 'none' }}>
+        <div className="kiosk-shimmerSweep" style={{ position: 'absolute', top: 0, bottom: 0, width: '40%', background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent)' }} />
+      </div>
+
+      {action && (
+        <div
+          className="kiosk-floatY-2"
+          style={{
+            position: 'absolute', top: -16, right: -14, zIndex: 20,
+            width: 74, height: 74,
+          }}
+        >
+          <div
+            className="kiosk-pulseGlow"
+            style={{
+              position: 'absolute', inset: -6, borderRadius: '50%',
+              background: accentHot
+                ? 'radial-gradient(circle, rgba(255,80,40,0.45) 0%, transparent 70%)'
+                : 'radial-gradient(circle, rgba(255,147,102,0.4) 0%, transparent 70%)',
+              pointerEvents: 'none',
+            }}
+          />
+          <div
+            className="kiosk-fireFlicker"
+            style={{
+              position: 'relative',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '100%', height: '100%',
+              background: 'linear-gradient(145deg,#FFFFFF,#FFF4EC)',
+              borderRadius: '50%',
+              fontSize: 54, lineHeight: 1,
+              border: `3px solid ${accentHot ? 'rgba(220,50,20,0.85)' : 'rgba(255,100,40,0.75)'}`,
+              boxShadow: accentHot
+                ? '0 10px 28px rgba(220,40,20,0.38), 0 0 0 5px rgba(255,255,255,0.9), 0 0 24px rgba(255,80,40,0.35)'
+                : '0 10px 26px rgba(120,50,10,0.28), 0 0 0 5px rgba(255,255,255,0.9), 0 0 20px rgba(255,147,102,0.3)',
+            }}
+          >
+            🎯
+          </div>
+        </div>
+      )}
+
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+        <div
+          key={blinkKey}
+          className={blinkClass}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+            {blinkClass && (
+              <span
+                style={{
+                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                  background: accentHot ? '#E83020' : '#FF7030',
+                  boxShadow: accentHot ? '0 0 10px rgba(232,48,32,0.8)' : '0 0 8px rgba(255,112,48,0.6)',
+                }}
+              />
+            )}
+            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 2, color: accentHot ? '#C83020' : '#E07A3E' }}>
+              {showCountdown ? (isUrgent ? '⚡ זמן אוזל!' : 'משימה פעילה עכשיו') : 'משימה מומלצת'}
+            </div>
+          </div>
+
+          {hasGroups && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+              {action!.groups.map((group) => (
+                <div
+                  key={group.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    borderRadius: 999, padding: '2px 6px 2px 5px',
+                    border: `1px solid color-mix(in srgb, ${group.color} 45%, white)`,
+                    background: `color-mix(in srgb, ${group.color} 10%, white)`,
+                  }}
+                >
+                  <span style={{
+                    width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
+                    background: group.color,
+                  }} />
+                  <span style={{ fontSize: 9, fontWeight: 800, color: '#2E221E', lineHeight: 1.2 }}>
+                    {group.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: 14, maxWidth: '100%' }}>
+          <div
+            className={reducedMotion ? undefined : 'kiosk-missionNameFlash'}
+            style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.15 }}
+          >
+            {action?.name ?? '---'}
+          </div>
+        </div>
+
+        {showCountdown && timer && (
+          <div style={{ marginTop: 10, width: '100%' }}>
+            <div style={{
+              fontSize: 10, fontWeight: 900, letterSpacing: 1.5,
+              color: isUrgent ? '#B82018' : '#B5623C', marginBottom: 4,
+            }}>
+              {isUrgent ? '⚡ זמן אוזל!' : 'זמן נותר לביצוע'}
+            </div>
+            <div
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3,
+                direction: 'ltr',
+                fontSize: 'clamp(34px, 4.2vw, 44px)', fontWeight: 900, lineHeight: 1,
+                fontVariantNumeric: 'tabular-nums',
+                color: isUrgent ? '#D82010' : '#D45A1A',
+                letterSpacing: '0.04em',
+              }}
+            >
+              <span>{timer.hours}</span>
+              <span key={`colon-${blinkKey}`} className={blinkClass} style={{ marginBottom: 4 }}>:</span>
+              <span>{timer.minutes}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+
 // ─── Main kiosk display ───────────────────────────────────────────────────────
 
 function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskData; gameStarted: boolean }) {
@@ -1138,14 +1461,32 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const hasAwardedRewards = rewards.length > 0
   const hasConfiguredRewards = configuredRewardsCount > 0
 
-  // Recommended mission — rotates every 30 s
+  // Recommended mission — prioritises time-window tasks while they are active
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const tick = () => setNow(new Date())
+    const t = setInterval(tick, 30_000)
+    return () => clearInterval(t)
+  }, [])
+
+  const rotatableActions = useMemo(() => {
+    const activeWindowActions = actions.filter(
+      (a) => a.daily_limit && hasDailyTimeWindow(getDailyTimeWindow(a)) && isInDailyTimeWindow(a, now),
+    )
+    return activeWindowActions.length > 0 ? activeWindowActions : actions
+  }, [actions, now])
+
   const [recommendedIdx, setRecommendedIdx] = useState(0)
   useEffect(() => {
-    if (!gameStarted || actions.length <= 1) return
-    const t = setInterval(() => setRecommendedIdx(i => (i + 1) % actions.length), 30_000)
+    setRecommendedIdx(0)
+  }, [rotatableActions.length])
+
+  useEffect(() => {
+    if (!gameStarted || rotatableActions.length <= 1) return
+    const t = setInterval(() => setRecommendedIdx(i => (i + 1) % rotatableActions.length), MISSION_ROTATE_MS)
     return () => clearInterval(t)
-  }, [actions.length, gameStarted])
-  const recommendedAction = actions[recommendedIdx] ?? null
+  }, [rotatableActions.length, gameStarted])
+  const recommendedAction = rotatableActions[recommendedIdx] ?? null
 
   // Scanner state
   const { submit, submitting } = useScoreSubmit(event.id)
@@ -1352,41 +1693,15 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           minHeight: 0, borderRadius: 24, padding: 18,
           background: 'linear-gradient(165deg,#FF9E6B,#EF8A4E)',
           boxShadow: '0 14px 32px rgba(239,138,78,0.3)',
-          position: 'relative', overflow: 'hidden',
+          position: 'relative', overflow: 'visible',
         }}>
           <GlowingStarsOrange />
 
           {!gameStarted && <MissionPreGamePanel />}
 
           {/* Recommended mission hero card */}
-          <div className="kiosk-fadeUp kiosk-cardBreathe" style={{
-            display: gameStarted ? 'block' : 'none',
-            position: 'relative', zIndex: 1, borderRadius: 22, padding: 20,
-            background: '#FFFFFF', boxShadow: '0 10px 24px rgba(120,50,10,0.18)',
-            overflow: 'hidden', color: '#2E221E', border: '1.5px solid #FFD8BC',
-            animationDelay: '0.6s',
-          }}>
-            <div style={{ position: 'absolute', top: -30, left: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,147,102,0.1)' }} />
-            <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-              <div className="kiosk-shimmerSweep" style={{ position: 'absolute', top: 0, bottom: 0, width: '40%', background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent)' }} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
-              <div className="kiosk-bob" style={{ fontSize: 52, lineHeight: 1 }}>🎯</div>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 2, color: '#E07A3E' }}>משימה מומלצת</div>
-                <div style={{ fontSize: 26, fontWeight: 900, marginTop: 2 }}>
-                  {recommendedAction?.name ?? (actions.length === 0 ? '---' : actions[0]?.name ?? '---')}
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 14, position: 'relative' }}>
-              <span style={{ fontSize: 36, fontWeight: 900, color: '#E07A3E' }}>
-                {recommendedAction
-                  ? (recommendedAction.points > 0 ? `+${recommendedAction.points}` : String(recommendedAction.points))
-                  : '---'}
-              </span>
-              <span style={{ fontSize: 17, fontWeight: 800, color: '#7D706A' }}>נקודות לקבוצה</span>
-            </div>
+          <div style={{ display: gameStarted ? 'block' : 'none', marginBottom: 36, position: 'relative', zIndex: 4, overflow: 'visible' }}>
+            <RecommendedMissionSwap action={recommendedAction} now={now} reducedMotion={reducedMotion} />
           </div>
 
           {/* Stat tiles */}
@@ -1408,7 +1723,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           </div>
 
           {/* Recent activity feed — static (no rotation) */}
-          <div style={{ display: gameStarted ? 'block' : 'none', flex: 1, minHeight: 0, position: 'relative', zIndex: 1 }}>
+          <div style={{ display: gameStarted ? 'block' : 'none', flex: 1, minHeight: 0, position: 'relative', zIndex: 1, overflow: 'hidden' }}>
             <ActivityView rows={recentActivity} active={true} />
           </div>
 
