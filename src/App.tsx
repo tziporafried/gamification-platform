@@ -14,6 +14,7 @@ import { AdminPanel } from '@/pages/AdminPanel'
 import { EventBySlugControl } from '@/pages/EventBySlug'
 import { AuthCallback } from '@/pages/AuthCallback'
 import { PlansPage } from '@/pages/PlansPage'
+import { FLOATING_ICONS_PAGE_IDS } from '@/lib/floatingIconsPages'
 
 export default function App() {
   return (
@@ -25,13 +26,13 @@ export default function App() {
           <Route path="/auth/callback" element={<AuthCallback />} />
 
           {/* All authenticated routes share AppShell (GlobalHeader) */}
-          <Route path="/events" element={<ProtectedRoute><AppShell atmosphere="dashboard"><MyEvents /></AppShell></ProtectedRoute>} />
-          <Route path="/events/:id" element={<ProtectedRoute><AppShell atmosphere="wizard"><EventWizard /></AppShell></ProtectedRoute>} />
-          <Route path="/events/:id/step/:step" element={<ProtectedRoute><AppShell atmosphere="wizard"><EventWizard /></AppShell></ProtectedRoute>} />
-          <Route path="/events/:id/control" element={<ProtectedRoute><AppShell atmosphere="control"><EventControlCenterPage /></AppShell></ProtectedRoute>} />
+          <Route path="/events" element={<ProtectedRoute><AppShell atmosphere="dashboard" floatingIconsPage={FLOATING_ICONS_PAGE_IDS.myEvents}><MyEvents /></AppShell></ProtectedRoute>} />
+          <Route path="/events/:id" element={<ProtectedRoute><AppShell atmosphere="wizard" floatingIconsPage={FLOATING_ICONS_PAGE_IDS.wizard}><EventWizard /></AppShell></ProtectedRoute>} />
+          <Route path="/events/:id/step/:step" element={<ProtectedRoute><AppShell atmosphere="wizard" floatingIconsPage={FLOATING_ICONS_PAGE_IDS.wizard}><EventWizard /></AppShell></ProtectedRoute>} />
+          <Route path="/events/:id/control" element={<ProtectedRoute><AppShell atmosphere="control" floatingIconsPage={FLOATING_ICONS_PAGE_IDS.control}><EventControlCenterPage /></AppShell></ProtectedRoute>} />
           <Route path="/events/:id/display" element={<ProtectedRoute><EventDisplayPage /></ProtectedRoute>} />
           <Route path="/events/:id/kiosk" element={<ProtectedRoute><EventKioskPage /></ProtectedRoute>} />
-          <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell atmosphere="control"><EventBySlugControl /></AppShell></ProtectedRoute>} />
+          <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell atmosphere="control" floatingIconsPage={FLOATING_ICONS_PAGE_IDS.control}><EventBySlugControl /></AppShell></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />
           <Route path="/plans" element={<AppShell><PlansPage /></AppShell>} />
 

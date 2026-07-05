@@ -44,6 +44,15 @@ export interface EventCounts {
   rewards: number;
 }
 
+export interface ControlCenterLiveStats {
+  playersPlayed: number;
+  activityTypesScanned: number;
+  totalScans: number;
+  totalPoints: number;
+  rewardsEarned: number;
+  activeGroups: number;
+}
+
 export interface WizardPrefs {
   lastStep: number;
   groupType: GroupType | null;

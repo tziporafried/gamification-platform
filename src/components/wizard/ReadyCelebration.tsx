@@ -277,6 +277,8 @@ const SUMMARY_CARD_VARIANTS = {
   groupsTogether: SUMMARY_CARD_TINTS.secondary,
   scans: SUMMARY_CARD_TINTS.tertiary,
   cards: SUMMARY_CARD_TINTS.primary,
+  points: SUMMARY_CARD_TINTS.primary,
+  rewardsEarned: SUMMARY_CARD_TINTS.participants,
 } as const
 
 export type SummaryCardVariant = keyof typeof SUMMARY_CARD_VARIANTS

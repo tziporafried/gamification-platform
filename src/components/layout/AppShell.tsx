@@ -2,13 +2,16 @@ import { cn } from '@/lib/utils'
 import { GlobalHeader } from './GlobalHeader'
 import { HeaderSlotProvider } from '@/contexts/HeaderSlotContext'
 import { AtmosphericBackground } from './AtmosphericBackground'
+import { FloatingIconsLayer } from './FloatingIconsLayer'
+import type { FloatingIconsPageId } from '@/lib/floatingIconsPages'
 
 interface AppShellProps {
   children: React.ReactNode
   atmosphere?: 'default' | 'wizard' | 'dashboard' | 'control'
+  floatingIconsPage?: FloatingIconsPageId
 }
 
-export function AppShell({ children, atmosphere = 'default' }: AppShellProps) {
+export function AppShell({ children, atmosphere = 'default', floatingIconsPage }: AppShellProps) {
   return (
     <HeaderSlotProvider>
       <div
@@ -20,6 +23,7 @@ export function AppShell({ children, atmosphere = 'default' }: AppShellProps) {
         )}
       >
         <AtmosphericBackground />
+        {floatingIconsPage && <FloatingIconsLayer pageId={floatingIconsPage} />}
         {atmosphere === 'wizard' && (
           <div
             className="pointer-events-none fixed inset-0 z-[1]"
