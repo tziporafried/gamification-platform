@@ -1626,7 +1626,7 @@ function ActivityView({
   return (
     <div style={style}>
       {hasRows && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
           <span className="kiosk-blink" style={{ width: 9, height: 9, borderRadius: '50%', background: '#FFFFFF', display: 'inline-block' }} />
           <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: '1.5px', color: '#FFFFFF' }}>פעילות אחרונה</span>
         </div>
@@ -1729,7 +1729,7 @@ function FloatingPointsBadge({
       return
     }
     setShowPoints(false)
-    const t = window.setTimeout(() => setShowPoints(true), 550)
+    const t = window.setTimeout(() => setShowPoints(true), 720)
     return () => window.clearTimeout(t)
   }, [actionId, reducedMotion, swapPhase])
 
@@ -1776,16 +1776,19 @@ function FloatingPointsBadge({
 }
 
 
-const MISSION_SWAP_MS = 520
+const MISSION_SWAP_EXIT_MS = 480
+const MISSION_SWAP_ENTER_MS = 800
 
 const MISSION_SWAP_SPARKS = [
-  { msx: '-58px', msy: '-42px', size: 9, color: '#FF9366', delay: '0.02s' },
-  { msx: '62px', msy: '-36px', size: 7, color: '#F2B33C', delay: '0.04s' },
-  { msx: '-44px', msy: '48px', size: 8, color: '#FFB84D', delay: '0.03s' },
-  { msx: '52px', msy: '44px', size: 6, color: '#FF7030', delay: '0.05s' },
-  { msx: '0px', msy: '-58px', size: 7, color: '#FFD68A', delay: '0s' },
-  { msx: '-68px', msy: '8px', size: 5, color: '#E88530', delay: '0.06s' },
+  { msx: '-58px', msy: '-42px', size: 9, color: '#FF9366', delay: '0.06s' },
+  { msx: '62px', msy: '-36px', size: 7, color: '#F2B33C', delay: '0.1s' },
+  { msx: '-44px', msy: '48px', size: 8, color: '#FFB84D', delay: '0.08s' },
+  { msx: '52px', msy: '44px', size: 6, color: '#FF7030', delay: '0.12s' },
+  { msx: '0px', msy: '-58px', size: 7, color: '#FFD68A', delay: '0.04s' },
+  { msx: '-68px', msy: '8px', size: 5, color: '#E88530', delay: '0.14s' },
 ] as const
+
+type MissionSwapPhase = 'idle' | 'exit' | 'enter'
 
 function MissionSwapFx() {
   return (
@@ -1822,10 +1825,12 @@ function RecommendedMissionSwap({
 }) {
   const [displayed, setDisplayed] = useState(action)
   const [exiting, setExiting] = useState<KioskAction | null>(null)
-  const [swapping, setSwapping] = useState(false)
+  const [phase, setPhase] = useState<MissionSwapPhase>('idle')
+  const pendingRef = useRef(action)
   const skipAnimRef = useRef(true)
 
   useEffect(() => {
+    pendingRef.current = action
     if (action?.id === displayed?.id) {
       setDisplayed(action)
       return
@@ -1834,57 +1839,73 @@ function RecommendedMissionSwap({
       skipAnimRef.current = false
       setDisplayed(action)
       setExiting(null)
-      setSwapping(false)
+      setPhase('idle')
       return
     }
+    if (phase === 'enter') {
+      setExiting(displayed)
+      setPhase('exit')
+      return
+    }
+    if (phase === 'exit') return
     setExiting(displayed)
-    setDisplayed(action)
-    setSwapping(true)
-  }, [action, action?.id, displayed, displayed?.id, reducedMotion])
+    setPhase('exit')
+  }, [action, action?.id, displayed, displayed?.id, reducedMotion, phase])
 
   useEffect(() => {
-    if (!swapping) return
-    const t = setTimeout(() => {
-      setExiting(null)
-      setSwapping(false)
-    }, MISSION_SWAP_MS)
-    return () => clearTimeout(t)
-  }, [swapping, displayed?.id])
+    if (phase === 'exit') {
+      const t = setTimeout(() => {
+        setExiting(null)
+        setDisplayed(pendingRef.current)
+        setPhase('enter')
+      }, MISSION_SWAP_EXIT_MS)
+      return () => clearTimeout(t)
+    }
+    if (phase === 'enter') {
+      const t = setTimeout(() => setPhase('idle'), MISSION_SWAP_ENTER_MS)
+      return () => clearTimeout(t)
+    }
+  }, [phase])
 
-  const swapPhase: 'idle' | 'out' | 'in' = swapping ? 'in' : 'idle'
+  const pointsPhase: 'idle' | 'out' | 'in' = phase === 'enter' ? 'in' : phase !== 'idle' ? 'out' : 'idle'
+  const showCard = phase === 'idle' || phase === 'enter'
 
   return (
     <div className="kiosk-missionSwapStage">
-      {swapping && !reducedMotion && <MissionSwapFx />}
-      {exiting && (
-        <div key={exiting.id} className="kiosk-missionSwapLayer kiosk-missionSwapLayer--exit">
-          <RecommendedMissionCard action={exiting} now={now} reducedMotion={reducedMotion} />
+      {phase === 'exit' && exiting && (
+        <div key={`exit-${exiting.id}`} className="kiosk-missionSwapLayer kiosk-missionSwapLayer--exit">
+          <RecommendedMissionCard action={exiting} now={now} reducedMotion={reducedMotion} swapRole="out" />
         </div>
       )}
-      <div
-        key={displayed?.id ?? 'none'}
-        className={swapping ? 'kiosk-missionSwapLayer kiosk-missionSwapLayer--enter' : 'kiosk-missionSwapLayer'}
-      >
-        <RecommendedMissionCard
-          action={displayed}
-          now={now}
-          reducedMotion={reducedMotion}
-          entering={swapping && !reducedMotion}
-        />
-        <FloatingPointsBadge action={displayed} reducedMotion={reducedMotion} swapPhase={swapPhase} />
-      </div>
+      {showCard && (
+        <div
+          key={displayed?.id ?? 'none'}
+          className={phase === 'enter' ? 'kiosk-missionSwapLayer kiosk-missionSwapLayer--enter' : 'kiosk-missionSwapLayer'}
+        >
+          {phase === 'enter' && !reducedMotion && <MissionSwapFx />}
+          <RecommendedMissionCard
+            action={displayed}
+            now={now}
+            reducedMotion={reducedMotion}
+            entering={phase === 'enter' && !reducedMotion}
+            swapRole={phase === 'enter' ? 'in' : undefined}
+          />
+          <FloatingPointsBadge action={displayed} reducedMotion={reducedMotion} swapPhase={pointsPhase} />
+        </div>
+      )}
     </div>
   )
 }
 
 
 function RecommendedMissionCard({
-  action, now, reducedMotion = false, entering = false,
+  action, now, reducedMotion = false, entering = false, swapRole,
 }: {
   action: KioskAction | null
   now: Date
   reducedMotion?: boolean
   entering?: boolean
+  swapRole?: 'in' | 'out'
 }) {
   const inDailyWindow = action ? isInDailyTimeWindow(action, now) : false
   const dailyWindow = action ? getDailyTimeWindow(action) : { start: null, end: null }
@@ -1897,21 +1918,43 @@ function RecommendedMissionCard({
   const timer = remainingMinutes !== null ? formatRemainingAsTimer(remainingMinutes) : null
   const isUrgent = remainingMinutes !== null && remainingMinutes <= 15
 
-  const blinkClass = !reducedMotion
-    ? (showCountdown && isUrgent ? 'kiosk-timerTitleUrgent' : 'kiosk-timerTitleFlash')
+  const blinkClass = !reducedMotion && showCountdown
+    ? (isUrgent ? 'kiosk-timerTitleUrgent' : 'kiosk-timerTitleFlash')
     : undefined
-  const blinkKey = `${action?.id ?? 'none'}-${showCountdown ? (isUrgent ? 'u' : 'a') : 'r'}`
+  const blinkKey = `${action?.id ?? 'none'}-${isUrgent ? 'u' : 'a'}`
   const accentHot = showCountdown && isUrgent
+  const badgeLabel = showCountdown ? 'משימה פעילה' : 'משימה מומלצת'
 
   return (
-    <div className="kiosk-missionCard" style={{
+    <div
+      className={[
+        'kiosk-missionCard',
+        swapRole === 'out' ? 'kiosk-missionCard--swapOut' : '',
+        swapRole === 'in' ? 'kiosk-missionCard--swapIn' : '',
+      ].filter(Boolean).join(' ')}
+      style={{
       position: 'relative', zIndex: 1, borderRadius: 22,
       boxSizing: 'border-box', width: '100%',
-      padding: showCountdown ? 20 : '28px 20px',
+      padding: showCountdown ? '46px 20px 20px' : '54px 20px 28px',
       background: '#FFFFFF', boxShadow: '0 10px 24px rgba(120,50,10,0.18)',
       overflow: 'visible', color: '#2E221E',
       border: showCountdown ? '2px solid rgba(255,120,50,0.55)' : '1.5px solid #FFD8BC',
     }}>
+      {action && swapRole !== 'out' && (
+        <div className="kiosk-missionTypeBadgeAnchor" aria-hidden>
+          <div
+            key={`${action.id}-${showCountdown ? 'active' : 'rec'}`}
+            className={[
+              'kiosk-missionTypeBadge',
+              showCountdown ? 'kiosk-missionTypeBadge--active' : 'kiosk-missionTypeBadge--recommended',
+              entering && !reducedMotion ? 'kiosk-missionTypeBadge--enter' : '',
+              accentHot ? 'kiosk-missionTypeBadge--urgent' : '',
+            ].filter(Boolean).join(' ')}
+          >
+            {badgeLabel}
+          </div>
+        </div>
+      )}
       <div style={{ position: 'absolute', top: -30, left: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,147,102,0.1)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: 22, pointerEvents: 'none' }}>
         <div className="kiosk-shimmerSweep" style={{ position: 'absolute', top: 0, bottom: 0, width: '40%', background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent)' }} />
@@ -1936,7 +1979,7 @@ function RecommendedMissionCard({
             }}
           />
           <div
-            className="kiosk-fireFlicker"
+            className={entering ? 'kiosk-missionSwapIconPop' : 'kiosk-fireFlicker'}
             style={{
               position: 'relative',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1956,52 +1999,31 @@ function RecommendedMissionCard({
       )}
 
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-        <div
-          key={blinkKey}
-          className={blinkClass}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-            {blinkClass && (
-              <span
+        {hasGroups && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            {action!.groups.map((group) => (
+              <div
+                key={group.id}
                 style={{
-                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                  background: accentHot ? '#E83020' : '#FF7030',
-                  boxShadow: accentHot ? '0 0 10px rgba(232,48,32,0.8)' : '0 0 8px rgba(255,112,48,0.6)',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  borderRadius: 999, padding: '2px 6px 2px 5px',
+                  border: `1px solid color-mix(in srgb, ${group.color} 45%, white)`,
+                  background: `color-mix(in srgb, ${group.color} 10%, white)`,
                 }}
-              />
-            )}
-            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 2, color: accentHot ? '#C83020' : '#E07A3E' }}>
-              {showCountdown ? (isUrgent ? '⚡ זמן אוזל!' : 'משימה פעילה עכשיו') : 'משימה מומלצת'}
-            </div>
+              >
+                <span style={{
+                  width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
+                  background: group.color,
+                }} />
+                <span style={{ fontSize: 9, fontWeight: 800, color: '#2E221E', lineHeight: 1.2 }}>
+                  {group.name}
+                </span>
+              </div>
+            ))}
           </div>
+        )}
 
-          {hasGroups && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-              {action!.groups.map((group) => (
-                <div
-                  key={group.id}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 4,
-                    borderRadius: 999, padding: '2px 6px 2px 5px',
-                    border: `1px solid color-mix(in srgb, ${group.color} 45%, white)`,
-                    background: `color-mix(in srgb, ${group.color} 10%, white)`,
-                  }}
-                >
-                  <span style={{
-                    width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
-                    background: group.color,
-                  }} />
-                  <span style={{ fontSize: 9, fontWeight: 800, color: '#2E221E', lineHeight: 1.2 }}>
-                    {group.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div style={{ marginTop: 14, maxWidth: '100%' }}>
+        <div style={{ marginTop: hasGroups ? 14 : 0, maxWidth: '100%' }}>
           <div
             className={
               reducedMotion
@@ -2024,9 +2046,8 @@ function RecommendedMissionCard({
             }}>
               {isUrgent ? '⚡ זמן אוזל!' : 'זמן נותר לביצוע'}
             </div>
-          <div
-            className={entering ? 'kiosk-missionSwapIconPop' : undefined}
-            style={{
+            <div
+              style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3,
                 direction: 'ltr',
                 fontSize: 'clamp(34px, 4.2vw, 44px)', fontWeight: 900, lineHeight: 1,
