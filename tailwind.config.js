@@ -137,6 +137,36 @@ export default {
           '0%, 100%': { filter: 'drop-shadow(0 0 4px color-mix(in srgb, var(--color-warning) 40%, transparent))' },
           '50%': { filter: 'drop-shadow(0 0 12px color-mix(in srgb, var(--color-warning) 80%, transparent))' },
         },
+        'ceremony-wash': {
+          '0%, 100%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+        },
+        'orb-drift': {
+          '0%, 100%': { transform: 'translate3d(0, 0, 0) scale(1)' },
+          '35%': { transform: 'translate3d(28px, -18px, 0) scale(1.05)' },
+          '70%': { transform: 'translate3d(-18px, 22px, 0) scale(0.98)' },
+        },
+        'light-spin': {
+          '0%': { transform: 'translate(-50%, -50%) rotate(0deg)' },
+          '100%': { transform: 'translate(-50%, -50%) rotate(360deg)' },
+        },
+        'light-sweep': {
+          '0%': { transform: 'translateX(0) rotate(12deg)', opacity: '0' },
+          '20%': { opacity: '0.55' },
+          '100%': { transform: 'translateX(-420%) rotate(12deg)', opacity: '0' },
+        },
+        'sparkle-twinkle': {
+          '0%, 100%': { opacity: '0.15', transform: 'translateY(0) scale(0.8)' },
+          '45%': { opacity: '0.9', transform: 'translateY(-18px) scale(1.25)' },
+        },
+        'halo-pulse': {
+          '0%, 100%': { opacity: '0.35', transform: 'scale(0.96)' },
+          '50%': { opacity: '0.72', transform: 'scale(1.04)' },
+        },
+        'number-glow': {
+          '0%, 100%': { textShadow: '0 0 22px rgba(255,184,0,0.28)' },
+          '50%': { textShadow: '0 0 42px rgba(255,184,0,0.62)' },
+        },
         'border-glow': {
           '0%, 100%': { borderColor: 'color-mix(in srgb, var(--color-primary) 30%, transparent)' },
           '50%': { borderColor: 'color-mix(in srgb, var(--color-primary) 60%, transparent)' },
@@ -210,6 +240,13 @@ export default {
         'toast-exit': 'toast-exit 0.2s ease-in forwards',
         'shake': 'shake 0.5s ease-in-out',
         'crown-glow': 'crown-glow 2s ease-in-out infinite',
+        'ceremony-wash': 'ceremony-wash 24s ease-in-out infinite',
+        'orb-drift': 'orb-drift 18s ease-in-out infinite',
+        'light-spin': 'light-spin 90s linear infinite',
+        'light-sweep': 'light-sweep 8s ease-in-out infinite',
+        'sparkle-twinkle': 'sparkle-twinkle 5s ease-in-out infinite',
+        'halo-pulse': 'halo-pulse 2.6s ease-in-out infinite',
+        'number-glow': 'number-glow 2s ease-in-out infinite',
         'border-glow': 'border-glow 2s ease-in-out infinite',
         'screen-flash': 'screen-flash 0.3s ease-out forwards',
         'wizard-title-wow': 'wizard-title-wow 2s cubic-bezier(0.22, 1.2, 0.36, 1) both',

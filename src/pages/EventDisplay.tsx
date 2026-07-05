@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { LeaderboardSection } from '@/components/leaderboard/LeaderboardSection'
+import { WinnersCeremony } from '@/components/leaderboard/WinnersCeremony'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
 
@@ -36,16 +35,7 @@ export function EventDisplayPage() {
 
   return (
     <div className="relative min-h-screen bg-app-radial">
-      <div className="absolute left-4 top-3 z-30">
-        <button
-          onClick={() => navigate(`/events/${event.id}/control`)}
-          className="flex items-center gap-1.5 rounded-lg bg-surface/60 px-3 py-1.5 text-sm text-muted backdrop-blur-sm transition-colors hover:bg-surface hover:text-foreground"
-        >
-          <ArrowRight size={14} />
-          <span>חזרה</span>
-        </button>
-      </div>
-      <LeaderboardSection
+      <WinnersCeremony
         eventId={event.id}
         eventName={event.name}
         eventLogoUrl={event.logo_url}
