@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Calendar, ExternalLink, Share2, Settings2 } from 'lucide-react'
+import { Plus, Calendar, Share2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
@@ -10,7 +10,7 @@ import { ModalActions } from '@/components/ui/ModalActions'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Toast } from '@/components/ui/Toast'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { DeleteButton } from '@/components/ui/IconButton'
+import { DeleteButton, IconButton } from '@/components/ui/IconButton'
 import { PageTitle } from '@/components/ui/PageTitle'
 import { ShareEventModal } from '@/components/ShareEventModal'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
@@ -20,14 +20,6 @@ import { isEventReady, getWizardPrefs } from '@/lib/wizard'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
 import type { Event as GameEvent } from '@/types'
 import { cn } from '@/lib/utils'
-
-const ROW_ACTION_CLASS = cn(
-  '!px-1.5 !py-1 !shadow-none',
-  'bg-transparent hover:!bg-foreground/[0.05]',
-  'text-foreground/82 hover:text-foreground',
-  'font-normal cursor-pointer leading-none',
-  'transition-colors duration-[180ms] ease-out',
-)
 
 const EVENT_CARD_CLASS = cn(
   'group relative flex w-full cursor-pointer items-center gap-4 px-5 py-3.5 text-right',
@@ -237,23 +229,24 @@ function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: Ev
   const isFreePlan = !isSuperAdmin && gameEvent.plan === 'free'
   const navigate = useNavigate()
 
+  const isReady = useMemo(() => {
+    if (!playMeta) return false
+    return isEventReady(gameEvent, playMeta.counts)
+  }, [gameEvent, playMeta])
+
   const playStatus = useMemo(() => {
     if (!playMeta) return 'preparing' as const
-    const ready = isEventReady(gameEvent, playMeta.counts)
-    return resolveEventPlayStatus(ready, playMeta.totalScans)
-  }, [gameEvent, playMeta])
+    return resolveEventPlayStatus(isReady, playMeta.totalScans)
+  }, [isReady, playMeta])
 
   const statusColor = EVENT_PLAY_STATUS[playStatus].color
 
-  function handleOpenControl(e: React.MouseEvent) {
-    e.stopPropagation()
-    navigate(`/events/${gameEvent.id}/control`)
-  }
-
-  function handleOpenSettings(e: React.MouseEvent) {
-    e.stopPropagation()
-    const lastStep = getWizardPrefs(gameEvent.id).lastStep
-    navigate(`/events/${gameEvent.id}/step/${lastStep}`)
+  function navigateToPlay() {
+    if (isReady) {
+      navigate(`/events/${gameEvent.id}/control`)
+      return
+    }
+    navigate(`/events/${gameEvent.id}/step/${getWizardPrefs(gameEvent.id).lastStep}`)
   }
 
   function handleDelete(e: React.MouseEvent) {
@@ -266,14 +259,12 @@ function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: Ev
     onShare()
   }
 
-  const isWip = gameEvent.status === 'editing'
-
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => isWip ? navigate(`/events/${gameEvent.id}/step/${getWizardPrefs(gameEvent.id).lastStep}`) : navigate(`/events/${gameEvent.id}/control`)}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isWip ? navigate(`/events/${gameEvent.id}/step/${getWizardPrefs(gameEvent.id).lastStep}`) : navigate(`/events/${gameEvent.id}/control`) } }}
+      onClick={navigateToPlay}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigateToPlay() } }}
       className={EVENT_CARD_CLASS}
     >
       <div
@@ -290,40 +281,30 @@ function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: Ev
       </div>
 
       <div className="min-w-0 flex-1 self-center">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <p className="truncate text-base font-extrabold tracking-tight text-foreground leading-snug">
             {gameEvent.name || 'אירוע ללא שם'}
+          </p>
+          <p className="shrink-0 text-[11px] leading-none text-muted/45">
+            נוצר {new Date(gameEvent.created_at).toLocaleDateString('he-IL')}
           </p>
           {isFreePlan && <Badge label="משחק התנסות" color="var(--color-primary)" variant="quiet" />}
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-col items-end justify-center gap-1 self-stretch py-0.5">
+      <div className="flex shrink-0 items-center self-stretch py-0.5">
         <EventPlayStatus status={playStatus} variant="badge" />
-        <p className="text-[11px] leading-none text-muted/45">
-          נוצר {new Date(gameEvent.created_at).toLocaleDateString('he-IL')}
-        </p>
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 self-center" onClick={e => e.stopPropagation()}>
-        <Button variant="ghost" size="xs" className={ROW_ACTION_CLASS} onClick={handleOpenSettings} title="הגדרות">
-          <span className="inline-flex items-center gap-1 leading-none">
-            <Settings2 size={13} className="shrink-0" strokeWidth={2} />
-            הגדרות
-          </span>
-        </Button>
-        <Button variant="ghost" size="xs" className={cn(ROW_ACTION_CLASS, isWip && 'opacity-40')} onClick={handleOpenControl} disabled={isWip} title={isWip ? 'האירוע עדיין בעריכה' : 'להתחיל לשחק'}>
-          <span className="inline-flex items-center gap-1 leading-none">
-            <ExternalLink size={13} className="shrink-0" strokeWidth={2} />
-            להתחיל לשחק
-          </span>
-        </Button>
-        <Button variant="ghost" size="xs" className={ROW_ACTION_CLASS} onClick={handleShare}>
-          <span className="inline-flex items-center gap-1 leading-none">
-            <Share2 size={13} className="shrink-0" strokeWidth={2} />
-            שיתוף
-          </span>
-        </Button>
+        <IconButton
+          variant="default"
+          title="שיתוף"
+          className="text-foreground/75 transition-colors duration-[180ms] ease-out hover:text-foreground"
+          onClick={handleShare}
+        >
+          <Share2 size={13} strokeWidth={2} />
+        </IconButton>
         <div className="flex h-[26px] w-7 shrink-0 items-center justify-center">
           {isOwner && (
             <DeleteButton

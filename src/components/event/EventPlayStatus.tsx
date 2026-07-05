@@ -72,7 +72,14 @@ export function EventPlayStatus({ status, variant = 'inline' }: EventPlayStatusP
   const config = EVENT_PLAY_STATUS[status]
 
   if (variant === 'badge') {
-    return <Badge label={config.label} color={config.color} variant="quiet" />
+    return (
+      <Badge
+        label={config.label}
+        color={config.color}
+        variant="quiet"
+        icon={<StatusDot status={status} />}
+      />
+    )
   }
 
   return (
