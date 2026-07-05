@@ -10,6 +10,12 @@ import { useEventCatalog } from '@/hooks/useEventCatalog'
 import { parseQrPayload } from '@/lib/qrPayload'
 import { hexToRgb } from '@/lib/accentColor'
 import {
+  buildActionCompletionIndex,
+  filterActionsWithAvailableParticipants,
+  type ActionCompletionIndex,
+  type KioskAvailabilityParticipant,
+} from '@/lib/canPerformAction'
+import {
   formatRemainingAsTimer,
   getDailyTimeWindow,
   getDailyWindowRemainingMinutes,
@@ -60,6 +66,7 @@ type KioskAction = {
   id: string
   name: string
   points: number
+  max_completions: number | null
   daily_limit: boolean
   daily_start_hour: number | null
   daily_start_minute: number | null
@@ -85,6 +92,8 @@ interface KioskData {
   configuredRewardsCount: number
   newestRewardId: string | null
   actions: KioskAction[]
+  kioskParticipants: KioskAvailabilityParticipant[]
+  actionCompletionIndex: ActionCompletionIndex
   stats: KioskStats
   totalScans: number
   loading: boolean
@@ -183,6 +192,8 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
   const [txCount, setTxCount] = useState(0)
   const [txPointsTotal, setTxPointsTotal] = useState(0)
   const [actionsData, setActionsData] = useState<KioskAction[]>([])
+  const [kioskParticipants, setKioskParticipants] = useState<KioskAvailabilityParticipant[]>([])
+  const [actionCompletionIndex, setActionCompletionIndex] = useState<ActionCompletionIndex>({})
   const [rewardsData, setRewardsData] = useState<RewardRow[]>([])
   const [topPrizesData, setTopPrizesData] = useState<TopPrizeRow[]>([])
   const [configuredRewardsCount, setConfiguredRewardsCount] = useState(0)
@@ -194,7 +205,7 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
   const fetchAll = useCallback(async () => {
     if (!eventId) return
     try {
-      const [gRes, pRes, txRes, countRes, pointsRes, actRes, rwRes, tpRes, configuredRwRes] = await Promise.all([
+      const [gRes, pRes, txRes, countRes, pointsRes, actRes, partRes, completionRes, rwRes, tpRes, configuredRwRes] = await Promise.all([
         supabase.rpc('get_group_leaderboard', { p_event_id: eventId }),
         supabase.rpc('get_participant_leaderboard', { p_event_id: eventId }),
         supabase
@@ -213,10 +224,18 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
           .eq('event_id', eventId),
         supabase
           .from('actions')
-          .select('id, name, points, daily_limit, daily_start_hour, daily_start_minute, daily_end_hour, daily_end_minute, action_groups(group_id, groups(id, name, color))')
+          .select('id, name, points, max_completions, daily_limit, daily_start_hour, daily_start_minute, daily_end_hour, daily_end_minute, action_groups(group_id, groups(id, name, color))')
           .eq('event_id', eventId)
           .eq('is_active', true)
           .order('name'),
+        supabase
+          .from('participants')
+          .select('id, participant_groups(group_id)')
+          .eq('event_id', eventId),
+        supabase
+          .from('point_transactions')
+          .select('participant_id, action_id, created_at')
+          .eq('event_id', eventId),
         supabase
           .from('participant_rewards')
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -259,6 +278,7 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
             id: a.id,
             name: a.name,
             points: a.points,
+            max_completions: a.max_completions,
             daily_limit: a.daily_limit,
             daily_start_hour: a.daily_start_hour,
             daily_start_minute: a.daily_start_minute,
@@ -267,6 +287,20 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
             groups,
           }
         }))
+      }
+
+      if (partRes.data) {
+        setKioskParticipants(partRes.data.map((p) => {
+          const joins = (p.participant_groups as unknown as { group_id: string }[]) ?? []
+          return {
+            id: p.id,
+            groupIds: joins.map((join) => join.group_id).filter(Boolean),
+          }
+        }))
+      }
+
+      if (completionRes.data) {
+        setActionCompletionIndex(buildActionCompletionIndex(completionRes.data))
       }
 
       if (rwRes.data) {
@@ -410,7 +444,10 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
   return {
     rankedGroups, topPlayers, recentActivity, rewards: rewardsData,
     topPrizes: topPrizesData, configuredRewardsCount, newestRewardId,
-    actions: actionsData, stats, totalScans: txCount,
+    actions: actionsData,
+    kioskParticipants,
+    actionCompletionIndex,
+    stats, totalScans: txCount,
     loading, error, refetch: fetchAll,
   }
 }
@@ -1456,7 +1493,10 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const navigate = useNavigate()
   const reducedMotion = useReducedMotion()
 
-  const { recentActivity, rewards, topPrizes, configuredRewardsCount, newestRewardId, stats, totalScans, actions, refetch } = data
+  const {
+    recentActivity, rewards, topPrizes, configuredRewardsCount, newestRewardId,
+    stats, totalScans, actions, kioskParticipants, actionCompletionIndex, refetch,
+  } = data
   const hasActivity = recentActivity.length > 0
   const hasAwardedRewards = rewards.length > 0
   const hasConfiguredRewards = configuredRewardsCount > 0
@@ -1469,12 +1509,26 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     return () => clearInterval(t)
   }, [])
 
+  const displayableActions = useMemo(() => {
+    const withConstraints = actions.map((action) => ({
+      ...action,
+      is_active: true,
+      allowedGroupIds: action.groups.map((group) => group.id),
+    }))
+    return filterActionsWithAvailableParticipants(
+      withConstraints,
+      kioskParticipants,
+      actionCompletionIndex,
+      now,
+    )
+  }, [actions, kioskParticipants, actionCompletionIndex, now])
+
   const rotatableActions = useMemo(() => {
-    const activeWindowActions = actions.filter(
+    const activeWindowActions = displayableActions.filter(
       (a) => a.daily_limit && hasDailyTimeWindow(getDailyTimeWindow(a)) && isInDailyTimeWindow(a, now),
     )
-    return activeWindowActions.length > 0 ? activeWindowActions : actions
-  }, [actions, now])
+    return activeWindowActions.length > 0 ? activeWindowActions : displayableActions
+  }, [displayableActions, now])
 
   const [recommendedIdx, setRecommendedIdx] = useState(0)
   useEffect(() => {

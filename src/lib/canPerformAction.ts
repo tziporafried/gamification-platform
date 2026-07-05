@@ -1,4 +1,5 @@
 import {
+  countCompletionsOnIsraelDate,
   formatTimeRange,
   getIsraelMinutesSinceMidnight,
   isTimeInRange,
@@ -107,4 +108,53 @@ export function canPerformAction({
   }
 
   return { allowed: true, message: '' }
+}
+
+export type ActionCompletionIndex = Record<
+  string,
+  Record<string, { total: number; timestamps: string[] }>
+>
+
+export type KioskAvailabilityParticipant = { id: string; groupIds: string[] }
+
+export function buildActionCompletionIndex(
+  transactions: Array<{ participant_id: string; action_id: string; created_at: string }>,
+): ActionCompletionIndex {
+  const index: ActionCompletionIndex = {}
+  for (const tx of transactions) {
+    if (!index[tx.action_id]) index[tx.action_id] = {}
+    if (!index[tx.action_id][tx.participant_id]) {
+      index[tx.action_id][tx.participant_id] = { total: 0, timestamps: [] }
+    }
+    const entry = index[tx.action_id][tx.participant_id]
+    entry.total++
+    entry.timestamps.push(tx.created_at)
+  }
+  return index
+}
+
+export function filterActionsWithAvailableParticipants<
+  T extends ActionConstraints & { id: string },
+>(
+  actions: T[],
+  participants: KioskAvailabilityParticipant[],
+  completionIndex: ActionCompletionIndex,
+  now: Date = new Date(),
+): T[] {
+  if (participants.length === 0) return []
+
+  return actions.filter((action) =>
+    participants.some((participant) => {
+      const stats = completionIndex[action.id]?.[participant.id]
+      return canPerformAction({
+        action,
+        participantGroupIds: participant.groupIds,
+        previousCompletions: stats?.total ?? 0,
+        previousCompletionsToday: stats
+          ? countCompletionsOnIsraelDate(stats.timestamps, now)
+          : 0,
+        now,
+      }).allowed
+    }),
+  )
 }
