@@ -1707,6 +1707,7 @@ function ActivityView({
 
 
 const MISSION_ROTATE_MS = 15_000
+const MISSION_POINTS_DELAY_MS = 400
 
 function FloatingPointsBadge({
   action,
@@ -1730,7 +1731,7 @@ function FloatingPointsBadge({
       return
     }
     setShowPoints(false)
-    const t = window.setTimeout(() => setShowPoints(true), 720)
+    const t = window.setTimeout(() => setShowPoints(true), MISSION_POINTS_DELAY_MS)
     return () => window.clearTimeout(t)
   }, [actionId, reducedMotion, swapPhase])
 
@@ -1868,7 +1869,7 @@ function RecommendedMissionSwap({
     }
   }, [phase])
 
-  const pointsPhase: 'idle' | 'out' | 'in' = phase === 'enter' ? 'in' : phase !== 'idle' ? 'out' : 'idle'
+  const pointsPhase: 'idle' | 'out' | 'in' = phase === 'exit' ? 'out' : 'idle'
   const showCard = phase === 'idle' || phase === 'enter'
 
   return (
