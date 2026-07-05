@@ -1272,10 +1272,10 @@ function StartedNoActivityState() {
       }}>
         <div className="kiosk-bob" style={{ fontSize: 36, lineHeight: 1 }}>🎯</div>
         <div style={{ marginTop: 10, fontSize: 20, fontWeight: 900, lineHeight: 1.25 }}>
-          הלוח מחכה לפעולה הראשונה
+          כולם מחכים לפעולה הראשונה
         </div>
         <div style={{ marginTop: 6, fontSize: 14, fontWeight: 800, color: 'rgba(255,255,255,0.84)', lineHeight: 1.45 }}>
-          ברגע שתתבצע הסריקה הראשונה, המשימות יתחילו להתמלא כאן בזמן אמת.
+          ברגע שתתבצע הסריקה הראשונה, יתחיל כל הכיף!
         </div>
       </div>
       <SkeletonRows count={3} />
@@ -2419,7 +2419,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           <div className="kiosk-floatY-4" style={{ position: 'absolute', bottom: 90, left: 100, width: 18, height: 18, borderRadius: 6, background: '#8FCFA0' }} />
           <div className="kiosk-floatY-2" style={{ position: 'absolute', bottom: 200, left: 50, width: 12, height: 12, borderRadius: 5, background: '#FFCB9A' }} />
 
-          <div className="kiosk-centerStack" style={{ gap: KIOSK_CENTER_GAP, paddingBottom: KIOSK_CENTER_GAP }}>
+          <div className="kiosk-centerStack" style={{ gap: KIOSK_CENTER_GAP }}>
             <EventBrandMark event={event} onLogoClick={() => navigate(`/events/${event.id}/control`)} />
 
             {/* Headlines */}
@@ -2463,31 +2463,29 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
               </div>
             )}
 
-            <div className="kiosk-centerScannerGroup">
-              <div className="kiosk-scannerSlot">
-                <ScannerFrame processing={gameStarted && submitting} />
-              </div>
+            <div className="kiosk-scannerSlot">
+              <ScannerFrame processing={gameStarted && submitting} />
+            </div>
 
-              <div style={{ textAlign: 'center', maxWidth: 620, width: '100%', flexShrink: 0 }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#9A8E88' }}>כוונו את כרטיס ה-QR של המשתתף למסגרת</div>
-                {gameStarted && (
-                  <button
-                    onClick={() => setShowManual(true)}
-                    style={{
-                      display: 'inline',
-                      fontSize: 15, fontWeight: 800, color: '#3E8F88',
-                      textDecoration: 'underline', textUnderlineOffset: 3,
-                      background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                    }}>
-                    או בחרו הזנה ידנית — שחקן · משימה
-                  </button>
-                )}
-                {!gameStarted && (
-                  <div style={{ fontSize: 15, fontWeight: 900, color: '#7D706A', marginTop: 8 }}>
-                    התחרות מתחילה ברגע שהמשתתף הראשון סורק 🚀
-                  </div>
-                )}
-              </div>
+            <div className="kiosk-centerHints">
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#9A8E88' }}>כוונו את כרטיס ה-QR של המשתתף למסגרת</div>
+              {gameStarted && (
+                <button
+                  onClick={() => setShowManual(true)}
+                  style={{
+                    display: 'inline',
+                    fontSize: 15, fontWeight: 800, color: '#3E8F88',
+                    textDecoration: 'underline', textUnderlineOffset: 3,
+                    background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  }}>
+                  או בחרו הזנה ידנית — שחקן · משימה
+                </button>
+              )}
+              {!gameStarted && (
+                <div style={{ fontSize: 15, fontWeight: 900, color: '#7D706A', marginTop: 8 }}>
+                  התחרות מתחילה ברגע שהמשתתף הראשון סורק 🚀
+                </div>
+              )}
             </div>
           </div>
 
