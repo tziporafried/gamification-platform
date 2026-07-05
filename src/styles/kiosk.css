@@ -15,6 +15,26 @@
   100% { background-position:0% 50%; }
 }
 @keyframes kiosk-fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+@keyframes kiosk-scanWinGlow {
+  0%, 100% { filter: drop-shadow(0 2px 10px rgba(255,138,61,0.18)); }
+  50% { filter: drop-shadow(0 4px 20px rgba(242,160,60,0.45)); }
+}
+@keyframes kiosk-scanWinNeon {
+  0%, 65%, 100% {
+    text-shadow: 0 0 0 transparent;
+    transform: scale(1);
+  }
+  32% {
+    text-shadow: 0 0 18px currentColor, 0 0 36px rgba(255, 140, 60, 0.45);
+    transform: scale(1.08);
+  }
+}
+@keyframes kiosk-scanWinShine {
+  0%, 100% { transform: translateX(-130%) skewX(-12deg); opacity: 0; }
+  12% { opacity: 0.85; }
+  50% { transform: translateX(130%) skewX(-12deg); opacity: 0.85; }
+  88% { opacity: 0; }
+}
 @keyframes kiosk-cardBreathe { 0%,100% { transform:scale(1); } 50% { transform:scale(1.015); } }
 @keyframes kiosk-shimmerSweep {
   0% { transform:translateX(-130%) skewX(-12deg); }
@@ -98,6 +118,38 @@
 .kiosk-hueRing { animation: kiosk-hueRing 16s linear infinite; }
 .kiosk-gradientShift { animation: kiosk-gradientShift 22s ease infinite; }
 .kiosk-fadeUp { animation: kiosk-fadeUp 0.5s ease-out both; }
+.kiosk-scanWinHeadline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45em;
+}
+.kiosk-scanWinWord {
+  display: inline-block;
+  animation: kiosk-scanWinNeon 2.2s ease-in-out infinite;
+}
+.kiosk-scanWinSubtitle {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  animation: kiosk-scanWinGlow 3s ease-in-out infinite;
+}
+.kiosk-scanWinSubtitle::after {
+  content: '';
+  position: absolute;
+  inset: -12% -25%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255,255,255,0.5) 46%,
+    rgba(255,236,190,0.8) 50%,
+    rgba(255,255,255,0.5) 54%,
+    transparent 70%
+  );
+  animation: kiosk-scanWinShine 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
 .kiosk-cardBreathe { animation: kiosk-cardBreathe 4s ease-in-out infinite; }
 .kiosk-shimmerSweep { animation: kiosk-shimmerSweep 3.5s ease-in-out infinite 1s; }
 .kiosk-missionNameFlash {
@@ -749,7 +801,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .kiosk-blink, .kiosk-scanY, .kiosk-bob, .kiosk-pulseGlow, .kiosk-raceGrow,
-  .kiosk-hueRing, .kiosk-gradientShift, .kiosk-fadeUp, .kiosk-cardBreathe,
+  .kiosk-hueRing, .kiosk-gradientShift, .kiosk-fadeUp, .kiosk-scanWinHeadline, .kiosk-scanWinWord, .kiosk-scanWinSubtitle, .kiosk-scanWinSubtitle::after, .kiosk-cardBreathe,
   .kiosk-shimmerSweep, .kiosk-missionNameFlash, .kiosk-wobble, .kiosk-crownPop, .kiosk-tickTap,
   .kiosk-fireFlicker, .kiosk-liftHover, .kiosk-numberGlow, .kiosk-twinkle,
   .kiosk-floatY-1, .kiosk-floatY-2, .kiosk-floatY-3, .kiosk-floatY-4,
@@ -786,3 +838,47 @@
 @keyframes kiosk-glowPulse { 0%,100% { opacity:0.55; } 50% { opacity:0.92; } }
 @keyframes kiosk-rayspin { to { transform:rotate(360deg); } }
 @keyframes kiosk-medalSpin { 0% { transform:rotateY(0deg); } 100% { transform:rotateY(360deg); } }
+
+/* Scanner — shrinks when vertical space is tight */
+.kiosk-scannerSlot {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 1;
+}
+.kiosk-scannerFrame {
+  position: relative;
+  flex-shrink: 1;
+  min-width: 160px;
+  min-height: 160px;
+  height: 100%;
+  max-height: min(460px, 28vw);
+  max-width: min(460px, 28vw, 100%);
+  width: auto;
+  aspect-ratio: 1 / 1;
+  container-type: inline-size;
+}
+/* Inner scanner visuals — proportional to frame (460px reference) */
+.kiosk-scannerBorderOuter { border-radius: 9.6cqw; }
+.kiosk-scannerBorderInner { border-radius: 8.7cqw; }
+.kiosk-scannerParticipantCard {
+  border-radius: 4.35cqw;
+  padding: 3.48cqw;
+  gap: 2.17cqw;
+}
+.kiosk-scannerQrMatrix {
+  width: 43.5cqw;
+  height: 43.5cqw;
+}
+.kiosk-scannerParticipantLabel { font-size: 3.04cqw; }
+.kiosk-scannerCorner {
+  width: 10cqw;
+  height: 10cqw;
+}
+.kiosk-scannerCorner--tr { top: 4.35cqw; right: 4.35cqw; }
+.kiosk-scannerCorner--tl { top: 4.35cqw; left: 4.35cqw; }
+.kiosk-scannerCorner--br { bottom: 4.35cqw; right: 4.35cqw; }
+.kiosk-scannerCorner--bl { bottom: 4.35cqw; left: 4.35cqw; }
