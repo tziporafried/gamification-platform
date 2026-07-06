@@ -248,6 +248,7 @@ function getChaseParticipantsForPrize(
   participants: PrizeChaseParticipant[],
   chaseAssignments: Map<string, string>,
 ): PrizeChaseRow[] {
+  const seen = new Set<string>()
   return participants
     .filter((p) => chaseAssignments.get(p.id) === prize.id)
     .map((p) => {
@@ -268,14 +269,87 @@ function getChaseParticipantsForPrize(
       if (a.gap !== b.gap) return a.gap - b.gap
       return b.totalPoints - a.totalPoints
     })
+    .filter((row) => {
+      if (seen.has(row.participantId)) return false
+      seen.add(row.participantId)
+      return true
+    })
 }
 
 const PRIZE_CHASE_ROTATE_MS = 4_200
 const PRIZE_CHASE_MAX_VISIBLE = 3
 const PRIZE_CHASE_MAX_CANDIDATES = 20
 const PRIZE_CHASE_ROW_GAP = 4
-const PRIZE_CHASE_ROW_STEP = 58
-const PRIZE_CHASE_ACCENT = '#5AB5AD'
+const PRIZE_CHASE_ROW_STEP = 62
+const PRIZE_CHASE_NUDGES_LEAD = ['כמעט שם!', 'עוד נקודה!', 'הפרס ממש קרוב!'] as const
+const PRIZE_CHASE_NUDGES_MID = ['לא עוצרים!', 'עוד דחיפה!', 'בדרך לפרס!'] as const
+const PRIZE_CHASE_NUDGES_CHASE = ['במרוץ לפרס!', 'כל נקודה קרבה!', 'זה אפשרי!'] as const
+
+/** Teal family only — lighter = farther from prize, deeper = closer. */
+const PRIZE_CHASE_ACCENTS = {
+  chase: '#A8DDD8',
+  mid: '#6EC3BC',
+  lead: '#5AB5AD',
+  ready: '#388882',
+} as const
+const PRIZE_CHASE_TINTS = {
+  chase: '10%',
+  mid: '16%',
+  lead: '24%',
+  ready: '32%',
+} as const
+const PRIZE_CHASE_NUDGE_ICONS = {
+  ready: ['🏆'] as const,
+  lead: ['🔥', '⚡', '🎯'] as const,
+  mid: ['💪', '🚀', '⭐'] as const,
+  chase: ['🏃', '📈', '✨'] as const,
+} as const
+
+type PrizeChaseTone = keyof typeof PRIZE_CHASE_ACCENTS
+
+function getPrizeChaseNudge(row: PrizeChaseRow, chaserIndex: number): {
+  text: string
+  hot: boolean
+  tone: PrizeChaseTone
+  icon: string
+} {
+  if (row.gap === 0) {
+    return { text: 'מוכן לזכייה!', hot: true, tone: 'ready', icon: PRIZE_CHASE_NUDGE_ICONS.ready[0] }
+  }
+  if (chaserIndex === 0 || row.progressPct >= 82) {
+    const i = chaserIndex % PRIZE_CHASE_NUDGES_LEAD.length
+    return {
+      text: PRIZE_CHASE_NUDGES_LEAD[i],
+      hot: true,
+      tone: 'lead',
+      icon: PRIZE_CHASE_NUDGE_ICONS.lead[i],
+    }
+  }
+  if (row.progressPct >= 50) {
+    const i = chaserIndex % PRIZE_CHASE_NUDGES_MID.length
+    return {
+      text: PRIZE_CHASE_NUDGES_MID[i],
+      hot: false,
+      tone: 'mid',
+      icon: PRIZE_CHASE_NUDGE_ICONS.mid[i],
+    }
+  }
+  const i = chaserIndex % PRIZE_CHASE_NUDGES_CHASE.length
+  return {
+    text: PRIZE_CHASE_NUDGES_CHASE[i],
+    hot: false,
+    tone: 'chase',
+    icon: PRIZE_CHASE_NUDGE_ICONS.chase[i],
+  }
+}
+
+function prizeChaseAccentForTone(tone: PrizeChaseTone): string {
+  return PRIZE_CHASE_ACCENTS[tone]
+}
+
+function prizeChaseTintForTone(tone: PrizeChaseTone): string {
+  return PRIZE_CHASE_TINTS[tone]
+}
 
 // ─── Hooks & utilities ────────────────────────────────────────────────────────
 
@@ -493,14 +567,18 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
         }
       }
       if (partRes.data) {
-        setPrizeChaseParticipants(partRes.data.map((p) => {
+        const seenParticipantIds = new Set<string>()
+        setPrizeChaseParticipants(partRes.data.flatMap((p) => {
+          const id = p.id as string
+          if (seenParticipantIds.has(id)) return []
+          seenParticipantIds.add(id)
           const joins = (p.participant_groups as unknown as { group_id: string }[]) ?? []
-          return {
-            id: p.id as string,
+          return [{
+            id,
             name: (p.name as string) || '---',
             groupIds: joins.map((join) => join.group_id).filter(Boolean),
-            totalPoints: pointsByParticipant.get(p.id as string) ?? 0,
-          }
+            totalPoints: pointsByParticipant.get(id) ?? 0,
+          }]
         }))
       }
 
@@ -2249,27 +2327,77 @@ function TopPrizeCard({
 }
 
 
-function PrizeChaseCard({ row }: { row: PrizeChaseRow; reducedMotion: boolean }) {
+function PrizeChaseCard({
+  row,
+  chaserIndex,
+  entering = false,
+  reducedMotion,
+}: {
+  row: PrizeChaseRow
+  chaserIndex: number
+  entering?: boolean
+  reducedMotion: boolean
+}) {
+  const { text: nudge, hot, tone, icon } = getPrizeChaseNudge(row, chaserIndex)
+  const accent = prizeChaseAccentForTone(tone)
+  const tint = prizeChaseTintForTone(tone)
   const gapLabel = row.gap === 0
     ? 'מוכן לזכייה!'
     : `${row.gap.toLocaleString('he-IL')} נק׳`
 
   return (
     <div
-      className="kiosk-prizeChaseCard kiosk-fadeUp"
-      style={{ ['--kiosk-chase-accent' as string]: PRIZE_CHASE_ACCENT }}
+      className={[
+        'kiosk-prizeChaseCard',
+        `kiosk-prizeChaseCard--${tone}`,
+        hot ? 'kiosk-prizeChaseCard--hot' : '',
+        entering && !reducedMotion ? 'kiosk-prizeChaseCard--enter' : '',
+      ].filter(Boolean).join(' ')}
+      style={{
+        ['--kiosk-chase-accent' as string]: accent,
+        ['--kiosk-chase-tint' as string]: tint,
+      }}
     >
+      <div
+        className={[
+          'kiosk-prizeChaseIconBadge',
+          hot && !reducedMotion ? 'kiosk-prizeChaseIconBadge--hot' : '',
+          entering && !reducedMotion ? 'kiosk-prizeChaseIconBadge--enter' : '',
+        ].filter(Boolean).join(' ')}
+        aria-hidden
+      >
+        {icon}
+      </div>
       <div className="kiosk-prizeChaseBody">
         <div className="kiosk-prizeChaseHeader">
-          <span className="kiosk-prizeChaseName" title={row.name}>{row.name}</span>
-          <span className="kiosk-prizeChaseGapPill">
+          <div className="kiosk-prizeChaseNameRow">
+            <span className="kiosk-prizeChaseName" title={row.name}>{row.name}</span>
+            <span
+              className={[
+                'kiosk-prizeChaseNudge',
+                entering && !reducedMotion ? 'kiosk-prizeChaseNudge--enter' : '',
+                hot && !reducedMotion && !entering ? 'kiosk-prizeChaseNudge--hot' : '',
+                !hot && !reducedMotion && !entering ? 'kiosk-prizeChaseNudge--glow' : '',
+              ].filter(Boolean).join(' ')}
+            >
+              {nudge}
+            </span>
+          </div>
+          <span className={[
+            'kiosk-prizeChaseGapPill',
+            hot && !reducedMotion ? 'kiosk-prizeChaseGapPill--hot' : '',
+          ].filter(Boolean).join(' ')}>
+            <span className="kiosk-prizeChaseGapIcon" aria-hidden>⭐</span>
             {row.gap > 0 && <span className="kiosk-prizeChaseGapPrefix">עוד</span>}
             {gapLabel}
           </span>
         </div>
         <div className="kiosk-prizeChaseTrack">
           <div
-            className="kiosk-prizeChaseFill"
+            className={[
+              'kiosk-prizeChaseFill',
+              entering && !reducedMotion ? 'kiosk-prizeChaseFill--enter' : '',
+            ].filter(Boolean).join(' ')}
             style={{ width: `${Math.max(row.progressPct, row.progressPct > 0 ? 6 : 0)}%` }}
           />
         </div>
@@ -2343,8 +2471,8 @@ function PrizeChaseStackView({
     const t = window.setInterval(() => {
       setVisibleIndices((prev) => {
         if (prev.length === 0) return prev
-        const bottomIdx = prev[prev.length - 1]
-        const incomingIdx = bottomIdx + 1
+        const highestShown = Math.max(...prev)
+        const incomingIdx = highestShown + 1
         if (incomingIdx >= chasers.length) return prev
         setRotateIncomingIdx(incomingIdx)
         setPhase('push')
@@ -2379,11 +2507,12 @@ function PrizeChaseStackView({
 
   const stackRows = useMemo(() => {
     if (phase === 'push' && rotateIncomingIdx !== null) {
-      const current = visibleIndices.map((idx) => chasers[idx])
-      const items = [chasers[rotateIncomingIdx], ...current]
-      return items.map((row, visualIndex) => ({ row, visualIndex }))
+      const current = visibleIndices.map((idx) => ({ idx, row: chasers[idx] }))
+      const items = [{ idx: rotateIncomingIdx, row: chasers[rotateIncomingIdx] }, ...current]
+      return items.map(({ idx, row }, visualIndex) => ({ idx, row, visualIndex }))
     }
     return visibleIndices.map((idx, visualIndex) => ({
+      idx,
       row: chasers[idx],
       visualIndex,
     }))
@@ -2414,20 +2543,23 @@ function PrizeChaseStackView({
         className={phase === 'push' && !reducedMotion ? 'kiosk-activityStackPush' : undefined}
         style={{ display: 'flex', flexDirection: 'column', gap: PRIZE_CHASE_ROW_GAP, flexShrink: 0 }}
       >
-        {stackRows.map(({ row, visualIndex }) => {
+        {stackRows.map(({ idx, row, visualIndex }) => {
           const isPush = phase === 'push' && !reducedMotion
           const pushCount = stackRows.length
           const isEntering = isPush && visualIndex === 0
+          const isFirstReveal = !isPush && visualIndex === 0 && pushesDone === 0 && stackRows.length === 1
           const rowClasses = [
             isEntering ? 'kiosk-activityEnterSide' : '',
             isPush && visualIndex === pushCount - 1 && pushCount > maxVisible ? 'kiosk-activityExitBottom' : '',
           ].filter(Boolean).join(' ')
-          const rowKey = phase === 'push' && rotateIncomingIdx !== null
-            ? `${rotateIncomingIdx}-${row.participantId}-${visualIndex}`
-            : row.participantId
           return (
-            <div key={rowKey} className={rowClasses || undefined}>
-              <PrizeChaseCard row={row} reducedMotion={reducedMotion} />
+            <div key={`${idx}-${row.participantId}`} className={rowClasses || undefined}>
+              <PrizeChaseCard
+                row={row}
+                chaserIndex={idx}
+                entering={isEntering || isFirstReveal}
+                reducedMotion={reducedMotion}
+              />
             </div>
           )
         })}

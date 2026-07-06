@@ -510,14 +510,64 @@
 .kiosk-prizeChaseCard {
   display: flex;
   align-items: stretch;
-  padding: 9px 11px;
+  gap: 9px;
+  padding: 8px 10px 8px 8px;
   border-radius: 14px;
-  background: #ffffff;
-  border: 1.5px solid color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 42%, #ffffff);
-  box-shadow: 0 2px 10px rgba(46, 120, 112, 0.08);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) var(--kiosk-chase-tint, 14%), #ffffff) 0%,
+    #ffffff 100%
+  );
+  border: 1.5px solid color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 48%, #ffffff);
+  box-shadow: 0 3px 14px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 16%, transparent);
   min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+.kiosk-prizeChaseCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 30%,
+    color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 8%, transparent) 50%,
+    transparent 70%
+  );
+  pointer-events: none;
+  opacity: 0.85;
+}
+.kiosk-prizeChaseIconBadge {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  line-height: 1;
+  background: linear-gradient(
+    145deg,
+    #ffffff,
+    color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 12%, #ffffff)
+  );
+  border: 2px solid color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 55%, #ffffff);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 28%, transparent);
+}
+.kiosk-prizeChaseIconBadge--enter {
+  animation: kiosk-prizeChaseAvatarPop 0.62s cubic-bezier(0.18, 0.92, 0.22, 1.2) both;
+}
+.kiosk-prizeChaseIconBadge--hot {
+  animation: kiosk-prizeChaseIconBounce 1.6s ease-in-out infinite;
+  border-color: color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 72%, #ffffff);
+  box-shadow: 0 3px 14px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 38%, transparent);
 }
 .kiosk-prizeChaseBody {
+  position: relative;
+  z-index: 1;
   flex: 1;
   min-width: 0;
   display: flex;
@@ -528,11 +578,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
-.kiosk-prizeChaseName {
+.kiosk-prizeChaseNameRow {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow: hidden;
+}
+.kiosk-prizeChaseName {
+  flex-shrink: 1;
   min-width: 0;
   font-weight: 900;
   font-size: 14px;
@@ -545,27 +603,36 @@
 .kiosk-prizeChaseGapPill {
   flex-shrink: 0;
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 3px;
-  padding: 3px 9px;
+  padding: 3px 9px 3px 7px;
   border-radius: 999px;
-  background: #EAF7F5;
-  border: 1px solid rgba(90, 181, 173, 0.42);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 14%, #ffffff),
+    #ffffff
+  );
+  border: 1px solid color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 42%, #ffffff);
   font-size: 11px;
   font-weight: 900;
-  color: #2A7A73;
+  color: color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 88%, #2E221E);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+.kiosk-prizeChaseGapIcon {
+  font-size: 10px;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 45%, transparent));
 }
 .kiosk-prizeChaseGapPrefix {
   font-size: 10px;
   font-weight: 800;
-  color: #5AB5AD;
+  color: color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 72%, #5AB5AD);
 }
 .kiosk-prizeChaseTrack {
   height: 7px;
   border-radius: 999px;
-  background: rgba(90, 181, 173, 0.14);
+  background: color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 16%, #ffffff);
   overflow: hidden;
   direction: rtl;
 }
@@ -574,17 +641,115 @@
   border-radius: 999px;
   background: linear-gradient(
     90deg,
-    var(--kiosk-chase-accent, #5AB5AD),
-    #5AB5AD
+    color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 82%, #ffffff),
+    var(--kiosk-chase-accent, #5AB5AD)
   );
+  box-shadow: 0 0 10px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 35%, transparent);
   transition: width 0.55s ease;
 }
+.kiosk-prizeChaseCard--enter {
+  animation: kiosk-prizeChaseCardEnter 0.72s cubic-bezier(0.18, 0.92, 0.22, 1.12) both;
+}
+.kiosk-prizeChaseFill--enter {
+  animation: kiosk-prizeChaseFillGrow 0.85s cubic-bezier(0.2, 0.92, 0.24, 1.06) both;
+}
+.kiosk-prizeChaseGapPill--hot {
+  animation: kiosk-prizeChasePillHot 2.2s ease-in-out infinite;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 22%, #ffffff),
+    #ffffff
+  );
+  border-color: color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 58%, #ffffff);
+  color: color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 95%, #2E221E);
+}
 .kiosk-prizeChaseNudge {
-  font-size: 10px;
+  flex-shrink: 0;
+  display: inline-block;
+  font-size: 15px;
   font-weight: 900;
-  line-height: 1;
-  color: color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 72%, #2E221E);
-  letter-spacing: 0.2px;
+  line-height: 1.15;
+  color: color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 82%, #2E221E);
+  letter-spacing: 0.35px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform: scale(1.08);
+  transform-origin: right center;
+}
+.kiosk-prizeChaseNudge--enter {
+  animation: kiosk-prizeChaseNudgePopIn 0.9s cubic-bezier(0.16, 0.94, 0.22, 1.08) 0.1s both;
+}
+.kiosk-prizeChaseNudge--glow {
+  animation: kiosk-prizeChaseNudgeGlow 2.4s ease-in-out infinite;
+}
+.kiosk-prizeChaseNudge--hot {
+  color: var(--kiosk-chase-accent, #388882);
+  animation: kiosk-prizeChaseNudgeHot 1.8s ease-in-out infinite;
+}
+@keyframes kiosk-prizeChaseAvatarPop {
+  0% { transform: scale(0.7); opacity: 0.5; }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes kiosk-prizeChaseIconBounce {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.12) rotate(-8deg); }
+}
+@keyframes kiosk-prizeChaseCardEnter {
+  0% { box-shadow: 0 2px 10px rgba(46, 120, 112, 0.08); transform: scale(0.98); }
+  45% { box-shadow: 0 6px 22px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 38%, transparent); transform: scale(1.02); }
+  100% { box-shadow: 0 2px 10px rgba(46, 120, 112, 0.08); transform: scale(1); }
+}
+@keyframes kiosk-prizeChaseFillGrow {
+  0% { filter: brightness(1); opacity: 0.7; }
+  50% { filter: brightness(1.15); opacity: 1; }
+  100% { filter: brightness(1); opacity: 1; }
+}
+@keyframes kiosk-prizeChaseNudgePopIn {
+  0% {
+    opacity: 0;
+    transform: scale(3.8);
+    filter: blur(10px);
+    text-shadow: 0 0 36px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 70%, transparent);
+  }
+  22% {
+    opacity: 1;
+    transform: scale(2.1);
+    filter: blur(2px);
+    text-shadow: 0 0 22px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 50%, transparent);
+  }
+  38% {
+    transform: scale(1.55);
+    filter: blur(0);
+  }
+  52% {
+    transform: scale(1.18);
+  }
+  66% {
+    transform: scale(1.06);
+  }
+  80% {
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.08);
+    filter: blur(0);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 22%, transparent);
+  }
+}
+@keyframes kiosk-prizeChaseNudgeGlow {
+  0%, 100% { opacity: 0.9; text-shadow: 0 0 6px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 18%, transparent); transform: scale(1.08); }
+  50% { opacity: 1; text-shadow: 0 0 14px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 48%, transparent); transform: scale(1.12); }
+}
+@keyframes kiosk-prizeChaseNudgeHot {
+  0%, 100% { transform: scale(1.08); text-shadow: 0 0 8px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 35%, transparent); }
+  50% { transform: scale(1.16); text-shadow: 0 0 18px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 55%, transparent); }
+}
+@keyframes kiosk-prizeChasePillHot {
+  0%, 100% { box-shadow: 0 0 0 transparent; }
+  50% { box-shadow: 0 0 12px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 40%, transparent); }
 }
 
 @keyframes kiosk-activityIconSpin {
@@ -1004,6 +1169,11 @@
   .kiosk-prizeTargetReveal, .kiosk-prizeTargetGlow,
   .kiosk-missionTypeBadge--prize,
   .kiosk-prizeChaseIn,
+  .kiosk-prizeChaseCard--enter, .kiosk-prizeChaseFill--enter,
+  .kiosk-prizeChaseIconBadge--enter, .kiosk-prizeChaseIconBadge--hot,
+  .kiosk-prizeChaseNudge--enter, .kiosk-prizeChaseNudge--glow,
+  .kiosk-prizeChaseNudge--hot,
+  .kiosk-prizeChaseGapPill--hot,
   .kiosk-activityStackPush, .kiosk-activityEnterSide, .kiosk-activityExitBottom, .kiosk-activityCelebrateIn,
   .kiosk-activitySpotlightLive, .kiosk-activityCelebrateStrip, .kiosk-activityCelebrateStrip--out,
   .kiosk-activityBurstRing, .kiosk-activitySpark,
