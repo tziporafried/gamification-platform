@@ -1460,8 +1460,8 @@ function StartedNoActivityState() {
 
 const ACTIVITY_MAX_SLOTS = 10
 const ACTIVITY_ROTATE_MS = 4_200
-const ACTIVITY_ROW_EST_HEIGHT = 52
-const ACTIVITY_ROW_GAP = 7
+const ACTIVITY_ROW_EST_HEIGHT = 58
+const ACTIVITY_ROW_GAP = 10
 const ACTIVITY_ROW_STEP = ACTIVITY_ROW_EST_HEIGHT + ACTIVITY_ROW_GAP
 const ACTIVITY_SPOTLIGHT_MS = 60_000
 const ACTIVITY_CELEBRATE_MS = 3_500
@@ -2972,7 +2972,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const {
     recentActivity, rewards, topPrizes, allClaimablePrizes, prizeChaseParticipants, prizeAwardedPairs,
     configuredRewardsCount, newestRewardId,
-    stats, totalScans, actions, kioskParticipants, actionCompletionIndex, refetch,
+    stats, actions, kioskParticipants, actionCompletionIndex, refetch,
   } = data
   const hasActivity = recentActivity.length > 0
   const hasAwardedRewards = rewards.length > 0
@@ -3346,11 +3346,6 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             ) : (
               <RewardsPreGameFeed />
             )}
-          </div>
-
-          {/* Footer */}
-          <div style={{ display: gameStarted && hasActivity ? 'block' : 'none', position: 'relative', zIndex: 1, textAlign: 'center', fontSize: 13, fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>
-            🎉 {stats.totalPoints.toLocaleString('he-IL')} נקודות חולקו · {totalScans} סריקות
           </div>
         </div>
       </div>
