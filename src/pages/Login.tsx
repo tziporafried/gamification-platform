@@ -4,7 +4,6 @@ import { CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { AtmosphericBackground } from '@/components/layout/AtmosphericBackground'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
-import { FLOATING_ICONS_PAGE_IDS } from '@/lib/floatingIconsPages'
 import { GoogleIcon } from '@/components/icons/GoogleIcon'
 import { Button } from '@/components/ui/Button'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
@@ -91,7 +90,7 @@ export function Login() {
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-[var(--color-background)] atmosphere-login px-4">
       <AtmosphericBackground />
-      <FloatingIconsLayer pageId={FLOATING_ICONS_PAGE_IDS.login} />
+      <FloatingIconsLayer />
       <div className="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-surface p-6">
         <div className="mb-6 text-center">
           <Link to="/" className="inline-flex h-10 w-10 items-center justify-center rounded-xl gradient-brand text-lg font-bold text-foreground">

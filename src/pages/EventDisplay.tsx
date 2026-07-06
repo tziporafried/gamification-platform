@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { WinnersCeremony } from '@/components/leaderboard/WinnersCeremony'
+import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import type { Event } from '@/types'
 
@@ -35,6 +36,7 @@ export function EventDisplayPage() {
 
   return (
     <div className="relative min-h-screen bg-app-radial">
+      <FloatingIconsLayer />
       <WinnersCeremony
         eventId={event.id}
         eventName={event.name}

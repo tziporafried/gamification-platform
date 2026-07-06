@@ -4,7 +4,6 @@ import { Check, ChevronDown, ScanLine, Trophy, Wand2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { AtmosphericBackground } from '@/components/layout/AtmosphericBackground'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
-import { FLOATING_ICONS_PAGE_IDS } from '@/lib/floatingIconsPages'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { GoogleIcon } from '@/components/icons/GoogleIcon'
@@ -92,7 +91,7 @@ export function Landing() {
   return (
     <div className="relative min-h-screen bg-app-radial atmosphere-landing">
       <AtmosphericBackground />
-      <FloatingIconsLayer pageId={FLOATING_ICONS_PAGE_IDS.landing} />
+      <FloatingIconsLayer />
 
       <header className="sticky top-0 z-30 border-b border-border/60 bg-surface/85 backdrop-blur-[20px]">
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">

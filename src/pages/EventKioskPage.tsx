@@ -107,7 +107,16 @@ type ActivityRow = {
   createdAt: string
 }
 type RewardRow = { id: string; icon: string; title: string; recipient: string; score: number; accent: string }
-type TopPrizeRow = { id: string; name: string; icon: string; requiredPoints: number; accent: string }
+type TopPrizeRow = { id: string; name: string; icon: string; requiredPoints: number; accent: string; groupIds: string[] }
+type PrizeChaseParticipant = { id: string; name: string; groupIds: string[]; totalPoints: number }
+type PrizeChaseRow = {
+  participantId: string
+  name: string
+  initial: string
+  totalPoints: number
+  gap: number
+  progressPct: number
+}
 type KioskGroup = { id: string; name: string; color: string }
 type KioskAction = {
   id: string
@@ -136,6 +145,9 @@ interface KioskData {
   recentActivity: ActivityRow[]
   rewards: RewardRow[]
   topPrizes: TopPrizeRow[]
+  allClaimablePrizes: TopPrizeRow[]
+  prizeChaseParticipants: PrizeChaseParticipant[]
+  prizeAwardedPairs: { participant_id: string; reward_id: string }[]
   configuredRewardsCount: number
   newestRewardId: string | null
   actions: KioskAction[]
@@ -157,6 +169,113 @@ function rewardTier(pts: number): { icon: string; accent: string } {
   if (pts >= 500) return { icon: '🎖️', accent: '#4FA6A0' }
   return { icon: '🏆', accent: '#FF8A4D' }
 }
+
+type ClaimableRewardDef = {
+  id: string
+  name: string
+  required_points: number
+  groupIds: string[]
+}
+
+function isParticipantEligibleForReward(
+  participant: { groupIds: string[] },
+  rewardGroupIds: string[],
+): boolean {
+  if (rewardGroupIds.length === 0) return true
+  return participant.groupIds.some((gid) => rewardGroupIds.includes(gid))
+}
+
+/** Next active rewards someone can still earn — skips tiers fully claimed by all eligible players. */
+function pickNextClaimableTopPrizes(
+  rewards: ClaimableRewardDef[],
+  participants: { id: string; groupIds: string[] }[],
+  awardedPairs: { participant_id: string; reward_id: string }[],
+  limit = 3,
+): TopPrizeRow[] {
+  const awarded = new Set(awardedPairs.map((p) => `${p.participant_id}:${p.reward_id}`))
+  const sorted = [...rewards].sort((a, b) => a.required_points - b.required_points)
+  const result: TopPrizeRow[] = []
+
+  for (const reward of sorted) {
+    const eligible = participants.filter((p) => isParticipantEligibleForReward(p, reward.groupIds))
+    if (eligible.length === 0) {
+      // No eligible players yet — still show as an upcoming prize.
+      if (participants.length === 0) {
+        const pts = reward.required_points
+        const { icon, accent } = rewardTier(pts)
+        result.push({ id: reward.id, name: reward.name, icon, requiredPoints: pts, accent, groupIds: reward.groupIds })
+        if (result.length >= limit) break
+      }
+      continue
+    }
+
+    const someoneCanStillWin = eligible.some((p) => !awarded.has(`${p.id}:${reward.id}`))
+    if (!someoneCanStillWin) continue
+
+    const pts = reward.required_points
+    const { icon, accent } = rewardTier(pts)
+    result.push({ id: reward.id, name: reward.name, icon, requiredPoints: pts, accent, groupIds: reward.groupIds })
+    if (result.length >= limit) break
+  }
+
+  return result
+}
+
+/** Each participant is assigned to exactly one prize — the lowest tier they still pursue. */
+function buildParticipantChaseAssignments(
+  prizes: TopPrizeRow[],
+  participants: PrizeChaseParticipant[],
+  awardedPairs: { participant_id: string; reward_id: string }[],
+): Map<string, string> {
+  const awarded = new Set(awardedPairs.map((p) => `${p.participant_id}:${p.reward_id}`))
+  const sorted = [...prizes].sort((a, b) => a.requiredPoints - b.requiredPoints)
+  const assignments = new Map<string, string>()
+
+  for (const participant of participants) {
+    for (const prize of sorted) {
+      if (!isParticipantEligibleForReward(participant, prize.groupIds)) continue
+      if (awarded.has(`${participant.id}:${prize.id}`)) continue
+      assignments.set(participant.id, prize.id)
+      break
+    }
+  }
+
+  return assignments
+}
+
+function getChaseParticipantsForPrize(
+  prize: TopPrizeRow,
+  participants: PrizeChaseParticipant[],
+  chaseAssignments: Map<string, string>,
+): PrizeChaseRow[] {
+  return participants
+    .filter((p) => chaseAssignments.get(p.id) === prize.id)
+    .map((p) => {
+      const gap = Math.max(0, prize.requiredPoints - p.totalPoints)
+      const progressPct = prize.requiredPoints > 0
+        ? Math.min(100, Math.round((p.totalPoints / prize.requiredPoints) * 100))
+        : 0
+      return {
+        participantId: p.id,
+        name: p.name,
+        initial: p.name.charAt(0) || '?',
+        totalPoints: p.totalPoints,
+        gap,
+        progressPct,
+      }
+    })
+    .sort((a, b) => {
+      if (a.gap !== b.gap) return a.gap - b.gap
+      return b.totalPoints - a.totalPoints
+    })
+}
+
+const PRIZE_CHASE_ROTATE_MS = 4_200
+const PRIZE_CHASE_MAX_VISIBLE = 3
+const PRIZE_CHASE_MAX_CANDIDATES = 20
+const PRIZE_CHASE_ROW_GAP = 4
+const PRIZE_CHASE_ROW_STEP = 58
+const PRIZE_CHASE_ACCENT = '#5AB5AD'
 
 // ─── Hooks & utilities ────────────────────────────────────────────────────────
 
@@ -243,6 +362,9 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
   const [actionCompletionIndex, setActionCompletionIndex] = useState<ActionCompletionIndex>({})
   const [rewardsData, setRewardsData] = useState<RewardRow[]>([])
   const [topPrizesData, setTopPrizesData] = useState<TopPrizeRow[]>([])
+  const [allClaimablePrizesData, setAllClaimablePrizesData] = useState<TopPrizeRow[]>([])
+  const [prizeChaseParticipants, setPrizeChaseParticipants] = useState<PrizeChaseParticipant[]>([])
+  const [prizeAwardedPairs, setPrizeAwardedPairs] = useState<{ participant_id: string; reward_id: string }[]>([])
   const [configuredRewardsCount, setConfiguredRewardsCount] = useState(0)
   const [newestRewardId, setNewestRewardId] = useState<string | null>(null)
   const newestClearTimer = useRef<ReturnType<typeof setTimeout>>()
@@ -252,7 +374,7 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
   const fetchAll = useCallback(async () => {
     if (!eventId) return
     try {
-      const [gRes, pRes, txRes, countRes, pointsRes, actRes, partRes, completionRes, rwRes, tpRes, configuredRwRes] = await Promise.all([
+      const [gRes, pRes, txRes, countRes, pointsRes, actRes, partRes, completionRes, rwRes, activeRewardsRes, configuredRwRes] = await Promise.all([
         supabase.rpc('get_group_leaderboard', { p_event_id: eventId }),
         supabase.rpc('get_participant_leaderboard', { p_event_id: eventId }),
         supabase
@@ -277,7 +399,7 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
           .order('name'),
         supabase
           .from('participants')
-          .select('id, participant_groups(group_id)')
+          .select('id, name, participant_groups(group_id)')
           .eq('event_id', eventId),
         supabase
           .from('point_transactions')
@@ -286,17 +408,15 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
         supabase
           .from('participant_rewards')
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .select('id, awarded_at, reward:rewards(name, required_points), participant:participants(name)' as any)
+          .select('id, participant_id, reward_id, awarded_at, reward:rewards(name, required_points), participant:participants(name)' as any)
           .eq('event_id', eventId)
-          .order('awarded_at', { ascending: false })
-          .limit(5),
+          .order('awarded_at', { ascending: false }),
         supabase
           .from('rewards')
-          .select('id, name, required_points')
+          .select('id, name, required_points, reward_groups(group_id)')
           .eq('event_id', eventId)
           .eq('is_active', true)
-          .order('required_points', { ascending: false })
-          .limit(3),
+          .order('required_points', { ascending: true }),
         supabase
           .from('rewards')
           .select('*', { count: 'exact', head: true })
@@ -350,9 +470,42 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
         setActionCompletionIndex(buildActionCompletionIndex(completionRes.data))
       }
 
+      const participantsForPrizes = (partRes.data ?? []).map((p) => {
+        const joins = (p.participant_groups as unknown as { group_id: string }[]) ?? []
+        return {
+          id: p.id as string,
+          groupIds: joins.map((join) => join.group_id).filter(Boolean),
+        }
+      })
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const allAwardRows = (rwRes.data ?? []) as any[]
+      const awardedPairs = allAwardRows.map((r) => ({
+        participant_id: r.participant_id as string,
+        reward_id: r.reward_id as string,
+      }))
+      setPrizeAwardedPairs(awardedPairs)
+
+      const pointsByParticipant = new Map<string, number>()
+      if (pRes.data) {
+        for (const row of pRes.data as ParticipantLeaderboardEntry[]) {
+          pointsByParticipant.set(row.participant_id, row.total_points)
+        }
+      }
+      if (partRes.data) {
+        setPrizeChaseParticipants(partRes.data.map((p) => {
+          const joins = (p.participant_groups as unknown as { group_id: string }[]) ?? []
+          return {
+            id: p.id as string,
+            name: (p.name as string) || '---',
+            groupIds: joins.map((join) => join.group_id).filter(Boolean),
+            totalPoints: pointsByParticipant.get(p.id as string) ?? 0,
+          }
+        }))
+      }
+
       if (rwRes.data) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setRewardsData((rwRes.data as any[]).map(r => {
+        setRewardsData(allAwardRows.slice(0, 5).map(r => {
           const reward = Array.isArray(r.reward) ? r.reward[0] : r.reward
           const participant = Array.isArray(r.participant) ? r.participant[0] : r.participant
           const pts: number = reward?.required_points ?? 0
@@ -361,12 +514,19 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
         }))
       }
 
-      if (tpRes.data) {
-        setTopPrizesData(tpRes.data.map(r => {
-          const pts: number = r.required_points ?? 0
-          const { icon, accent } = rewardTier(pts)
-          return { id: r.id, name: r.name, icon, requiredPoints: pts, accent }
-        }))
+      if (activeRewardsRes.data) {
+        const claimableRewards: ClaimableRewardDef[] = activeRewardsRes.data.map((r) => {
+          const joins = (r.reward_groups as unknown as { group_id: string }[]) ?? []
+          return {
+            id: r.id,
+            name: r.name,
+            required_points: r.required_points,
+            groupIds: joins.map((join) => join.group_id).filter(Boolean),
+          }
+        })
+        const allClaimable = pickNextClaimableTopPrizes(claimableRewards, participantsForPrizes, awardedPairs, 100)
+        setAllClaimablePrizesData(allClaimable)
+        setTopPrizesData(allClaimable.slice(0, 3))
       }
       setConfiguredRewardsCount(configuredRwRes.count ?? 0)
     } catch {
@@ -412,25 +572,10 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
         { event: 'INSERT', schema: 'public', table: 'participant_rewards', filter: `event_id=eq.${eventId}` },
         async (payload) => {
           const id: string = (payload.new as { id: string }).id
-          // Fetch joined data for the new row
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data } = await supabase
-            .from('participant_rewards')
-            .select('id, awarded_at, reward:rewards(name, required_points), participant:participants(name)' as any)
-            .eq('id', id)
-            .single()
-          if (!data) return
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const r = data as any
-          const reward = Array.isArray(r.reward) ? r.reward[0] : r.reward
-          const participant = Array.isArray(r.participant) ? r.participant[0] : r.participant
-          const pts: number = reward?.required_points ?? 0
-          const { icon, accent } = rewardTier(pts)
-          const newRow: RewardRow = { id: r.id, icon, title: reward?.name ?? '---', recipient: participant?.name ?? '---', score: pts, accent }
-          setRewardsData(prev => [newRow, ...prev].slice(0, 5))
           clearTimeout(newestClearTimer.current)
-          setNewestRewardId(newRow.id)
+          setNewestRewardId(id)
           newestClearTimer.current = setTimeout(() => setNewestRewardId(null), 2200)
+          fetchAll()
         }
       )
       .subscribe()
@@ -492,7 +637,11 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
 
   return {
     rankedGroups, topPlayers, recentActivity, rewards: rewardsData,
-    topPrizes: topPrizesData, configuredRewardsCount, newestRewardId,
+    topPrizes: topPrizesData,
+    allClaimablePrizes: allClaimablePrizesData,
+    prizeChaseParticipants,
+    prizeAwardedPairs,
+    configuredRewardsCount, newestRewardId,
     actions: actionsData,
     kioskParticipants,
     actionCompletionIndex,
@@ -953,7 +1102,7 @@ function GlowingStarsOrange() {
 
 function GlowingStarsTeal() {
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
       <div className="kiosk-twinkle kiosk-floatY-4" style={{ position: 'absolute', top: 70, left: 20, fontSize: 18, filter: 'drop-shadow(0 0 7px rgba(255,255,255,0.95))' }}>✨</div>
       <div className="kiosk-twinkle kiosk-floatY-2" style={{ position: 'absolute', top: 150, right: 16, fontSize: 14, filter: 'drop-shadow(0 0 7px rgba(255,246,214,0.95))' }}>⭐</div>
       <div className="kiosk-twinkle" style={{ position: 'absolute', top: 250, left: 14, width: 7, height: 7, borderRadius: '50%', background: '#fff', boxShadow: '0 0 10px 2px rgba(255,255,255,0.9)' }} />
@@ -964,108 +1113,66 @@ function GlowingStarsTeal() {
   )
 }
 
-function LivePill() {
-  return (
-    <span className="kiosk-tickTap" style={{
-      background: 'linear-gradient(135deg,#FF9366,#F2B33C)', color: '#fff',
-      fontWeight: 900, fontSize: 12, padding: '5px 14px', borderRadius: 999,
-      boxShadow: '0 4px 12px rgba(0,0,0,0.16)', display: 'inline-block',
-    }}>לייב</span>
-  )
-}
-
-function TopPrizes({ prizes }: { prizes: TopPrizeRow[] }) {
-  if (prizes.length === 0) return null
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '1.5px', color: 'rgba(255,255,255,0.85)' }}>✦ הפרסים הגדולים</div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        {prizes.map((p, i) => {
-          const isTop = i === 0
-          return (
-            <div key={p.id} style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-              padding: '10px 6px', borderRadius: 14, textAlign: 'center',
-              background: isTop ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.15)',
-              border: isTop ? '2px solid #F2B33C' : '1.5px solid rgba(255,255,255,0.25)',
-              boxShadow: isTop ? '0 4px 14px rgba(242,179,60,0.25)' : 'none',
-            }}>
-              <span style={{ fontSize: isTop ? 28 : 22 }}>{p.icon}</span>
-              <span style={{ fontSize: 12, fontWeight: 900, color: '#FFFFFF', lineHeight: 1.2 }}>{p.name}</span>
-              <span style={{ fontSize: 13, fontWeight: 900, color: isTop ? '#F2B33C' : 'rgba(255,255,255,0.9)' }}>
-                {p.requiredPoints.toLocaleString('he-IL')} נק׳
-              </span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 function AwardedRewardsFeed({ rewards, newestId }: { rewards: RewardRow[]; newestId: string | null }) {
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* Section label */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <span className="kiosk-blink" style={{ width: 8, height: 8, borderRadius: '50%', background: '#F2B33C', display: 'inline-block', flexShrink: 0 }} />
-        <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: '1px', color: 'rgba(255,255,255,0.9)' }}>זכו זה עתה 🎉</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span className="kiosk-blink" style={{ width: 9, height: 9, borderRadius: '50%', background: '#FFFFFF', display: 'inline-block', flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: '1.5px', color: '#FFFFFF' }}>זכו זה עתה 🎉</span>
       </div>
 
-      {/* Rows */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
         {rewards.map((r, i) => {
           const isNew = r.id === newestId
           return (
             <div
               key={r.id}
-              className={isNew ? 'kiosk-rewardIn kiosk-goldPulse' : 'kiosk-fadeUp'}
+              className={[
+                'kiosk-activityRow',
+                isNew ? 'kiosk-rewardIn kiosk-goldPulse' : 'kiosk-fadeUp',
+              ].filter(Boolean).join(' ')}
               style={{
-                position: 'relative', overflow: 'hidden',
-                display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px',
-                borderRadius: 14, background: 'rgba(255,255,255,0.18)',
-                backdropFilter: 'blur(4px)',
-                border: isNew ? '1.5px solid rgba(242,179,60,0.6)' : '1px solid rgba(255,255,255,0.28)',
+                position: 'relative',
+                overflow: 'hidden',
                 animationDelay: isNew ? '0s' : `${0.05 + i * 0.07}s`,
-              }}
+                ['--kiosk-row-accent' as string]: '#F2B33C',
+              } as React.CSSProperties}
             >
-              {/* Shimmer sweep — only on newest row, one-shot */}
               {isNew && (
-                <div style={{
-                  position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden',
-                }}>
+                <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
                   <div className="kiosk-shimmerSweep" style={{
                     position: 'absolute', top: 0, bottom: 0, width: '40%',
-                    background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.45),transparent)',
+                    background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent)',
                     animationIterationCount: 1,
                   }} />
                 </div>
               )}
 
-              {/* Icon in gold disc */}
-              <div style={{
-                width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-                background: 'linear-gradient(135deg,#F2B33C,#E09A1F)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20, boxShadow: '0 3px 10px rgba(242,179,60,0.4)',
-              }}>
-                {r.icon}
-              </div>
-
-              {/* Title + recipient */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 900, fontSize: 15, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.78)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.recipient}</div>
-              </div>
-
-              {/* Points pill */}
-              <div style={{
-                flexShrink: 0, padding: '4px 10px', borderRadius: 999,
-                background: 'linear-gradient(135deg,#F2B33C,#C8890B)',
-                color: '#fff', fontWeight: 900, fontSize: 13,
-                boxShadow: '0 2px 8px rgba(242,179,60,0.35)',
-              }}>
-                {r.score.toLocaleString('he-IL')} נק׳
+              <div className="kiosk-activityRowContent">
+                <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>{r.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }} className="kiosk-activityRowText">
+                  <div className="kiosk-activityRowTitle" style={{ fontWeight: 900, fontSize: 13, color: '#2E221E' }}>
+                    {r.title}
+                  </div>
+                  <div className="kiosk-activityRowSubtitle">
+                    <span className="kiosk-activityRowName">{r.recipient}</span>
+                  </div>
+                </div>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0,
+                  background: 'linear-gradient(145deg,#FFFFFF,#FFF4E0)',
+                  border: '1.5px solid rgba(242,179,60,0.75)', borderRadius: 999,
+                  padding: '2px 6px 2px 4px',
+                }}>
+                  <span style={{ fontSize: 9, lineHeight: 1, filter: 'drop-shadow(0 0 4px rgba(242,179,60,0.5))' }}>⭐</span>
+                  <span style={{
+                    display: 'inline-flex', direction: 'ltr', alignItems: 'baseline',
+                    fontSize: 12, fontWeight: 900, color: '#C8941A', lineHeight: 1,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {r.score.toLocaleString('he-IL')}
+                  </span>
+                </div>
               </div>
             </div>
           )
@@ -1133,20 +1240,20 @@ function MissionPreGamePanel() {
 function RewardsPreGameFeed() {
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{
-        borderRadius: 18,
-        background: 'rgba(255,255,255,0.18)',
-        border: '1px solid rgba(255,255,255,0.28)',
-        padding: '18px 16px',
+      <div className="kiosk-fadeUp kiosk-cardBreathe" style={{
+        position: 'relative', borderRadius: 22, padding: 22,
+        background: '#FFFFFF', boxShadow: '0 10px 24px rgba(120,50,10,0.18)',
+        color: '#2E221E', border: '1.5px solid #FFD8BC', overflow: 'hidden',
         textAlign: 'center',
-        color: '#FFFFFF',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.16)',
       }}>
-        <div style={{ fontSize: 32, lineHeight: 1 }}>🎉</div>
-        <div style={{ marginTop: 8, fontSize: 17, fontWeight: 900, lineHeight: 1.3 }}>
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+          <div className="kiosk-shimmerSweep" style={{ position: 'absolute', top: 0, bottom: 0, width: '42%', background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.58),transparent)' }} />
+        </div>
+        <div className="kiosk-bob" style={{ fontSize: 32, lineHeight: 1, position: 'relative' }}>🎉</div>
+        <div style={{ marginTop: 8, fontSize: 17, fontWeight: 900, lineHeight: 1.3, position: 'relative' }}>
           עדיין לא חולקו פרסים
         </div>
-        <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800, color: 'rgba(255,255,255,0.82)' }}>
+        <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800, color: '#7D706A', position: 'relative' }}>
           היו הראשונים לזכות!
         </div>
       </div>
@@ -1158,20 +1265,17 @@ function RewardsPreGameFeed() {
 function RewardsStartedEmptyFeed() {
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{
-        borderRadius: 18,
-        background: 'rgba(255,255,255,0.2)',
-        border: '1px solid rgba(255,255,255,0.32)',
-        padding: '18px 16px',
+      <div className="kiosk-fadeUp" style={{
+        borderRadius: 22, padding: 22,
+        background: '#FFFFFF', boxShadow: '0 10px 24px rgba(120,50,10,0.18)',
+        color: '#2E221E', border: '1.5px solid #FFD8BC',
         textAlign: 'center',
-        color: '#FFFFFF',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
       }}>
-        <div style={{ fontSize: 32, lineHeight: 1 }}>🏆</div>
+        <div className="kiosk-bob" style={{ fontSize: 32, lineHeight: 1 }}>🏆</div>
         <div style={{ marginTop: 8, fontSize: 17, fontWeight: 900, lineHeight: 1.3 }}>
           עוד רגע נראה כאן זוכים
         </div>
-        <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800, color: 'rgba(255,255,255,0.84)', lineHeight: 1.35 }}>
+        <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800, color: '#7D706A', lineHeight: 1.35 }}>
           כל משימה שתושלם מקרבת את המשתתפים לפרס הבא.
         </div>
       </div>
@@ -1183,23 +1287,20 @@ function RewardsStartedEmptyFeed() {
 function RewardsActiveNoAwardsFeed() {
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{
-        borderRadius: 18,
-        background: 'rgba(255,255,255,0.2)',
-        border: '1px solid rgba(255,255,255,0.32)',
-        padding: '18px 16px',
+      <div className="kiosk-fadeUp" style={{
+        borderRadius: 22, padding: 22,
+        background: '#FFFFFF', boxShadow: '0 10px 24px rgba(120,50,10,0.18)',
+        color: '#2E221E', border: '1.5px solid #FFD8BC',
         textAlign: 'center',
-        color: '#FFFFFF',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
       }}>
-        <div style={{ fontSize: 32, lineHeight: 1 }}>🏁</div>
+        <div className="kiosk-bob" style={{ fontSize: 32, lineHeight: 1 }}>🏁</div>
         <div style={{ marginTop: 8, fontSize: 17, fontWeight: 900, lineHeight: 1.3 }}>
           המרוץ לפרסים כבר התחיל
         </div>
-        <div style={{ marginTop: 5, fontSize: 14, fontWeight: 800, color: 'rgba(255,255,255,0.86)', lineHeight: 1.35 }}>
+        <div style={{ marginTop: 5, fontSize: 14, fontWeight: 800, color: '#7D706A', lineHeight: 1.35 }}>
           המשתתפים כבר צוברים נקודות. עוד קצת, והפרס הראשון ייפתח!
         </div>
-        <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.76)', lineHeight: 1.35 }}>
+        <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: '#9A8E88', lineHeight: 1.35 }}>
           ברגע שמישהו יגיע ליעד הניקוד, הזכייה תופיע כאן בזמן אמת.
         </div>
       </div>
@@ -1212,20 +1313,16 @@ function RewardsNotConfiguredState({ onCreate }: { onCreate: () => void }) {
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div className="kiosk-fadeUp kiosk-cardBreathe" style={{
-        borderRadius: 18,
-        background: 'rgba(255,255,255,0.2)',
-        border: '1px solid rgba(255,255,255,0.32)',
-        padding: '18px 16px',
-        textAlign: 'center',
-        color: '#FFFFFF',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
-        overflow: 'hidden',
+        borderRadius: 22, padding: 22,
+        background: '#FFFFFF', boxShadow: '0 10px 24px rgba(120,50,10,0.18)',
+        color: '#2E221E', border: '1.5px solid #FFD8BC',
+        textAlign: 'center', overflow: 'hidden',
       }}>
         <div className="kiosk-bob" style={{ fontSize: 34, lineHeight: 1 }}>🎁</div>
         <div style={{ marginTop: 9, fontSize: 17, fontWeight: 900, lineHeight: 1.3 }}>
           הפרס הראשון מתחיל כאן
         </div>
-        <div style={{ marginTop: 6, fontSize: 14, fontWeight: 800, color: 'rgba(255,255,255,0.86)', lineHeight: 1.42 }}>
+        <div style={{ marginTop: 6, fontSize: 14, fontWeight: 800, color: '#7D706A', lineHeight: 1.42 }}>
           צרו את הפרס הראשון והפכו כל נקודה לרגע של התרגשות.
         </div>
         <button
@@ -1234,13 +1331,13 @@ function RewardsNotConfiguredState({ onCreate }: { onCreate: () => void }) {
             marginTop: 14,
             border: 'none',
             borderRadius: 999,
-            background: 'linear-gradient(135deg,#F2B33C,#FF9366)',
+            background: 'linear-gradient(135deg,#FF9366,#F2B33C)',
             color: '#FFFFFF',
             cursor: 'pointer',
             fontSize: 14,
             fontWeight: 900,
             padding: '10px 18px',
-            boxShadow: '0 6px 16px rgba(242,179,60,0.28)',
+            boxShadow: '0 6px 16px rgba(255,147,102,0.35)',
           }}
         >
           יצירת הפרס הראשון
@@ -1780,7 +1877,10 @@ function ActivityView({
 
 
 const MISSION_ROTATE_MS = 15_000
+/** Stagger prize card swaps so they never align with mission rotation. */
+const PRIZE_ROTATE_OFFSET_MS = 7_500
 const MISSION_POINTS_DELAY_MS = 400
+const PRIZE_POINTS_DELAY_MS = 550
 
 function FloatingPointsBadge({
   action,
@@ -1968,6 +2068,581 @@ function RecommendedMissionSwap({
           <FloatingPointsBadge action={displayed} reducedMotion={reducedMotion} swapPhase={pointsPhase} />
         </div>
       )}
+    </div>
+  )
+}
+
+
+function PrizePointsBadge({
+  prize,
+  reducedMotion,
+  swapPhase,
+}: {
+  prize: TopPrizeRow | null
+  reducedMotion: boolean
+  swapPhase: 'idle' | 'out' | 'in'
+}) {
+  const [showPoints, setShowPoints] = useState(reducedMotion)
+  const prizeId = prize?.id ?? null
+
+  useEffect(() => {
+    if (reducedMotion) {
+      setShowPoints(true)
+      return
+    }
+    if (swapPhase !== 'idle') {
+      setShowPoints(false)
+      return
+    }
+    setShowPoints(false)
+    const t = window.setTimeout(() => setShowPoints(true), PRIZE_POINTS_DELAY_MS)
+    return () => window.clearTimeout(t)
+  }, [prizeId, reducedMotion, swapPhase])
+
+  if (!showPoints || !prize) {
+    return <div style={{ marginTop: 10, minHeight: 48 }} aria-hidden />
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        width: '100%',
+        display: 'flex',
+        justifyContent: 'center',
+      }}
+    >
+      <div
+        key={prizeId ?? 'none'}
+        className={reducedMotion ? undefined : 'kiosk-prizeTargetReveal'}
+        style={{
+          width: '100%',
+          maxWidth: 200,
+          padding: '8px 14px',
+          borderRadius: 14,
+          textAlign: 'center',
+          background: 'linear-gradient(165deg, #EAF7F5 0%, #FFFFFF 55%)',
+          border: '2px solid rgba(90,181,173,0.5)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 12px rgba(46,120,112,0.12)',
+        }}
+      >
+        <div
+          className={reducedMotion ? undefined : 'kiosk-prizeTargetGlow'}
+          style={{
+            display: 'inline-flex',
+            direction: 'ltr',
+            alignItems: 'baseline',
+            justifyContent: 'center',
+            gap: 4,
+            fontVariantNumeric: 'tabular-nums',
+            lineHeight: 1,
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 900, color: '#5AB5AD' }}>נק׳</span>
+          <span style={{ fontSize: 24, fontWeight: 900, color: '#2A7A73' }}>
+            {prize.requiredPoints.toLocaleString('he-IL')}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+function TopPrizeCard({
+  prize, reducedMotion = false, entering = false, swapRole, swapPhase = 'idle',
+}: {
+  prize: TopPrizeRow | null
+  reducedMotion?: boolean
+  entering?: boolean
+  swapRole?: 'in' | 'out'
+  swapPhase?: 'idle' | 'out' | 'in'
+}) {
+  return (
+    <div
+      className={[
+        'kiosk-missionCard',
+        swapRole === 'out' ? 'kiosk-missionCard--swapOut' : '',
+        swapRole === 'in' ? 'kiosk-missionCard--swapIn' : '',
+      ].filter(Boolean).join(' ')}
+      style={{
+        position: 'relative', zIndex: 1, borderRadius: 20,
+        boxSizing: 'border-box', width: '100%',
+        padding: '40px 16px 14px',
+        background: '#FFFFFF', boxShadow: '0 8px 20px rgba(46,120,112,0.2)',
+        overflow: 'visible', color: '#2E221E',
+        border: '2px solid rgba(90,181,173,0.55)',
+      }}
+    >
+      {prize && swapRole !== 'out' && (
+        <div className="kiosk-missionTypeBadgeAnchor" aria-hidden>
+          <div
+            key={prize.id}
+            className={[
+              'kiosk-missionTypeBadge',
+              'kiosk-missionTypeBadge--prize',
+              entering && !reducedMotion ? 'kiosk-missionTypeBadge--enter' : '',
+            ].filter(Boolean).join(' ')}
+          >
+            פרס הבא
+          </div>
+        </div>
+      )}
+      <div style={{ position: 'absolute', top: -24, left: -18, width: 96, height: 96, borderRadius: '50%', background: 'rgba(90,181,173,0.12)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: 20, pointerEvents: 'none' }}>
+        <div className="kiosk-shimmerSweep" style={{ position: 'absolute', top: 0, bottom: 0, width: '40%', background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent)' }} />
+      </div>
+
+      {prize && (
+        <div
+          className="kiosk-floatY-2"
+          style={{
+            position: 'absolute', top: -20, left: -18, zIndex: 30,
+            width: 62, height: 62,
+          }}
+        >
+          <div
+            className="kiosk-pulseGlow"
+            style={{
+              position: 'absolute', inset: -5, borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(90,181,173,0.45) 0%, transparent 70%)',
+              pointerEvents: 'none',
+            }}
+          />
+          <div
+            className={entering ? 'kiosk-missionSwapIconPop' : 'kiosk-fireFlicker'}
+            style={{
+              position: 'relative',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '100%', height: '100%',
+              background: 'linear-gradient(145deg,#FFFFFF,#E8F7F5)',
+              borderRadius: '50%',
+              fontSize: 44, lineHeight: 1,
+              border: '2.5px solid rgba(56,136,130,0.75)',
+              boxShadow: '0 8px 20px rgba(46,120,112,0.24), 0 0 0 4px rgba(255,255,255,0.9), 0 0 16px rgba(90,181,173,0.28)',
+            }}
+          >
+            <span aria-hidden>{prize.icon}</span>
+          </div>
+        </div>
+      )}
+
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+        <div style={{ marginTop: 4, maxWidth: '100%' }}>
+          <div
+            className={
+              reducedMotion
+                ? undefined
+                : entering
+                  ? 'kiosk-missionSwapTitleIn'
+                  : 'kiosk-missionNameFlash'
+            }
+            style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.15 }}
+          >
+            {prize?.name ?? '---'}
+          </div>
+        </div>
+        <PrizePointsBadge prize={prize} reducedMotion={reducedMotion} swapPhase={swapPhase} />
+      </div>
+    </div>
+  )
+}
+
+
+function PrizeChaseCard({ row }: { row: PrizeChaseRow; reducedMotion: boolean }) {
+  const gapLabel = row.gap === 0
+    ? 'מוכן לזכייה!'
+    : `${row.gap.toLocaleString('he-IL')} נק׳`
+
+  return (
+    <div
+      className="kiosk-prizeChaseCard kiosk-fadeUp"
+      style={{ ['--kiosk-chase-accent' as string]: PRIZE_CHASE_ACCENT }}
+    >
+      <div className="kiosk-prizeChaseBody">
+        <div className="kiosk-prizeChaseHeader">
+          <span className="kiosk-prizeChaseName" title={row.name}>{row.name}</span>
+          <span className="kiosk-prizeChaseGapPill">
+            {row.gap > 0 && <span className="kiosk-prizeChaseGapPrefix">עוד</span>}
+            {gapLabel}
+          </span>
+        </div>
+        <div className="kiosk-prizeChaseTrack">
+          <div
+            className="kiosk-prizeChaseFill"
+            style={{ width: `${Math.max(row.progressPct, row.progressPct > 0 ? 6 : 0)}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+function PrizeChaseStackView({
+  chasers,
+  gameStarted,
+  reducedMotion,
+  onCycleComplete,
+}: {
+  chasers: PrizeChaseRow[]
+  gameStarted: boolean
+  reducedMotion: boolean
+  onCycleComplete?: () => void
+}) {
+  const chaserIds = chasers.map((c) => c.participantId).join(',')
+  const maxVisible = PRIZE_CHASE_MAX_VISIBLE
+  const pushesNeeded = Math.max(0, chasers.length - 1)
+  const [visibleIndices, setVisibleIndices] = useState<number[]>([])
+  const [phase, setPhase] = useState<'idle' | 'push'>('idle')
+  const [rotateIncomingIdx, setRotateIncomingIdx] = useState<number | null>(null)
+  const [pushesDone, setPushesDone] = useState(0)
+  const cycleCompleteRef = useRef(false)
+  const cycleCompleteTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const onCycleCompleteRef = useRef(onCycleComplete)
+  onCycleCompleteRef.current = onCycleComplete
+
+  const markCycleComplete = useCallback((dwellMs: number) => {
+    if (cycleCompleteRef.current) return
+    cycleCompleteRef.current = true
+    if (cycleCompleteTimerRef.current !== undefined) {
+      window.clearTimeout(cycleCompleteTimerRef.current)
+    }
+    cycleCompleteTimerRef.current = setTimeout(() => {
+      cycleCompleteTimerRef.current = undefined
+      onCycleCompleteRef.current?.()
+    }, dwellMs) as ReturnType<typeof setTimeout>
+  }, [])
+
+  useEffect(() => {
+    if (reducedMotion && chasers.length > 0) {
+      setVisibleIndices(Array.from({ length: Math.min(maxVisible, chasers.length) }, (_, i) => i))
+    } else {
+      setVisibleIndices(chasers.length > 0 ? [0] : [])
+    }
+    setPhase('idle')
+    setRotateIncomingIdx(null)
+    setPushesDone(0)
+    cycleCompleteRef.current = false
+    if (cycleCompleteTimerRef.current !== undefined) {
+      window.clearTimeout(cycleCompleteTimerRef.current)
+      cycleCompleteTimerRef.current = undefined
+    }
+  }, [chaserIds, chasers.length, maxVisible, reducedMotion])
+
+  useEffect(() => {
+    if (!gameStarted || chasers.length === 0 || cycleCompleteRef.current) return
+    if (reducedMotion || chasers.length === 1) {
+      markCycleComplete(reducedMotion ? 0 : PRIZE_CHASE_ROTATE_MS)
+    }
+  }, [gameStarted, chasers.length, chaserIds, reducedMotion, markCycleComplete])
+
+  useEffect(() => {
+    if (!gameStarted || chasers.length <= 1 || reducedMotion || phase === 'push') return
+    if (pushesDone >= pushesNeeded || cycleCompleteRef.current) return
+    const t = window.setInterval(() => {
+      setVisibleIndices((prev) => {
+        if (prev.length === 0) return prev
+        const bottomIdx = prev[prev.length - 1]
+        const incomingIdx = bottomIdx + 1
+        if (incomingIdx >= chasers.length) return prev
+        setRotateIncomingIdx(incomingIdx)
+        setPhase('push')
+        return prev
+      })
+    }, PRIZE_CHASE_ROTATE_MS)
+    return () => window.clearInterval(t)
+  }, [gameStarted, chasers.length, reducedMotion, phase, chaserIds, pushesDone, pushesNeeded])
+
+  useEffect(() => {
+    if (phase !== 'push') return
+    const t = window.setTimeout(() => {
+      if (rotateIncomingIdx !== null) {
+        setVisibleIndices((prev) => {
+          const next = [rotateIncomingIdx, ...prev]
+          return next.length > maxVisible ? next.slice(0, maxVisible) : next
+        })
+        setRotateIncomingIdx(null)
+        setPushesDone((prev) => prev + 1)
+      }
+      setPhase('idle')
+    }, reducedMotion ? 0 : 720)
+    return () => window.clearTimeout(t)
+  }, [phase, rotateIncomingIdx, maxVisible, reducedMotion])
+
+  useEffect(() => {
+    if (!gameStarted || chasers.length <= 1 || cycleCompleteRef.current || reducedMotion) return
+    if (pushesDone >= pushesNeeded) {
+      markCycleComplete(PRIZE_CHASE_ROTATE_MS)
+    }
+  }, [pushesDone, pushesNeeded, chasers.length, gameStarted, reducedMotion, markCycleComplete, chaserIds])
+
+  const stackRows = useMemo(() => {
+    if (phase === 'push' && rotateIncomingIdx !== null) {
+      const current = visibleIndices.map((idx) => chasers[idx])
+      const items = [chasers[rotateIncomingIdx], ...current]
+      return items.map((row, visualIndex) => ({ row, visualIndex }))
+    }
+    return visibleIndices.map((idx, visualIndex) => ({
+      row: chasers[idx],
+      visualIndex,
+    }))
+  }, [phase, rotateIncomingIdx, visibleIndices, chasers])
+
+  if (!gameStarted) {
+    return (
+      <div className="kiosk-prizeChaseEmpty">
+        המרוץ יתחיל עם הסריקה הראשונה
+      </div>
+    )
+  }
+
+  if (chasers.length === 0) {
+    return (
+      <div className="kiosk-prizeChaseEmpty">
+        עוד אין מועמדים לפרס הזה
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="kiosk-prizeChaseStackWrap"
+      style={{ ['--kiosk-activity-row-step' as string]: `${PRIZE_CHASE_ROW_STEP}px` }}
+    >
+      <div
+        className={phase === 'push' && !reducedMotion ? 'kiosk-activityStackPush' : undefined}
+        style={{ display: 'flex', flexDirection: 'column', gap: PRIZE_CHASE_ROW_GAP, flexShrink: 0 }}
+      >
+        {stackRows.map(({ row, visualIndex }) => {
+          const isPush = phase === 'push' && !reducedMotion
+          const pushCount = stackRows.length
+          const isEntering = isPush && visualIndex === 0
+          const rowClasses = [
+            isEntering ? 'kiosk-activityEnterSide' : '',
+            isPush && visualIndex === pushCount - 1 && pushCount > maxVisible ? 'kiosk-activityExitBottom' : '',
+          ].filter(Boolean).join(' ')
+          const rowKey = phase === 'push' && rotateIncomingIdx !== null
+            ? `${rotateIncomingIdx}-${row.participantId}-${visualIndex}`
+            : row.participantId
+          return (
+            <div key={rowKey} className={rowClasses || undefined}>
+              <PrizeChaseCard row={row} reducedMotion={reducedMotion} />
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+
+function PrizeChasePanel({
+  prize,
+  chasers,
+  gameStarted,
+  reducedMotion,
+  onChaseCycleComplete,
+}: {
+  prize: TopPrizeRow | null
+  chasers: PrizeChaseRow[]
+  gameStarted: boolean
+  reducedMotion: boolean
+  onChaseCycleComplete?: () => void
+}) {
+  if (!prize) return null
+
+  return (
+    <div
+      key={prize.id}
+      className="kiosk-prizeChaseSlot"
+    >
+      <div className="kiosk-prizeChaseSlotLabel">
+        <span className="kiosk-blink kiosk-prizeChaseSlotDot" />
+        הכי קרובים לפרס
+      </div>
+      <div className="kiosk-prizeChaseStackArea">
+        <PrizeChaseStackView
+          chasers={chasers}
+          gameStarted={gameStarted}
+          reducedMotion={reducedMotion}
+          onCycleComplete={onChaseCycleComplete}
+        />
+      </div>
+    </div>
+  )
+}
+
+
+function TopPrizeSwap({
+  prize, reducedMotion,
+}: {
+  prize: TopPrizeRow | null
+  reducedMotion: boolean
+}) {
+  const [displayed, setDisplayed] = useState(prize)
+  const [exiting, setExiting] = useState<TopPrizeRow | null>(null)
+  const [phase, setPhase] = useState<MissionSwapPhase>('idle')
+  const pendingRef = useRef(prize)
+  const skipAnimRef = useRef(true)
+
+  useEffect(() => {
+    pendingRef.current = prize
+    if (prize?.id === displayed?.id) {
+      setDisplayed(prize)
+      return
+    }
+    if (reducedMotion || skipAnimRef.current) {
+      skipAnimRef.current = false
+      setDisplayed(prize)
+      setExiting(null)
+      setPhase('idle')
+      return
+    }
+    if (phase === 'enter') {
+      setExiting(displayed)
+      setPhase('exit')
+      return
+    }
+    if (phase === 'exit') return
+    setExiting(displayed)
+    setPhase('exit')
+  }, [prize, prize?.id, displayed, displayed?.id, reducedMotion, phase])
+
+  useEffect(() => {
+    if (phase === 'exit') {
+      const t = setTimeout(() => {
+        setExiting(null)
+        setDisplayed(pendingRef.current)
+        setPhase('enter')
+      }, MISSION_SWAP_EXIT_MS)
+      return () => clearTimeout(t)
+    }
+    if (phase === 'enter') {
+      const t = setTimeout(() => setPhase('idle'), MISSION_SWAP_ENTER_MS)
+      return () => clearTimeout(t)
+    }
+  }, [phase])
+
+  const pointsPhase: 'idle' | 'out' | 'in' = phase === 'exit' ? 'out' : 'idle'
+  const showCard = phase === 'idle' || phase === 'enter'
+
+  return (
+    <div className="kiosk-missionSwapStage">
+      {phase === 'exit' && exiting && (
+        <div key={`exit-${exiting.id}`} className="kiosk-missionSwapLayer kiosk-missionSwapLayer--exit">
+          <TopPrizeCard prize={exiting} reducedMotion={reducedMotion} swapRole="out" />
+        </div>
+      )}
+      {showCard && (
+        <div
+          key={displayed?.id ?? 'none'}
+          className={phase === 'enter' ? 'kiosk-missionSwapLayer kiosk-missionSwapLayer--enter' : 'kiosk-missionSwapLayer'}
+        >
+          {phase === 'enter' && !reducedMotion && <MissionSwapFx />}
+          <TopPrizeCard
+            prize={displayed}
+            reducedMotion={reducedMotion}
+            entering={phase === 'enter' && !reducedMotion}
+            swapRole={phase === 'enter' ? 'in' : undefined}
+            swapPhase={pointsPhase}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+function TopPrizes({
+  prizes,
+  allClaimablePrizes,
+  chaseParticipants,
+  awardedPairs,
+  gameStarted,
+  reducedMotion,
+}: {
+  prizes: TopPrizeRow[]
+  allClaimablePrizes: TopPrizeRow[]
+  chaseParticipants: PrizeChaseParticipant[]
+  awardedPairs: { participant_id: string; reward_id: string }[]
+  gameStarted: boolean
+  reducedMotion: boolean
+}) {
+  if (prizes.length === 0) return null
+
+  const [prizeIdx, setPrizeIdx] = useState(0)
+  const prizeIds = prizes.map((p) => p.id).join(',')
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const noChaserOffsetAppliedRef = useRef(false)
+
+  const chaseAssignments = useMemo(
+    () => buildParticipantChaseAssignments(allClaimablePrizes, chaseParticipants, awardedPairs),
+    [allClaimablePrizes, chaseParticipants, awardedPairs],
+  )
+
+  useEffect(() => {
+    setPrizeIdx(0)
+    noChaserOffsetAppliedRef.current = false
+  }, [prizeIds])
+
+  const clearAdvanceTimer = useCallback(() => {
+    if (advanceTimerRef.current !== undefined) {
+      window.clearTimeout(advanceTimerRef.current)
+      advanceTimerRef.current = undefined
+    }
+  }, [])
+
+  const advancePrize = useCallback(() => {
+    if (!gameStarted || prizes.length <= 1) return
+    setPrizeIdx((i) => (i + 1) % prizes.length)
+  }, [gameStarted, prizes.length])
+
+  const scheduleAdvance = useCallback((delayMs: number) => {
+    clearAdvanceTimer()
+    advanceTimerRef.current = setTimeout(advancePrize, delayMs)
+  }, [clearAdvanceTimer, advancePrize])
+
+  const currentPrize = prizes[prizeIdx] ?? prizes[0] ?? null
+  const currentChasers = useMemo(
+    () => (currentPrize
+      ? getChaseParticipantsForPrize(currentPrize, chaseParticipants, chaseAssignments).slice(0, PRIZE_CHASE_MAX_CANDIDATES)
+      : []),
+    [currentPrize, chaseParticipants, chaseAssignments],
+  )
+
+  const handleChaseCycleComplete = useCallback(() => {
+    scheduleAdvance(PRIZE_CHASE_ROTATE_MS)
+  }, [scheduleAdvance])
+
+  useEffect(() => {
+    if (!gameStarted || prizes.length <= 1 || currentChasers.length > 0) return
+    const delay = !noChaserOffsetAppliedRef.current
+      ? PRIZE_ROTATE_OFFSET_MS + MISSION_ROTATE_MS
+      : MISSION_ROTATE_MS
+    noChaserOffsetAppliedRef.current = true
+    scheduleAdvance(delay)
+    return clearAdvanceTimer
+  }, [currentPrize?.id, currentChasers.length, gameStarted, prizes.length, scheduleAdvance, clearAdvanceTimer])
+
+  useEffect(() => {
+    if (currentChasers.length > 0) clearAdvanceTimer()
+  }, [currentPrize?.id, currentChasers.length, clearAdvanceTimer])
+
+  useEffect(() => () => clearAdvanceTimer(), [clearAdvanceTimer])
+
+  return (
+    <div className="kiosk-prizeHeroStack">
+      <div className="kiosk-prizeCardSlot">
+        <TopPrizeSwap prize={currentPrize} reducedMotion={reducedMotion} />
+      </div>
+      <PrizeChasePanel
+        prize={currentPrize}
+        chasers={currentChasers}
+        gameStarted={gameStarted}
+        reducedMotion={reducedMotion}
+        onChaseCycleComplete={handleChaseCycleComplete}
+      />
     </div>
   )
 }
@@ -2163,7 +2838,8 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const reducedMotion = useReducedMotion()
 
   const {
-    recentActivity, rewards, topPrizes, configuredRewardsCount, newestRewardId,
+    recentActivity, rewards, topPrizes, allClaimablePrizes, prizeChaseParticipants, prizeAwardedPairs,
+    configuredRewardsCount, newestRewardId,
     stats, totalScans, actions, kioskParticipants, actionCompletionIndex, refetch,
   } = data
   const hasActivity = recentActivity.length > 0
@@ -2503,31 +3179,30 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
 
         {/* LEFT PANEL — teal / rewards */}
         <div className="kiosk-fadeUp" style={{
-          flex: '0 0 clamp(300px, 27vw, 580px)', position: 'relative', overflow: 'hidden',
-          borderRadius: 24, background: 'linear-gradient(165deg,#7CCBC3,#4FA6A0)',
-          boxShadow: '0 14px 32px rgba(59,136,128,0.28)',
-          display: 'flex', flexDirection: 'column',
+          flex: '0 0 clamp(300px, 26vw, 560px)', display: 'flex', flexDirection: 'column', gap: 14,
+          minHeight: 0, borderRadius: 24, padding: 18,
+          background: 'linear-gradient(165deg,#5AB5AD,#388882)',
+          boxShadow: '0 14px 32px rgba(46,120,112,0.32)',
+          position: 'relative', overflow: 'visible',
         }}>
-          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle,rgba(255,255,255,0.16) 1.5px,transparent 1.6px)', backgroundSize: '22px 22px', opacity: 0.55, pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', top: -70, right: -50, width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle,rgba(255,255,255,0.28),transparent 70%)', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', bottom: -90, left: -60, width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle,rgba(255,214,138,0.22),transparent 70%)', pointerEvents: 'none' }} />
           <GlowingStarsTeal />
 
-          {/* Rewards section */}
-          <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, padding: 18, display: 'flex', flexDirection: 'column', gap: 11 }}>
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 22 }}>🎁</span>
-                <span style={{ fontSize: 22, fontWeight: 900, color: '#FFFFFF', textShadow: '0 1px 6px rgba(0,0,0,0.18)' }}>פרסים שחולקו</span>
-              </div>
-              {gameStarted && <LivePill />}
+          {/* Prize hero — chase cards + rotating prize (2/3 of panel height) */}
+          {hasConfiguredRewards && topPrizes.length > 0 && (
+            <div style={{ position: 'relative', zIndex: 1, flex: '2 1 0', minHeight: 0, overflow: 'visible' }}>
+              <TopPrizes
+                prizes={topPrizes}
+                allClaimablePrizes={allClaimablePrizes}
+                chaseParticipants={prizeChaseParticipants}
+                awardedPairs={prizeAwardedPairs}
+                gameStarted={gameStarted}
+                reducedMotion={reducedMotion}
+              />
             </div>
+          )}
 
-            {/* Top prizes */}
-            {hasConfiguredRewards && <TopPrizes prizes={topPrizes} />}
-
-            {/* Awarded rewards feed */}
+          {/* Awarded rewards feed (1/3 of panel height) */}
+          <div style={{ position: 'relative', zIndex: 1, flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             {!hasConfiguredRewards ? (
               <RewardsNotConfiguredState onCreate={() => navigate(`/events/${event.id}/step/5`)} />
             ) : hasAwardedRewards ? (
@@ -2539,11 +3214,11 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             ) : (
               <RewardsPreGameFeed />
             )}
+          </div>
 
-            {/* Footer */}
-            <div style={{ display: gameStarted && hasActivity ? 'block' : 'none', textAlign: 'center', fontSize: 13, fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>
-              🎉 {stats.totalPoints.toLocaleString('he-IL')} נקודות חולקו · {totalScans} סריקות
-            </div>
+          {/* Footer */}
+          <div style={{ display: gameStarted && hasActivity ? 'block' : 'none', position: 'relative', zIndex: 1, textAlign: 'center', fontSize: 13, fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>
+            🎉 {stats.totalPoints.toLocaleString('he-IL')} נקודות חולקו · {totalScans} סריקות
           </div>
         </div>
       </div>
