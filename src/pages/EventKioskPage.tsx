@@ -106,7 +106,7 @@ type ActivityRow = {
   accent: string
   createdAt: string
 }
-type RewardRow = { id: string; icon: string; title: string; recipient: string; score: number; accent: string }
+type RewardRow = { id: string; icon: string; title: string; recipient: string; score: number; accent: string; createdAt: string }
 type TopPrizeRow = { id: string; name: string; icon: string; requiredPoints: number; accent: string; groupIds: string[] }
 type PrizeChaseParticipant = { id: string; name: string; groupIds: string[]; totalPoints: number }
 type PrizeChaseRow = {
@@ -285,18 +285,24 @@ const PRIZE_CHASE_NUDGES_LEAD = ['כמעט שם!', 'עוד נקודה!', 'הפר
 const PRIZE_CHASE_NUDGES_MID = ['לא עוצרים!', 'עוד דחיפה!', 'בדרך לפרס!'] as const
 const PRIZE_CHASE_NUDGES_CHASE = ['במרוץ לפרס!', 'כל נקודה קרבה!', 'זה אפשרי!'] as const
 
-/** Teal family only — lighter = farther from prize, deeper = closer. */
+/** Teal + warm yellow — lighter = farther, deeper + more gold = closer. */
 const PRIZE_CHASE_ACCENTS = {
-  chase: '#A8DDD8',
-  mid: '#6EC3BC',
-  lead: '#5AB5AD',
+  chase: '#8FCEC8',
+  mid: '#58B5AD',
+  lead: '#48A89E',
   ready: '#388882',
 } as const
 const PRIZE_CHASE_TINTS = {
-  chase: '10%',
-  mid: '16%',
-  lead: '24%',
-  ready: '32%',
+  chase: '14%',
+  mid: '22%',
+  lead: '30%',
+  ready: '38%',
+} as const
+const PRIZE_CHASE_WARM = {
+  chase: '12%',
+  mid: '20%',
+  lead: '32%',
+  ready: '46%',
 } as const
 const PRIZE_CHASE_NUDGE_ICONS = {
   ready: ['🏆'] as const,
@@ -349,6 +355,10 @@ function prizeChaseAccentForTone(tone: PrizeChaseTone): string {
 
 function prizeChaseTintForTone(tone: PrizeChaseTone): string {
   return PRIZE_CHASE_TINTS[tone]
+}
+
+function prizeChaseWarmForTone(tone: PrizeChaseTone): string {
+  return PRIZE_CHASE_WARM[tone]
 }
 
 // ─── Hooks & utilities ────────────────────────────────────────────────────────
@@ -588,7 +598,15 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
           const participant = Array.isArray(r.participant) ? r.participant[0] : r.participant
           const pts: number = reward?.required_points ?? 0
           const { icon, accent } = rewardTier(pts)
-          return { id: r.id, icon, title: reward?.name ?? '---', recipient: participant?.name ?? '---', score: pts, accent }
+          return {
+            id: r.id,
+            icon,
+            title: reward?.name ?? '---',
+            recipient: participant?.name ?? '---',
+            score: pts,
+            accent,
+            createdAt: (r.awarded_at as string) ?? '',
+          }
         }))
       }
 
@@ -1191,7 +1209,7 @@ function GlowingStarsTeal() {
   )
 }
 
-function AwardedRewardsFeed({ rewards, newestId }: { rewards: RewardRow[]; newestId: string | null }) {
+function AwardedRewardsFeed({ rewards, newestId, now }: { rewards: RewardRow[]; newestId: string | null; now: Date }) {
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1202,6 +1220,7 @@ function AwardedRewardsFeed({ rewards, newestId }: { rewards: RewardRow[]; newes
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
         {rewards.map((r, i) => {
           const isNew = r.id === newestId
+          const relativeTime = formatActivityRelativeTime(r.createdAt, now)
           return (
             <div
               key={r.id}
@@ -1234,6 +1253,12 @@ function AwardedRewardsFeed({ rewards, newestId }: { rewards: RewardRow[]; newes
                   </div>
                   <div className="kiosk-activityRowSubtitle">
                     <span className="kiosk-activityRowName">{r.recipient}</span>
+                    {relativeTime && (
+                      <>
+                        <span className="kiosk-activityRowMetaSep"> · </span>
+                        <span className="kiosk-activityRowTime">{relativeTime}</span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div style={{
@@ -2341,6 +2366,7 @@ function PrizeChaseCard({
   const { text: nudge, hot, tone, icon } = getPrizeChaseNudge(row, chaserIndex)
   const accent = prizeChaseAccentForTone(tone)
   const tint = prizeChaseTintForTone(tone)
+  const warm = prizeChaseWarmForTone(tone)
   const gapLabel = row.gap === 0
     ? 'מוכן לזכייה!'
     : `${row.gap.toLocaleString('he-IL')} נק׳`
@@ -2356,6 +2382,7 @@ function PrizeChaseCard({
       style={{
         ['--kiosk-chase-accent' as string]: accent,
         ['--kiosk-chase-tint' as string]: tint,
+        ['--kiosk-chase-warm' as string]: warm,
       }}
     >
       <div
@@ -3338,7 +3365,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             {!hasConfiguredRewards ? (
               <RewardsNotConfiguredState onCreate={() => navigate(`/events/${event.id}/step/5`)} />
             ) : hasAwardedRewards ? (
-              <AwardedRewardsFeed rewards={rewards} newestId={newestRewardId} />
+              <AwardedRewardsFeed rewards={rewards} newestId={newestRewardId} now={now} />
             ) : gameStarted && hasActivity ? (
               <RewardsActiveNoAwardsFeed />
             ) : gameStarted ? (

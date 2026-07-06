@@ -515,11 +515,22 @@
   border-radius: 14px;
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) var(--kiosk-chase-tint, 14%), #ffffff) 0%,
+    color-mix(
+      in srgb,
+      #FFD68A var(--kiosk-chase-warm, 14%),
+      color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) var(--kiosk-chase-tint, 18%), #ffffff)
+    ) 0%,
+    #fffef9 46%,
     #ffffff 100%
   );
-  border: 1.5px solid color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 48%, #ffffff);
-  box-shadow: 0 3px 14px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 16%, transparent);
+  border: 1.5px solid color-mix(
+    in srgb,
+    var(--kiosk-chase-accent, #5AB5AD) 42%,
+    #F2D68A 22%
+  );
+  box-shadow:
+    0 4px 16px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 14%, transparent),
+    0 2px 10px color-mix(in srgb, #F2B33C 10%, transparent);
   min-height: 0;
   position: relative;
   overflow: hidden;
@@ -530,12 +541,23 @@
   inset: 0;
   background: linear-gradient(
     120deg,
-    transparent 30%,
-    color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 8%, transparent) 50%,
-    transparent 70%
+    transparent 22%,
+    color-mix(in srgb, #FFD68A 14%, transparent) 42%,
+    color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 12%, transparent) 58%,
+    transparent 78%
   );
   pointer-events: none;
-  opacity: 0.85;
+  opacity: 0.9;
+}
+.kiosk-prizeChaseCard--hot {
+  border-color: color-mix(
+    in srgb,
+    var(--kiosk-chase-accent, #5AB5AD) 48%,
+    #F2B33C 38%
+  );
+  box-shadow:
+    0 6px 22px color-mix(in srgb, #F2B33C 24%, transparent),
+    0 3px 14px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 18%, transparent);
 }
 .kiosk-prizeChaseIconBadge {
   position: relative;
@@ -552,18 +574,26 @@
   background: linear-gradient(
     145deg,
     #ffffff,
-    color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 12%, #ffffff)
+    color-mix(in srgb, #FFD68A 18%, color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 16%, #ffffff))
   );
-  border: 2px solid color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 55%, #ffffff);
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 28%, transparent);
+  border: 2px solid color-mix(
+    in srgb,
+    var(--kiosk-chase-accent, #5AB5AD) 48%,
+    #F2D68A 28%
+  );
+  box-shadow:
+    0 2px 10px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 24%, transparent),
+    0 0 12px color-mix(in srgb, #F2B33C 14%, transparent);
 }
 .kiosk-prizeChaseIconBadge--enter {
   animation: kiosk-prizeChaseAvatarPop 0.62s cubic-bezier(0.18, 0.92, 0.22, 1.2) both;
 }
 .kiosk-prizeChaseIconBadge--hot {
   animation: kiosk-prizeChaseIconBounce 1.6s ease-in-out infinite;
-  border-color: color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 72%, #ffffff);
-  box-shadow: 0 3px 14px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 38%, transparent);
+  border-color: color-mix(in srgb, #F2B33C 55%, var(--kiosk-chase-accent, #5AB5AD));
+  box-shadow:
+    0 3px 14px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 32%, transparent),
+    0 0 16px color-mix(in srgb, #F2B33C 28%, transparent);
 }
 .kiosk-prizeChaseBody {
   position: relative;
@@ -609,10 +639,14 @@
   border-radius: 999px;
   background: linear-gradient(
     145deg,
-    color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 14%, #ffffff),
+    color-mix(in srgb, #FFD68A 20%, color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 16%, #ffffff)),
     #ffffff
   );
-  border: 1px solid color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 42%, #ffffff);
+  border: 1px solid color-mix(
+    in srgb,
+    var(--kiosk-chase-accent, #5AB5AD) 38%,
+    #F2D68A 24%
+  );
   font-size: 11px;
   font-weight: 900;
   color: color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 88%, #2E221E);
@@ -641,10 +675,12 @@
   border-radius: 999px;
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 82%, #ffffff),
+    color-mix(in srgb, #FFD68A 42%, var(--kiosk-chase-accent, #5AB5AD)),
     var(--kiosk-chase-accent, #5AB5AD)
   );
-  box-shadow: 0 0 10px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 35%, transparent);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 35%, transparent),
+    0 0 8px color-mix(in srgb, #F2B33C 22%, transparent);
   transition: width 0.55s ease;
 }
 .kiosk-prizeChaseCard--enter {
@@ -657,11 +693,11 @@
   animation: kiosk-prizeChasePillHot 2.2s ease-in-out infinite;
   background: linear-gradient(
     145deg,
-    color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 22%, #ffffff),
+    color-mix(in srgb, #FFD68A 32%, color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 20%, #ffffff)),
     #ffffff
   );
-  border-color: color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 58%, #ffffff);
-  color: color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 95%, #2E221E);
+  border-color: color-mix(in srgb, #F2B33C 42%, var(--kiosk-chase-accent, #5AB5AD));
+  color: color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 82%, #2A6A62);
 }
 .kiosk-prizeChaseNudge {
   flex-shrink: 0;
@@ -684,7 +720,7 @@
   animation: kiosk-prizeChaseNudgeGlow 2.4s ease-in-out infinite;
 }
 .kiosk-prizeChaseNudge--hot {
-  color: var(--kiosk-chase-accent, #388882);
+  color: color-mix(in srgb, #C8890B 28%, var(--kiosk-chase-accent, #388882));
   animation: kiosk-prizeChaseNudgeHot 1.8s ease-in-out infinite;
 }
 @keyframes kiosk-prizeChaseAvatarPop {
@@ -744,12 +780,18 @@
   50% { opacity: 1; text-shadow: 0 0 14px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 48%, transparent); transform: scale(1.12); }
 }
 @keyframes kiosk-prizeChaseNudgeHot {
-  0%, 100% { transform: scale(1.08); text-shadow: 0 0 8px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 35%, transparent); }
-  50% { transform: scale(1.16); text-shadow: 0 0 18px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 55%, transparent); }
+  0%, 100% {
+    transform: scale(1.08);
+    text-shadow: 0 0 8px color-mix(in srgb, #F2B33C 35%, transparent);
+  }
+  50% {
+    transform: scale(1.16);
+    text-shadow: 0 0 18px color-mix(in srgb, #F2B33C 55%, transparent);
+  }
 }
 @keyframes kiosk-prizeChasePillHot {
   0%, 100% { box-shadow: 0 0 0 transparent; }
-  50% { box-shadow: 0 0 12px color-mix(in srgb, var(--kiosk-chase-accent, #5AB5AD) 40%, transparent); }
+  50% { box-shadow: 0 0 14px color-mix(in srgb, #F2B33C 42%, transparent); }
 }
 
 @keyframes kiosk-activityIconSpin {
