@@ -23,6 +23,12 @@ import {
   hasDailyTimeWindow,
   isInDailyTimeWindow,
 } from '@/lib/taskLimit'
+import {
+  getRewardScopeLabel,
+  isParticipantEligibleForReward,
+  isRewardStillClaimable,
+  type RewardTargetingFields,
+} from '@/lib/rewardTargeting'
 import { formatDistanceToNow } from 'date-fns'
 import { he } from 'date-fns/locale'
 import type { Event, GroupLeaderboardEntry, ParticipantLeaderboardEntry } from '@/types'
@@ -107,7 +113,17 @@ type ActivityRow = {
   createdAt: string
 }
 type RewardRow = { id: string; icon: string; title: string; recipient: string; score: number; accent: string; createdAt: string }
-type TopPrizeRow = { id: string; name: string; icon: string; requiredPoints: number; accent: string; groupIds: string[] }
+type TopPrizeRow = {
+  id: string
+  name: string
+  icon: string
+  requiredPoints: number
+  accent: string
+  targetType: RewardTargetingFields['target_type']
+  winnerMode: RewardTargetingFields['winner_mode']
+  groupIds: string[]
+  groupName?: string
+}
 type PrizeChaseParticipant = { id: string; name: string; groupIds: string[]; totalPoints: number }
 type PrizeChaseRow = {
   participantId: string
@@ -170,51 +186,50 @@ function rewardTier(pts: number): { icon: string; accent: string } {
   return { icon: '🏆', accent: '#FF8A4D' }
 }
 
-type ClaimableRewardDef = {
+type ClaimableRewardDef = RewardTargetingFields & {
   id: string
   name: string
   required_points: number
-  groupIds: string[]
 }
 
-function isParticipantEligibleForReward(
-  participant: { groupIds: string[] },
-  rewardGroupIds: string[],
-): boolean {
-  if (rewardGroupIds.length === 0) return true
-  return participant.groupIds.some((gid) => rewardGroupIds.includes(gid))
+function toTopPrizeRow(
+  reward: ClaimableRewardDef,
+  options?: { groupName?: string },
+): TopPrizeRow {
+  const pts = reward.required_points
+  const { icon, accent } = rewardTier(pts)
+  return {
+    id: reward.id,
+    name: reward.name,
+    icon,
+    requiredPoints: pts,
+    accent,
+    targetType: reward.target_type,
+    winnerMode: reward.winner_mode,
+    groupIds: reward.groupIds,
+    groupName: options?.groupName,
+  }
 }
 
-/** Next active rewards someone can still earn — skips tiers fully claimed by all eligible players. */
+/** Next active rewards someone can still earn — skips tiers fully claimed. */
 function pickNextClaimableTopPrizes(
   rewards: ClaimableRewardDef[],
   participants: { id: string; groupIds: string[] }[],
   awardedPairs: { participant_id: string; reward_id: string }[],
+  groupNames: Map<string, string>,
   limit = 3,
 ): TopPrizeRow[] {
-  const awarded = new Set(awardedPairs.map((p) => `${p.participant_id}:${p.reward_id}`))
   const sorted = [...rewards].sort((a, b) => a.required_points - b.required_points)
   const result: TopPrizeRow[] = []
 
   for (const reward of sorted) {
-    const eligible = participants.filter((p) => isParticipantEligibleForReward(p, reward.groupIds))
-    if (eligible.length === 0) {
-      // No eligible players yet — still show as an upcoming prize.
-      if (participants.length === 0) {
-        const pts = reward.required_points
-        const { icon, accent } = rewardTier(pts)
-        result.push({ id: reward.id, name: reward.name, icon, requiredPoints: pts, accent, groupIds: reward.groupIds })
-        if (result.length >= limit) break
-      }
-      continue
-    }
+    if (!isRewardStillClaimable(reward, participants, awardedPairs)) continue
 
-    const someoneCanStillWin = eligible.some((p) => !awarded.has(`${p.id}:${reward.id}`))
-    if (!someoneCanStillWin) continue
+    const groupName = reward.groupIds.length === 1
+      ? groupNames.get(reward.groupIds[0])
+      : undefined
 
-    const pts = reward.required_points
-    const { icon, accent } = rewardTier(pts)
-    result.push({ id: reward.id, name: reward.name, icon, requiredPoints: pts, accent, groupIds: reward.groupIds })
+    result.push(toTopPrizeRow(reward, { groupName }))
     if (result.length >= limit) break
   }
 
@@ -233,7 +248,13 @@ function buildParticipantChaseAssignments(
 
   for (const participant of participants) {
     for (const prize of sorted) {
-      if (!isParticipantEligibleForReward(participant, prize.groupIds)) continue
+      const rewardFields: RewardTargetingFields = {
+        target_type: prize.targetType,
+        target_participant_id: null,
+        winner_mode: prize.winnerMode,
+        groupIds: prize.groupIds,
+      }
+      if (!isParticipantEligibleForReward(participant, rewardFields)) continue
       if (awarded.has(`${participant.id}:${prize.id}`)) continue
       assignments.set(participant.id, prize.id)
       break
@@ -497,7 +518,7 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
           .order('awarded_at', { ascending: false }),
         supabase
           .from('rewards')
-          .select('id, name, required_points, reward_groups(group_id)')
+          .select('id, name, required_points, target_type, target_participant_id, winner_mode, reward_groups(group_id)')
           .eq('event_id', eventId)
           .eq('is_active', true)
           .order('required_points', { ascending: true }),
@@ -611,16 +632,33 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
       }
 
       if (activeRewardsRes.data) {
+        const groupNames = new Map<string, string>()
+        if (gRes.data) {
+          for (const g of gRes.data as GroupLeaderboardEntry[]) {
+            groupNames.set(g.group_id, g.group_name)
+          }
+        }
+
         const claimableRewards: ClaimableRewardDef[] = activeRewardsRes.data.map((r) => {
           const joins = (r.reward_groups as unknown as { group_id: string }[]) ?? []
+          const targetType = (r.target_type as RewardTargetingFields['target_type']) ?? 'all'
           return {
             id: r.id,
             name: r.name,
             required_points: r.required_points,
+            target_type: targetType === 'participant' ? 'all' : targetType,
+            target_participant_id: null,
+            winner_mode: (r.winner_mode as RewardTargetingFields['winner_mode']) ?? 'all',
             groupIds: joins.map((join) => join.group_id).filter(Boolean),
           }
         })
-        const allClaimable = pickNextClaimableTopPrizes(claimableRewards, participantsForPrizes, awardedPairs, 100)
+        const allClaimable = pickNextClaimableTopPrizes(
+          claimableRewards,
+          participantsForPrizes,
+          awardedPairs,
+          groupNames,
+          100,
+        )
         setAllClaimablePrizesData(allClaimable)
         setTopPrizesData(allClaimable.slice(0, 3))
       }
@@ -1214,7 +1252,7 @@ function AwardedRewardsFeed({ rewards, newestId, now }: { rewards: RewardRow[]; 
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span className="kiosk-blink" style={{ width: 9, height: 9, borderRadius: '50%', background: '#FFFFFF', display: 'inline-block', flexShrink: 0 }} />
-        <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: '1.5px', color: '#FFFFFF' }}>זכו זה עתה 🎉</span>
+        <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: '1.5px', color: '#FFFFFF' }}>פרסים אחרונים</span>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -2344,6 +2382,16 @@ function TopPrizeCard({
           >
             {prize?.name ?? '---'}
           </div>
+          {prize && (prize.targetType !== 'all' || prize.winnerMode === 'first') && (
+            <div style={{ marginTop: 6, fontSize: 11, fontWeight: 700, color: '#5A8F89', lineHeight: 1.3 }}>
+              {getRewardScopeLabel({
+                target_type: prize.targetType,
+                target_participant_id: null,
+                winner_mode: prize.winnerMode,
+                groupIds: prize.groupIds,
+              }, { groupName: prize.groupName })}
+            </div>
+          )}
         </div>
         <PrizePointsBadge prize={prize} reducedMotion={reducedMotion} swapPhase={swapPhase} />
       </div>

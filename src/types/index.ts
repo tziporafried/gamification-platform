@@ -213,12 +213,18 @@ export interface GroupLeaderboardEntry {
   total_points: number;
 }
 
+export type RewardTargetType = 'all' | 'groups' | 'participant';
+export type RewardWinnerMode = 'all' | 'first';
+
 export interface Reward {
   id: string;
   event_id: string;
   name: string;
   required_points: number;
   is_active: boolean;
+  target_type: RewardTargetType;
+  target_participant_id: string | null;
+  winner_mode: RewardWinnerMode;
   created_at: string;
   updated_at: string;
 }

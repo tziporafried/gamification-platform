@@ -3,9 +3,10 @@ import { supabase } from '@/lib/supabase'
 import { WizardDeleteButton } from '@/components/wizard/WizardDeleteButton'
 import { Tooltip, useIsTruncated } from '@/components/ui/Tooltip'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
+import { RewardScopeSelect, rewardScopeToFields, type RewardScopeId } from '@/components/rewards/RewardSettingSelects'
 import { cn } from '@/lib/utils'
 import { getRewardTier } from '@/lib/rewardTiers'
-import type { Group, RewardWithGroups } from '@/types'
+import type { Group, RewardTargetType, RewardWinnerMode, RewardWithGroups } from '@/types'
 
 function getRewardIconMotion(rewardId: string) {
   let hash = 0
@@ -44,6 +45,8 @@ export function RewardRow({
   const [points, setPoints] = useState(reward.required_points.toString())
   const [saving, setSaving] = useState(false)
   const [localGroups, setLocalGroups] = useState(reward.groups)
+  const [targetType, setTargetType] = useState<RewardTargetType>(reward.target_type ?? 'all')
+  const [winnerMode, setWinnerMode] = useState<RewardWinnerMode>(reward.winner_mode ?? 'all')
   const nameRef = useRef<HTMLInputElement>(null)
   const nameTextRef = useRef<HTMLParagraphElement>(null)
   const pointsRef = useRef<HTMLInputElement>(null)
@@ -59,6 +62,8 @@ export function RewardRow({
   useEffect(() => { setName(reward.name) }, [reward.name])
   useEffect(() => { setPoints(reward.required_points.toString()) }, [reward.required_points])
   useEffect(() => { setLocalGroups(reward.groups) }, [reward.groups])
+  useEffect(() => { setTargetType(reward.target_type ?? 'all') }, [reward.target_type])
+  useEffect(() => { setWinnerMode(reward.winner_mode ?? 'all') }, [reward.winner_mode])
 
   useEffect(() => {
     if (editingName) { nameRef.current?.focus(); nameRef.current?.select() }
@@ -133,7 +138,15 @@ export function RewardRow({
     if (e.key === 'Escape') { setPoints(reward.required_points.toString()); setEditingPoints(false) }
   }
 
+  async function clearRewardGroups() {
+    const { error } = await supabase.from('reward_groups').delete().eq('reward_id', reward.id)
+    if (error) throw error
+    setLocalGroups([])
+    onGroupsChange([])
+  }
+
   function selectAllGroups() {
+    if (targetType !== 'groups') return
     setLocalGroups([])
     onGroupsChange([])
     supabase.from('reward_groups').delete().eq('reward_id', reward.id).then(({ error }) => {
@@ -146,6 +159,7 @@ export function RewardRow({
   }
 
   function toggleGroup(groupId: string) {
+    if (targetType !== 'groups') return
     const isMember = assignedGroupIds.has(groupId)
     const next = isMember
       ? localGroups.filter((g) => g.id !== groupId)
@@ -167,15 +181,77 @@ export function RewardRow({
     })
   }
 
+  async function saveTargeting(patch: {
+    target_type?: RewardTargetType
+    winner_mode?: RewardWinnerMode
+  }) {
+    const nextTargetType = patch.target_type ?? targetType
+    const nextWinnerMode = patch.winner_mode ?? winnerMode
+
+    const { error } = await supabase
+      .from('rewards')
+      .update({
+        target_type: nextTargetType,
+        winner_mode: nextWinnerMode,
+        target_participant_id: null,
+      })
+      .eq('id', reward.id)
+
+    if (error) {
+      onError?.('שגיאה בעדכון הגדרות הפרס.')
+      setTargetType(reward.target_type ?? 'all')
+      setWinnerMode(reward.winner_mode ?? 'all')
+      return
+    }
+
+    const updatedPatch: Partial<RewardWithGroups> = {
+      target_type: nextTargetType,
+      winner_mode: nextWinnerMode,
+      target_participant_id: null,
+    }
+
+    if (nextTargetType !== 'groups' && reward.groups.length > 0) {
+      try {
+        await clearRewardGroups()
+      } catch {
+        onError?.('שגיאה בעדכון קבוצות. הנתונים רועננו.')
+        return
+      }
+    }
+
+    setTargetType(nextTargetType)
+    setWinnerMode(nextWinnerMode)
+    onUpdated(updatedPatch)
+  }
+
+  async function handleScopeChange(nextScope: RewardScopeId) {
+    const { target_type: nextTargetType, winner_mode: nextWinnerMode } = rewardScopeToFields(nextScope)
+
+    if (nextTargetType === targetType && nextWinnerMode === winnerMode) return
+
+    if (nextTargetType === 'groups' && groups.length === 0) {
+      onError?.('יש להוסיף קבוצות לפני הגדרת פרס לקבוצות.')
+      return
+    }
+
+    await saveTargeting({
+      target_type: nextTargetType,
+      winner_mode: nextWinnerMode,
+    })
+  }
+
+  const showGroupPicker = targetType === 'groups' && groups.length > 0
+
   return (
-    <div className="group/card relative">
+    <div className="group/card relative h-full">
       <div
         className={cn(
-          'relative overflow-hidden rounded-2xl text-white transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card-hover hover:brightness-[1.03] motion-reduce:hover:transform-none motion-reduce:hover:brightness-100',
+          'relative flex h-full min-h-[11.5rem] flex-col overflow-hidden rounded-2xl text-white transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card-hover hover:brightness-[1.03] motion-reduce:hover:transform-none motion-reduce:hover:brightness-100',
           tier.gradient,
         )}
       >
-        <div className="relative z-10 flex min-h-[8.5rem] flex-col items-center justify-center gap-1.5 px-4 py-5 text-center">
+        <div className="relative z-10 flex flex-1 flex-col items-center px-4 py-5 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center gap-1.5">
           <div className="flex w-full flex-col items-center gap-0.5">
             <TierIcon
               size={32}
@@ -249,21 +325,34 @@ export function RewardRow({
               </button>
             )}
           </div>
+          </div>
 
-          {groups.length > 0 && (
-            <div className="flex justify-center">
-              <GroupSelectDropdown
-                groups={groups}
-                selectedGroupIds={assignedGroupIds}
-                isAllSelected={isAllGroups}
-                tooltip="על אילו קבוצות חל הפרס"
-                onSelectAll={selectAllGroups}
-                onToggleGroup={(groupId) => toggleGroup(groupId)}
-                tone="onColor"
-                size="compact"
-              />
+          <div className="mt-auto flex w-full shrink-0 flex-col items-center gap-1.5 pt-2">
+            <RewardScopeSelect
+              targetType={targetType}
+              winnerMode={winnerMode}
+              groupCount={groups.length}
+              onChange={handleScopeChange}
+            />
+            <div className="flex h-7 items-center justify-center">
+              {showGroupPicker ? (
+                <GroupSelectDropdown
+                  groups={groups}
+                  selectedGroupIds={assignedGroupIds}
+                  isAllSelected={isAllGroups}
+                  allGroupsLabel="כל הקבוצות"
+                  emptyLabel="בחרו קבוצות"
+                  tooltip="על אילו קבוצות חל הפרס"
+                  onSelectAll={selectAllGroups}
+                  onToggleGroup={(groupId) => toggleGroup(groupId)}
+                  tone="onColor"
+                  size="compact"
+                />
+              ) : (
+                <span className="h-7" aria-hidden />
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         <WizardDeleteButton variant="card" onClick={onDelete} />

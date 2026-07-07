@@ -31,9 +31,9 @@ interface RewardGroupJoin {
 
 function LockedRewardCard({ reward }: { reward: TemplateReward }) {
   return (
-    <div className="relative">
-      <div className="relative overflow-hidden rounded-2xl bg-surface opacity-50 select-none">
-        <div className="relative z-10 flex min-h-[8.5rem] flex-col items-center justify-center gap-2 px-4 py-5 text-center">
+    <div className="relative h-full">
+      <div className="relative h-full overflow-hidden rounded-2xl bg-surface opacity-50 select-none">
+        <div className="relative z-10 flex h-full min-h-[11.5rem] flex-col items-center justify-center gap-2 px-4 py-5 text-center">
           <div className="pointer-events-none flex h-8 w-8 items-center justify-center rounded-xl bg-surface-elevated opacity-50 shadow-sm">
             <Lock size={16} className="text-muted" />
           </div>
@@ -137,8 +137,22 @@ export function RewardList({ eventId, onCountChange, embedded = false, isActive,
         return
       }
 
+      const legacyParticipantIds = (rewardsRes.data ?? [])
+        .filter((r) => r.target_type === 'participant')
+        .map((r) => r.id as string)
+
+      if (legacyParticipantIds.length > 0) {
+        await supabase
+          .from('rewards')
+          .update({ target_type: 'all', target_participant_id: null, winner_mode: 'all' })
+          .in('id', legacyParticipantIds)
+      }
+
       const mapped: RewardWithGroups[] = (rewardsRes.data ?? []).map((r) => ({
         ...r,
+        target_type: r.target_type === 'participant' ? 'all' : (r.target_type ?? 'all'),
+        winner_mode: r.target_type === 'participant' ? 'all' : (r.winner_mode ?? 'all'),
+        target_participant_id: null,
         groups: ((r.reward_groups as unknown as RewardGroupJoin[]) ?? []).map((rg) => rg.groups),
       }))
 
@@ -159,7 +173,6 @@ export function RewardList({ eventId, onCountChange, embedded = false, isActive,
     if (groupCount === 0) {
       setGroups([])
       setRewards((prev) => prev.map((r) => (r.groups.length > 0 ? { ...r, groups: [] } : r)))
-      return
     }
 
     if (isActive === false) return
@@ -189,7 +202,13 @@ export function RewardList({ eventId, onCountChange, embedded = false, isActive,
 
   const handleAdded = useCallback((saved: Reward) => {
     setRewards((prev) => {
-      const next = [...prev, { ...saved, groups: [] }]
+      const next = [...prev, {
+        ...saved,
+        target_type: saved.target_type ?? 'all',
+        winner_mode: saved.winner_mode ?? 'all',
+        target_participant_id: saved.target_participant_id ?? null,
+        groups: [],
+      }]
       lastReportedCountRef.current = next.length
       onCountChangeRef.current(next.length)
       return next
@@ -234,7 +253,7 @@ export function RewardList({ eventId, onCountChange, embedded = false, isActive,
   const existingNames = rewards.map((r) => r.name)
   const hasLocked = lockedRewards.length > 0
 
-  const rewardGridClass = 'grid gap-4 px-1 py-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+  const rewardGridClass = 'grid items-stretch gap-4 px-1 py-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
 
   const inlineAdd = (
     <InlineAddReward

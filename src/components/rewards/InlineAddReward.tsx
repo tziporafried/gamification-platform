@@ -55,7 +55,7 @@ export function InlineAddReward({
         name: trimmed,
         required_points: pointsNum,
       })
-      .select('id, event_id, name, required_points, is_active, created_at, updated_at')
+      .select('id, event_id, name, required_points, is_active, target_type, target_participant_id, winner_mode, created_at, updated_at')
       .single()
 
     setSaving(false)
