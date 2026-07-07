@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Crown, Maximize2, Minimize2, RotateCcw, Trophy, Users } from 'lucide-react'
+import { Award, Crown, Gift, Maximize2, Minimize2, RotateCcw, ScanLine, Sparkles, Trophy, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { computeRanks } from '@/lib/missionUtils'
 import { cn } from '@/lib/utils'
 import { useSound } from '@/hooks/useSound'
 import { useCelebrationSound } from '@/hooks/useCelebrationSound'
+import { calculateCeremonyReadiness, CEREMONY_PARTICIPATION_THRESHOLD } from '@/lib/ceremonyReadiness'
 import { SoundToggle } from './SoundToggle'
 import { LeaderboardEmptyState } from './LeaderboardEmptyState'
 import { AvatarCircle } from '@/components/ui/AvatarCircle'
@@ -35,6 +36,12 @@ interface PgMapping {
   groups: { id: string; name: string; color: string } | null
 }
 
+interface ParticipantGroupRef {
+  id: string
+  name: string
+  color: string
+}
+
 type RankedParticipant = ParticipantLeaderboardEntry & { rank: number }
 type RankedGroup = GroupLeaderboardEntry & { rank: number }
 type PhaseKind =
@@ -47,6 +54,7 @@ type PhaseKind =
   | 'participantLeaderboard'
   | 'groupMissions'
   | 'participantMissions'
+  | 'finalSummary'
 
 interface PhaseDef {
   kind: PhaseKind
@@ -96,6 +104,48 @@ function AnimatedNumber({ value, duration = 1600 }: { value: number; duration?: 
   return <>{display.toLocaleString('he-IL')}</>
 }
 
+function getParticipantGroupSummary(groups: ParticipantGroupRef[], totalGroups?: number) {
+  if (groups.length === 0) return 'ללא קבוצה'
+  if (typeof totalGroups === 'number' && totalGroups > 0 && groups.length >= totalGroups) return 'כל הקבוצות'
+  return groups.length === 1 ? 'קבוצה אחת' : `${groups.length} קבוצות`
+}
+
+function ParticipantGroupChips({
+  groups,
+  compact = false,
+  totalGroups,
+}: {
+  groups: ParticipantGroupRef[]
+  compact?: boolean
+  totalGroups?: number
+}) {
+  if (groups.length === 0) {
+    return <span className={cn('font-bold text-[#9A8E88]', compact ? 'text-sm' : 'text-base')}>ללא קבוצה</span>
+  }
+
+  if (typeof totalGroups === 'number' && totalGroups > 0 && groups.length >= totalGroups) {
+    return <span className={cn('font-bold text-[#9A8E88]', compact ? 'text-sm' : 'text-base')}>כל הקבוצות</span>
+  }
+
+  return (
+    <div className={cn('flex flex-wrap items-center gap-1.5', compact ? 'text-xs' : 'text-sm')}>
+      {groups.map((group) => (
+        <span
+          key={group.id}
+          className="inline-flex max-w-full items-center rounded-full border px-2.5 py-1 font-black leading-none"
+          style={{
+            color: group.color,
+            borderColor: `${group.color}66`,
+            background: `${group.color}14`,
+          }}
+        >
+          <span className="truncate">{group.name}</span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function useCeremonyScale() {
   const [scale, setScale] = useState(1)
 
@@ -140,7 +190,10 @@ function useLeaderboardData(eventId: string) {
   const [participantData, setParticipantData] = useState<ParticipantLeaderboardEntry[]>([])
   const [groupData, setGroupData] = useState<GroupLeaderboardEntry[]>([])
   const [transactions, setTransactions] = useState<TxRow[]>([])
-  const [pgMap, setPgMap] = useState<Map<string, { id: string; name: string; color: string }>>(new Map())
+  const [pgMap, setPgMap] = useState<Map<string, ParticipantGroupRef[]>>(new Map())
+  const [totalParticipants, setTotalParticipants] = useState(0)
+  const [totalScans, setTotalScans] = useState(0)
+  const [totalRewardsAwarded, setTotalRewardsAwarded] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -148,7 +201,7 @@ function useLeaderboardData(eventId: string) {
     setError('')
     setLoading(true)
     try {
-      const [pRes, gRes, txRes] = await Promise.all([
+      const [pRes, gRes, txRes, participantsRes, scansRes, rewardsRes] = await Promise.all([
         supabase.rpc('get_participant_leaderboard', { p_event_id: eventId }),
         supabase.rpc('get_group_leaderboard', { p_event_id: eventId }),
         supabase
@@ -157,6 +210,9 @@ function useLeaderboardData(eventId: string) {
           .eq('event_id', eventId)
           .order('created_at', { ascending: false })
           .limit(200),
+        supabase.from('participants').select('id', { count: 'exact', head: true }).eq('event_id', eventId),
+        supabase.from('point_transactions').select('id', { count: 'exact', head: true }).eq('event_id', eventId),
+        supabase.from('participant_rewards').select('id', { count: 'exact', head: true }).eq('event_id', eventId),
       ])
       if (pRes.error || gRes.error) {
         setError('טבלת הדירוג בהכנה. אנא נסו שוב בקרוב.')
@@ -169,6 +225,9 @@ function useLeaderboardData(eventId: string) {
       setParticipantData(pData)
       setGroupData(gData)
       setTransactions((txRes.data ?? []) as unknown as TxRow[])
+      setTotalParticipants(participantsRes.count ?? pData.length)
+      setTotalScans(scansRes.count ?? (txRes.data ?? []).length)
+      setTotalRewardsAwarded(rewardsRes.count ?? 0)
 
       if (pData.length > 0) {
         const ids = pData.map((p) => p.participant_id)
@@ -180,9 +239,13 @@ function useLeaderboardData(eventId: string) {
             .in('participant_id', ids.slice(i, i + 100))
           if (data) allPg.push(...(data as unknown as PgMapping[]))
         }
-        const map = new Map<string, { id: string; name: string; color: string }>()
+        const map = new Map<string, ParticipantGroupRef[]>()
         for (const m of allPg) {
-          if (m.groups) map.set(m.participant_id, m.groups)
+          if (!m.groups) continue
+          const existing = map.get(m.participant_id) ?? []
+          const next = [...existing, m.groups]
+          next.sort((a, b) => a.name.localeCompare(b.name, 'he'))
+          map.set(m.participant_id, next)
         }
         setPgMap(map)
       }
@@ -200,6 +263,7 @@ function useLeaderboardData(eventId: string) {
   const rankedP = useMemo(() => computeRanks(participantData), [participantData])
   const rankedG = useMemo(() => computeRanks(groupData), [groupData])
   const hasGroups = groupData.length > 0
+  const totalGroupCount = groupData.length
   const taskCountByP = useMemo(() => {
     const m = new Map<string, number>()
     for (const tx of transactions) m.set(tx.participant_id, (m.get(tx.participant_id) || 0) + 1)
@@ -208,17 +272,20 @@ function useLeaderboardData(eventId: string) {
   const groupTaskCounts = useMemo(() => {
     const m = new Map<string, number>()
     for (const [pid, c] of taskCountByP) {
-      const g = pgMap.get(pid)
-      if (g) m.set(g.id, (m.get(g.id) || 0) + c)
+      const groups = pgMap.get(pid) ?? []
+      for (const g of groups) {
+        m.set(g.id, (m.get(g.id) || 0) + c)
+      }
     }
     return m
   }, [taskCountByP, pgMap])
   const topPByGroup = useMemo(() => {
     const m = new Map<string, { name: string }>()
     for (const p of rankedP) {
-      const g = pgMap.get(p.participant_id)
-      if (!g) continue
-      if (!m.has(g.id)) m.set(g.id, { name: p.participant_name })
+      const groups = pgMap.get(p.participant_id) ?? []
+      for (const g of groups) {
+        if (!m.has(g.id)) m.set(g.id, { name: p.participant_name })
+      }
     }
     return m
   }, [rankedP, pgMap])
@@ -235,16 +302,29 @@ function useLeaderboardData(eventId: string) {
     }
     return [...m.values()].sort((a, b) => b.count - a.count)
   }, [transactions])
+  const participatingParticipants = useMemo(() => new Set(transactions.map((tx) => tx.participant_id)).size, [transactions])
+  const totalPointsEarned = useMemo(() => transactions.reduce((sum, tx) => sum + (tx.points || 0), 0), [transactions])
+  const ceremonyReadiness = useMemo(
+    () => calculateCeremonyReadiness(totalParticipants, participatingParticipants, CEREMONY_PARTICIPATION_THRESHOLD),
+    [participatingParticipants, totalParticipants],
+  )
 
   return {
     rankedP,
     rankedG,
     hasGroups,
+    totalGroupCount,
     taskCountByP,
     groupTaskCounts,
     topPByGroup,
     taskStats,
     pgMap,
+    totalParticipants,
+    totalScans,
+    totalRewardsAwarded,
+    totalPointsEarned,
+    participatingParticipants,
+    ceremonyReadiness,
     loading,
     error,
   }
@@ -261,6 +341,7 @@ function buildPhases(hasGroups: boolean): PhaseDef[] {
     { kind: 'participantLeaderboard', duration: 9000, dot: 6 },
     { kind: 'groupMissions', duration: 6500, dot: 7 },
     { kind: 'participantMissions', duration: 6500, dot: 8 },
+    { kind: 'finalSummary', duration: 12000, dot: 9 },
   ]
   return hasGroups ? all : all.filter((p) => !p.kind.startsWith('group'))
 }
@@ -409,13 +490,6 @@ function StageHeader({
             <h1 className="text-3xl font-black text-foreground md:text-4xl">{eventName || 'תוצאות התחרות'}</h1>
           </div>
         </div>
-        <div className="flex items-center gap-2 rounded-full border border-success/25 bg-white/50 px-3 py-1 text-xs font-black text-success shadow-sm backdrop-blur">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
-          </span>
-          מתעדכן בזמן אמת
-        </div>
       </div>
       <div className="w-10" />
     </header>
@@ -444,18 +518,21 @@ function ChampionPhase({
   type,
   champ,
   runnerUp,
-  group,
+  groups,
+  totalGroups,
 }: {
   type: 'group' | 'participant'
   champ?: RankedGroup | RankedParticipant
   runnerUp?: RankedGroup | RankedParticipant
-  group?: { id: string; name: string; color: string }
+  groups?: ParticipantGroupRef[]
+  totalGroups?: number
 }) {
   if (!champ) return <EmptyPhase title="אין עדיין אלוף להצגה" />
 
   const isGroup = type === 'group'
   const name = isGroup ? (champ as RankedGroup).group_name : (champ as RankedParticipant).participant_name
-  const color = isGroup ? (champ as RankedGroup).group_color || GOLD : group?.color || TEAL
+  const participantGroups = isGroup ? [] : groups ?? []
+  const color = isGroup ? (champ as RankedGroup).group_color || GOLD : participantGroups[0]?.color || TEAL
   const gap = runnerUp ? Math.max(0, champ.total_points - runnerUp.total_points) : champ.total_points
   const themeColor = isGroup ? GOLD : TEAL
 
@@ -480,12 +557,17 @@ function ChampionPhase({
           <motion.div className="mx-auto mb-2 w-fit text-6xl" animate={{ rotate: [0, -8, 8, 0], y: [0, -5, 0] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}>
             👑
           </motion.div>
-          <p className="text-2xl font-black text-primary">{isGroup ? '🏆 אליפות המשפחות' : 'אלוף המשתתפים'}</p>
+          <p className="text-2xl font-black text-primary">{isGroup ? '🏆 אליפות הקבוצות' : 'אלוף המשתתפים'}</p>
           <div className="mx-auto mt-5 flex h-32 w-32 items-center justify-center rounded-full border-[8px] border-white text-5xl font-black text-white shadow-[0_16px_46px_rgba(46,34,30,0.2)] md:h-40 md:w-40 md:text-6xl" style={{ background: `linear-gradient(135deg, ${color}, ${isGroup ? ORANGE : GOLD})` }}>
             {isGroup ? <Users size={72} /> : <AvatarCircle name={name} size="lg" ringColor={color} className="h-32 w-32 text-5xl ring-0 md:h-40 md:w-40 md:text-6xl" />}
           </div>
-          <p className="mt-5 text-xl font-black text-muted">{isGroup ? 'המשפחה המנצחת' : group?.name || 'המשתתף המנצח'}</p>
+          <p className="mt-5 text-xl font-black text-muted">{isGroup ? 'הקבוצה המנצחת' : getParticipantGroupSummary(participantGroups, totalGroups)}</p>
           <h2 className="mx-auto mt-2 max-w-[14ch] truncate text-[clamp(4.2rem,8.5vw,7.25rem)] font-black leading-none text-foreground">{name}</h2>
+          {!isGroup && (
+            <div className="mx-auto mt-4 flex max-w-4xl justify-center">
+              <ParticipantGroupChips groups={participantGroups} compact={false} totalGroups={totalGroups} />
+            </div>
+          )}
           <div className="mt-4 text-[clamp(5rem,10vw,8.5rem)] font-black leading-none tabular-nums animate-number-glow" style={{ color: themeColor }}>
             <AnimatedNumber value={champ.total_points} duration={2500} />
           </div>
@@ -571,6 +653,7 @@ function LeaderboardPhase({
   items,
   type,
   pgMap,
+  totalGroups,
   taskCountByP,
   groupTaskCounts,
   topPByGroup,
@@ -579,13 +662,15 @@ function LeaderboardPhase({
   subtitle: string
   items: (RankedGroup | RankedParticipant)[]
   type: 'group' | 'participant'
-  pgMap: Map<string, { id: string; name: string; color: string }>
+  pgMap: Map<string, ParticipantGroupRef[]>
+  totalGroups?: number
   taskCountByP: Map<string, number>
   groupTaskCounts: Map<string, number>
   topPByGroup: Map<string, { name: string }>
 }) {
   const visible = items.filter((item) => item.total_points > 0).slice(0, 8)
   const topPoints = Math.max(1, visible[0]?.total_points || 1)
+  void topPByGroup
 
   if (visible.length === 0) return <EmptyPhase title="אין עדיין ניקוד להצגה" />
 
@@ -596,17 +681,15 @@ function LeaderboardPhase({
           <p className="text-2xl font-black text-primary">{subtitle}</p>
           <h2 className="text-[clamp(3.5rem,6vw,6rem)] font-black leading-none text-foreground">{title}</h2>
         </div>
-        <div className="mb-3 rounded-full border border-success/25 bg-white/65 px-5 py-2 text-lg font-black text-success shadow-sm">מתעדכן בזמן אמת</div>
       </div>
       <div className="grid flex-1 content-start gap-3">
         {visible.map((item, idx) => {
           const isGroup = 'group_name' in item
           const name = isGroup ? item.group_name : item.participant_name
           const id = isGroup ? item.group_id : item.participant_id
-          const group = !isGroup ? pgMap.get(item.participant_id) : undefined
-          const color = isGroup ? item.group_color : group?.color || TEAL
+          const groups = isGroup ? [] : pgMap.get(item.participant_id) ?? []
+          const color = isGroup ? item.group_color : groups[0]?.color || TEAL
           const missions = isGroup ? groupTaskCounts.get(item.group_id) || 0 : taskCountByP.get(item.participant_id) || 0
-          const leader = isGroup ? topPByGroup.get(item.group_id)?.name : group?.name
           const pct = Math.max(4, Math.round((item.total_points / topPoints) * 100))
 
           return (
@@ -633,8 +716,15 @@ function LeaderboardPhase({
               <div className="min-w-0">
                 <div className="mb-2 flex items-baseline gap-3">
                   <h3 className="truncate text-3xl font-black text-foreground">{name}</h3>
-                  <span className="shrink-0 text-lg font-bold text-muted">{isGroup ? `${missions} משימות` : leader || 'ללא קבוצה'}</span>
+                  <span className="shrink-0 text-lg font-bold text-muted">{isGroup ? `${missions} משימות` : getParticipantGroupSummary(groups, totalGroups)}</span>
                 </div>
+                {!isGroup ? (
+                  <div className="max-w-full">
+                    <ParticipantGroupChips groups={groups} compact totalGroups={totalGroups} />
+                  </div>
+                ) : (
+                  <div className="h-0.5" />
+                )}
                 <div className="h-4 overflow-hidden rounded-full bg-[#F3E4DD]">
                   <motion.div
                     className="h-full origin-right rounded-full"
@@ -665,7 +755,7 @@ function MissionsPhase({ type, winners }: { type: 'group' | 'participant'; winne
     <div className="flex h-full flex-col items-center justify-center px-5">
       <p className="text-2xl font-black text-primary">🎯 אלופי ההתמדה</p>
       <h2 className="mt-2 max-w-5xl text-center text-[clamp(3.5rem,6vw,6rem)] font-black leading-none text-foreground">
-        {type === 'group' ? 'המשפחות שהשלימו הכי הרבה משימות' : 'המשתתפים שהשלימו הכי הרבה משימות'}
+        {type === 'group' ? 'הקבוצות שהשלימו הכי הרבה משימות' : 'המשתתפים שהשלימו הכי הרבה משימות'}
       </h2>
       <p className="mt-4 text-2xl font-bold text-muted">כי לא רק נקודות - גם ההשקעה נספרת</p>
       <div className="mt-10 grid w-full max-w-6xl grid-cols-3 gap-5">
@@ -709,7 +799,437 @@ function EmptyPhase({ title }: { title: string }) {
   )
 }
 
-function ProgressChrome({ activeDot, onReplay }: { activeDot: number; onReplay: () => void }) {
+type SummaryFocus = 'groups' | 'participants' | 'scans' | 'totalParticipants' | 'completedTasks' | 'totalPoints' | 'rewards' | null
+
+function SummaryLeaderboardPreview({
+  items,
+  pgMap,
+  totalGroups,
+  groupTaskCounts,
+  taskCountByP,
+  topPByGroup,
+  expanded = false,
+  large = false,
+}: {
+  items: (RankedGroup | RankedParticipant)[]
+  pgMap: Map<string, ParticipantGroupRef[]>
+  totalGroups?: number
+  groupTaskCounts: Map<string, number>
+  taskCountByP: Map<string, number>
+  topPByGroup: Map<string, { name: string }>
+  expanded?: boolean
+  large?: boolean
+}) {
+  const visible = expanded ? items : items.slice(0, 3)
+  const topPoints = Math.max(1, visible[0]?.total_points || 1)
+  void topPByGroup
+
+  if (visible.length === 0) {
+    return (
+      <div className="flex min-h-[200px] flex-col items-center justify-center rounded-[24px] border border-[#E7D6CF]/80 bg-white/70 px-6 text-center shadow-[0_12px_34px_rgba(46,34,30,.08)]">
+        <Trophy size={36} className="mb-3 text-[#F2B33C]" />
+        <p className="text-2xl font-black text-[#2E221E]">אין עדיין נתונים להצגה</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn('grid gap-3', expanded ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-[22px] pe-1 summary-scroll' : '', large && 'gap-4')}>
+      {visible.map((item, idx) => {
+        const isGroup = 'group_name' in item
+        const name = isGroup ? item.group_name : item.participant_name
+        const id = isGroup ? item.group_id : item.participant_id
+        const groups = isGroup ? [] : pgMap.get(item.participant_id) ?? []
+        const color = isGroup ? item.group_color : groups[0]?.color || TEAL
+        const missions = isGroup ? groupTaskCounts.get(item.group_id) || 0 : taskCountByP.get(item.participant_id) || 0
+        const pct = Math.max(5, Math.round((item.total_points / topPoints) * 100))
+
+        return (
+          <motion.div
+            key={id}
+            className={cn(
+              'grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center rounded-[18px] border bg-white/82 shadow-[0_8px_24px_rgba(46,34,30,.08)] backdrop-blur',
+              item.rank <= 3 && 'top-rank-row summary-top-rank-row',
+              item.rank === 1 && 'top-rank-1',
+              item.rank === 2 && 'top-rank-2',
+              item.rank === 3 && 'top-rank-3',
+              expanded ? 'gap-4 px-5 py-3.5' : large ? 'gap-4 px-5 py-3.5' : 'gap-3 px-4 py-2.5',
+            )}
+            style={{
+              borderColor: item.rank === 1 ? 'rgba(242,179,60,.72)' : item.rank === 2 ? 'rgba(185,174,167,.72)' : item.rank === 3 ? 'rgba(255,147,102,.7)' : 'rgba(231,214,207,.85)',
+              borderInlineStartWidth: item.rank <= 3 ? 8 : 1,
+              background: item.rank === 1 ? 'linear-gradient(90deg,rgba(242,179,60,.18),rgba(255,255,255,.86))' : 'rgba(255,255,255,.82)',
+            }}
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: idx * 0.05, duration: 0.35 }}
+          >
+            <RankBadge rank={item.rank} />
+            {isGroup ? (
+              <div className={cn('flex items-center justify-center rounded-2xl text-white shadow-lg', large ? 'h-16 w-16' : 'h-14 w-14')} style={{ background: color }}>
+                <Users size={large ? 34 : 30} />
+              </div>
+            ) : (
+              <AvatarCircle name={name} size="lg" ringColor={color} className={cn(large ? 'h-16 w-16 text-2xl' : 'h-14 w-14 text-xl')} />
+            )}
+            <div className="min-w-0">
+              <div className="mb-2 flex items-baseline gap-3">
+                <h3 className={cn('truncate font-black text-[#2E221E]', expanded || large ? 'text-3xl' : 'text-2xl')}>{name}</h3>
+                <span className={cn('shrink-0 font-extrabold text-[#9A8E88]', large ? 'text-lg' : 'text-base')}>{isGroup ? `${missions} משימות` : getParticipantGroupSummary(groups, totalGroups)}</span>
+              </div>
+              {!isGroup && (
+                <div className="mb-2 max-w-full">
+                  <ParticipantGroupChips groups={groups} compact={!large} totalGroups={totalGroups} />
+                </div>
+              )}
+              <div className={cn(large ? 'h-4' : 'h-3', 'overflow-hidden rounded-full bg-[#F3E4DD]', item.rank <= 3 && 'top-rank-track')}>
+                <motion.div
+                  className={cn('h-full origin-right rounded-full bg-[linear-gradient(90deg,#F2B33C,#4FA6A0)]', item.rank <= 3 && 'top-rank-fill')}
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: pct / 100 }}
+                  transition={{ delay: 0.1 + idx * 0.05, duration: 0.65, ease: 'easeOut' }}
+                />
+              </div>
+            </div>
+            <div className={cn('text-left', expanded || large ? 'min-w-[118px]' : 'min-w-[92px]')}>
+              <p className={cn('font-black leading-none tabular-nums', item.rank === 1 ? 'text-[#F2B33C]' : 'text-[#2E221E]', expanded || large ? 'text-4xl' : 'text-3xl')}>
+                {item.total_points.toLocaleString('he-IL')}
+              </p>
+              <p className="text-sm font-extrabold text-[#9A8E88]">נקודות</p>
+            </div>
+          </motion.div>
+        )
+      })}
+    </div>
+  )
+}
+
+function SummaryMetricCard({
+  id,
+  title,
+  value,
+  label,
+  icon,
+  accent,
+  emptyText,
+  focused,
+  onClick,
+}: {
+  id: Exclude<SummaryFocus, null>
+  title: string
+  value: number
+  label: string
+  icon: ReactNode
+  accent: string
+  emptyText: string
+  focused: boolean
+  onClick: (id: Exclude<SummaryFocus, null>) => void
+}) {
+  const isEmpty = value === 0
+
+  return (
+    <motion.button
+      type="button"
+      layoutId={`summary-${id}`}
+      onClick={() => onClick(id)}
+      className={cn(
+        'group relative min-h-[130px] overflow-hidden rounded-[22px] border bg-white/82 p-4 text-right shadow-[0_18px_54px_rgba(46,34,30,.12)] backdrop-blur transition',
+        focused ? 'cursor-zoom-out' : 'cursor-zoom-in hover:-translate-y-1',
+      )}
+      style={{ borderColor: `${accent}80` }}
+      whileHover={{ scale: focused ? 1 : 1.016 }}
+      whileTap={{ scale: 0.985 }}
+    >
+      <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at 50% 0%, ${accent}, transparent 58%)` }} />
+      <div className="relative flex h-full flex-col justify-between">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full border-[4px] border-white text-white shadow-[0_12px_30px_rgba(120,50,10,.18)]" style={{ background: `linear-gradient(135deg, ${accent}, #FFB800)` }}>
+            {icon}
+          </div>
+          <span className="rounded-full bg-[#FFF1D2] px-3 py-1.5 text-sm font-black text-[#EF8A4E]">{title}</span>
+        </div>
+        {isEmpty ? (
+          <div className="mt-6">
+            <p className="text-xl font-black text-[#2E221E]">אין עדיין נתונים</p>
+            <p className="mt-1 text-sm font-extrabold text-[#7D706A]">{emptyText}</p>
+          </div>
+        ) : (
+          <div className="mt-4">
+            <p className="text-[2.9rem] font-black leading-none tabular-nums text-[#2E221E]">{value.toLocaleString('he-IL')}</p>
+            <p className="text-sm font-black text-[#7D706A]">{label}</p>
+          </div>
+        )}
+      </div>
+    </motion.button>
+  )
+}
+
+function FocusedSummaryHeader({ icon, title, subtitle, accent }: { icon: ReactNode; title: string; subtitle: string; accent: string }) {
+  return (
+    <div className="mb-6 flex items-center justify-between gap-6">
+      <div>
+        <p className="text-xl font-black text-[#EF8A4E]">{subtitle}</p>
+        <h3 className="mt-1 text-[3.4rem] font-black leading-none text-[#2E221E]">{title}</h3>
+      </div>
+      <div className="flex h-20 w-20 items-center justify-center rounded-full border-[6px] border-white text-white shadow-[0_16px_46px_rgba(46,34,30,.2)]" style={{ background: `linear-gradient(135deg, ${accent}, #FFB800)` }}>
+        {icon}
+      </div>
+    </div>
+  )
+}
+
+function FinalSummaryPhase({
+  rankedG,
+  rankedP,
+  pgMap,
+  totalGroups,
+  groupTaskCounts,
+  taskCountByP,
+  topPByGroup,
+  totalScans,
+  totalParticipants,
+  totalPointsEarned,
+  totalRewardsAwarded,
+}: {
+  rankedG: RankedGroup[]
+  rankedP: RankedParticipant[]
+  pgMap: Map<string, ParticipantGroupRef[]>
+  totalGroups: number
+  groupTaskCounts: Map<string, number>
+  taskCountByP: Map<string, number>
+  topPByGroup: Map<string, { name: string }>
+  totalScans: number
+  totalParticipants: number
+  totalPointsEarned: number
+  totalRewardsAwarded: number
+}) {
+  const [focus, setFocus] = useState<SummaryFocus>(null)
+  const toggleFocus = (id: Exclude<SummaryFocus, null>) => setFocus((current) => (current === id ? null : id))
+
+  const renderFocused = () => {
+    if (focus === 'groups') {
+      return (
+        <>
+          <FocusedSummaryHeader icon={<Users size={34} />} title="הדירוג המלא של הקבוצות" subtitle="כל הקבוצות במקום אחד" accent={GOLD} />
+          <SummaryLeaderboardPreview expanded large items={rankedG} pgMap={pgMap} totalGroups={totalGroups} groupTaskCounts={groupTaskCounts} taskCountByP={taskCountByP} topPByGroup={topPByGroup} />
+        </>
+      )
+    }
+    if (focus === 'participants') {
+      return (
+        <>
+          <FocusedSummaryHeader icon={<Trophy size={34} />} title="הדירוג המלא של המשתתפים" subtitle="כל המשתתפים במקום אחד" accent={TEAL} />
+          <SummaryLeaderboardPreview expanded large items={rankedP} pgMap={pgMap} totalGroups={totalGroups} groupTaskCounts={groupTaskCounts} taskCountByP={taskCountByP} topPByGroup={topPByGroup} />
+        </>
+      )
+    }
+
+    const metric = focus === 'scans'
+      ? { title: 'כל הסריקות', value: totalScans, label: 'סריקות בוצעו', icon: <ScanLine size={24} />, accent: ORANGE, emptyText: 'אין עדיין סריקות להצגה' }
+      : focus === 'totalParticipants'
+        ? { title: 'כל המשתתפים', value: totalParticipants, label: 'משתתפים באירוע', icon: <Users size={24} />, accent: TEAL, emptyText: 'אין עדיין משתתפים להצגה' }
+        : focus === 'completedTasks'
+          ? { title: 'כל המשימות שהושלמו', value: totalScans, label: 'משימות הושלמו', icon: <Award size={24} />, accent: GREEN, emptyText: 'אין עדיין משימות שהושלמו' }
+          : focus === 'totalPoints'
+            ? { title: 'כל הנקודות', value: totalPointsEarned, label: 'נקודות נצברו', icon: <Trophy size={24} />, accent: WARM_ORANGE, emptyText: 'אין עדיין נקודות להצגה' }
+            : { title: 'כל הפרסים', value: totalRewardsAwarded, label: 'פרסים הוענקו', icon: <Gift size={24} />, accent: GOLD, emptyText: 'אין עדיין פרסים להציג' }
+
+    return (
+      <>
+        <FocusedSummaryHeader icon={metric.icon} title={metric.title} subtitle="סיכום הנופש" accent={metric.accent} />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="relative overflow-hidden rounded-[34px] border bg-white/84 px-14 py-10 text-center shadow-[0_28px_72px_rgba(46,34,30,.16)] backdrop-blur" style={{ borderColor: `${metric.accent}99` }}>
+            <div className="absolute inset-0 opacity-25" style={{ background: `radial-gradient(circle at 50% 0%, ${metric.accent}, transparent 62%)` }} />
+            <div className="relative">
+              {metric.value === 0 ? (
+                <>
+                  <p className="text-5xl font-black text-[#2E221E]">אין עדיין נתונים</p>
+                  <p className="mt-4 text-2xl font-extrabold text-[#7D706A]">{metric.emptyText}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[8rem] font-black leading-none tabular-nums text-[#2E221E]">{metric.value.toLocaleString('he-IL')}</p>
+                  <p className="mt-2 text-3xl font-black text-[#7D706A]">{metric.label}</p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <div className="relative flex h-full flex-col px-7 py-1">
+      <div className="mb-4 text-center">
+        <div className="inline-flex items-center gap-3 rounded-full bg-[#FFF1D2] px-6 py-2 text-xl font-black text-[#EF8A4E] shadow-[0_8px_22px_rgba(255,147,102,.25)]">
+          <Sparkles size={22} fill="currentColor" />
+          סיכום הנופש
+        </div>
+        <h2 className="mt-3 text-[56px] font-black leading-none text-[#2E221E]">הנופש במספרים</h2>
+        <p className="mt-2 text-xl font-extrabold text-[#7D706A]">סיכום סטטיסטי מלא של הנופש, עם כל הדירוגים והמספרים החשובים במקום אחד</p>
+      </div>
+
+      <div className="grid flex-1 grid-rows-[minmax(0,1fr)_auto] gap-4">
+        <div className="grid min-h-0 grid-cols-2 gap-5">
+          <motion.button
+            type="button"
+            layoutId="summary-groups"
+            onClick={() => toggleFocus('groups')}
+            className="relative min-h-0 overflow-hidden rounded-[26px] border border-[#F2B33C]/60 bg-white/78 p-6 text-right shadow-[0_18px_54px_rgba(46,34,30,.12)] backdrop-blur transition hover:-translate-y-1"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <span className="rounded-full bg-[#FFF1D2] px-5 py-2 text-lg font-black text-[#EF8A4E]">דירוג הקבוצות</span>
+              <Users size={34} className="text-[#F2B33C]" />
+            </div>
+            <SummaryLeaderboardPreview large items={rankedG} pgMap={pgMap} totalGroups={totalGroups} groupTaskCounts={groupTaskCounts} taskCountByP={taskCountByP} topPByGroup={topPByGroup} />
+          </motion.button>
+          <motion.button
+            type="button"
+            layoutId="summary-participants"
+            onClick={() => toggleFocus('participants')}
+            className="relative min-h-0 overflow-hidden rounded-[26px] border border-[#4FA6A0]/60 bg-white/78 p-6 text-right shadow-[0_18px_54px_rgba(46,34,30,.12)] backdrop-blur transition hover:-translate-y-1"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <span className="rounded-full bg-[#E4F4F0] px-5 py-2 text-lg font-black text-[#3E8F88]">דירוג המשתתפים</span>
+              <Award size={34} className="text-[#4FA6A0]" />
+            </div>
+            <SummaryLeaderboardPreview large items={rankedP} pgMap={pgMap} totalGroups={totalGroups} groupTaskCounts={groupTaskCounts} taskCountByP={taskCountByP} topPByGroup={topPByGroup} />
+          </motion.button>
+        </div>
+        <div className="grid grid-cols-5 gap-5">
+          <SummaryMetricCard id="scans" title="סריקות" value={totalScans} label="סריקות בוצעו" icon={<ScanLine size={22} />} accent={ORANGE} emptyText="אין עדיין סריקות להצגה" focused={focus === 'scans'} onClick={toggleFocus} />
+          <SummaryMetricCard id="totalParticipants" title="משתתפים" value={totalParticipants} label="משתתפים באירוע" icon={<Users size={22} />} accent={TEAL} emptyText="אין עדיין משתתפים להצגה" focused={focus === 'totalParticipants'} onClick={toggleFocus} />
+          <SummaryMetricCard id="completedTasks" title="משימות" value={totalScans} label="משימות הושלמו" icon={<Award size={22} />} accent={GREEN} emptyText="אין עדיין משימות שהושלמו" focused={focus === 'completedTasks'} onClick={toggleFocus} />
+          <SummaryMetricCard id="totalPoints" title="נקודות" value={totalPointsEarned} label="נקודות נצברו" icon={<Trophy size={22} />} accent={WARM_ORANGE} emptyText="אין עדיין נקודות להצגה" focused={focus === 'totalPoints'} onClick={toggleFocus} />
+          <SummaryMetricCard id="rewards" title="פרסים" value={totalRewardsAwarded} label="פרסים הוענקו" icon={<Gift size={22} />} accent={GOLD} emptyText="אין עדיין פרסים להציג" focused={focus === 'rewards'} onClick={toggleFocus} />
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {focus && (
+          <motion.div
+            className="absolute inset-0 z-50 flex items-center justify-center rounded-[28px] bg-[#FFF8F3]/72 p-10 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setFocus(null)}
+          >
+            <motion.div
+              layoutId={`summary-${focus}`}
+              className="relative flex h-full max-h-[780px] w-full max-w-[1320px] flex-col overflow-hidden rounded-[38px] border border-[#F2B33C]/60 bg-[linear-gradient(150deg,#FFFDF7,#FFF4E6)] p-8 shadow-[0_34px_100px_rgba(46,34,30,.22)]"
+              initial={{ scale: 0.92, y: 24 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.94, y: 18 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="absolute inset-y-0 -right-1/3 w-1/3 rotate-12 bg-gradient-to-l from-transparent via-white/70 to-transparent animate-light-sweep" />
+              <button
+                type="button"
+                onClick={() => setFocus(null)}
+                className="absolute left-6 top-6 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-[#E7D6CF]/80 bg-white/88 text-[#7D706A] shadow-[0_10px_28px_rgba(46,34,30,.12)] transition hover:scale-105 hover:text-[#2E221E]"
+                aria-label="הקטן"
+              >
+                <Minimize2 size={22} />
+              </button>
+              <div className="relative flex h-full flex-col">{renderFocused()}</div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function ArenaNotReadyScreen({
+  eventName,
+  eventLogoUrl,
+  muted,
+  onToggleMute,
+  fullscreen,
+  onToggleFullscreen,
+}: {
+  eventName?: string
+  eventLogoUrl?: string | null
+  muted: boolean
+  onToggleMute: () => void
+  fullscreen: boolean
+  onToggleFullscreen: () => void
+}) {
+  return (
+    <div className="relative h-screen w-screen overflow-hidden bg-app-radial font-sans text-foreground" dir="rtl">
+      <AmbientBackdrop />
+      <header className="relative z-20 flex h-24 items-start justify-between px-6 pt-5 md:px-10">
+        <div className="flex items-center gap-3">
+          <SoundToggle muted={muted} onToggle={onToggleMute} />
+          <button
+            type="button"
+            onClick={onToggleFullscreen}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-white/65 text-muted shadow-sm backdrop-blur transition hover:text-primary"
+            title={fullscreen ? 'יציאה ממסך מלא' : 'מסך מלא'}
+          >
+            {fullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
+          </button>
+        </div>
+        <div className="flex flex-col items-center gap-2 text-center">
+          <div className="flex items-center gap-3">
+            {eventLogoUrl ? (
+              <img src={eventLogoUrl} alt={eventName || ''} className="h-14 w-14 rounded-2xl object-cover shadow-[0_0_28px_rgba(255,107,53,0.24)]" />
+            ) : (
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 text-xl font-black text-primary shadow-[0_0_28px_rgba(255,107,53,0.2)]">
+                {(eventName || '🏆').slice(0, 2)}
+              </div>
+            )}
+            <div>
+              <p className="text-[13px] font-black uppercase tracking-[0.24em] text-primary">טקס הסיום</p>
+              <h1 className="text-3xl font-black text-foreground md:text-4xl">{eventName || 'תוצאות התחרות'}</h1>
+            </div>
+          </div>
+        </div>
+        <div className="w-10" />
+      </header>
+
+      <main className="absolute inset-x-6 bottom-[112px] top-[156px] z-10 flex items-center justify-center px-2 md:inset-x-10">
+        <motion.section
+          className="relative flex w-full max-w-[920px] max-h-[720px] flex-col items-center overflow-hidden rounded-[38px] border-2 border-[#F2B33C]/55 bg-[linear-gradient(150deg,#FFFDF7,#FFF4E6)] px-7 py-10 text-center shadow-[0_24px_72px_rgba(46,34,30,0.16)] md:px-12 md:py-12"
+          initial={{ opacity: 0, scale: 0.98, y: 14 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="absolute inset-x-0 top-0 h-2 bg-[linear-gradient(90deg,#FF9366,#FFB84D,#FFD68A,#8FCFA0,#5FB3AA)]" />
+          <div className="absolute -right-1/4 top-0 h-full w-1/3 rotate-12 bg-gradient-to-l from-transparent via-white/70 to-transparent animate-light-sweep" />
+          <div className="absolute inset-0 opacity-30" style={{ background: 'radial-gradient(circle at 50% 0%, rgba(242,179,60,.32), transparent 55%)' }} />
+
+          <div className="relative mx-auto flex max-w-3xl flex-col items-center">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#F2B33C]/30 bg-white/72 px-4 py-2 text-sm font-black text-[#EF8A4E] shadow-[0_8px_22px_rgba(255,147,102,.16)]">
+              <Trophy size={16} />
+              🏆 הטקס עוד רגע מתחיל
+            </div>
+
+            <motion.div
+              className="relative mb-8 flex h-32 w-32 items-center justify-center rounded-full border-[7px] border-white bg-[linear-gradient(135deg,#FFF1D2,#FFB84D)] text-white shadow-[0_16px_42px_rgba(46,34,30,.2)] md:h-40 md:w-40"
+              animate={{ y: [0, -8, 0], rotate: [0, -4, 4, 0] }}
+              transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <div className="absolute inset-[-22px] rounded-full bg-[#F2B33C]/14 blur-2xl" />
+              <Users size={72} className="relative drop-shadow-[0_0_16px_rgba(255,255,255,.35)] md:size-[88px]" />
+            </motion.div>
+
+            <h2 className="max-w-3xl text-[clamp(3rem,4.8vw,5rem)] font-black leading-[0.92] text-[#2E221E]">
+              הטקס עוד רגע מתחיל
+            </h2>
+            <p className="mt-5 max-w-2xl text-[clamp(1.1rem,1.45vw,1.55rem)] font-extrabold leading-tight text-[#7D706A]">
+              ממתינים לעוד כמה משתתפים שיצטרפו למשחק.
+            </p>
+          </div>
+        </motion.section>
+      </main>
+    </div>
+  )
+}
+
+function ProgressChrome({ activeDot, count, onReplay }: { activeDot: number; count: number; onReplay: () => void }) {
   return (
     <div className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-center gap-5 px-6 pb-6">
       <button onClick={onReplay} className="flex items-center gap-2 rounded-full border border-border bg-white/65 px-4 py-2 text-sm font-black text-muted shadow-sm backdrop-blur transition hover:text-primary">
@@ -717,7 +1237,7 @@ function ProgressChrome({ activeDot, onReplay }: { activeDot: number; onReplay: 
         הצג שוב
       </button>
       <div className="flex items-center gap-2 rounded-full border border-white/70 bg-white/55 px-4 py-3 shadow-sm backdrop-blur">
-        {Array.from({ length: 9 }, (_, i) => (
+        {Array.from({ length: count }, (_, i) => (
           <span key={i} className={cn('h-2.5 rounded-full transition-all duration-500', activeDot === i ? 'w-11 bg-primary' : 'w-2.5 bg-primary/25')} />
         ))}
       </div>
@@ -726,7 +1246,7 @@ function ProgressChrome({ activeDot, onReplay }: { activeDot: number; onReplay: 
 }
 
 export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCeremonyProps) {
-  const { rankedP, rankedG, hasGroups, taskCountByP, groupTaskCounts, topPByGroup, taskStats, pgMap, loading, error } = useLeaderboardData(eventId)
+  const { rankedP, rankedG, hasGroups, totalGroupCount, taskCountByP, groupTaskCounts, topPByGroup, taskStats, pgMap, totalScans, totalParticipants, totalPointsEarned, totalRewardsAwarded, ceremonyReadiness, loading, error } = useLeaderboardData(eventId)
   const { play, playApplause, muted, toggleMute } = useSound()
   const { play: playFanfare } = useCelebrationSound()
   const [phaseIndex, setPhaseIndex] = useState(0)
@@ -805,7 +1325,7 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
   const champParticipant = rankedP[0]
   const groupRunnerUp = rankedG.find((g) => g.rank === 2)
   const participantRunnerUp = rankedP.find((p) => p.rank === 2)
-  const participantGroup = champParticipant ? pgMap.get(champParticipant.participant_id) : undefined
+  const participantGroups = champParticipant ? pgMap.get(champParticipant.participant_id) ?? [] : []
   const groupMissionWinners = useMemo(
     () =>
       rankedG
@@ -818,7 +1338,7 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
   const participantMissionWinners = useMemo(
     () =>
       rankedP
-        .map((p) => ({ id: p.participant_id, name: p.participant_name, count: taskCountByP.get(p.participant_id) || 0, color: pgMap.get(p.participant_id)?.color }))
+        .map((p) => ({ id: p.participant_id, name: p.participant_name, count: taskCountByP.get(p.participant_id) || 0, color: (pgMap.get(p.participant_id) ?? [])[0]?.color }))
         .filter((p) => p.count > 0)
         .sort((a, b) => b.count - a.count)
         .slice(0, 3),
@@ -843,6 +1363,19 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
         <AmbientBackdrop />
         <ErrorAlert message={`שגיאה בטעינת הנתונים - ${error}`} className="relative z-10 max-w-xl bg-white/80 text-lg shadow-card backdrop-blur" />
       </div>
+    )
+  }
+
+  if (!ceremonyReadiness.isReady) {
+    return (
+      <ArenaNotReadyScreen
+        eventName={eventName}
+        eventLogoUrl={eventLogoUrl}
+        muted={muted}
+        onToggleMute={handleSoundToggle}
+        fullscreen={fullscreen}
+        onToggleFullscreen={handleToggleFullscreen}
+      />
     )
   }
 
@@ -881,23 +1414,39 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
                 transition={{ duration: 0.7, ease: 'easeInOut' }}
               >
                 {phase.kind === 'suspense' && <SuspensePhase />}
-                {phase.kind === 'groupChampion' && <ChampionPhase type="group" champ={champGroup} runnerUp={groupRunnerUp} />}
-                {phase.kind === 'groupPodium' && <PodiumPhase title="שלוש המשפחות המובילות" type="group" items={[champGroup, groupRunnerUp, rankedG.find((g) => g.rank === 3)]} />}
+                {phase.kind === 'groupChampion' && <ChampionPhase type="group" champ={champGroup} runnerUp={groupRunnerUp} totalGroups={totalGroupCount} />}
+                {phase.kind === 'groupPodium' && <PodiumPhase title="שלוש הקבוצות המובילות" type="group" items={[champGroup, groupRunnerUp, rankedG.find((g) => g.rank === 3)]} />}
                 {phase.kind === 'groupLeaderboard' && (
-                  <LeaderboardPhase title="טבלת המשפחות" subtitle="דירוג מלא" type="group" items={rankedG} pgMap={pgMap} taskCountByP={taskCountByP} groupTaskCounts={groupTaskCounts} topPByGroup={topPByGroup} />
+                  <LeaderboardPhase title="טבלת הקבוצות" subtitle="דירוג מלא" type="group" items={rankedG} pgMap={pgMap} totalGroups={totalGroupCount} taskCountByP={taskCountByP} groupTaskCounts={groupTaskCounts} topPByGroup={topPByGroup} />
                 )}
-                {phase.kind === 'participantChampion' && <ChampionPhase type="participant" champ={champParticipant} runnerUp={participantRunnerUp} group={participantGroup} />}
+                {phase.kind === 'participantChampion' && <ChampionPhase type="participant" champ={champParticipant} runnerUp={participantRunnerUp} groups={participantGroups} totalGroups={totalGroupCount} />}
                 {phase.kind === 'participantPodium' && <PodiumPhase title="שלושת המשתתפים המובילים" type="participant" items={[champParticipant, participantRunnerUp, rankedP.find((p) => p.rank === 3)]} />}
                 {phase.kind === 'participantLeaderboard' && (
-                  <LeaderboardPhase title="טבלת המשתתפים" subtitle="דירוג מלא" type="participant" items={rankedP} pgMap={pgMap} taskCountByP={taskCountByP} groupTaskCounts={groupTaskCounts} topPByGroup={topPByGroup} />
+                  <LeaderboardPhase title="טבלת המשתתפים" subtitle="דירוג מלא" type="participant" items={rankedP} pgMap={pgMap} totalGroups={totalGroupCount} taskCountByP={taskCountByP} groupTaskCounts={groupTaskCounts} topPByGroup={topPByGroup} />
                 )}
                 {phase.kind === 'groupMissions' && <MissionsPhase type="group" winners={groupMissionWinners} />}
                 {phase.kind === 'participantMissions' && <MissionsPhase type="participant" winners={participantMissionWinners} />}
+                {phase.kind === 'finalSummary' && (
+                  <FinalSummaryPhase
+                    rankedG={rankedG}
+                    rankedP={rankedP}
+                    pgMap={pgMap}
+                    totalGroups={totalGroupCount}
+                    groupTaskCounts={groupTaskCounts}
+                    taskCountByP={taskCountByP}
+                    topPByGroup={topPByGroup}
+                    totalScans={totalScans}
+                    totalParticipants={totalParticipants}
+                    totalPointsEarned={totalPointsEarned}
+                    totalRewardsAwarded={totalRewardsAwarded}
+                  />
+                )}
               </motion.section>
             </AnimatePresence>
           </main>
           <ProgressChrome
             activeDot={phase.dot}
+            count={phases.length}
             onReplay={handleReplay}
           />
           <span className="sr-only">{taskStats.length} סוגי משימות נספרו</span>
@@ -907,3 +1456,5 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
     </div>
   )
 }
+
+
