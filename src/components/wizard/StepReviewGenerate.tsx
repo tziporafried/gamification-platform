@@ -15,7 +15,6 @@ import { EventSummaryGrid } from './EventSummaryGrid'
 import { QrCardGenerator } from '@/components/qr-cards/QrCardGenerator'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
-import { cn } from '@/lib/utils'
 import { syncEventToTemplate } from '@/lib/templates'
 import type { Event, EventCounts, GroupType } from '@/types'
 import { isEventReady, calculateReadiness, isTemplateReady, calculateTemplateReadiness } from '@/lib/wizard'
@@ -173,60 +172,33 @@ export function StepReviewGenerate({
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3, delay: 0.15 }}
               >
-                {cardsGenerated && (
-                  <div className="mb-5 shrink-0">
-                    <ReadyCelebrationBanner
-                      title="🎉 הכול מוכן!"
-                      description="המשחק מוכן להפעלה. אפשר להדפיס את הכרטיסים ולהתחיל את הפעילות."
-                      celebrate={celebrate}
-                      collapsed
-                    >
-                  <EventSummaryGrid
-                        counts={counts}
-                        ready={ready}
-                        animationKey={animationKey}
-                        showCards
-                        totalCards={totalCards}
-                        compact
-                      />
-                    </ReadyCelebrationBanner>
-                  </div>
-                )}
-
-                <div
-                  className={cn(
-                    'flex min-h-0 flex-1 flex-col',
-                    !cardsGenerated && 'overflow-y-auto',
-                  )}
-                  style={!cardsGenerated ? { scrollbarGutter: 'stable' } : undefined}
-                >
-                  {!cardsGenerated && (
-                    <div className="mb-3 shrink-0">
-                      <ReadyCelebrationBanner
-                        title="🎉 הכול מוכן!"
-                        description="המשחק מוכן להפעלה. אפשר להדפיס את הכרטיסים ולהתחיל את הפעילות."
-                        celebrate={celebrate}
-                        footerNote="לכל משתתף יודפס כרטיס אישי עם כל הפעילויות שהגדרתם."
-                      >
-                        <EventSummaryGrid
-                          counts={counts}
-                          ready={ready}
-                          animationKey={animationKey}
-                          showCards
-                          totalCards={totalCards}
-                        />
-                      </ReadyCelebrationBanner>
-                    </div>
-                  )}
-                  <div className={cn(cardsGenerated && 'flex min-h-0 flex-1 flex-col')}>
-                    <QrCardGenerator
-                      event={event}
-                      onReadyChange={handleReadyChange}
-                      onTotalCardsChange={handleTotalCardsChange}
-                      onGeneratedChange={handleGeneratedChange}
+                <div className={cardsGenerated ? 'mb-4 shrink-0' : 'mb-3'}>
+                  <ReadyCelebrationBanner
+                    title="🎉 הכול מוכן!"
+                    description="המשחק מוכן להפעלה. אפשר להדפיס את הכרטיסים ולהתחיל את הפעילות."
+                    celebrate={celebrate}
+                    collapsed={cardsGenerated}
+                    footerNote={cardsGenerated ? undefined : 'לכל משתתף יודפס כרטיס אישי עם כל הפעילויות שהגדרתם.'}
+                  >
+                    <EventSummaryGrid
+                      counts={counts}
+                      ready={ready}
+                      animationKey={animationKey}
+                      showCards
+                      totalCards={totalCards}
+                      compact={cardsGenerated}
                     />
-                  </div>
+                  </ReadyCelebrationBanner>
                 </div>
+                {/* Keep one QrCardGenerator instance — remounting would reset generated/print UI */}
+                <ScrollContainer className="flex-1 px-0" stableGutter={false}>
+                  <QrCardGenerator
+                    event={event}
+                    onReadyChange={handleReadyChange}
+                    onTotalCardsChange={handleTotalCardsChange}
+                    onGeneratedChange={handleGeneratedChange}
+                  />
+                </ScrollContainer>
               </motion.div>
             )}
           </AnimatePresence>

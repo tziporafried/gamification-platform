@@ -34,6 +34,7 @@ interface TaskLimitSelectProps {
 
 const PANEL_WIDTH = 272
 const PANEL_GAP = 4
+const PANEL_EST_HEIGHT = 320
 const VIEWPORT_PADDING = 8
 
 type DailyTimeMode = 'anytime' | 'between'
@@ -105,7 +106,8 @@ export function TaskLimitSelect({
     const panel = panelRef.current
     if (!rect) return
 
-    const panelHeight = panel?.offsetHeight ?? 0
+    const panelWidth = panel?.offsetWidth ?? PANEL_WIDTH
+    const panelHeight = panel?.offsetHeight ?? PANEL_EST_HEIGHT
     const maxHeight = window.innerHeight - VIEWPORT_PADDING * 2
     const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_PADDING
     const spaceAbove = rect.top - VIEWPORT_PADDING
@@ -119,7 +121,7 @@ export function TaskLimitSelect({
 
     setPanelStyle({
       top,
-      left: getPanelLeftAlignedToTriggerRight(rect.right, PANEL_WIDTH, VIEWPORT_PADDING),
+      left: getPanelLeftAlignedToTriggerRight(rect.right, panelWidth, VIEWPORT_PADDING),
       maxHeight,
     })
   }, [])
@@ -130,6 +132,8 @@ export function TaskLimitSelect({
       return
     }
     updatePosition()
+    const frame = requestAnimationFrame(() => updatePosition())
+    return () => cancelAnimationFrame(frame)
   }, [open, updatePosition, editingDailyHour, editingLimit, dailyTimeMode])
 
   useEffect(() => {
@@ -254,13 +258,32 @@ export function TaskLimitSelect({
     if (e.key === 'Escape') { close(); onResetLimit() }
   }
 
+  function toggleOpen() {
+    setOpen((prev) => {
+      const next = !prev
+      if (!next) {
+        setPanelStyle(null)
+        return next
+      }
+      const rect = buttonRef.current?.getBoundingClientRect()
+      if (rect) {
+        setPanelStyle({
+          top: rect.bottom + PANEL_GAP,
+          left: getPanelLeftAlignedToTriggerRight(rect.right, PANEL_WIDTH, VIEWPORT_PADDING),
+          maxHeight: window.innerHeight - VIEWPORT_PADDING * 2,
+        })
+      }
+      return next
+    })
+  }
+
   return (
     <div className="relative flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
       {tone === 'onColor' ? (
         <button
           ref={buttonRef}
           type="button"
-          onClick={() => setOpen((prev) => !prev)}
+          onClick={toggleOpen}
           title={limitTooltip}
           className={cn(
             compact ? theme.wizardCompactChip : 'inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-normal transition-all',
@@ -278,7 +301,7 @@ export function TaskLimitSelect({
         <ChipButton
           ref={buttonRef}
           color="default"
-          onClick={() => setOpen((prev) => !prev)}
+          onClick={toggleOpen}
           title={limitTooltip}
           className="max-w-[14rem]"
         >

@@ -9,7 +9,7 @@ import {
 import { createPortal } from 'react-dom'
 import { Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getPanelLeftAlignedToTriggerRight } from '@/lib/floatingPanel'
+import { getPanelLeftAlignedToTriggerRight, positionFloatingPanel } from '@/lib/floatingPanel'
 import { formatTimeOfDay } from '@/lib/israelTime'
 import { QUARTER_HOUR_MINUTES, snapToQuarterHour } from '@/lib/taskLimit'
 import { theme } from '@/lib/theme'
@@ -33,6 +33,8 @@ const HOURS = Array.from({ length: 24 }, (_, index) => index)
 const MINUTES = [...QUARTER_HOUR_MINUTES]
 const PANEL_WIDTH = 140
 const PANEL_GAP = 4
+const PANEL_EST_HEIGHT = 160
+const VIEWPORT_PADDING = 8
 
 function TimeColumn({
   label,
@@ -111,17 +113,18 @@ export function AppTimePicker({
   const updatePanelPosition = useCallback(() => {
     const button = buttonRef.current
     const panel = panelRef.current
-    if (!button || !panel) return
+    if (!button) return
 
     const rect = button.getBoundingClientRect()
-    const panelHeight = panel.offsetHeight
-    const spaceBelow = window.innerHeight - rect.bottom
-    const openUp = spaceBelow < panelHeight + PANEL_GAP + 8
+    const width = panel?.offsetWidth || PANEL_WIDTH
+    const height = panel?.offsetHeight || PANEL_EST_HEIGHT
+    const { top, left } = positionFloatingPanel(
+      rect,
+      { width, height },
+      { gap: PANEL_GAP, viewportPadding: VIEWPORT_PADDING },
+    )
 
-    setPanelStyle({
-      top: openUp ? rect.top - panelHeight - PANEL_GAP : rect.bottom + PANEL_GAP,
-      left: getPanelLeftAlignedToTriggerRight(rect.right, PANEL_WIDTH, 8),
-    })
+    setPanelStyle({ top, left })
   }, [])
 
   useLayoutEffect(() => {
@@ -130,6 +133,8 @@ export function AppTimePicker({
       return
     }
     updatePanelPosition()
+    const frame = requestAnimationFrame(() => updatePanelPosition())
+    return () => cancelAnimationFrame(frame)
   }, [isOpen, updatePanelPosition, value.hour, value.minute])
 
   useEffect(() => {
@@ -177,6 +182,7 @@ export function AppTimePicker({
   const panel = isOpen ? (
     <div
       ref={panelRef}
+      data-testid="time-picker-panel"
       dir="ltr"
       style={{
         position: 'fixed',
@@ -207,7 +213,20 @@ export function AppTimePicker({
           type="button"
           onClick={(event) => {
             event.stopPropagation()
-            setOpen(!isOpen)
+            const next = !isOpen
+            if (!next) {
+              setPanelStyle(null)
+              setOpen(false)
+              return
+            }
+            const rect = buttonRef.current?.getBoundingClientRect()
+            if (rect) {
+              setPanelStyle({
+                top: rect.bottom + PANEL_GAP,
+                left: getPanelLeftAlignedToTriggerRight(rect.right, PANEL_WIDTH, VIEWPORT_PADDING),
+              })
+            }
+            setOpen(true)
           }}
           onKeyDown={handleKeyDown}
           className={cn(

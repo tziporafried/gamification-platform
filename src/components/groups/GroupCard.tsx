@@ -6,7 +6,7 @@ import { ColorPicker } from '@/components/ui/ColorPicker'
 import { WizardDeleteButton } from '@/components/wizard/WizardDeleteButton'
 import { Tooltip, useIsTruncated } from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
-import { getPanelLeftAlignedToTriggerRight } from '@/lib/floatingPanel'
+import { getPanelLeftAlignedToTriggerRight, positionFloatingPanel } from '@/lib/floatingPanel'
 import { isPresetColor } from '@/lib/paletteColors'
 import type { GroupWithCount } from '@/types'
 
@@ -16,8 +16,8 @@ interface GroupCardProps {
   onDelete: () => void
 }
 
-const COLOR_PANEL_WIDTH = 288
 const VIEWPORT_PADDING = 8
+const PANEL_GAP = 6
 
 function getGroupCardStyle(color: string): React.CSSProperties {
   return { backgroundColor: color }
@@ -50,11 +50,25 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
 
   const updatePanelPosition = useCallback(() => {
     const rect = buttonRef.current?.getBoundingClientRect()
-    if (!rect) return
-    setPanelStyle({
-      top: rect.bottom + 6,
-      left: getPanelLeftAlignedToTriggerRight(rect.right, COLOR_PANEL_WIDTH, VIEWPORT_PADDING),
-    })
+    const panel = panelRef.current
+    if (!rect || !panel) return
+
+    const width = panel.offsetWidth || 300
+    const height = panel.offsetHeight || 48
+
+    const { top, left } = positionFloatingPanel(
+      rect,
+      { width, height },
+      { gap: PANEL_GAP, viewportPadding: VIEWPORT_PADDING },
+    )
+    setPanelStyle({ top, left })
+
+    // Keep wizard scrollports from shifting sideways when the swatch is focused.
+    let node: HTMLElement | null = buttonRef.current
+    while (node) {
+      if (node.scrollLeft) node.scrollLeft = 0
+      node = node.parentElement
+    }
   }, [])
 
   useLayoutEffect(() => {
@@ -63,6 +77,8 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
       return
     }
     updatePanelPosition()
+    const frame = requestAnimationFrame(() => updatePanelPosition())
+    return () => cancelAnimationFrame(frame)
   }, [showColorPicker, updatePanelPosition])
 
   useEffect(() => {
@@ -173,7 +189,23 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
           <button
             ref={buttonRef}
             type="button"
-            onClick={() => setShowColorPicker((prev) => !prev)}
+            onClick={() => {
+              setShowColorPicker((prev) => {
+                const next = !prev
+                if (!next) {
+                  setPanelStyle(null)
+                  return next
+                }
+                const rect = buttonRef.current?.getBoundingClientRect()
+                if (rect) {
+                  setPanelStyle({
+                    top: rect.bottom + PANEL_GAP,
+                    left: getPanelLeftAlignedToTriggerRight(rect.right, 300, VIEWPORT_PADDING),
+                  })
+                }
+                return next
+              })
+            }}
             className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border-2 border-white/35 transition-opacity hover:opacity-90"
             style={{ backgroundColor: color }}
             title="שנה צבע"
@@ -181,11 +213,17 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
             <Palette size={11} className="text-white drop-shadow-sm" />
           </button>
 
-          {showColorPicker && panelStyle && createPortal(
+          {showColorPicker && createPortal(
             <div
               ref={panelRef}
-              style={{ position: 'fixed', top: panelStyle.top, left: panelStyle.left }}
+              style={{
+                position: 'fixed',
+                top: panelStyle?.top ?? -9999,
+                left: panelStyle?.left ?? 0,
+                visibility: panelStyle ? 'visible' : 'hidden',
+              }}
               className="z-[200] w-max rounded-xl border border-border bg-surface p-3 shadow-podium animate-scale-in"
+              data-testid="group-color-panel"
             >
               <ColorPicker
                 compact

@@ -586,19 +586,25 @@ function ChampionPhase({
 function PodiumPhase({ title, items, type }: { title: string; items: (RankedGroup | RankedParticipant | undefined)[]; type: 'group' | 'participant' }) {
   const ordered = [items[1], items[0], items[2]].filter(Boolean) as (RankedGroup | RankedParticipant)[]
   if (ordered.length === 0) return <EmptyPhase title="אין עדיין זוכים להצגה" />
+  const colCount = ordered.length
 
   return (
     <div className="flex h-full flex-col items-center justify-center px-5">
       <p className="text-2xl font-black text-primary">פודיום המנצחים</p>
       <h2 className="mb-10 text-center text-[clamp(3.5rem,6vw,6.2rem)] font-black leading-none text-foreground">{title}</h2>
-      <div className="flex w-full max-w-6xl items-end justify-center gap-4 md:gap-8">
+      <div
+        className={cn(
+          'mx-auto grid w-full items-end justify-items-center gap-4 md:gap-8',
+          colCount === 1 ? 'max-w-md grid-cols-1' : colCount === 2 ? 'max-w-4xl grid-cols-2' : 'max-w-6xl grid-cols-3',
+        )}
+      >
         {ordered.map((item, idx) => {
           const isGroup = 'group_name' in item
           const rank = item.rank
           const name = isGroup ? item.group_name : item.participant_name
           const color = isGroup ? item.group_color : type === 'participant' ? TEAL : GOLD
           const heights: Record<number, string> = { 1: 'h-[300px]', 2: 'h-[212px]', 3: 'h-[168px]' }
-          const width = rank === 1 ? 'w-[32%]' : 'w-[26%]'
+          const width = colCount === 2 ? 'w-full' : rank === 1 ? 'w-[32%]' : 'w-[26%]'
           return (
             <motion.div
               key={isGroup ? item.group_id : item.participant_id}
@@ -750,6 +756,7 @@ function LeaderboardPhase({
 function MissionsPhase({ type, winners }: { type: 'group' | 'participant'; winners: MissionWinner[] }) {
   if (winners.length === 0) return <EmptyPhase title="אין עדיין משימות שהושלמו" />
   const ordered = [winners[1], winners[0], winners[2]].filter(Boolean) as MissionWinner[]
+  const colCount = ordered.length
 
   return (
     <div className="flex h-full flex-col items-center justify-center px-5">
@@ -758,7 +765,12 @@ function MissionsPhase({ type, winners }: { type: 'group' | 'participant'; winne
         {type === 'group' ? 'הקבוצות שהשלימו הכי הרבה משימות' : 'המשתתפים שהשלימו הכי הרבה משימות'}
       </h2>
       <p className="mt-4 text-2xl font-bold text-muted">כי לא רק נקודות - גם ההשקעה נספרת</p>
-      <div className="mt-10 grid w-full max-w-6xl grid-cols-3 gap-5">
+      <div
+        className={cn(
+          'mx-auto mt-10 grid w-full gap-5',
+          colCount === 1 ? 'max-w-md grid-cols-1' : colCount === 2 ? 'max-w-4xl grid-cols-2' : 'max-w-6xl grid-cols-3',
+        )}
+      >
         {ordered.map((winner, idx) => {
           const rank = winners.findIndex((w) => w.id === winner.id) + 1
           return (
@@ -774,7 +786,7 @@ function MissionsPhase({ type, winners }: { type: 'group' | 'participant'; winne
                 {rank === 1 && <div className="mb-2 text-5xl">👑</div>}
                 <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-[6px] border-white bg-gradient-to-br from-[#FF9366] to-[#FFB800] text-5xl shadow-xl">🎯</div>
                 <div className="mt-5 inline-flex rounded-full bg-[#FFF1D2] px-4 py-2 text-lg font-black text-primary">
-                  {rank === 1 ? '🎯 אלופת המשימות' : MEDALS[rank - 1] || `#${rank}`}
+                  {rank === 1 ? '🎯 אלוף' : MEDALS[rank - 1] || `#${rank}`}
                 </div>
                 <h3 className="mt-5 truncate text-4xl font-black text-foreground">{winner.name}</h3>
                 <p className="mt-5 text-[6rem] font-black leading-none tabular-nums text-secondary">{winner.count.toLocaleString('he-IL')}</p>
@@ -1415,12 +1427,12 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
               >
                 {phase.kind === 'suspense' && <SuspensePhase />}
                 {phase.kind === 'groupChampion' && <ChampionPhase type="group" champ={champGroup} runnerUp={groupRunnerUp} totalGroups={totalGroupCount} />}
-                {phase.kind === 'groupPodium' && <PodiumPhase title="שלוש הקבוצות המובילות" type="group" items={[champGroup, groupRunnerUp, rankedG.find((g) => g.rank === 3)]} />}
+                {phase.kind === 'groupPodium' && <PodiumPhase title="הקבוצות המובילות" type="group" items={[champGroup, groupRunnerUp, rankedG.find((g) => g.rank === 3)]} />}
                 {phase.kind === 'groupLeaderboard' && (
                   <LeaderboardPhase title="טבלת הקבוצות" subtitle="דירוג מלא" type="group" items={rankedG} pgMap={pgMap} totalGroups={totalGroupCount} taskCountByP={taskCountByP} groupTaskCounts={groupTaskCounts} topPByGroup={topPByGroup} />
                 )}
                 {phase.kind === 'participantChampion' && <ChampionPhase type="participant" champ={champParticipant} runnerUp={participantRunnerUp} groups={participantGroups} totalGroups={totalGroupCount} />}
-                {phase.kind === 'participantPodium' && <PodiumPhase title="שלושת המשתתפים המובילים" type="participant" items={[champParticipant, participantRunnerUp, rankedP.find((p) => p.rank === 3)]} />}
+                {phase.kind === 'participantPodium' && <PodiumPhase title="המשתתפים המובילים" type="participant" items={[champParticipant, participantRunnerUp, rankedP.find((p) => p.rank === 3)]} />}
                 {phase.kind === 'participantLeaderboard' && (
                   <LeaderboardPhase title="טבלת המשתתפים" subtitle="דירוג מלא" type="participant" items={rankedP} pgMap={pgMap} totalGroups={totalGroupCount} taskCountByP={taskCountByP} groupTaskCounts={groupTaskCounts} topPByGroup={topPByGroup} />
                 )}

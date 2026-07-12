@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
@@ -814,6 +814,7 @@ function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () 
       position: 'relative',
       display: 'inline-block',
       overflow: 'visible',
+      maxWidth: '100%',
     }}>
       <button
         type="button"
@@ -1249,13 +1250,13 @@ function GlowingStarsTeal() {
 
 function AwardedRewardsFeed({ rewards, newestId, now }: { rewards: RewardRow[]; newestId: string | null; now: Date }) {
   return (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <span className="kiosk-blink" style={{ width: 9, height: 9, borderRadius: '50%', background: '#FFFFFF', display: 'inline-block', flexShrink: 0 }} />
         <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: '1.5px', color: '#FFFFFF' }}>פרסים אחרונים</span>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 7, overflow: 'hidden' }}>
         {rewards.map((r, i) => {
           const isNew = r.id === newestId
           const relativeTime = formatActivityRelativeTime(r.createdAt, now)
@@ -1341,40 +1342,6 @@ function SkeletonRows({ count = 3 }: { count?: number }) {
         />
       ))}
     </div>
-  )
-}
-
-function MissionPreGamePanel() {
-  return (
-    <>
-      <div className="kiosk-fadeUp kiosk-cardBreathe" style={{
-        position: 'relative', zIndex: 1, borderRadius: 22, padding: 22,
-        background: '#FFFFFF', boxShadow: '0 10px 24px rgba(120,50,10,0.18)',
-        color: '#2E221E', border: '1.5px solid #FFD8BC', overflow: 'hidden',
-      }}>
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-          <div className="kiosk-shimmerSweep" style={{ position: 'absolute', top: 0, bottom: 0, width: '42%', background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.58),transparent)' }} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative' }}>
-          <div className="kiosk-bob" style={{ fontSize: 46, lineHeight: 1 }}>🎯</div>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 2, color: '#E07A3E' }}>משימה ראשונה</div>
-            <div style={{ fontSize: 24, fontWeight: 900, lineHeight: 1.2, marginTop: 3 }}>השלימו את המשימה הראשונה</div>
-          </div>
-        </div>
-        <div style={{ position: 'relative', marginTop: 14, color: '#7D706A', fontSize: 15, fontWeight: 800, lineHeight: 1.45 }}>
-          כל סריקה פותחת נקודות ופרסים.
-        </div>
-      </div>
-
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16 }}>
-        <SkeletonRows count={4} />
-      </div>
-
-      <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', fontSize: 13, fontWeight: 900, color: 'rgba(255,255,255,0.9)' }}>
-        ✨ הפעילות תופיע כאן ברגע שתתחילו
-      </div>
-    </>
   )
 }
 
@@ -1932,7 +1899,7 @@ function ActivityView({
     opacity: active ? 1 : 0,
     transform: active ? 'translateY(0)' : 'translateY(-10px)',
     pointerEvents: active ? 'auto' : 'none',
-    overflow: 'visible',
+    overflow: 'hidden',
   }
 
   return (
@@ -2063,7 +2030,7 @@ function FloatingPointsBadge({
   if (!showPoints) return null
 
   return (
-    <div style={{ position: 'absolute', bottom: -14, left: -26, zIndex: 30 }}>
+    <div style={{ position: 'absolute', bottom: -16, left: -18, zIndex: 40, pointerEvents: 'none' }}>
       <div
         key={actionId ?? 'none'}
         className={reducedMotion ? undefined : 'kiosk-pointsFlyIn'}
@@ -2205,8 +2172,8 @@ function RecommendedMissionSwap({
             reducedMotion={reducedMotion}
             entering={phase === 'enter' && !reducedMotion}
             swapRole={phase === 'enter' ? 'in' : undefined}
+            pointsSwapPhase={pointsPhase}
           />
-          <FloatingPointsBadge action={displayed} reducedMotion={reducedMotion} swapPhase={pointsPhase} />
         </div>
       )}
     </div>
@@ -2856,13 +2823,14 @@ function TopPrizes({
 
 
 function RecommendedMissionCard({
-  action, now, reducedMotion = false, entering = false, swapRole,
+  action, now, reducedMotion = false, entering = false, swapRole, pointsSwapPhase = 'idle',
 }: {
   action: KioskAction | null
   now: Date
   reducedMotion?: boolean
   entering?: boolean
   swapRole?: 'in' | 'out'
+  pointsSwapPhase?: 'idle' | 'out' | 'in'
 }) {
   const inDailyWindow = action ? isInDailyTimeWindow(action, now) : false
   const dailyWindow = action ? getDailyTimeWindow(action) : { start: null, end: null }
@@ -3033,6 +3001,14 @@ function RecommendedMissionCard({
           </div>
         )}
       </div>
+
+      {swapRole !== 'out' && (
+        <FloatingPointsBadge
+          action={action}
+          reducedMotion={reducedMotion}
+          swapPhase={pointsSwapPhase}
+        />
+      )}
     </div>
   )
 }
@@ -3088,10 +3064,10 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   }, [rotatableActions.length])
 
   useEffect(() => {
-    if (!gameStarted || rotatableActions.length <= 1) return
+    if (rotatableActions.length <= 1) return
     const t = setInterval(() => setRecommendedIdx(i => (i + 1) % rotatableActions.length), MISSION_ROTATE_MS)
     return () => clearInterval(t)
-  }, [rotatableActions.length, gameStarted])
+  }, [rotatableActions.length])
   const recommendedAction = rotatableActions[recommendedIdx] ?? null
 
   // Scanner state
@@ -3215,7 +3191,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
 
   return (
     <div style={{
-      width: '100%', height: '100%', overflow: 'hidden', position: 'relative',
+      width: '100%', maxWidth: '100%', height: '100%', overflow: 'clip', position: 'relative',
       direction: 'rtl', color: '#2E221E',
       backgroundColor: '#FFF8F3',
       backgroundImage: [
@@ -3244,27 +3220,47 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
       <div style={{
         position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column',
         minHeight: 0, boxSizing: 'border-box',
-        padding: 'clamp(12px, 1.2vw, 24px)',
+        paddingInline: 'clamp(12px, 1.2vw, 24px)',
         paddingTop: 'calc(6px + clamp(12px, 1.2vw, 24px))',
+        paddingBottom: 'clamp(20px, 2.8vh, 36px)',
       }}>
 
-      {/* Body */}
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', minHeight: 0, gap: 'clamp(10px, 1.0vw, 20px)' }}>
+      {/* Body — overflow visible so mission/prize icons can hang outside side banners */}
+      <div style={{
+        position: 'relative', zIndex: 1, flex: 1, display: 'flex',
+        gap: 'clamp(10px, 1.0vw, 20px)',
+        minHeight: 0, minWidth: 0, width: '100%', maxWidth: '100%',
+        overflow: 'visible', contain: 'layout',
+      }}>
 
-        {/* RIGHT PANEL — orange */}
-        <div className="kiosk-fadeUp" style={{
-          flex: '0 0 clamp(300px, 26vw, 560px)', display: 'flex', flexDirection: 'column', gap: 14,
-          minHeight: 0, borderRadius: 24, padding: 18,
+        {/* RIGHT PANEL — orange:
+            clip bottom like rewards; allow mission icons to hang on top/sides */}
+        <div
+          data-kiosk-panel="missions"
+          className="kiosk-fadeUp"
+          style={{
+          display: 'flex', flexDirection: 'column', gap: 14,
+          flex: '1 1 0', minHeight: 0, minWidth: 0, borderRadius: 24,
+          padding: '8px 18px 22px',
           background: 'linear-gradient(165deg,#FF9E6B,#EF8A4E)',
           boxShadow: '0 14px 32px rgba(239,138,78,0.3)',
-          position: 'relative', overflow: 'visible',
+          position: 'relative', overflow: 'visible', zIndex: 2,
+          clipPath: 'inset(-56px -56px 0 -56px round 24px)',
         }}>
           <GlowingStarsOrange />
 
-          {!gameStarted && <MissionPreGamePanel />}
-
-          {/* Recommended mission hero card */}
-          <div style={{ display: gameStarted ? 'block' : 'none', marginBottom: 36, position: 'relative', zIndex: 20, overflow: 'visible' }}>
+          {/* Recommended / active mission hero — tight to banner top; icons hang via overflow */}
+          <div style={{
+            marginBottom: 20,
+            position: 'relative',
+            zIndex: 20,
+            overflow: 'visible',
+            paddingTop: 12,
+            paddingBottom: 16,
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
+          }}>
             <RecommendedMissionSwap action={recommendedAction} now={now} reducedMotion={reducedMotion} />
           </div>
 
@@ -3287,13 +3283,13 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           </div>
 
           {/* Recent activity feed */}
-          <div style={{ display: gameStarted ? 'block' : 'none', flex: 1, minHeight: 0, position: 'relative', zIndex: 1, overflow: 'hidden' }}>
+          <div style={{ display: gameStarted ? 'block' : 'none', flex: 1, minHeight: 0, position: 'relative', zIndex: 1, overflow: 'hidden', paddingBottom: 4 }}>
             <ActivityView rows={recentActivity} active={true} reducedMotion={reducedMotion} />
           </div>
         </div>
 
         {/* CENTER — Scanner */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 0, position: 'relative' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '1.57 1 0', minHeight: 0, minWidth: 0, position: 'relative', overflow: 'hidden' }}>
           {/* Confetti dots */}
           <div className="kiosk-floatY-1" style={{ position: 'absolute', top: 40, right: 80, width: 16, height: 16, borderRadius: 5, background: '#F2B33C' }} />
           <div className="kiosk-floatY-2" style={{ position: 'absolute', top: 100, left: 70, width: 14, height: 14, borderRadius: '50%', background: '#5FB3AA' }} />
@@ -3384,19 +3380,29 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           />
         </div>
 
-        {/* LEFT PANEL — teal / rewards */}
-        <div className="kiosk-fadeUp" style={{
-          flex: '0 0 clamp(300px, 26vw, 560px)', display: 'flex', flexDirection: 'column', gap: 14,
-          minHeight: 0, borderRadius: 24, padding: 18,
+        {/* LEFT PANEL — teal / rewards:
+            clip-path clips the bottom (like orange activity) while allowing
+            trophy/badges to hang outside on top and sides */}
+        <div
+          data-kiosk-panel="rewards"
+          className="kiosk-fadeUp"
+          style={{
+          display: 'flex', flexDirection: 'column', gap: 14,
+          flex: '1 1 0', minHeight: 0, minWidth: 0, borderRadius: 24,
+          padding: '8px 18px 22px',
           background: 'linear-gradient(165deg,#5AB5AD,#388882)',
           boxShadow: '0 14px 32px rgba(46,120,112,0.32)',
-          position: 'relative', overflow: 'visible',
+          position: 'relative', overflow: 'visible', zIndex: 2,
+          clipPath: 'inset(-56px -56px 0 -56px round 24px)',
         }}>
           <GlowingStarsTeal />
 
           {/* Prize hero — chase cards + rotating prize (2/3 of panel height) */}
           {hasConfiguredRewards && topPrizes.length > 0 && (
-            <div style={{ position: 'relative', zIndex: 1, flex: '2 1 0', minHeight: 0, overflow: 'visible' }}>
+            <div style={{
+              position: 'relative', zIndex: 3, flex: '2 1 0', minHeight: 0, minWidth: 0,
+              overflow: 'visible',
+            }}>
               <TopPrizes
                 prizes={topPrizes}
                 allClaimablePrizes={allClaimablePrizes}
@@ -3408,8 +3414,12 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             </div>
           )}
 
-          {/* Awarded rewards feed (1/3 of panel height) */}
-          <div style={{ position: 'relative', zIndex: 1, flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          {/* Awarded rewards feed — clip at banner bottom like orange activity list */}
+          <div style={{
+            position: 'relative', zIndex: 1, flex: '1 1 0', minHeight: 0,
+            display: 'flex', flexDirection: 'column',
+            overflow: 'hidden', paddingBottom: 4,
+          }}>
             {!hasConfiguredRewards ? (
               <RewardsNotConfiguredState onCreate={() => navigate(`/events/${event.id}/step/5`)} />
             ) : hasAwardedRewards ? (
@@ -3486,9 +3496,70 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
 }
 
 // ─── Viewport wrapper ─────────────────────────────────────────────────────────
+function lockKioskViewportScroll() {
+  const html = document.documentElement
+  const body = document.body
+  html.style.overflow = 'clip'
+  html.style.overflowX = 'clip'
+  html.style.overflowY = 'clip'
+  html.style.scrollbarGutter = 'auto'
+  body.style.overflow = 'clip'
+  body.style.overflowX = 'clip'
+  body.style.overflowY = 'clip'
+  body.style.scrollbarGutter = 'auto'
+  body.style.margin = '0'
+  html.scrollLeft = 0
+  body.scrollLeft = 0
+  window.scrollTo(0, 0)
+}
+
 function KioskViewport({ event, data, gameStarted }: { event: Event; data: KioskData; gameStarted: boolean }) {
+  useLayoutEffect(() => {
+    const html = document.documentElement
+    const body = document.body
+    const prevHtmlOverflow = html.style.overflow
+    const prevHtmlOverflowX = html.style.overflowX
+    const prevHtmlOverflowY = html.style.overflowY
+    const prevHtmlScrollbarGutter = html.style.scrollbarGutter
+    const prevBodyOverflow = body.style.overflow
+    const prevBodyOverflowX = body.style.overflowX
+    const prevBodyOverflowY = body.style.overflowY
+    const prevBodyScrollbarGutter = body.style.scrollbarGutter
+    const prevBodyMargin = body.style.margin
+    const sync = () => lockKioskViewportScroll()
+    sync()
+    requestAnimationFrame(sync)
+    requestAnimationFrame(() => requestAnimationFrame(sync))
+    const onResize = () => sync()
+    const onScroll = () => {
+      if (html.scrollLeft || body.scrollLeft || window.scrollX) {
+        html.scrollLeft = 0
+        body.scrollLeft = 0
+        window.scrollTo(0, window.scrollY)
+      }
+    }
+    window.addEventListener('resize', onResize)
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true })
+    return () => {
+      window.removeEventListener('resize', onResize)
+      window.removeEventListener('scroll', onScroll, true)
+      html.style.overflow = prevHtmlOverflow
+      html.style.overflowX = prevHtmlOverflowX
+      html.style.overflowY = prevHtmlOverflowY
+      html.style.scrollbarGutter = prevHtmlScrollbarGutter
+      body.style.overflow = prevBodyOverflow
+      body.style.overflowX = prevBodyOverflowX
+      body.style.overflowY = prevBodyOverflowY
+      body.style.scrollbarGutter = prevBodyScrollbarGutter
+      body.style.margin = prevBodyMargin
+    }
+  }, [])
+
   return (
-    <div style={{ width: '100vw', height: '100dvh', overflow: 'hidden', background: '#FFF8F3' }}>
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      overflow: 'clip', overscrollBehavior: 'none', background: '#FFF8F3',
+    }}>
       <KioskDisplay event={event} data={data} gameStarted={gameStarted} />
     </div>
   )
@@ -3533,7 +3604,7 @@ export function EventKioskPage() {
 
   if (data.error && !data.loading) {
     return (
-      <div style={{ width: '100vw', height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF8F3', direction: 'rtl' }}>
+      <div style={{ width: '100%', height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF8F3', direction: 'rtl' }}>
         <div style={{ background: '#fff', borderRadius: 24, padding: 48, textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.12)', maxWidth: 400 }}>
           <div style={{ fontSize: 48 }}>⚠️</div>
           <h2 style={{ fontSize: 22, fontWeight: 900, marginTop: 16, color: '#2E221E', margin: '16px 0 8px' }}>שגיאה בטעינת נתונים</h2>

@@ -158,8 +158,8 @@ export function ReadyCelebrationBanner({
         'relative overflow-visible rounded-2xl border border-border bg-surface-elevated shadow-card',
         collapsed ? 'px-4 py-3' : 'px-5 py-5',
       )}
-      initial={reducedMotion ? false : { opacity: 0, scale: 0.88, y: 20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
+      initial={reducedMotion ? false : { opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 280, damping: 22, delay: collapsed ? 0 : 0.1 }}
     >
       {!reducedMotion && celebrate && !collapsed && (

@@ -192,7 +192,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
   }
 
   return (
-    <div className={cn(generated && 'flex min-h-0 flex-1 flex-col')}>
+    <div>
       {!generated ? (
         SHOW_PARTICIPANT_ACCORDION ? (
         <div className="space-y-3">
@@ -245,17 +245,14 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
         </div>
         ) : null
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="mb-4 flex shrink-0 items-center gap-3">
+        <div>
+          <div className="mb-4 flex items-center gap-3">
             <button type="button" onClick={() => setGenerated(false)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted hover:bg-surface-elevated hover:text-foreground transition-colors"><X size={16} /></button>
             <Button onClick={handlePrint}><Printer size={16} className="ml-1.5" />הדפס כרטיסים</Button>
             <span className="text-xs text-muted">אפשר להדפיס שוב כרטיסים בכל שלב במהלך הפעילות.</span>
           </div>
 
-          <div
-            className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-surface"
-            style={{ scrollbarGutter: 'stable' }}
-          >
+          <div className="rounded-2xl border border-border bg-surface">
             <div ref={printRef} className="p-6">
               {sheets.map((sheet) => (<ParticipantPage key={sheet.participant.id} sheet={sheet} event={event} wizardPreview />))}
             </div>

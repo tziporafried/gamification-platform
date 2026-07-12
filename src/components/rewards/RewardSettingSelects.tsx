@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useLayoutEffect, useEffect } from 'react
 import { createPortal } from 'react-dom'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getPanelLeftAlignedToTriggerRight } from '@/lib/floatingPanel'
+import { getPanelLeftAlignedToTriggerRight, positionFloatingPanel } from '@/lib/floatingPanel'
 import { DropdownHeader } from '@/components/ui/DropdownPanel'
 import { theme } from '@/lib/theme'
 import {
@@ -15,8 +15,10 @@ import {
   type RewardWinnerMode,
 } from '@/lib/rewardTargeting'
 
-const PANEL_WIDTH = 260
 const VIEWPORT_PADDING = 8
+const PANEL_WIDTH = 260
+const PANEL_GAP = 4
+const PANEL_EST_HEIGHT = 220
 
 const ACTIVE_OPTION_CLASS =
   'bg-[color-mix(in_srgb,var(--color-border)_55%,var(--color-surface-elevated))] font-semibold text-foreground ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-tertiary)_45%,var(--color-border))]'
@@ -66,11 +68,18 @@ export function RewardScopeSelect({
 
   const updatePosition = useCallback(() => {
     const rect = buttonRef.current?.getBoundingClientRect()
+    const panel = panelRef.current
     if (!rect) return
-    setPanelStyle({
-      top: rect.bottom + 4,
-      left: getPanelLeftAlignedToTriggerRight(rect.right, PANEL_WIDTH, VIEWPORT_PADDING),
-    })
+
+    const width = panel?.offsetWidth || PANEL_WIDTH
+    const height = panel?.offsetHeight || PANEL_EST_HEIGHT
+
+    const { top, left } = positionFloatingPanel(
+      rect,
+      { width, height },
+      { gap: PANEL_GAP, viewportPadding: VIEWPORT_PADDING },
+    )
+    setPanelStyle({ top, left })
   }, [])
 
   useLayoutEffect(() => {
@@ -79,7 +88,9 @@ export function RewardScopeSelect({
       return
     }
     updatePosition()
-  }, [open, updatePosition])
+    const frame = requestAnimationFrame(() => updatePosition())
+    return () => cancelAnimationFrame(frame)
+  }, [open, updatePosition, options.length])
 
   useEffect(() => {
     if (!open) return
@@ -108,7 +119,23 @@ export function RewardScopeSelect({
     <div className="relative flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
       <button
         ref={buttonRef}
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => {
+          setOpen((prev) => {
+            const next = !prev
+            if (!next) {
+              setPanelStyle(null)
+              return next
+            }
+            const rect = buttonRef.current?.getBoundingClientRect()
+            if (rect) {
+              setPanelStyle({
+                top: rect.bottom + PANEL_GAP,
+                left: getPanelLeftAlignedToTriggerRight(rect.right, PANEL_WIDTH, VIEWPORT_PADDING),
+              })
+            }
+            return next
+          })
+        }}
         title="מי יכול לזכות בפרס?"
         className={cn(
           theme.wizardCompactChip,
@@ -121,10 +148,16 @@ export function RewardScopeSelect({
         <ChevronDown className={cn('shrink-0 transition-transform', open && 'rotate-180')} />
       </button>
 
-      {open && panelStyle && createPortal(
+      {open && createPortal(
         <div
           ref={panelRef}
-          style={{ position: 'fixed', top: panelStyle.top, left: panelStyle.left, width: PANEL_WIDTH }}
+          style={{
+            position: 'fixed',
+            top: panelStyle?.top ?? -9999,
+            left: panelStyle?.left ?? 0,
+            width: 260,
+            visibility: panelStyle ? 'visible' : 'hidden',
+          }}
           className="z-[100] rounded-xl border border-border bg-surface shadow-dropdown py-1 animate-in fade-in slide-in-from-top-1 duration-150"
         >
           <DropdownHeader>מי יכול לזכות בפרס?</DropdownHeader>
