@@ -140,7 +140,7 @@ export function Login() {
                 loading={passwordLoading}
                 className="w-full"
               >
-                כניסה
+                כניסה / הרשמה
               </Button>
             </form>
           </>
