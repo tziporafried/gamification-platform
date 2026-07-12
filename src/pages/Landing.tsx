@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Check } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { AtmosphericBackground } from '@/components/layout/AtmosphericBackground'
@@ -80,6 +80,7 @@ const FAQ_ITEMS: { question: string; answer: ReactNode }[] = [
 
 export function Landing() {
   const { signInWithGoogle } = useAuth()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [faqOpen, setFaqOpen] = useState(() => FAQ_ITEMS.map(() => false))
 
@@ -102,7 +103,7 @@ export function Landing() {
 
       <header className="sticky top-0 z-30 border-b border-border/60 bg-surface/85 backdrop-blur-[20px]">
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
-          <Link to="/" className="flex items-center gap-2.5">
+          <Link to="/welcome" className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-brand text-sm font-bold text-foreground shadow-card">
               G
             </div>
@@ -148,8 +149,7 @@ export function Landing() {
           <Button
             size="lg"
             variant="gradient"
-            loading={loading}
-            onClick={handleGoogleSignIn}
+            onClick={() => navigate('/login')}
             className="landing-hero-cta !rounded-full !px-12 !py-4 !text-[19px] !font-extrabold"
           >
             בואו נשחק

@@ -19,7 +19,8 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<AuthRedirect><Landing /></AuthRedirect>} />
+          <Route path="/" element={<AuthRedirect><Navigate to="/login" replace /></AuthRedirect>} />
+          <Route path="/welcome" element={<AuthRedirect><Landing /></AuthRedirect>} />
           <Route path="/login" element={<AuthRedirect><Login /></AuthRedirect>} />
           <Route path="/auth/callback" element={<AuthCallback />} />
 

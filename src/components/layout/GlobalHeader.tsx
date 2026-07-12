@@ -88,7 +88,7 @@ export function GlobalHeader() {
                   <p className="text-xs text-muted truncate">{user.email}</p>
                 </div>
                 <button
-                  onClick={() => { setMenuOpen(false); signOut() }}
+                  onClick={() => { setMenuOpen(false); signOut().then(() => navigate('/welcome')) }}
                   className="flex w-full items-center justify-between px-4 py-3 text-sm text-foreground hover:bg-surface-elevated hover:text-danger transition-colors"
                 >
                   <span>התנתקות</span>

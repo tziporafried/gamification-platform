@@ -120,7 +120,7 @@ export function Login() {
       <FloatingIconsLayer />
       <div className="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-surface p-6">
         <div className="mb-6 text-center">
-          <Link to="/" className="inline-flex h-10 w-10 items-center justify-center rounded-xl gradient-brand text-lg font-bold text-foreground">
+          <Link to="/welcome" className="inline-flex h-10 w-10 items-center justify-center rounded-xl gradient-brand text-lg font-bold text-foreground">
             G
           </Link>
           <h1 className="mt-4 text-2xl font-bold text-foreground">ברוכים הבאים</h1>
