@@ -818,7 +818,7 @@ function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () 
       <button
         type="button"
         onClick={onLogoClick}
-        aria-label="חזרה למרכז הבקרה"
+        aria-label="מעבר לדף הבית"
         style={{ ...logoButtonStyle, position: 'relative' }}
       >
         {hasLogo ? (
@@ -3303,7 +3303,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           <div className="kiosk-floatY-2" style={{ position: 'absolute', bottom: 200, left: 50, width: 12, height: 12, borderRadius: 5, background: '#FFCB9A' }} />
 
           <div className="kiosk-centerStack" style={{ gap: KIOSK_CENTER_GAP }}>
-            <EventBrandMark event={event} onLogoClick={() => navigate(`/events/${event.id}/control`)} />
+            <EventBrandMark event={event} onLogoClick={() => navigate('/welcome')} />
 
             {/* Headlines */}
             {!gameStarted && (

@@ -30,27 +30,26 @@ export function GlobalHeader() {
     <header className="sticky top-0 z-40 bg-surface/90 shadow-sm backdrop-blur-[20px]">
       <div className="flex h-14 w-full items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-3 shrink-0">
-          <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-card">
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                <path d="M12 3L4 7v5c0 4.4 3.4 8.5 8 9.5 4.6-1 8-5.1 8-9.5V7l-8-4z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="text-foreground"/>
-                <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-foreground"/>
-              </svg>
-          </div>
-          {centerSlot && (
-            <div>{centerSlot}</div>
-          )}
           <button
-            onClick={() => navigate('/events')}
+            onClick={() => navigate('/welcome')}
             className="flex items-center gap-3 group"
           >
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-card">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                  <path d="M12 3L4 7v5c0 4.4 3.4 8.5 8 9.5 4.6-1 8-5.1 8-9.5V7l-8-4z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="text-foreground"/>
+                  <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-foreground"/>
+                </svg>
+            </div>
             {!centerSlot && (
               <div className="hidden sm:flex flex-col items-end leading-none">
                 <span className="text-sm font-bold text-primary tracking-tight">Gamify</span>
                 <span className="text-[10px] text-muted font-medium tracking-wide">PLATFORM</span>
               </div>
             )}
-
           </button>
+          {centerSlot && (
+            <div>{centerSlot}</div>
+          )}
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
