@@ -15,7 +15,6 @@ interface AuthContextType {
   profile: UserProfile | null
   loading: boolean
   signInWithGoogle: (redirectTo?: string) => Promise<void>
-  signInWithMagicLink: (email: string, redirectTo?: string) => Promise<{ error?: string }>
   /** Signs in with email+password, falling back to account creation when no account exists yet. */
   signInOrSignUp: (email: string, password: string) => Promise<SignInOrSignUpResult>
   signOut: () => Promise<void>
@@ -83,16 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const signInWithMagicLink = useCallback(async (email: string, redirectTo?: string) => {
-    const callbackUrl = `${window.location.origin}/auth/callback${redirectTo ? `?returnTo=${encodeURIComponent(redirectTo)}` : ''}`
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: callbackUrl },
-    })
-    if (error) return { error: error.message }
-    return {}
-  }, [])
-
   const signInOrSignUp = useCallback(async (email: string, password: string): Promise<SignInOrSignUpResult> => {
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
     if (!signInError) return { status: 'signed-in' }
@@ -124,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // TODO: add resetPasswordForEmail() / updateUser({ password }) helpers here once a "forgot
-  // password" / "set password" flow is built — not all existing users (Google/magic-link only)
+  // password" / "set password" flow is built — not all existing users (Google-only)
   // have a password set yet.
 
   const signOut = useCallback(async () => {
@@ -135,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isSuperAdmin = profile?.role === 'super_admin'
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signInWithMagicLink, signInOrSignUp, signOut, isSuperAdmin, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signInOrSignUp, signOut, isSuperAdmin, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

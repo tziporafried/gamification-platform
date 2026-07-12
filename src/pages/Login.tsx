@@ -14,7 +14,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 6
 
 export function Login() {
-  const { signInWithGoogle, signInWithMagicLink, signInOrSignUp } = useAuth()
+  const { signInWithGoogle, signInOrSignUp } = useAuth()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const returnTo = searchParams.get('returnTo') || undefined
@@ -29,10 +29,6 @@ export function Login() {
 
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
-
-  const [email, setEmail] = useState('')
-  const [magicLinkLoading, setMagicLinkLoading] = useState(false)
-  const [magicLinkSent, setMagicLinkSent] = useState(false)
 
   async function handleGoogleSignIn() {
     setError('')
@@ -86,32 +82,6 @@ export function Login() {
         )
         return
     }
-  }
-
-  async function handleMagicLink(e: FormEvent) {
-    e.preventDefault()
-    setError('')
-
-    const trimmed = email.trim()
-    if (!trimmed) {
-      setError('יש להזין כתובת מייל')
-      return
-    }
-
-    setMagicLinkLoading(true)
-    const result = await signInWithMagicLink(trimmed, returnTo)
-    setMagicLinkLoading(false)
-
-    if (result.error) {
-      if (result.error.includes('rate')) {
-        setError('נסו שוב בעוד מספר דקות')
-      } else {
-        setError('לא ניתן לשלוח קישור התחברות כרגע')
-      }
-      return
-    }
-
-    setMagicLinkSent(true)
   }
 
   return (
@@ -176,7 +146,7 @@ export function Login() {
           </>
         )}
 
-        {/* Secondary: Google + Magic Link, tucked away behind a collapsed section */}
+        {/* Secondary: Google, tucked away behind a collapsed section */}
         <div className="mt-5 border-t border-border pt-4">
           <button
             type="button"
@@ -202,47 +172,6 @@ export function Login() {
                 <GoogleIcon className="ml-2 h-5 w-5" />
                 התחברות עם Google
               </Button>
-
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted">או</span>
-                <div className="flex-1 h-px bg-border" />
-              </div>
-
-              {magicLinkSent ? (
-                <div className="text-center space-y-2 py-2">
-                  <CheckCircle2 size={32} className="mx-auto text-success" />
-                  <p className="text-sm font-medium text-foreground">קישור התחברות נשלח למייל שלך</p>
-                  <p className="text-xs text-muted">בדוק את תיבת הדואר ולחץ על הקישור</p>
-                  <button
-                    onClick={() => { setMagicLinkSent(false); setEmail('') }}
-                    className="text-xs text-secondary hover:text-accent transition-colors mt-2"
-                  >
-                    שלח שוב
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleMagicLink} className="space-y-3">
-                  <Input
-                    id="magic-email"
-                    label="כתובת אימייל"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
-                  />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    size="sm"
-                    loading={magicLinkLoading}
-                    className="w-full"
-                  >
-                    שלח קישור התחברות
-                  </Button>
-                </form>
-              )}
             </div>
           )}
         </div>

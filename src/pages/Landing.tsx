@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { AtmosphericBackground } from '@/components/layout/AtmosphericBackground'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { GoogleIcon } from '@/components/icons/GoogleIcon'
 import { cn } from '@/lib/utils'
 
 const STEPS = [
@@ -79,18 +78,12 @@ const FAQ_ITEMS: { question: string; answer: ReactNode }[] = [
 ]
 
 export function Landing() {
-  const { signInWithGoogle } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(false)
   const [faqOpen, setFaqOpen] = useState(() => FAQ_ITEMS.map(() => false))
 
-  async function handleGoogleSignIn() {
-    setLoading(true)
-    try {
-      await signInWithGoogle()
-    } catch {
-      setLoading(false)
-    }
+  function handleCreateEventClick() {
+    navigate(user ? '/events' : '/login')
   }
 
   function toggleFaq(index: number) {
@@ -217,11 +210,9 @@ export function Landing() {
           <Button
             size="lg"
             variant="gradient"
-            loading={loading}
-            onClick={handleGoogleSignIn}
+            onClick={handleCreateEventClick}
             className="!rounded-xl !px-7 !py-3.5 !text-base !font-semibold"
           >
-            <GoogleIcon className="ml-2 h-5 w-5" />
             צרו את האירוע הראשון שלכם
           </Button>
         </section>

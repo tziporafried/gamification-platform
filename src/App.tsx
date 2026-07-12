@@ -20,7 +20,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<AuthRedirect><Navigate to="/login" replace /></AuthRedirect>} />
-          <Route path="/welcome" element={<AuthRedirect><Landing /></AuthRedirect>} />
+          <Route path="/welcome" element={<Landing />} />
           <Route path="/login" element={<AuthRedirect><Login /></AuthRedirect>} />
           <Route path="/auth/callback" element={<AuthCallback />} />
 
