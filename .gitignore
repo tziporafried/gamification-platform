@@ -6,6 +6,3 @@ dist
 demo-video/*.mov
 public/demo/*.mov
 .DS_Store
-
-# Local versioned demo archives
-public/demo/*-v1.mp4
