@@ -476,7 +476,7 @@ function StageHeader({
           {fullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
         </button>
       </div>
-      <div className="flex flex-col items-center gap-2 text-center">
+      <div className="pointer-events-none absolute left-1/2 top-5 flex -translate-x-1/2 flex-col items-center gap-2 text-center">
         <div className="flex items-center gap-3">
           {eventLogoUrl ? (
             <img src={eventLogoUrl} alt={eventName || ''} className="h-14 w-14 rounded-2xl object-cover shadow-[0_0_28px_rgba(255,107,53,0.24)]" />
@@ -1198,7 +1198,7 @@ function ArenaNotReadyScreen({
             {fullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
           </button>
         </div>
-        <div className="flex flex-col items-center gap-2 text-center">
+        <div className="pointer-events-none absolute left-1/2 top-5 flex -translate-x-1/2 flex-col items-center gap-2 text-center">
           <div className="flex items-center gap-3">
             {eventLogoUrl ? (
               <img src={eventLogoUrl} alt={eventName || ''} className="h-14 w-14 rounded-2xl object-cover shadow-[0_0_28px_rgba(255,107,53,0.24)]" />

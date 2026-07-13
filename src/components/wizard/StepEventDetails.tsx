@@ -205,12 +205,20 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
 
           {logoPreview ? (
             <div className="relative">
-              <div className={cn('w-28 h-28 rounded-xl border bg-surface flex items-center justify-center overflow-hidden', theme.border)}>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                title="החלפת הלוגו"
+                className={cn('group relative w-28 h-28 rounded-xl border bg-surface flex items-center justify-center overflow-hidden cursor-pointer', theme.border)}
+              >
                 <img
                   src={logoPreview}
                   alt="לוגו האירוע"
                   className="max-w-full max-h-full object-contain p-2"
                 />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-xl bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                  <ImageIcon size={22} />
+                  <span className="text-xs font-medium">החלפת לוגו</span>
+                </div>
               </div>
               <WizardDeleteButton
                 containerClassName="absolute -top-2 -left-2 z-20"
