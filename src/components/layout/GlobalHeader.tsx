@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { LogOut, Shield } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { LogOut, Shield, Sparkles } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useHeaderSlot } from '@/contexts/HeaderSlotContext'
 
@@ -8,6 +8,7 @@ export function GlobalHeader() {
   const { user, profile, signOut, isSuperAdmin } = useAuth()
   const { centerSlot } = useHeaderSlot()
   const navigate = useNavigate()
+  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -53,6 +54,16 @@ export function GlobalHeader() {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
+          {location.pathname !== '/plans' && (
+            <button
+              onClick={() => navigate('/plans')}
+              className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
+            >
+              <Sparkles size={16} />
+              <span className="hidden sm:inline">רוצה לשדרג?</span>
+            </button>
+          )}
+
           {isSuperAdmin && (
             <button
               onClick={() => navigate('/admin')}

@@ -90,9 +90,15 @@ export function PlansPage() {
     if (notes.trim()) noteParts.push(`הערות: ${notes.trim()}`)
     const combinedNotes = noteParts.join('\n') || null
 
+    // Generate the id client-side so we can trigger the admin notification
+    // without reading the row back — anonymous submissions have no RLS SELECT
+    // policy, so an `.insert().select()` would return nothing for them.
+    const requestId = crypto.randomUUID()
+
     const { error: insertError } = await supabase
       .from('contact_upgrade_requests')
       .insert({
+        id: requestId,
         user_id: user?.id ?? null,
         full_name: trimmedName,
         email: trimmedEmail,
@@ -107,6 +113,12 @@ export function PlansPage() {
       setSubmitting(false)
       return
     }
+
+    // Notify super admins by email. Fire-and-forget: a failure here must not
+    // block the user, whose request is already saved.
+    supabase.functions
+      .invoke('notify-contact-request', { body: { requestId } })
+      .catch((err) => console.error('Failed to notify admins', err))
 
     setSubmitting(false)
     setSubmitted(true)
