@@ -155,6 +155,12 @@ export default {
           '20%': { opacity: '0.55' },
           '100%': { transform: 'translateX(-420%) rotate(12deg)', opacity: '0' },
         },
+        'podium-shine': {
+          '0%': { transform: 'translateX(120%) rotate(12deg)', opacity: '0' },
+          '12%': { opacity: '0.95' },
+          '55%': { opacity: '0.95' },
+          '100%': { transform: 'translateX(-360%) rotate(12deg)', opacity: '0' },
+        },
         'sparkle-twinkle': {
           '0%, 100%': { opacity: '0.15', transform: 'translateY(0) scale(0.8)' },
           '45%': { opacity: '0.9', transform: 'translateY(-18px) scale(1.25)' },
@@ -244,6 +250,7 @@ export default {
         'orb-drift': 'orb-drift 18s ease-in-out infinite',
         'light-spin': 'light-spin 90s linear infinite',
         'light-sweep': 'light-sweep 8s ease-in-out infinite',
+        'podium-shine': 'podium-shine 2.6s cubic-bezier(0.4, 0, 0.2, 1) infinite',
         'sparkle-twinkle': 'sparkle-twinkle 5s ease-in-out infinite',
         'halo-pulse': 'halo-pulse 2.6s ease-in-out infinite',
         'number-glow': 'number-glow 2s ease-in-out infinite',

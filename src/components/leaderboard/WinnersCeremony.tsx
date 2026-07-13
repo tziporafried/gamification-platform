@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Award, Crown, Gift, Maximize2, Minimize2, RotateCcw, ScanLine, Sparkles, Trophy, Users } from 'lucide-react'
+import { Award, Crown, Gift, Maximize2, Minimize2, Pause, Play, RotateCcw, ScanLine, Sparkles, Trophy, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { computeRanks } from '@/lib/missionUtils'
 import { cn } from '@/lib/utils'
@@ -604,32 +604,45 @@ function PodiumPhase({ title, items, type }: { title: string; items: (RankedGrou
           const name = isGroup ? item.group_name : item.participant_name
           const color = isGroup ? item.group_color : type === 'participant' ? TEAL : GOLD
           const heights: Record<number, string> = { 1: 'h-[300px]', 2: 'h-[212px]', 3: 'h-[168px]' }
-          const width = colCount === 2 ? 'w-full' : rank === 1 ? 'w-[32%]' : 'w-[26%]'
           return (
             <motion.div
               key={isGroup ? item.group_id : item.participant_id}
-              className={cn('flex min-w-0 flex-col items-center', width)}
+              className="flex w-full min-w-0 flex-col items-center"
               initial={{ opacity: 0, y: 34, scale: 0.88 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ delay: rank === 1 ? 0.05 : 0.22 + idx * 0.1, type: 'spring', stiffness: 180, damping: 18 }}
             >
               {rank === 1 && <Crown size={52} className="mb-2 animate-crown-glow text-warning" fill="currentColor" />}
               <div className="relative">
-                <div className="flex h-24 w-24 items-center justify-center rounded-full border-[6px] border-white text-3xl font-black text-white shadow-xl md:h-32 md:w-32" style={{ background: `linear-gradient(135deg, ${color}, ${rank === 1 ? GOLD : ORANGE})` }}>
+                <div
+                  className="absolute -inset-5 animate-halo-pulse rounded-full blur-xl"
+                  style={{ background: `radial-gradient(circle, ${rank === 1 ? GOLD : color} 0%, transparent 70%)` }}
+                />
+                <div
+                  className={cn(
+                    'relative z-10 flex h-24 w-24 items-center justify-center rounded-full border-[6px] border-white text-3xl font-black text-white md:h-32 md:w-32',
+                    rank === 1 ? 'animate-glow-pulse-gold' : 'animate-glow-pulse',
+                  )}
+                  style={{ background: `linear-gradient(135deg, ${color}, ${rank === 1 ? GOLD : ORANGE})` }}
+                >
                   {isGroup ? <Users size={50} /> : <AvatarCircle name={name} size="lg" ringColor={color} className="h-24 w-24 text-3xl ring-0 md:h-32 md:w-32 md:text-4xl" />}
                 </div>
-                <span className="absolute -bottom-2 -right-2 flex h-14 w-14 items-center justify-center rounded-full bg-white text-3xl shadow-lg">{MEDALS[rank - 1] || rank}</span>
+                <span className="absolute -bottom-2 -right-2 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-white text-3xl shadow-lg">{MEDALS[rank - 1] || rank}</span>
               </div>
               <h3 className="mt-5 w-full truncate text-center text-3xl font-black text-foreground md:text-4xl">{name}</h3>
               <p className="mt-1 text-2xl font-black text-primary tabular-nums">{item.total_points.toLocaleString('he-IL')} נק׳</p>
               <motion.div
-                className={cn('mt-5 flex w-full origin-bottom items-end justify-center rounded-t-[1.75rem] shadow-[0_16px_44px_rgba(46,34,30,0.16)]', heights[rank])}
+                className={cn('relative mt-5 flex w-full origin-bottom items-end justify-center overflow-hidden rounded-t-[1.75rem] shadow-[0_16px_44px_rgba(46,34,30,0.16)]', heights[rank])}
                 style={{ background: rank === 1 ? 'linear-gradient(180deg,#FFD68A,#FFB800)' : rank === 2 ? 'linear-gradient(180deg,#F5F2EE,#B9AEA7)' : 'linear-gradient(180deg,#FFB28D,#EF8A4E)' }}
                 initial={{ scaleY: 0 }}
                 animate={{ scaleY: 1 }}
                 transition={{ delay: 0.25 + idx * 0.08, duration: 0.7, ease: 'easeOut' }}
               >
-                <span className="mb-8 text-[5rem] font-black leading-none text-white/95 drop-shadow">{rank}</span>
+                <div
+                  className="pointer-events-none absolute inset-y-0 -right-1/2 w-2/5 rotate-12 bg-gradient-to-l from-transparent via-white/90 to-transparent blur-[3px] animate-podium-shine"
+                  style={{ animationDelay: `${idx * 0.45}s` }}
+                />
+                <span className="relative mb-8 text-[5rem] font-black leading-none text-white/95 drop-shadow">{rank}</span>
               </motion.div>
             </motion.div>
           )
@@ -701,7 +714,13 @@ function LeaderboardPhase({
           return (
             <motion.div
               key={id}
-              className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-4 rounded-2xl border bg-white/78 px-5 py-4 shadow-[0_8px_28px_rgba(46,34,30,0.08)] backdrop-blur"
+              className={cn(
+                'grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-4 rounded-2xl border bg-white/78 px-5 py-4 shadow-[0_8px_28px_rgba(46,34,30,0.08)] backdrop-blur',
+                item.rank <= 3 && 'top-rank-row',
+                item.rank === 1 && 'top-rank-1',
+                item.rank === 2 && 'top-rank-2',
+                item.rank === 3 && 'top-rank-3',
+              )}
               style={{
                 borderColor: item.rank === 1 ? `${GOLD}AA` : item.rank === 2 ? '#B9AEA7AA' : item.rank === 3 ? `${WARM_ORANGE}99` : 'rgba(231,214,207,0.82)',
                 borderInlineStartWidth: item.rank <= 3 ? 8 : 1,
@@ -731,9 +750,9 @@ function LeaderboardPhase({
                 ) : (
                   <div className="h-0.5" />
                 )}
-                <div className="h-4 overflow-hidden rounded-full bg-[#F3E4DD]">
+                <div className={cn('h-4 overflow-hidden rounded-full bg-[#F3E4DD]', item.rank <= 3 && 'top-rank-track')}>
                   <motion.div
-                    className="h-full origin-right rounded-full"
+                    className={cn('h-full origin-right rounded-full', item.rank <= 3 && 'top-rank-fill')}
                     style={{ background: `linear-gradient(90deg, ${type === 'group' ? ORANGE : GOLD}, ${type === 'group' ? GOLD : TEAL})` }}
                     initial={{ scaleX: 0 }}
                     animate={{ scaleX: pct / 100 }}
@@ -889,11 +908,6 @@ function SummaryLeaderboardPreview({
                 <h3 className={cn('truncate font-black text-[#2E221E]', expanded || large ? 'text-3xl' : 'text-2xl')}>{name}</h3>
                 <span className={cn('shrink-0 font-extrabold text-[#9A8E88]', large ? 'text-lg' : 'text-base')}>{isGroup ? `${missions} משימות` : getParticipantGroupSummary(groups, totalGroups)}</span>
               </div>
-              {!isGroup && (
-                <div className="mb-2 max-w-full">
-                  <ParticipantGroupChips groups={groups} compact={!large} totalGroups={totalGroups} />
-                </div>
-              )}
               <div className={cn(large ? 'h-4' : 'h-3', 'overflow-hidden rounded-full bg-[#F3E4DD]', item.rank <= 3 && 'top-rank-track')}>
                 <motion.div
                   className={cn('h-full origin-right rounded-full bg-[linear-gradient(90deg,#F2B33C,#4FA6A0)]', item.rank <= 3 && 'top-rank-fill')}
@@ -1082,7 +1096,14 @@ function FinalSummaryPhase({
         <p className="mt-2 text-xl font-extrabold text-[#7D706A]">סיכום סטטיסטי מלא של הנופש, עם כל הדירוגים והמספרים החשובים במקום אחד</p>
       </div>
 
-      <div className="grid flex-1 grid-rows-[minmax(0,1fr)_auto] gap-4">
+      <div className="grid flex-1 grid-rows-[auto_minmax(0,1fr)] gap-4">
+        <div className="grid grid-cols-5 gap-5">
+          <SummaryMetricCard id="scans" title="סריקות" value={totalScans} label="סריקות בוצעו" icon={<ScanLine size={22} />} accent={ORANGE} emptyText="אין עדיין סריקות להצגה" focused={focus === 'scans'} onClick={toggleFocus} />
+          <SummaryMetricCard id="totalParticipants" title="משתתפים" value={totalParticipants} label="משתתפים באירוע" icon={<Users size={22} />} accent={TEAL} emptyText="אין עדיין משתתפים להצגה" focused={focus === 'totalParticipants'} onClick={toggleFocus} />
+          <SummaryMetricCard id="completedTasks" title="משימות" value={totalScans} label="משימות הושלמו" icon={<Award size={22} />} accent={GREEN} emptyText="אין עדיין משימות שהושלמו" focused={focus === 'completedTasks'} onClick={toggleFocus} />
+          <SummaryMetricCard id="totalPoints" title="נקודות" value={totalPointsEarned} label="נקודות נצברו" icon={<Trophy size={22} />} accent={WARM_ORANGE} emptyText="אין עדיין נקודות להצגה" focused={focus === 'totalPoints'} onClick={toggleFocus} />
+          <SummaryMetricCard id="rewards" title="פרסים" value={totalRewardsAwarded} label="פרסים הוענקו" icon={<Gift size={22} />} accent={GOLD} emptyText="אין עדיין פרסים להציג" focused={focus === 'rewards'} onClick={toggleFocus} />
+        </div>
         <div className="grid min-h-0 grid-cols-2 gap-5">
           <motion.button
             type="button"
@@ -1108,13 +1129,6 @@ function FinalSummaryPhase({
             </div>
             <SummaryLeaderboardPreview large items={rankedP} pgMap={pgMap} totalGroups={totalGroups} groupTaskCounts={groupTaskCounts} taskCountByP={taskCountByP} topPByGroup={topPByGroup} />
           </motion.button>
-        </div>
-        <div className="grid grid-cols-5 gap-5">
-          <SummaryMetricCard id="scans" title="סריקות" value={totalScans} label="סריקות בוצעו" icon={<ScanLine size={22} />} accent={ORANGE} emptyText="אין עדיין סריקות להצגה" focused={focus === 'scans'} onClick={toggleFocus} />
-          <SummaryMetricCard id="totalParticipants" title="משתתפים" value={totalParticipants} label="משתתפים באירוע" icon={<Users size={22} />} accent={TEAL} emptyText="אין עדיין משתתפים להצגה" focused={focus === 'totalParticipants'} onClick={toggleFocus} />
-          <SummaryMetricCard id="completedTasks" title="משימות" value={totalScans} label="משימות הושלמו" icon={<Award size={22} />} accent={GREEN} emptyText="אין עדיין משימות שהושלמו" focused={focus === 'completedTasks'} onClick={toggleFocus} />
-          <SummaryMetricCard id="totalPoints" title="נקודות" value={totalPointsEarned} label="נקודות נצברו" icon={<Trophy size={22} />} accent={WARM_ORANGE} emptyText="אין עדיין נקודות להצגה" focused={focus === 'totalPoints'} onClick={toggleFocus} />
-          <SummaryMetricCard id="rewards" title="פרסים" value={totalRewardsAwarded} label="פרסים הוענקו" icon={<Gift size={22} />} accent={GOLD} emptyText="אין עדיין פרסים להציג" focused={focus === 'rewards'} onClick={toggleFocus} />
         </div>
       </div>
 
@@ -1241,12 +1255,19 @@ function ArenaNotReadyScreen({
   )
 }
 
-function ProgressChrome({ activeDot, count, onReplay }: { activeDot: number; count: number; onReplay: () => void }) {
+function ProgressChrome({ activeDot, count, onReplay, paused, onTogglePause }: { activeDot: number; count: number; onReplay: () => void; paused: boolean; onTogglePause: () => void }) {
   return (
     <div className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-center gap-5 px-6 pb-6">
       <button onClick={onReplay} className="flex items-center gap-2 rounded-full border border-border bg-white/65 px-4 py-2 text-sm font-black text-muted shadow-sm backdrop-blur transition hover:text-primary">
         <RotateCcw size={15} />
         הצג שוב
+      </button>
+      <button
+        onClick={onTogglePause}
+        className="flex items-center gap-2 rounded-full border border-border bg-white/65 px-4 py-2 text-sm font-black text-muted shadow-sm backdrop-blur transition hover:text-primary"
+      >
+        {paused ? <Play size={15} /> : <Pause size={15} />}
+        {paused ? 'המשך' : 'השהה'}
       </button>
       <div className="flex items-center gap-2 rounded-full border border-white/70 bg-white/55 px-4 py-3 shadow-sm backdrop-blur">
         {Array.from({ length: count }, (_, i) => (
@@ -1263,6 +1284,7 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
   const { play: playFanfare } = useCelebrationSound()
   const [phaseIndex, setPhaseIndex] = useState(0)
   const [replayNonce, setReplayNonce] = useState(0)
+  const [paused, setPaused] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const stageRef = useRef<HTMLDivElement | null>(null)
   const applausePhaseRef = useRef<string | null>(null)
@@ -1281,7 +1303,7 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
   }, [hasGroups, eventId])
 
   useEffect(() => {
-    if (loading || error || rankedP.length === 0 || !phase || phases.length === 0) return undefined
+    if (paused || loading || error || rankedP.length === 0 || !phase || phases.length === 0) return undefined
     const timer = window.setTimeout(() => {
       setPhaseIndex((idx) => {
         const next = idx + 1
@@ -1290,7 +1312,7 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
       })
     }, phase.duration / revealSpeed)
     return () => window.clearTimeout(timer)
-  }, [autoLoop, error, loading, phase, phases.length, rankedP.length, replayNonce, revealSpeed])
+  }, [autoLoop, error, loading, paused, phase, phases.length, rankedP.length, replayNonce, revealSpeed])
 
   useEffect(() => {
     function handleFullscreenChange() {
@@ -1460,6 +1482,8 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
             activeDot={phase.dot}
             count={phases.length}
             onReplay={handleReplay}
+            paused={paused}
+            onTogglePause={() => setPaused((p) => !p)}
           />
           <span className="sr-only">{taskStats.length} סוגי משימות נספרו</span>
         </div>
