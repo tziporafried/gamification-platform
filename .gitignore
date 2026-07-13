@@ -3,3 +3,6 @@ dist
 .env
 .env.local
 *.local
+demo-video/*.mov
+public/demo/*.mov
+.DS_Store

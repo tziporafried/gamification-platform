@@ -138,6 +138,12 @@ export function Landing() {
         </section>
 
         <section className="mb-20 sm:mb-[88px]">
+          <div className="w-full overflow-hidden rounded-2xl bg-foreground/5 shadow-lift">
+            <LandingDemoVideo />
+          </div>
+        </section>
+
+        <section className="mb-20 sm:mb-[88px]">
           <SectionTitle>כך מתנהל אירוע ב-Gamify</SectionTitle>
           <div className="space-y-5">
             {STEPS.map((step, index) => (
@@ -206,6 +212,21 @@ export function Landing() {
         </section>
       </main>
     </div>
+  )
+}
+
+function LandingDemoVideo() {
+  return (
+    <video
+      className="aspect-video w-full bg-foreground/10 object-cover"
+      controls
+      playsInline
+      preload="metadata"
+      poster="/demo/FINAL-poster.jpg"
+      dir="ltr"
+    >
+      <source src="/demo/FINAL.mp4" type="video/mp4" />
+    </video>
   )
 }
 
