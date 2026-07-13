@@ -87,6 +87,30 @@ body {
   object-fit: contain;
 }
 
+/* First card — logo as the hero signal */
+.brand-hero {
+  gap: clamp(1rem, 1.8vw, 1.6rem);
+}
+
+.brand-hero .brand-name {
+  font-size: clamp(4rem, 9vmin, 8rem);
+}
+
+.brand-hero .brand-sub {
+  font-size: clamp(1.15rem, 2.5vmin, 2.1rem);
+  letter-spacing: 0.22em;
+  gap: 0.35rem;
+}
+
+.brand-hero .brand-text {
+  gap: 0.4rem;
+}
+
+.brand-hero .brand-logo {
+  width: clamp(6.5rem, 14vmin, 12rem);
+  height: clamp(6.5rem, 14vmin, 12rem);
+}
+
 .content {
   display: grid;
   place-items: center;
@@ -111,6 +135,39 @@ body {
   animation: fadeUp 0.85s 0.55s ease-out both;
 }
 
+.slogan-hero {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.28em 0.38em;
+  margin: 0;
+  font-size: clamp(3rem, 8.5vmin, 7.2rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.slogan-hero .phrase {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.slogan-hero .c-orange {
+  background: linear-gradient(120deg, var(--orange) 0%, var(--orange-bright) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.slogan-hero .c-teal {
+  background: linear-gradient(120deg, var(--teal) 0%, #3cb8b0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 .phrase {
   display: inline;
   white-space: nowrap;
@@ -130,10 +187,15 @@ body {
   opacity: 0;
   animation: phraseIn 0.55s ease-out forwards;
 }
-.stagger .phrase:nth-child(1) { animation-delay: 0.65s; }
-.stagger .phrase:nth-child(2) { animation-delay: 0.85s; }
+.stagger .phrase:nth-child(1) { animation-delay: 0.55s; }
+.stagger .phrase:nth-child(2) { animation-delay: 0.8s; }
 .stagger .phrase:nth-child(3) { animation-delay: 1.05s; }
 .stagger .phrase:nth-child(4) { animation-delay: 1.25s; }
+
+@keyframes phraseIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
 
 @keyframes frameIn {
   from { opacity: 0; }
@@ -147,11 +209,6 @@ body {
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes phraseIn {
-  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
