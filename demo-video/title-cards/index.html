@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gamify · כרטיסי פתיח לדמו</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@500;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root { --orange: #d83000; --teal: #009090; --bg: #fff5ef; --ink: #2e221e; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Heebo, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      padding: 2rem;
+    }
+    h1 { font-size: 1.5rem; margin: 0 0 0.35rem; color: var(--orange); }
+    p { margin: 0 0 1.5rem; color: #5c524e; }
+    ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.75rem; max-width: 420px; }
+    a {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.9rem 1rem; border-radius: 12px;
+      background: white; border: 1px solid #e7d6cf;
+      color: inherit; text-decoration: none; font-weight: 700;
+      transition: border-color .15s, transform .15s;
+    }
+    a:hover { border-color: var(--orange); transform: translateY(-1px); }
+    .num {
+      width: 1.75rem; height: 1.75rem; border-radius: 999px;
+      background: var(--orange); color: white;
+      display: grid; place-items: center; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .hint { margin-top: 1.5rem; font-size: 0.9rem; color: var(--teal); }
+  </style>
+</head>
+<body>
+  <h1>כרטיסי פתיח לדמו</h1>
+  <p>פתחי כל כרטיס במסך מלא (F11) לצילום לסרטון.</p>
+  <ul>
+    <li><a href="01-brand-reveal.html"><span class="num">1</span>פתיח / Brand reveal</a></li>
+    <li><a href="02-before-wizard.html"><span class="num">2</span>לפני ה-Wizard</a></li>
+    <li><a href="03-before-scan.html"><span class="num">3</span>לפני מסך הסריקה</a></li>
+    <li><a href="04-before-leaderboard.html"><span class="num">4</span>לפני מסך השיאים</a></li>
+    <li><a href="05-ending.html"><span class="num">5</span>סיום</a></li>
+  </ul>
+  <p class="hint">טיפ: רענני את הדף כדי להפעיל מחדש את האנימציה.</p>
+</body>
+</html>
