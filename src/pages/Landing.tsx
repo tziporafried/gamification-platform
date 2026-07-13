@@ -222,10 +222,10 @@ function LandingDemoVideo() {
       controls
       playsInline
       preload="metadata"
-      poster="/demo/FINAL-poster.jpg"
+      poster="/demo/gamify-tour-poster.jpg"
       dir="ltr"
     >
-      <source src="/demo/FINAL.mp4" type="video/mp4" />
+      <source src="/demo/gamify-tour.mp4" type="video/mp4" />
     </video>
   )
 }
