@@ -40,17 +40,6 @@ const FEATURES = [
 
 const FAQ_ITEMS: { question: string; answer: ReactNode }[] = [
   {
-    question: 'כמה עולה להשתמש במערכת?',
-    answer: (
-      <>
-        <Link to="/plans" className="font-medium text-primary hover:underline">
-          בדף המחירון
-        </Link>
-        {' '}תמצאו את המסלולים - משחק עצמאי, חוויה מלאה ופתרון לארגונים - ואפשר גם לשלוח בקשה ונחזור אליכם.
-      </>
-    ),
-  },
-  {
     question: 'כמה זמן לוקח להקים משחק?',
     answer: 'ברוב המקרים ניתן להקים משחק ראשון בתוך מספר דקות בתהליך הקמה קליל - מהגדרת פרטי האירוע ועד להדפסת כרטיסי QR.',
   },
@@ -77,6 +66,17 @@ const FAQ_ITEMS: { question: string; answer: ReactNode }[] = [
   {
     question: 'אפשר להוסיף משימה לזמן קצוב?',
     answer: 'בהחלט. אפשר להגדיר משימה שתקפה רק לחלון זמן מסוים - למשל חצי שעה. זה מוסיף מתח, מגביר את הכיף ומחזק את התחרות בין המשתתפים.',
+  },
+  {
+    question: 'כמה עולה להשתמש במערכת?',
+    answer: (
+      <>
+        <Link to="/plans" className="font-medium text-primary hover:underline">
+          בדף המחירון
+        </Link>
+        {' '}תמצאו את המסלולים - משחק עצמאי, חוויה מלאה ופתרון לארגונים - ואפשר גם לשלוח בקשה ונחזור אליכם.
+      </>
+    ),
   },
 ]
 

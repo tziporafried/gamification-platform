@@ -7,7 +7,6 @@
   --orange: #d83000;
   --orange-bright: #fc6024;
   --teal: #009090;
-  --heart: #e11d2e;
 }
 
 * {
@@ -126,23 +125,6 @@ body {
 .c-orange { color: var(--orange); }
 .c-teal { color: var(--teal); }
 
-.heart {
-  position: absolute;
-  bottom: clamp(2rem, 5.5vh, 4.5rem);
-  left: 50%;
-  transform: translateX(-50%);
-  width: clamp(1.3rem, 2.5vmin, 2rem);
-  height: clamp(1.3rem, 2.5vmin, 2rem);
-  color: var(--heart);
-  animation: heartIn 0.7s 0.75s ease-out both;
-}
-
-.heart svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
 /* staggered phrase reveals for subtitle lines */
 .stagger .phrase {
   opacity: 0;
@@ -171,11 +153,6 @@ body {
 @keyframes phraseIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes heartIn {
-  from { opacity: 0; transform: translateX(-50%) scale(0.6); }
-  to { opacity: 1; transform: translateX(-50%) scale(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {
