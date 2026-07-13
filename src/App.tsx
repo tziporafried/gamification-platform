@@ -3,6 +3,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { AuthRedirect } from '@/components/AuthRedirect'
 import { AppShell } from '@/components/layout/AppShell'
+import { AnalyticsListener } from '@/components/AnalyticsListener'
 import { Landing } from '@/pages/Landing'
 import { Login } from '@/pages/Login'
 import { MyEvents } from '@/pages/MyEvents'
@@ -14,9 +15,11 @@ import { AdminPanel } from '@/pages/AdminPanel'
 import { EventBySlugControl } from '@/pages/EventBySlug'
 import { AuthCallback } from '@/pages/AuthCallback'
 import { PlansPage } from '@/pages/PlansPage'
+
 export default function App() {
   return (
     <BrowserRouter>
+      <AnalyticsListener />
       <AuthProvider>
         <Routes>
           <Route path="/" element={<Landing />} />

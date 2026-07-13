@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState, useRef, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Check } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { GlobalHeader } from '@/components/layout/GlobalHeader'
 import { BrandLogo } from '@/components/icons/BrandLogo'
+import { trackVideoComplete, trackVideoView } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
 const STEPS = [
@@ -216,6 +217,21 @@ export function Landing() {
 }
 
 function LandingDemoVideo() {
+  const viewedRef = useRef(false)
+  const completedRef = useRef(false)
+
+  function handlePlay() {
+    if (viewedRef.current) return
+    viewedRef.current = true
+    trackVideoView('gamify-tour')
+  }
+
+  function handleEnded() {
+    if (completedRef.current) return
+    completedRef.current = true
+    trackVideoComplete('gamify-tour')
+  }
+
   return (
     <video
       className="aspect-video w-full bg-foreground/10 object-cover"
@@ -224,6 +240,8 @@ function LandingDemoVideo() {
       preload="metadata"
       poster="/demo/gamify-tour-poster.jpg"
       dir="ltr"
+      onPlay={handlePlay}
+      onEnded={handleEnded}
     >
       <source src="/demo/gamify-tour.mp4" type="video/mp4" />
     </video>
