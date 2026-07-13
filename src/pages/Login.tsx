@@ -4,6 +4,7 @@ import { CheckCircle2, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { AtmosphericBackground } from '@/components/layout/AtmosphericBackground'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
+import { BrandLogo } from '@/components/icons/BrandLogo'
 import { GoogleIcon } from '@/components/icons/GoogleIcon'
 import { Button } from '@/components/ui/Button'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
@@ -90,8 +91,8 @@ export function Login() {
       <FloatingIconsLayer />
       <div className="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-surface p-6">
         <div className="mb-6 text-center">
-          <Link to="/welcome" className="inline-flex h-10 w-10 items-center justify-center rounded-xl gradient-brand text-lg font-bold text-foreground">
-            G
+          <Link to="/welcome" className="inline-flex">
+            <BrandLogo className="h-40 w-40" />
           </Link>
           <h1 className="mt-4 text-2xl font-bold text-foreground">ברוכים הבאים</h1>
           <p className="mt-1 text-sm text-muted">התחברו לפלטפורמה</p>

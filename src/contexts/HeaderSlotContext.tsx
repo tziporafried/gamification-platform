@@ -5,7 +5,7 @@ interface HeaderSlotContextType {
   setCenterSlot: (slot: ReactNode) => void
 }
 
-const HeaderSlotContext = createContext<HeaderSlotContextType | undefined>(undefined)
+export const HeaderSlotContext = createContext<HeaderSlotContextType | undefined>(undefined)
 
 export function HeaderSlotProvider({ children }: { children: ReactNode }) {
   const [centerSlot, setCenterSlot] = useState<ReactNode>(null)

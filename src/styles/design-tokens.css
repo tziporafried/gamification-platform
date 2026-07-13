@@ -9,11 +9,11 @@
 
 :root {
   /* ── Layer 1: Primitives (approved palette) ── */
-  --palette-brand-primary: #AB3500;
-  --palette-brand-accent: #FF6B35;
-  --palette-secondary: #50A49D;
-  --palette-tertiary: #FF9500;
-  --palette-accent: #FF9500;
+  --palette-brand-primary: #D83000;
+  --palette-brand-accent: #FC6024;
+  --palette-secondary: #009090;
+  --palette-tertiary: #FC9000;
+  --palette-accent: #FC9000;
   --palette-background: #FFF8F3;
   --palette-surface: #FFF8F3;
   --palette-surface-elevated: #FFF1EC;

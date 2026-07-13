@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { AtmosphericBackground } from '@/components/layout/AtmosphericBackground'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { GlobalHeader } from '@/components/layout/GlobalHeader'
+import { BrandLogo } from '@/components/icons/BrandLogo'
 import { cn } from '@/lib/utils'
 
 const STEPS = [
@@ -94,26 +96,12 @@ export function Landing() {
     <div className="relative min-h-screen overflow-hidden bg-app-radial atmosphere-landing" dir="rtl">
       <AtmosphericBackground />
 
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-surface/85 backdrop-blur-[20px]">
-        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
-          <Link to="/welcome" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-brand text-sm font-bold text-foreground shadow-card">
-              G
-            </div>
-            <span className="text-lg font-bold text-primary">Gamify</span>
-          </Link>
-          <Link
-            to="/login"
-            className="text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            התחברות
-          </Link>
-        </div>
-      </header>
+      <GlobalHeader />
 
       <main className="relative z-10 mx-auto max-w-4xl px-4 pb-20 pt-12 sm:px-6">
         <section className="mx-auto mb-20 max-w-2xl text-center sm:mb-[88px]">
-          <h1 className="mb-5 mt-8 text-[34px] font-black leading-[1.2] text-foreground sm:text-[42px]">
+          <BrandLogo className="mx-auto mb-6 h-28 w-28 sm:h-36 sm:w-36" />
+          <h1 className="mb-5 text-[34px] font-black leading-[1.2] text-foreground sm:text-[42px]">
             סבתא? דודה?
             <br />
             אחראית על ה-<span className="text-primary">Vibe</span> בנופש המשפחתי?

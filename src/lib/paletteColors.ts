@@ -3,10 +3,10 @@
  * Use for colors persisted to the database (groups, templates).
  */
 
-export const PALETTE_BRAND_PRIMARY = '#AB3500'
-export const PALETTE_BRAND_ACCENT = '#FF6B35'
-export const PALETTE_SECONDARY = '#50A49D'
-export const PALETTE_TERTIARY = '#FF9500'
+export const PALETTE_BRAND_PRIMARY = '#D83000'
+export const PALETTE_BRAND_ACCENT = '#FC6024'
+export const PALETTE_SECONDARY = '#009090'
+export const PALETTE_TERTIARY = '#FC9000'
 export const PALETTE_SUCCESS = '#45CF6B'
 export const PALETTE_WARNING = '#FFB800'
 export const PALETTE_DANGER = '#FF4D4D'

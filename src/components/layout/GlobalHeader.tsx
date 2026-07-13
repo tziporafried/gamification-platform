@@ -1,12 +1,14 @@
-import { useState, useRef, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useState, useRef, useEffect, useContext } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { LogOut, Shield, Sparkles } from 'lucide-react'
+import { BrandLogo, BrandWordmark } from '@/components/icons/BrandLogo'
 import { useAuth } from '@/contexts/AuthContext'
-import { useHeaderSlot } from '@/contexts/HeaderSlotContext'
+import { HeaderSlotContext } from '@/contexts/HeaderSlotContext'
 
 export function GlobalHeader() {
   const { user, profile, signOut, isSuperAdmin } = useAuth()
-  const { centerSlot } = useHeaderSlot()
+  const headerSlot = useContext(HeaderSlotContext)
+  const centerSlot = headerSlot?.centerSlot ?? null
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -25,88 +27,93 @@ export function GlobalHeader() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  if (!user) return null
-
   return (
     <header className="sticky top-0 z-40 bg-surface/90 shadow-sm backdrop-blur-[20px]">
       <div className="flex h-14 w-full items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0 min-w-0">
           <button
             onClick={() => navigate('/welcome')}
-            className="flex items-center gap-3 group"
+            className="group flex shrink-0 items-center"
           >
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-card">
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                  <path d="M12 3L4 7v5c0 4.4 3.4 8.5 8 9.5 4.6-1 8-5.1 8-9.5V7l-8-4z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="text-foreground"/>
-                  <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-foreground"/>
-                </svg>
-            </div>
-            {!centerSlot && (
-              <div className="hidden sm:flex flex-col items-end leading-none">
-                <span className="text-sm font-bold text-primary tracking-tight">Gamify</span>
-                <span className="text-[10px] text-muted font-medium tracking-wide">PLATFORM</span>
-              </div>
+            {centerSlot ? (
+              <BrandLogo />
+            ) : (
+              <>
+                <BrandWordmark className="hidden sm:inline-flex" />
+                <BrandLogo className="sm:hidden" />
+              </>
             )}
           </button>
           {centerSlot && (
-            <div>{centerSlot}</div>
+            <div className="flex min-w-0 items-center">{centerSlot}</div>
           )}
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          {location.pathname !== '/plans' && (
-            <button
-              onClick={() => navigate('/plans')}
-              className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
-            >
-              <Sparkles size={16} />
-              <span className="hidden sm:inline">רוצה לשדרג?</span>
-            </button>
-          )}
-
-          {isSuperAdmin && (
-            <button
-              onClick={() => navigate('/admin')}
-              className="flex items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground transition-colors"
-            >
-              <Shield size={16} />
-              <span className="hidden sm:inline">ניהול</span>
-            </button>
-          )}
-
-          <div className="relative flex items-center" ref={menuRef}>
-            <button
-              onClick={() => setMenuOpen(prev => !prev)}
-              className="rounded-full hover:ring-2 hover:ring-border transition-all"
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover ring-2 ring-border" />
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-elevated text-xs font-bold text-muted ring-2 ring-border">
-                  {displayName[0]?.toUpperCase()}
-                </div>
-              )}
-            </button>
-
-            {menuOpen && (
-              <div className="absolute left-0 top-full mt-2 w-52 rounded-xl border border-border bg-surface shadow-dropdown overflow-hidden z-50">
-                <div className="px-4 py-3 border-b border-border text-right">
-                  {avatarUrl && (
-                    <img src={avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover mb-2" />
-                  )}
-                  <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
-                  <p className="text-xs text-muted truncate">{user.email}</p>
-                </div>
+          {user ? (
+            <>
+              {location.pathname !== '/plans' && (
                 <button
-                  onClick={() => { setMenuOpen(false); signOut().then(() => navigate('/welcome')) }}
-                  className="flex w-full items-center justify-between px-4 py-3 text-sm text-foreground hover:bg-surface-elevated hover:text-danger transition-colors"
+                  onClick={() => navigate('/plans')}
+                  className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
                 >
-                  <span>התנתקות</span>
-                  <LogOut size={15} />
+                  <Sparkles size={16} />
+                  <span className="hidden sm:inline">רוצה לשדרג?</span>
                 </button>
+              )}
+
+              {isSuperAdmin && (
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="flex items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground transition-colors"
+                >
+                  <Shield size={16} />
+                  <span className="hidden sm:inline">ניהול</span>
+                </button>
+              )}
+
+              <div className="relative flex items-center" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen(prev => !prev)}
+                  className="rounded-full hover:ring-2 hover:ring-border transition-all"
+                >
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover ring-2 ring-border" />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-elevated text-xs font-bold text-muted ring-2 ring-border">
+                      {displayName[0]?.toUpperCase()}
+                    </div>
+                  )}
+                </button>
+
+                {menuOpen && (
+                  <div className="absolute left-0 top-full mt-2 w-52 rounded-xl border border-border bg-surface shadow-dropdown overflow-hidden z-50">
+                    <div className="px-4 py-3 border-b border-border text-right">
+                      {avatarUrl && (
+                        <img src={avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover mb-2" />
+                      )}
+                      <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+                      <p className="text-xs text-muted truncate">{user.email}</p>
+                    </div>
+                    <button
+                      onClick={() => { setMenuOpen(false); signOut().then(() => navigate('/welcome')) }}
+                      className="flex w-full items-center justify-between px-4 py-3 text-sm text-foreground hover:bg-surface-elevated hover:text-danger transition-colors"
+                    >
+                      <span>התנתקות</span>
+                      <LogOut size={15} />
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          ) : (
+            <Link
+              to="/login"
+              className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+            >
+              התחברות
+            </Link>
+          )}
         </div>
       </div>
     </header>

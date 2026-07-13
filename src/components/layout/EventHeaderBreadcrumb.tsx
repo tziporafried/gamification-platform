@@ -11,21 +11,21 @@ export function EventHeaderBreadcrumb({ eventName, suffix }: EventHeaderBreadcru
   const backLabel = suffix === 'עריכת תבנית' ? 'ניהול מערכת' : 'האירועים שלי'
 
   return (
-    <div className="flex items-center gap-2 min-w-0">
+    <div className="flex items-center gap-2 min-w-0 leading-none">
       <button
         onClick={() => navigate(backPath, suffix === 'עריכת תבנית' ? { state: { tab: 'templates' } } : undefined)}
-        className="shrink-0 text-xs font-medium text-muted transition-colors hover:text-foreground"
+        className="shrink-0 text-xs font-medium leading-none text-muted transition-colors hover:text-foreground"
       >
         <span>{backLabel}</span>
       </button>
-      <span className="shrink-0 text-muted/60">/</span>
-      <span className="truncate max-w-[200px] text-sm font-bold text-primary">
+      <span className="shrink-0 text-muted/60 leading-none">/</span>
+      <span className="truncate max-w-[200px] text-sm font-bold leading-none text-primary">
         {eventName || 'אירוע חדש'}
       </span>
       {suffix && (
         <>
-          <span className="shrink-0 text-muted/60">/</span>
-          <span className="truncate text-xs font-medium text-muted">{suffix}</span>
+          <span className="shrink-0 text-muted/60 leading-none">/</span>
+          <span className="truncate text-xs font-medium leading-none text-muted">{suffix}</span>
         </>
       )}
     </div>
