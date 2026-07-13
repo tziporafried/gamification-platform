@@ -1,0 +1,7 @@
+project_id = "klcbyywghzggqauvvczj"
+
+# Contact-request notifier. verify_jwt is off so anonymous pricing-page
+# visitors can trigger it after submitting a contact request. The function
+# itself only sends an admin notification for an existing request id.
+[functions.notify-contact-request]
+verify_jwt = false
