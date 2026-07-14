@@ -227,15 +227,20 @@ function LandingDemoVideo() {
     trackVideoView('gamify-tour')
   }
 
-  function handleEnded() {
-    if (completedRef.current) return
-    completedRef.current = true
-    trackVideoComplete('gamify-tour')
+  function handleEnded(e: React.SyntheticEvent<HTMLVideoElement>) {
+    if (!completedRef.current) {
+      completedRef.current = true
+      trackVideoComplete('gamify-tour')
+    }
+    // Prefer the opening frame over a blank/black post-ended state.
+    const video = e.currentTarget
+    video.pause()
+    video.currentTime = 0
   }
 
   return (
     <video
-      className="aspect-video w-full bg-foreground/10 object-cover"
+      className="aspect-video w-full bg-[#fff5ef] object-cover"
       controls
       playsInline
       preload="metadata"
