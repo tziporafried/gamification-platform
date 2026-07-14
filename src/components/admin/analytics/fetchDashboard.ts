@@ -81,6 +81,8 @@ export async function fetchAnalyticsDashboard(
       conversionRate: null,
       bySource: null,
       bySourceUnavailable: true,
+      opensBySource: null,
+      opensBySourceUnavailable: true,
     }
   }
 

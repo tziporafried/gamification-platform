@@ -13,6 +13,7 @@ import {
   trackEventCreationStart,
   trackEventCreated,
   trackAppError,
+  type ActivationOptionsSource,
 } from '@/lib/analytics'
 import { ContactForm } from '@/components/ContactForm'
 import type { ContactIntent } from '@/lib/contact'
@@ -96,14 +97,19 @@ export function PlansModal({
   }, [isOpen, eventId])
 
   useEffect(() => {
-    if (!isOpen || !eventId) return
-    if (
-      source === 'trial_scan_limit' ||
-      source === 'game_home_trial' ||
-      source === 'events_page_trial_badge' ||
-      source === 'wizard_trial_badge'
-    ) {
-      trackActivationOptionsViewed(eventId, source)
+    if (!isOpen || !eventId || !source) return
+    const known: ActivationOptionsSource[] = [
+      'trial_scan_limit',
+      'game_home_trial',
+      'events_page_trial_badge',
+      'wizard_trial_badge',
+      'plan_limit_modal',
+      'header',
+      'post_wizard',
+      'deep_link',
+    ]
+    if ((known as string[]).includes(source)) {
+      trackActivationOptionsViewed(eventId, source as ActivationOptionsSource)
     }
   }, [isOpen, eventId, source])
 

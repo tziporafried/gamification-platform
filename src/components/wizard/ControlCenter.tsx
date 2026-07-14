@@ -16,7 +16,7 @@ import { calculateReadiness, isEventReady, getWizardPrefs, resolveGroupType } fr
 import { getLockedTemplate, completeTemplateImport, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
-import { trackEventEditStart, trackCtaClick, trackActivationOptionsViewed } from '@/lib/analytics'
+import { trackEventEditStart, trackCtaClick } from '@/lib/analytics'
 import { FloatingContactButton } from '@/components/layout/FloatingContactButton'
 import type { Event, EventCounts } from '@/types'
 
@@ -120,7 +120,6 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
       cta_location: 'control_center',
       destination: 'plans_modal',
     })
-    trackActivationOptionsViewed(event.id, 'game_home_trial')
     openPlans({ eventId: event.id, source: 'game_home_trial' })
   }, [event.id, openPlans])
 

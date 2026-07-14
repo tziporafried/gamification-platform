@@ -72,6 +72,13 @@ interface DashboardPayload {
     step2Rate: number | null
     step3Rate: number | null
     overallRate: number | null
+    activationOptionsViewedUsers: number
+    activationOptionsClickedUsers: number
+    trialActivatedUsers: number
+    byPlan: NamedMetric[] | null
+    byPlanUnavailable: boolean
+    activationBySource: NamedMetric[] | null
+    activationBySourceUnavailable: boolean
   }
   login: {
     viewedUsers: number
@@ -93,6 +100,8 @@ interface DashboardPayload {
     conversionRate: number | null
     bySource: NamedMetric[] | null
     bySourceUnavailable: boolean
+    opensBySource: NamedMetric[] | null
+    opensBySourceUnavailable: boolean
   }
   meta: {
     startDate: string
@@ -103,7 +112,8 @@ interface DashboardPayload {
 const CTA_NAME_LABELS: Record<string, string> = {
   create_event: 'יצירת אירוע',
   start_now: 'התחלה עכשיו',
-  view_pricing: 'צפייה במחירים',
+  view_pricing: 'צפייה במחירים / הפעלה',
+  view_activation_options: 'אפשרויות הפעלה',
   login: 'התחברות',
   contact_us: 'יצירת קשר',
   open_scanner: 'פתיחת סריקה',
@@ -115,17 +125,40 @@ const CTA_NAME_ALLOW = new Set(Object.keys(CTA_NAME_LABELS))
 const CTA_LOCATION_LABELS: Record<string, string> = {
   header: 'כותרת עליונה',
   after_video: 'אחרי הסרטון',
-  pricing: 'אזור המחירים',
+  pricing: 'אזור המחירים / FAQ',
   footer: 'תחתית הדף',
   floating: 'כפתור צף',
   faq: 'שאלות נפוצות',
   events: 'האירועים שלי',
   wizard: 'אשף הקמה',
-  control: 'מרכז בקרה',
+  control: 'מרכז בקרה (צור קשר)',
+  events_page_trial_badge: 'באדג׳ באירועים שלי',
+  wizard_trial_badge: 'באדג׳ באשף',
   trial_scan_limit_modal: 'מודל סיום התנסות',
   plan_limit_modal: 'מודל מגבלת תוכנית',
-  control_center: 'מרכז בקרה',
+  control_center: 'מרכז בקרה (הפעלה)',
 }
+
+const PLAN_NAME_LABELS: Record<string, string> = {
+  independent: 'משחק עצמאי',
+  full: 'חוויה מלאה',
+  organizations: 'פתרון לארגונים',
+}
+
+const PLAN_NAME_ALLOW = new Set(Object.keys(PLAN_NAME_LABELS))
+
+const ACTIVATION_SOURCE_LABELS: Record<string, string> = {
+  trial_scan_limit: 'סיום התנסות (סריקות)',
+  game_home_trial: 'מרכז בקרה',
+  events_page_trial_badge: 'באדג׳ באירועים שלי',
+  wizard_trial_badge: 'באדג׳ באשף',
+  plan_limit_modal: 'מודל מגבלת תוכנית',
+  header: 'כותרת עליונה',
+  post_wizard: 'אחרי האשף',
+  deep_link: 'קישור ישיר',
+}
+
+const ACTIVATION_SOURCE_ALLOW = new Set(Object.keys(ACTIVATION_SOURCE_LABELS))
 
 const CTA_LOCATION_ALLOW = new Set(Object.keys(CTA_LOCATION_LABELS))
 
@@ -151,6 +184,9 @@ const CORE_EVENTS = [
   'cta_click',
   'select_plan',
   'contact_form_open',
+  'activation_options_viewed',
+  'activation_options_clicked',
+  'trial_activated',
   'login_start',
   'login',
   'sign_up',
@@ -324,6 +360,25 @@ function getEvent(map: Map<string, { users: number; count: number }>, name: stri
   return map.get(name) ?? { users: 0, count: 0 }
 }
 
+function mapAllowListedRows(
+  rows: Ga4Row[] | undefined,
+  labels: Record<string, string>,
+  allow: Set<string>,
+): NamedMetric[] {
+  return (rows ?? [])
+    .map((row) => {
+      const key = row.dimensionValues?.[0]?.value ?? ''
+      return {
+        key,
+        label: labels[key] ?? key,
+        users: Number(row.metricValues?.[0]?.value ?? 0),
+      }
+    })
+    .filter((r) => r.key && r.key !== '(not set)' && allow.has(r.key))
+    .map(({ label, users }) => ({ label, users }))
+    .sort((a, b) => b.users - a.users)
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -359,7 +414,7 @@ Deno.serve(async (req) => {
     const { data: profile, error: profileError } = await adminClient
       .from('user_profiles')
       .select('role')
-      .eq('user_id', user.id)
+      .eq('id', user.id)
       .maybeSingle()
 
     if (profileError || profile?.role !== 'super_admin') {
@@ -509,16 +564,71 @@ Deno.serve(async (req) => {
       limit: 20,
     })
 
-    const [core, homepage, faqQuestions, ctaByName, ctaByLocation, creationMethod, leadBySource] =
-      await Promise.all([
-        corePromise,
-        homepagePromise,
-        faqQuestionsPromise,
-        ctaByNamePromise,
-        ctaByLocationPromise,
-        creationMethodPromise,
-        leadBySourcePromise,
-      ])
+    const contactOpenBySourcePromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'customEvent:contact_source' }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: { matchType: 'EXACT', value: 'contact_form_open' },
+        },
+      },
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 20,
+    })
+
+    const selectPlanByNamePromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'customEvent:plan_name' }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: { matchType: 'EXACT', value: 'select_plan' },
+        },
+      },
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 10,
+    })
+
+    const activationBySourcePromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'customEvent:source' }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: { matchType: 'EXACT', value: 'activation_options_viewed' },
+        },
+      },
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 20,
+    })
+
+    const [
+      core,
+      homepage,
+      faqQuestions,
+      ctaByName,
+      ctaByLocation,
+      creationMethod,
+      leadBySource,
+      contactOpenBySource,
+      selectPlanByName,
+      activationBySource,
+    ] = await Promise.all([
+      corePromise,
+      homepagePromise,
+      faqQuestionsPromise,
+      ctaByNamePromise,
+      ctaByLocationPromise,
+      creationMethodPromise,
+      leadBySourcePromise,
+      contactOpenBySourcePromise,
+      selectPlanByNamePromise,
+      activationBySourcePromise,
+    ])
 
     if (core.error) {
       return jsonResponse(
@@ -628,21 +738,52 @@ Deno.serve(async (req) => {
       bySourceUnavailable = true
       console.warn('lead by contact_source unavailable', leadBySource.error.message)
     } else {
-      leadBySourceRows = (leadBySource.rows ?? [])
-        .map((row) => {
-          const key = row.dimensionValues?.[0]?.value ?? ''
-          return {
-            key,
-            label: CONTACT_SOURCE_LABELS[key] ?? key,
-            users: Number(row.metricValues?.[0]?.value ?? 0),
-          }
-        })
-        .filter((r) => r.key && r.key !== '(not set)' && CONTACT_SOURCE_ALLOW.has(r.key))
-        .map(({ label, users }) => ({ label, users }))
-        .sort((a, b) => b.users - a.users)
+      leadBySourceRows = mapAllowListedRows(
+        leadBySource.rows,
+        CONTACT_SOURCE_LABELS,
+        CONTACT_SOURCE_ALLOW,
+      )
+    }
+
+    let contactOpensBySourceRows: NamedMetric[] | null = null
+    let opensBySourceUnavailable = false
+    if (contactOpenBySource.error) {
+      opensBySourceUnavailable = true
+      console.warn('contact_form_open by contact_source unavailable', contactOpenBySource.error.message)
+    } else {
+      contactOpensBySourceRows = mapAllowListedRows(
+        contactOpenBySource.rows,
+        CONTACT_SOURCE_LABELS,
+        CONTACT_SOURCE_ALLOW,
+      )
+    }
+
+    let planByNameRows: NamedMetric[] | null = null
+    let byPlanUnavailable = false
+    if (selectPlanByName.error) {
+      byPlanUnavailable = true
+      console.warn('select_plan by plan_name unavailable', selectPlanByName.error.message)
+    } else {
+      planByNameRows = mapAllowListedRows(selectPlanByName.rows, PLAN_NAME_LABELS, PLAN_NAME_ALLOW)
+    }
+
+    let activationBySourceRows: NamedMetric[] | null = null
+    let activationBySourceUnavailable = false
+    if (activationBySource.error) {
+      activationBySourceUnavailable = true
+      console.warn('activation_options_viewed by source unavailable', activationBySource.error.message)
+    } else {
+      activationBySourceRows = mapAllowListedRows(
+        activationBySource.rows,
+        ACTIVATION_SOURCE_LABELS,
+        ACTIVATION_SOURCE_ALLOW,
+      )
     }
 
     const contactOpenUsers = getEvent(events, 'contact_form_open').users
+    const activationViewed = getEvent(events, 'activation_options_viewed').users
+    const activationClicked = getEvent(events, 'activation_options_clicked').users
+    const trialActivated = getEvent(events, 'trial_activated').users
 
     const payload: DashboardPayload = {
       overview: {
@@ -677,6 +818,13 @@ Deno.serve(async (req) => {
         step2Rate: rate(planSelected, plansViewed),
         step3Rate: rate(leadUsers, planSelected),
         overallRate: rate(leadUsers, plansViewed),
+        activationOptionsViewedUsers: activationViewed,
+        activationOptionsClickedUsers: activationClicked,
+        trialActivatedUsers: trialActivated,
+        byPlan: planByNameRows,
+        byPlanUnavailable,
+        activationBySource: activationBySourceRows,
+        activationBySourceUnavailable,
       },
       login: {
         viewedUsers: getEvent(events, 'login_view').users,
@@ -698,6 +846,8 @@ Deno.serve(async (req) => {
         conversionRate: rate(leadUsers, contactOpenUsers),
         bySource: leadBySourceRows,
         bySourceUnavailable,
+        opensBySource: contactOpensBySourceRows,
+        opensBySourceUnavailable,
       },
       meta: { startDate, endDate },
     }

@@ -75,7 +75,10 @@ export function GlobalHeader() {
                       cta_location: 'header',
                       destination: 'plans_modal',
                     })
-                    openPlans({ eventId: currentEventId })
+                    openPlans({
+                      eventId: currentEventId,
+                      source: currentEventId ? 'header' : null,
+                    })
                   }}
                   className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
                 >

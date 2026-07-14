@@ -20,7 +20,7 @@ export function UpgradeModal({ isOpen, onClose, eventId }: UpgradeModalProps) {
       destination: 'plans_modal',
     })
     onClose()
-    openPlans({ eventId })
+    openPlans({ eventId, source: 'plan_limit_modal' })
   }
 
   return (

@@ -148,10 +148,10 @@ export function trackVideoProgress(
 
 // ─── Pricing / plans ─────────────────────────────────────────────────────────
 
-/** User opened the plans / pricing page. (Covers requested view_pricing.) */
+/** User opened the plans / activation modal. (Covers requested view_pricing.) */
 export function trackViewPlans(hasLinkedEvent = false) {
   trackEventDeduped(`view_plans:${hasLinkedEvent ? 'linked' : 'none'}`, 'view_plans', {
-    page_path: '/plans',
+    page_path: 'plans_modal',
     has_linked_event: hasLinkedEvent,
   })
 }
@@ -360,11 +360,18 @@ export function trackActivationOptionsClicked(
   })
 }
 
-/** User opened activation options from trial UX (game home or scan-limit modal). */
-export function trackActivationOptionsViewed(
-  eventId: string,
-  source: 'trial_scan_limit' | 'game_home_trial' | 'events_page_trial_badge' | 'wizard_trial_badge',
-) {
+export type ActivationOptionsSource =
+  | 'trial_scan_limit'
+  | 'game_home_trial'
+  | 'events_page_trial_badge'
+  | 'wizard_trial_badge'
+  | 'plan_limit_modal'
+  | 'header'
+  | 'post_wizard'
+  | 'deep_link'
+
+/** User opened activation options (plans modal) from a tracked entry point. */
+export function trackActivationOptionsViewed(eventId: string, source: ActivationOptionsSource) {
   trackEvent('activation_options_viewed', {
     event_id: eventId,
     source,

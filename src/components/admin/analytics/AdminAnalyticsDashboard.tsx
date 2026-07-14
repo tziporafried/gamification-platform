@@ -187,8 +187,9 @@ export function AdminAnalyticsDashboard() {
               />
               <KpiCard
                 loading={loading}
-                label="צפו במחירים"
+                label="פתחו אפשרויות הפעלה"
                 value={data.overview.pricingUsers}
+                hint="view_plans · מודל Plans"
                 icon={<Sparkles size={16} />}
                 accent="tertiary"
               />
@@ -330,20 +331,65 @@ export function AdminAnalyticsDashboard() {
             </div>
           </section>
 
-          {/* 5. Product interest */}
+          {/* 5. Plans / activation */}
           <section className="space-y-4">
             <SectionHeader
               icon={<Sparkles size={16} className="text-secondary" />}
-              title="עניין במוצר"
+              title="Plans ואפשרויות הפעלה"
+              subtitle="מודל בחירת מסלול · view_plans / select_plan / activation_options_*"
             />
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+              <KpiCard
+                loading={loading}
+                label="פתחו את מודל ההפעלה"
+                value={data.productInterest.plansViewedUsers}
+                hint="view_plans"
+                accent="primary"
+              />
+              <KpiCard
+                loading={loading}
+                label="בחרו מסלול"
+                value={data.productInterest.planSelectedUsers}
+                hint="select_plan"
+                accent="secondary"
+              />
+              <KpiCard
+                loading={loading}
+                label="השאירו פרטים (כולל)"
+                value={data.productInterest.leadUsers}
+                hint="generate_lead · כל המקורות"
+                accent="tertiary"
+              />
+              <KpiCard
+                loading={loading}
+                label="צפייה מהפעלת ניסיון"
+                value={data.productInterest.activationOptionsViewedUsers}
+                hint="activation_options_viewed"
+                accent="secondary"
+              />
+              <KpiCard
+                loading={loading}
+                label="לחיצה על באדג׳ הפעלה"
+                value={data.productInterest.activationOptionsClickedUsers}
+                hint="activation_options_clicked"
+                accent="primary"
+              />
+              <KpiCard
+                loading={loading}
+                label="הופעלו מניסיון"
+                value={data.productInterest.trialActivatedUsers}
+                hint="trial_activated"
+                accent="tertiary"
+              />
+            </div>
             <Card className="p-5">
               <SummaryFunnel
                 loading={loading}
-                note="סיכום לפי משתמשים ייחודיים בטווח התאריכים — לא funnel רציף ברמת משתמש/סשן."
+                note="סיכום לפי משתמשים ייחודיים בטווח התאריכים — לא funnel רציף ברמת משתמש/סשן. שלב הליד כולל גם פניות שאינן ממודל ה-Plans."
                 steps={[
-                  { label: 'צפו במחירים', value: data.productInterest.plansViewedUsers },
+                  { label: 'פתחו מודל הפעלה', value: data.productInterest.plansViewedUsers },
                   {
-                    label: 'בחרו תוכנית',
+                    label: 'בחרו מסלול',
                     value: data.productInterest.planSelectedUsers,
                     stepRate: data.productInterest.step2Rate,
                   },
@@ -354,9 +400,41 @@ export function AdminAnalyticsDashboard() {
                   },
                 ]}
                 overallRate={data.productInterest.overallRate}
-                overallLabel="מהצפייה במחירים להשארת פרטים"
+                overallLabel="מפתיחת מודל ההפעלה להשארת פרטים"
               />
             </Card>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card className="p-5">
+                <h3 className="mb-4 text-sm font-semibold text-foreground">בחירת מסלול לפי תוכנית</h3>
+                <HorizontalBars
+                  loading={loading}
+                  unavailable={data.productInterest.byPlanUnavailable}
+                  unavailableDescription="המימד customEvent:plan_name עדיין לא זמין ב-GA4. יש לרשום אותו כ-Custom Dimension ל-event-scoped param plan_name."
+                  items={(data.productInterest.byPlan ?? []).map((r) => ({
+                    label: r.label,
+                    value: r.users,
+                  }))}
+                  emptyTitle="אין בחירות מסלול"
+                  emptyDescription="בטווח שנבחר אף משתמש לא בחר מסלול במודל ההפעלה."
+                />
+              </Card>
+              <Card className="p-5">
+                <h3 className="mb-4 text-sm font-semibold text-foreground">
+                  פתיחת מודל לפי מקור כניסה
+                </h3>
+                <HorizontalBars
+                  loading={loading}
+                  unavailable={data.productInterest.activationBySourceUnavailable}
+                  unavailableDescription="המימד customEvent:source עדיין לא זמין ב-GA4. יש לרשום אותו כ-Custom Dimension ל-event-scoped param source (עבור activation_options_viewed)."
+                  items={(data.productInterest.activationBySource ?? []).map((r) => ({
+                    label: r.label,
+                    value: r.users,
+                  }))}
+                  emptyTitle="אין פתיחות עם מקור"
+                  emptyDescription="בטווח שנבחר לא נפתח מודל ההפעלה ממקור tracked עם event_id, או שהמימד עדיין לא נאסף."
+                />
+              </Card>
+            </div>
           </section>
 
           {/* 5b. Contact */}
@@ -364,6 +442,7 @@ export function AdminAnalyticsDashboard() {
             <SectionHeader
               icon={<MessageCircle size={16} className="text-secondary" />}
               title="יצירת קשר"
+              subtitle="טופס יצירת קשר ניטרלי + לידים ממסלולי Plans"
             />
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
               <KpiCard
@@ -388,20 +467,36 @@ export function AdminAnalyticsDashboard() {
                 accent="tertiary"
               />
             </div>
-            <Card className="p-5">
-              <h3 className="mb-4 text-sm font-semibold text-foreground">לידים לפי מקור פנייה</h3>
-              <HorizontalBars
-                loading={loading}
-                unavailable={data.contact.bySourceUnavailable}
-                unavailableDescription="המימד customEvent:contact_source עדיין לא זמין ב-GA4. יש לרשום אותו כ-Custom Dimension ל-event-scoped param contact_source."
-                items={(data.contact.bySource ?? []).map((r) => ({
-                  label: r.label,
-                  value: r.users,
-                }))}
-                emptyTitle="אין לידים עם מקור"
-                emptyDescription="בטווח שנבחר לא נשלחו פניות עם contact_source, או שהמימד עדיין לא נאסף."
-              />
-            </Card>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card className="p-5">
+                <h3 className="mb-4 text-sm font-semibold text-foreground">פתיחות טופס לפי מקור</h3>
+                <HorizontalBars
+                  loading={loading}
+                  unavailable={data.contact.opensBySourceUnavailable}
+                  unavailableDescription="המימד customEvent:contact_source עדיין לא זמין ב-GA4. יש לרשום אותו כ-Custom Dimension ל-event-scoped param contact_source."
+                  items={(data.contact.opensBySource ?? []).map((r) => ({
+                    label: r.label,
+                    value: r.users,
+                  }))}
+                  emptyTitle="אין פתיחות עם מקור"
+                  emptyDescription="בטווח שנבחר לא נפתח טופס עם contact_source, או שהמימד עדיין לא נאסף."
+                />
+              </Card>
+              <Card className="p-5">
+                <h3 className="mb-4 text-sm font-semibold text-foreground">לידים לפי מקור פנייה</h3>
+                <HorizontalBars
+                  loading={loading}
+                  unavailable={data.contact.bySourceUnavailable}
+                  unavailableDescription="המימד customEvent:contact_source עדיין לא זמין ב-GA4. יש לרשום אותו כ-Custom Dimension ל-event-scoped param contact_source."
+                  items={(data.contact.bySource ?? []).map((r) => ({
+                    label: r.label,
+                    value: r.users,
+                  }))}
+                  emptyTitle="אין לידים עם מקור"
+                  emptyDescription="בטווח שנבחר לא נשלחו פניות עם contact_source, או שהמימד עדיין לא נאסף."
+                />
+              </Card>
+            </div>
           </section>
 
           {/* 6. Login */}

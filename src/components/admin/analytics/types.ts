@@ -44,6 +44,13 @@ export interface AnalyticsDashboardData {
     step2Rate: number | null
     step3Rate: number | null
     overallRate: number | null
+    activationOptionsViewedUsers: number
+    activationOptionsClickedUsers: number
+    trialActivatedUsers: number
+    byPlan: AnalyticsNamedMetric[] | null
+    byPlanUnavailable: boolean
+    activationBySource: AnalyticsNamedMetric[] | null
+    activationBySourceUnavailable: boolean
   }
   login: {
     viewedUsers: number
@@ -65,6 +72,8 @@ export interface AnalyticsDashboardData {
     conversionRate: number | null
     bySource: AnalyticsNamedMetric[] | null
     bySourceUnavailable: boolean
+    opensBySource: AnalyticsNamedMetric[] | null
+    opensBySourceUnavailable: boolean
   }
   meta: {
     startDate: string
