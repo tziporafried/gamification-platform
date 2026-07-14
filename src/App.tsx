@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { PlansModalProvider } from '@/contexts/PlansModalContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { AuthRedirect } from '@/components/AuthRedirect'
 import { AppShell } from '@/components/layout/AppShell'
@@ -21,28 +22,31 @@ export default function App() {
     <BrowserRouter>
       <AnalyticsListener />
       <AuthProvider>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/welcome" element={<Navigate to="/" replace />} />
-          <Route path="/login" element={<AuthRedirect><Login /></AuthRedirect>} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
+        <PlansModalProvider>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/welcome" element={<Navigate to="/" replace />} />
+            <Route path="/login" element={<AuthRedirect><Login /></AuthRedirect>} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
 
-          {/* All authenticated routes share AppShell (GlobalHeader) */}
-          <Route path="/events" element={<ProtectedRoute><AppShell atmosphere="dashboard"><MyEvents /></AppShell></ProtectedRoute>} />
-          <Route path="/events/:id" element={<ProtectedRoute><AppShell atmosphere="wizard"><EventWizard /></AppShell></ProtectedRoute>} />
-          <Route path="/events/:id/step/:step" element={<ProtectedRoute><AppShell atmosphere="wizard"><EventWizard /></AppShell></ProtectedRoute>} />
-          <Route path="/events/:id/control" element={<ProtectedRoute><AppShell atmosphere="control"><EventControlCenterPage /></AppShell></ProtectedRoute>} />
-          <Route path="/events/:id/display" element={<ProtectedRoute><EventDisplayPage /></ProtectedRoute>} />
-          <Route path="/events/:id/kiosk" element={<ProtectedRoute><EventKioskPage /></ProtectedRoute>} />
-          <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell atmosphere="control"><EventBySlugControl /></AppShell></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />
-          <Route path="/plans" element={<AppShell><PlansPage /></AppShell>} />
+            {/* All authenticated routes share AppShell (GlobalHeader) */}
+            <Route path="/events" element={<ProtectedRoute><AppShell atmosphere="dashboard"><MyEvents /></AppShell></ProtectedRoute>} />
+            <Route path="/events/:id" element={<ProtectedRoute><AppShell atmosphere="wizard"><EventWizard /></AppShell></ProtectedRoute>} />
+            <Route path="/events/:id/step/:step" element={<ProtectedRoute><AppShell atmosphere="wizard"><EventWizard /></AppShell></ProtectedRoute>} />
+            <Route path="/events/:id/control" element={<ProtectedRoute><AppShell atmosphere="control"><EventControlCenterPage /></AppShell></ProtectedRoute>} />
+            <Route path="/events/:id/display" element={<ProtectedRoute><EventDisplayPage /></ProtectedRoute>} />
+            <Route path="/events/:id/kiosk" element={<ProtectedRoute><EventKioskPage /></ProtectedRoute>} />
+            <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell atmosphere="control"><EventBySlugControl /></AppShell></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />
+            {/* Legacy / deep-link entry — opens plans modal, then leaves /plans */}
+            <Route path="/plans" element={<PlansPage />} />
 
-          {/* Backward compat */}
-          <Route path="/dashboard" element={<Navigate to="/events" replace />} />
-          <Route path="/register" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Backward compat */}
+            <Route path="/dashboard" element={<Navigate to="/events" replace />} />
+            <Route path="/register" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </PlansModalProvider>
       </AuthProvider>
     </BrowserRouter>
   )

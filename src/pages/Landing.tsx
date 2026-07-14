@@ -1,8 +1,9 @@
 import { useState, useRef, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Check } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePlansModal } from '@/contexts/PlansModalContext'
 import { AtmosphericBackground } from '@/components/layout/AtmosphericBackground'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
 import { FloatingContactButton } from '@/components/layout/FloatingContactButton'
@@ -81,24 +82,7 @@ const FAQ_ITEMS: { question: string; answer: ReactNode }[] = [
   },
   {
     question: 'כמה עולה להשתמש במערכת?',
-    answer: (
-      <>
-        <Link
-          to="/plans"
-          className="font-medium text-primary hover:underline"
-          onClick={() =>
-            trackCtaClick({
-              cta_name: 'view_pricing',
-              cta_location: 'pricing',
-              destination: '/plans',
-            })
-          }
-        >
-          בדף המחירון
-        </Link>
-        {' '}תמצאו את המסלולים - משחק עצמאי, חוויה מלאה ופתרון לארגונים - ואפשר גם לשלוח בקשה ונחזור אליכם.
-      </>
-    ),
+    answer: 'pricing', // special-cased in FAQ render to open PlansModal
   },
 ]
 
@@ -121,10 +105,20 @@ const viewportOnce = { once: true, amount: 0.25 } as const
 export function Landing() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { openPlans } = usePlansModal()
   const reducedMotion = useReducedMotion()
   const [faqOpen, setFaqOpen] = useState(() => FAQ_ITEMS.map(() => false))
   const [contactOpen, setContactOpen] = useState(false)
   const [contactLocation, setContactLocation] = useState<'faq' | 'footer'>('footer')
+
+  function handleOpenPlans() {
+    trackCtaClick({
+      cta_name: 'view_pricing',
+      cta_location: 'pricing',
+      destination: 'plans_modal',
+    })
+    openPlans()
+  }
 
   function handleCreateEventClick() {
     trackCtaClick({
@@ -370,7 +364,25 @@ export function Landing() {
             {FAQ_ITEMS.map((item, index) => (
               <FaqItem
                 key={item.question}
-                {...item}
+                question={item.question}
+                answer={
+                  item.answer === 'pricing' ? (
+                    <>
+                      <button
+                        type="button"
+                        className="font-medium text-primary hover:underline"
+                        onClick={handleOpenPlans}
+                      >
+                        באפשרויות ההפעלה
+                      </button>
+                      {' '}
+                      תמצאו את המסלולים - משחק עצמאי, חוויה מלאה ופתרון לארגונים - ואפשר גם לשלוח בקשה
+                      ונחזור אליכם.
+                    </>
+                  ) : (
+                    item.answer
+                  )
+                }
                 open={faqOpen[index]}
                 onToggle={() => toggleFaq(index)}
                 motionSafe={motionSafe}

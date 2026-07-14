@@ -1,6 +1,6 @@
-import { useNavigate } from 'react-router-dom'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { usePlansModal } from '@/contexts/PlansModalContext'
 import { trackCtaClick } from '@/lib/analytics'
 
 interface UpgradeModalProps {
@@ -11,16 +11,16 @@ interface UpgradeModalProps {
 
 /** Shown when a paid-plan entity cap is hit (e.g. 70 participants). */
 export function UpgradeModal({ isOpen, onClose, eventId }: UpgradeModalProps) {
-  const navigate = useNavigate()
+  const { openPlans } = usePlansModal()
 
   function handleStart() {
     trackCtaClick({
       cta_name: 'view_activation_options',
       cta_location: 'plan_limit_modal',
-      destination: '/plans',
+      destination: 'plans_modal',
     })
     onClose()
-    navigate(`/plans?event=${eventId}`)
+    openPlans({ eventId })
   }
 
   return (

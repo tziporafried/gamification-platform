@@ -1,6 +1,6 @@
-import { useNavigate } from 'react-router-dom'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { usePlansModal } from '@/contexts/PlansModalContext'
 import { trackCtaClick } from '@/lib/analytics'
 
 interface TrialScanLimitModalProps {
@@ -10,16 +10,16 @@ interface TrialScanLimitModalProps {
 }
 
 export function TrialScanLimitModal({ isOpen, onClose, eventId }: TrialScanLimitModalProps) {
-  const navigate = useNavigate()
+  const { openPlans } = usePlansModal()
 
   function handleViewOptions() {
     trackCtaClick({
       cta_name: 'view_activation_options',
       cta_location: 'trial_scan_limit_modal',
-      destination: '/plans',
+      destination: 'plans_modal',
     })
     onClose()
-    navigate(`/plans?event=${eventId}&source=trial_scan_limit`)
+    openPlans({ eventId, source: 'trial_scan_limit' })
   }
 
   return (

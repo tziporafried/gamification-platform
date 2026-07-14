@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useContext } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { CalendarDays, LogOut, Shield, Sparkles } from 'lucide-react'
 import { BrandLogo, BrandWordmark } from '@/components/icons/BrandLogo'
 import { useAuth } from '@/contexts/AuthContext'
 import { HeaderSlotContext } from '@/contexts/HeaderSlotContext'
+import { usePlansModal } from '@/contexts/PlansModalContext'
 import { trackCtaClick } from '@/lib/analytics'
 
 export function GlobalHeader() {
@@ -14,14 +15,14 @@ export function GlobalHeader() {
   const currentEventId = headerSlot?.currentEventId ?? null
   const headerActivationCta = headerSlot?.headerActivationCta ?? null
   const suppressHeaderActivationCta = headerSlot?.suppressHeaderActivationCta ?? false
+  const { openPlans } = usePlansModal()
   const navigate = useNavigate()
-  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const showActivationCta = headerActivationCta
     ? headerActivationCta.visible
-    : currentPlan === 'free' && location.pathname !== '/plans' && !suppressHeaderActivationCta
+    : currentPlan === 'free' && !suppressHeaderActivationCta
 
   const displayName = profile?.display_name || user?.email?.split('@')[0] || ''
   const avatarUrl = profile?.avatar_url
@@ -69,13 +70,12 @@ export function GlobalHeader() {
                       headerActivationCta.onClick()
                       return
                     }
-                    const destination = currentEventId ? `/plans?event=${currentEventId}` : '/plans'
                     trackCtaClick({
                       cta_name: 'view_pricing',
                       cta_location: 'header',
-                      destination: '/plans',
+                      destination: 'plans_modal',
                     })
-                    navigate(destination)
+                    openPlans({ eventId: currentEventId })
                   }}
                   className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
                 >

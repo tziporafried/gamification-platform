@@ -1,7 +1,7 @@
-import { useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
+import { usePlansModal } from '@/contexts/PlansModalContext'
 import {
   trackActivationOptionsClicked,
   trackCtaClick,
@@ -23,7 +23,7 @@ export function TrialActivationBadge({
   source,
   className,
 }: TrialActivationBadgeProps) {
-  const navigate = useNavigate()
+  const { openPlans } = usePlansModal()
 
   function handleClick(e: React.MouseEvent | React.KeyboardEvent) {
     e.stopPropagation()
@@ -32,9 +32,9 @@ export function TrialActivationBadge({
     trackCtaClick({
       cta_name: 'view_activation_options',
       cta_location: source,
-      destination: '/plans',
+      destination: 'plans_modal',
     })
-    navigate(`/plans?event=${eventId}&source=${source}`)
+    openPlans({ eventId, source })
   }
 
   return (

@@ -11,6 +11,7 @@ import { useControlCenterLiveStats } from '@/hooks/useControlCenterLiveStats'
 import { EventPlayStatus, resolveEventPlayStatus } from '@/components/event/EventPlayStatus'
 import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
 import { useHeaderSlot } from '@/contexts/HeaderSlotContext'
+import { usePlansModal } from '@/contexts/PlansModalContext'
 import { calculateReadiness, isEventReady, getWizardPrefs, resolveGroupType } from '@/lib/wizard'
 import { getLockedTemplate, completeTemplateImport, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import { useAuth } from '@/contexts/AuthContext'
@@ -28,6 +29,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   const navigate = useNavigate()
   const { isSuperAdmin } = useAuth()
   const { setHeaderActivationCta } = useHeaderSlot()
+  const { openPlans } = usePlansModal()
   const isTrial = !isSuperAdmin && event.plan === 'free'
   const [settingsWarningOpen, setSettingsWarningOpen] = useState(false)
   const activationCtaRef = useRef<HTMLButtonElement>(null)
@@ -116,11 +118,11 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
     trackCtaClick({
       cta_name: 'view_activation_options',
       cta_location: 'control_center',
-      destination: '/plans',
+      destination: 'plans_modal',
     })
     trackActivationOptionsViewed(event.id, 'game_home_trial')
-    navigate(`/plans?event=${event.id}&source=game_home_trial`)
-  }, [event.id, navigate])
+    openPlans({ eventId: event.id, source: 'game_home_trial' })
+  }, [event.id, openPlans])
 
   useEffect(() => {
     if (!showPrimaryActivationCta) {
