@@ -4,6 +4,7 @@ import { Check, X, CheckCircle, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { trackViewPlans } from '@/lib/analytics'
 
 type Option = 'independent' | 'full' | 'organizations'
 
@@ -51,6 +52,10 @@ export function PlansPage() {
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
   const [currentPlan, setCurrentPlan] = useState<string | null>(null)
+
+  useEffect(() => {
+    trackViewPlans(eventId)
+  }, [eventId])
 
   useEffect(() => {
     if (profile?.display_name) setFullName(profile.display_name)

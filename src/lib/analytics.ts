@@ -106,6 +106,14 @@ export function trackSignUp(method: 'email' | 'google') {
   trackEvent('sign_up', { method })
 }
 
+/** User opened the plans / pricing page. */
+export function trackViewPlans(eventId?: string | null) {
+  trackEvent('view_plans', {
+    page_path: '/plans',
+    ...(eventId ? { event_id: eventId } : {}),
+  })
+}
+
 const PENDING_AUTH_METHOD_KEY = 'gamify_pending_auth_method'
 
 /** Mark that an OAuth redirect is in progress so we can attribute the return. */
