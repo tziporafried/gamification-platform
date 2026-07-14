@@ -17,6 +17,9 @@ interface HeaderSlotContextType {
   setCurrentEventId: (id: string | null) => void
   headerActivationCta: HeaderActivationCta | null
   setHeaderActivationCta: (cta: HeaderActivationCta | null) => void
+  /** When true, hide the left header activation CTA (inline badge used instead). */
+  suppressHeaderActivationCta: boolean
+  setSuppressHeaderActivationCta: (suppress: boolean) => void
 }
 
 export const HeaderSlotContext = createContext<HeaderSlotContextType | undefined>(undefined)
@@ -26,6 +29,7 @@ export function HeaderSlotProvider({ children }: { children: ReactNode }) {
   const [currentPlan, setCurrentPlan] = useState<UserPlan | null>(null)
   const [currentEventId, setCurrentEventId] = useState<string | null>(null)
   const [headerActivationCta, setHeaderActivationCta] = useState<HeaderActivationCta | null>(null)
+  const [suppressHeaderActivationCta, setSuppressHeaderActivationCta] = useState(false)
   return (
     <HeaderSlotContext.Provider
       value={{
@@ -37,6 +41,8 @@ export function HeaderSlotProvider({ children }: { children: ReactNode }) {
         setCurrentEventId,
         headerActivationCta,
         setHeaderActivationCta,
+        suppressHeaderActivationCta,
+        setSuppressHeaderActivationCta,
       }}
     >
       {children}

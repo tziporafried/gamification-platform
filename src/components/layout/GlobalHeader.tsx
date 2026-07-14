@@ -13,6 +13,7 @@ export function GlobalHeader() {
   const currentPlan = headerSlot?.currentPlan ?? null
   const currentEventId = headerSlot?.currentEventId ?? null
   const headerActivationCta = headerSlot?.headerActivationCta ?? null
+  const suppressHeaderActivationCta = headerSlot?.suppressHeaderActivationCta ?? false
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -20,7 +21,7 @@ export function GlobalHeader() {
 
   const showActivationCta = headerActivationCta
     ? headerActivationCta.visible
-    : currentPlan === 'free' && location.pathname !== '/plans'
+    : currentPlan === 'free' && location.pathname !== '/plans' && !suppressHeaderActivationCta
 
   const displayName = profile?.display_name || user?.email?.split('@')[0] || ''
   const avatarUrl = profile?.avatar_url

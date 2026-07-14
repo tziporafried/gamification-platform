@@ -73,7 +73,8 @@ export function PlansPage() {
     if (
       activationSource === 'trial_scan_limit' ||
       activationSource === 'game_home_trial' ||
-      activationSource === 'events_page_trial_badge'
+      activationSource === 'events_page_trial_badge' ||
+      activationSource === 'wizard_trial_badge'
     ) {
       trackActivationOptionsViewed(eventId, activationSource)
     }

@@ -1,11 +1,14 @@
 import { useNavigate } from 'react-router-dom'
+import { TrialActivationBadge } from '@/components/event/TrialActivationBadge'
 
 interface EventHeaderBreadcrumbProps {
   eventName: string
   suffix?: string
+  /** When set (trial wizard), shows the same activation pill as My Events after the name. */
+  trialEventId?: string
 }
 
-export function EventHeaderBreadcrumb({ eventName, suffix }: EventHeaderBreadcrumbProps) {
+export function EventHeaderBreadcrumb({ eventName, suffix, trialEventId }: EventHeaderBreadcrumbProps) {
   const navigate = useNavigate()
   const backPath = suffix === 'עריכת תבנית' ? '/admin' : '/events'
   const backLabel = suffix === 'עריכת תבנית' ? 'ניהול מערכת' : 'האירועים שלי'
@@ -22,6 +25,9 @@ export function EventHeaderBreadcrumb({ eventName, suffix }: EventHeaderBreadcru
       <span className="truncate max-w-[200px] text-sm font-bold leading-none text-primary">
         {eventName || 'אירוע חדש'}
       </span>
+      {trialEventId && (
+        <TrialActivationBadge eventId={trialEventId} source="wizard_trial_badge" />
+      )}
       {suffix && (
         <>
           <span className="shrink-0 text-muted/60 leading-none">/</span>

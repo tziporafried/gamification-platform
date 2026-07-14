@@ -352,7 +352,7 @@ export function trackTrialScanLimitReached(eventId: string, allowedScans: number
 /** User clicked a CTA that opens activation options. */
 export function trackActivationOptionsClicked(
   eventId: string,
-  source: 'events_page_trial_badge',
+  source: 'events_page_trial_badge' | 'wizard_trial_badge',
 ) {
   trackEvent('activation_options_clicked', {
     event_id: eventId,
@@ -363,7 +363,7 @@ export function trackActivationOptionsClicked(
 /** User opened activation options from trial UX (game home or scan-limit modal). */
 export function trackActivationOptionsViewed(
   eventId: string,
-  source: 'trial_scan_limit' | 'game_home_trial' | 'events_page_trial_badge',
+  source: 'trial_scan_limit' | 'game_home_trial' | 'events_page_trial_badge' | 'wizard_trial_badge',
 ) {
   trackEvent('activation_options_viewed', {
     event_id: eventId,

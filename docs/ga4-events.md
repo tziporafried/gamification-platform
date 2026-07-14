@@ -45,8 +45,8 @@ Build verified: `npm run build` passes. Analytics-only instrumentation (no UI / 
 | `scan_failed` | Scan / score submit failed | `error_type`, `source` | `EventKioskPage.tsx` |
 | `trial_scan_completed` | Successful scan while event is in trial (`plan=free`) | `event_id`, `scan_number` | `EventKioskPage.tsx` |
 | `trial_scan_limit_reached` | Scan attempted after trial quota exhausted | `event_id`, `allowed_scans` | `EventKioskPage.tsx` |
-| `activation_options_viewed` | Plans page opened from trial UX | `event_id`, `source` (`trial_scan_limit` \| `game_home_trial` \| `events_page_trial_badge`) | `PlansPage.tsx` |
-| `activation_options_clicked` | Click on My Events trial badge CTA | `event_id`, `source` (`events_page_trial_badge`) | `MyEvents.tsx` |
+| `activation_options_viewed` | Plans page opened from trial UX | `event_id`, `source` (`trial_scan_limit` \| `game_home_trial` \| `events_page_trial_badge` \| `wizard_trial_badge`) | `PlansPage.tsx` |
+| `activation_options_clicked` | Click on trial activation badge CTA | `event_id`, `source` (`events_page_trial_badge` \| `wizard_trial_badge`) | `TrialActivationBadge.tsx` |
 | `trial_activated` | Event left trial for a real activation mode | `event_id`, `activation_mode`, `trial_scans_used` | `AdminPanel.tsx` (after `update_event_plan`) |
 | `trial_data_reset` | Trial runtime scores/rewards wiped on activation | `event_id` | `AdminPanel.tsx` |
 | `prize_revealed` | Prize celebration after successful scan | `prize_type` (`milestone`), `prize_count` | `EventKioskPage.tsx` |
