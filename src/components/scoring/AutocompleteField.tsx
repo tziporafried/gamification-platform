@@ -24,6 +24,9 @@ interface AutocompleteFieldProps<T> {
   renderSelected: (item: T) => ReactNode
   renderOption: (item: T) => ReactNode
   emptyMessage?: string
+  /** When true, opens the suggestion list on focus even with an empty query. */
+  listOnFocus?: boolean
+  disabled?: boolean
 }
 
 export function AutocompleteField<T>({
@@ -47,12 +50,15 @@ export function AutocompleteField<T>({
   renderSelected,
   renderOption,
   emptyMessage = 'לא נמצאו תוצאות',
+  listOnFocus = false,
+  disabled = false,
 }: AutocompleteFieldProps<T>) {
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const hasQuery = query.trim().length > 0
   const isValid = selected !== null
   const isInvalid =
+    !disabled &&
     !selected &&
     hasQuery &&
     !searching &&
@@ -64,10 +70,11 @@ export function AutocompleteField<T>({
       ? 'color-mix(in srgb, var(--color-danger) 50%, transparent)'
       : rgba(accent, 0.3)
 
-  const showPanel = showDropdown && hasQuery && !selected
+  const showPanel = showDropdown && !selected && !disabled && (hasQuery || listOnFocus)
 
   function handleFocus() {
-    if (hasQuery) onShowDropdown(true)
+    if (disabled) return
+    if (hasQuery || listOnFocus) onShowDropdown(true)
   }
 
   function handleBlur() {
@@ -109,13 +116,14 @@ export function AutocompleteField<T>({
               ref={inputRef}
               placeholder={placeholder}
               value={query}
+              disabled={disabled}
               onChange={(e) => {
                 onQueryChange(e.target.value)
                 onShowDropdown(true)
               }}
               onFocus={handleFocus}
               onBlur={handleBlur}
-              className="h-10 w-full rounded-lg border bg-surface-elevated py-0 pl-3 pr-9 text-sm text-foreground placeholder-muted focus:outline-none focus:ring-1"
+              className="h-10 w-full rounded-lg border bg-surface-elevated py-0 pl-3 pr-9 text-sm text-foreground placeholder-muted focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-60"
               style={{
                 borderColor,
                 ['--tw-ring-color' as string]: isInvalid ? 'color-mix(in srgb, var(--color-danger) 50%, transparent)' : rgba(accent, 0.5),

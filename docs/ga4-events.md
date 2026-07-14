@@ -22,10 +22,11 @@ Build verified: `npm run build` passes. Analytics-only instrumentation (no UI / 
 
 | Event | Trigger | Params | Location |
 |---|---|---|---|
-| `cta_click` | Meaningful marketing / upgrade CTA | `cta_name`, `cta_location`, `destination` | `Landing.tsx`, `GlobalHeader.tsx`, `UpgradeModal.tsx`, `ControlCenter.tsx` |
+| `cta_click` | Meaningful marketing / upgrade CTA | `cta_name`, `cta_location`, `destination`, optional `contact_source` | `Landing.tsx`, `GlobalHeader.tsx`, `UpgradeModal.tsx`, `ControlCenter.tsx`, `FloatingContactButton.tsx` |
 | `video_progress` | Video reaches 25 / 50 / 75% (once per milestone per playback) | `progress_percent`, `video_id`, `video_title` | `Landing.tsx` |
-| `select_plan` | User chooses a plan card (opens contact form) | `plan_name`, `has_linked_event` | `PlansPage.handleChoose` |
-| `generate_lead` | Contact / upgrade form submitted successfully | `plan_name`, `has_linked_event` | `PlansPage.handleSubmit` |
+| `select_plan` | User chooses a plan card (opens contact form) | `plan_name`, `has_linked_event` | `PlansPage.openContactFor` |
+| `contact_form_open` | Contact modal opened | `contact_source`, `cta_location` | `FloatingContactButton`, `Landing`, `PlansPage` |
+| `generate_lead` | Contact / upgrade form submitted successfully | `plan_name`, `has_linked_event`, optional `contact_source` | `ContactForm` |
 | `login_view` | Login screen opened | — | `Login.tsx` |
 | `login_start` | User starts a login attempt | `method` | `Login.tsx` |
 | `login_error` | Login fails | `error_type`, `method` | `Login.tsx` |
@@ -65,6 +66,7 @@ Build verified: `npm run build` passes. Analytics-only instrumentation (no UI / 
 | `start_now` | After-video “בואו נשחק” |
 | `view_pricing` | Pricing / upgrade CTA |
 | `login` | Header login link |
+| `contact_us` | Floating / FAQ / footer / trial contact CTA |
 | `open_scanner` | Control center → kiosk |
 | `open_leaderboard` | Control center → display |
 
@@ -73,11 +75,24 @@ Build verified: `npm run build` passes. Analytics-only instrumentation (no UI / 
 |---|---|
 | `header` | Global header |
 | `after_video` | Below landing demo video |
-| `pricing` | FAQ pricing link |
-| `footer` | Landing bottom CTA |
+| `pricing` | FAQ pricing link / plans page |
+| `footer` | Landing bottom CTA / contact secondary |
+| `floating` | Landing floating “יש לכם שאלה?” |
+| `faq` | Landing FAQ “דברו איתנו” |
+| `events` | My Events floating contact (trial) |
+| `wizard` | Wizard floating contact (trial) |
+| `control` | Control center floating contact (trial) |
 | `trial_scan_limit_modal` | Trial scan-quota activation modal |
 | `plan_limit_modal` | Paid-plan entity cap modal (e.g. 70 participants) |
 | `control_center` | Event control center actions |
+
+### `contact_source` values
+| Value | Meaning |
+|---|---|
+| `homepage_contact` | Opened from landing / marketing contact CTAs |
+| `trial_contact` | Opened from in-app trial floating contact |
+| `custom_solution` | Organizations / custom solution from plans page |
+| `independent` / `full` / `organizations` | Plan card chosen on pricing (also sent as `plan_name`) |
 
 ---
 

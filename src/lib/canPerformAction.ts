@@ -158,3 +158,27 @@ export function filterActionsWithAvailableParticipants<
     }),
   )
 }
+
+/** Keeps only actions the given participant may still perform right now. */
+export function filterActionsForParticipant<
+  T extends ActionConstraints & { id: string },
+>(
+  actions: T[],
+  participantId: string,
+  participantGroupIds: string[],
+  completionIndex: ActionCompletionIndex,
+  now: Date = new Date(),
+): T[] {
+  return actions.filter((action) => {
+    const stats = completionIndex[action.id]?.[participantId]
+    return canPerformAction({
+      action,
+      participantGroupIds,
+      previousCompletions: stats?.total ?? 0,
+      previousCompletionsToday: stats
+        ? countCompletionsOnIsraelDate(stats.timestamps, now)
+        : 0,
+      now,
+    }).allowed
+  })
+}

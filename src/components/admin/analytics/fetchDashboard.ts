@@ -73,5 +73,16 @@ export async function fetchAnalyticsDashboard(
     throw new AnalyticsFetchError('תשובה לא תקינה מהשרת', 'UNKNOWN')
   }
 
-  return data as AnalyticsDashboardData
+  const payload = data as AnalyticsDashboardData
+  if (!payload.contact) {
+    payload.contact = {
+      openUsers: 0,
+      leadUsers: payload.overview?.leadUsers ?? 0,
+      conversionRate: null,
+      bySource: null,
+      bySourceUnavailable: true,
+    }
+  }
+
+  return payload
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Trophy, Crown, ScanLine, Settings } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -10,6 +10,7 @@ import { getControlCenterSummaryItems, LiveStatsCaption } from './EventSummaryGr
 import { useControlCenterLiveStats } from '@/hooks/useControlCenterLiveStats'
 import { EventPlayStatus, resolveEventPlayStatus } from '@/components/event/EventPlayStatus'
 import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
+import { useHeaderSlot } from '@/contexts/HeaderSlotContext'
 import { calculateReadiness, isEventReady, getWizardPrefs, resolveGroupType } from '@/lib/wizard'
 import { getLockedTemplate, completeTemplateImport, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import { useAuth } from '@/contexts/AuthContext'
@@ -26,8 +27,12 @@ interface ControlCenterProps {
 export function ControlCenter({ event, counts }: ControlCenterProps) {
   const navigate = useNavigate()
   const { isSuperAdmin } = useAuth()
+  const { setHeaderActivationCta } = useHeaderSlot()
   const isTrial = !isSuperAdmin && event.plan === 'free'
   const [settingsWarningOpen, setSettingsWarningOpen] = useState(false)
+  const activationCtaRef = useRef<HTMLButtonElement>(null)
+  const scrollRootRef = useRef<HTMLDivElement>(null)
+  const [primaryActivationInView, setPrimaryActivationInView] = useState(true)
   useEventHeaderBreadcrumb(event.name, undefined, event.plan, event.id)
 
   // On a paid plan, any premium template content that was locked while on the
@@ -57,6 +62,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
 
   const ready = isEventReady(event, counts)
   const checks = calculateReadiness(event, counts)
+  const showPrimaryActivationCta = isTrial && ready
 
   const cardAnim = useMemo(() => ({
     kioskFloat: Math.random(),
@@ -106,7 +112,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
     navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`)
   }
 
-  function handleChooseActivation() {
+  const handleChooseActivation = useCallback(() => {
     trackCtaClick({
       cta_name: 'view_activation_options',
       cta_location: 'control_center',
@@ -114,10 +120,48 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
     })
     trackActivationOptionsViewed(event.id, 'game_home_trial')
     navigate(`/plans?event=${event.id}&source=game_home_trial`)
-  }
+  }, [event.id, navigate])
+
+  useEffect(() => {
+    if (!showPrimaryActivationCta) {
+      setPrimaryActivationInView(true)
+      return
+    }
+
+    const target = activationCtaRef.current
+    const root = scrollRootRef.current
+    if (!target || typeof IntersectionObserver === 'undefined') return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setPrimaryActivationInView(entry.isIntersecting)
+      },
+      { threshold: 0, root },
+    )
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [showPrimaryActivationCta])
+
+  useEffect(() => {
+    if (!showPrimaryActivationCta) {
+      setHeaderActivationCta(null)
+      return
+    }
+
+    setHeaderActivationCta({
+      visible: !primaryActivationInView,
+      onClick: handleChooseActivation,
+    })
+    return () => setHeaderActivationCta(null)
+  }, [
+    showPrimaryActivationCta,
+    primaryActivationInView,
+    handleChooseActivation,
+    setHeaderActivationCta,
+  ])
 
   return (
-    <div className="relative flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
+    <div ref={scrollRootRef} className="relative flex h-[calc(100vh-4rem)] flex-col overflow-y-auto">
       <Modal
         isOpen={settingsWarningOpen}
         onClose={() => setSettingsWarningOpen(false)}
@@ -141,7 +185,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
 
       <main
         className={cn(
-          'relative z-10 mx-auto flex h-full w-full max-w-4xl flex-col justify-center px-4 pt-5',
+          'relative z-10 mx-auto flex min-h-full w-full max-w-4xl flex-col justify-center px-4 pt-5',
           ready && summaryItems.length > 0 ? 'pb-[4.5rem]' : 'pb-5',
         )}
       >
@@ -176,7 +220,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
               <EventPlayStatus status={playStatus} />
             )}
 
-            {isTrial && ready && (
+            {showPrimaryActivationCta && (
               <div className="mt-3 max-w-md space-y-1.5 text-center lg:max-w-xl">
                 <p className="text-base font-bold leading-snug text-foreground sm:text-lg">
                   המשחק שלכם מוכן! 🎉
@@ -188,13 +232,14 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                   בהפעלת המשחק, סריקות הניסיון יאופסו כדי שתתחילו מאפס.
                 </p>
                 <Button
+                  ref={activationCtaRef}
                   type="button"
                   variant="gradient"
                   size="md"
                   className="mt-3 w-full font-semibold tracking-wide sm:w-auto sm:min-w-[13rem]"
                   onClick={handleChooseActivation}
                 >
-                  לבחירת אופן הפעלה
+                  הפעלת המשחק
                 </Button>
               </div>
             )}
@@ -282,7 +327,15 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
             />
           )}
       </main>
-      {isTrial && <FloatingContactButton variant="compact" location="control" />}
+      {isTrial && (
+        <FloatingContactButton
+          variant="compact"
+          location="control"
+          eventId={event.id}
+          eventName={event.name}
+          labelMode="question"
+        />
+      )}
     </div>
   )
 }

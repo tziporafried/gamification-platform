@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { computeRanks } from '@/lib/missionUtils'
-import { ManualEntryForm } from '@/components/scoring/ManualEntryForm'
+import { ManualEntryForm, type ManualEntryAvailability } from '@/components/scoring/ManualEntryForm'
 import { useHardwareScanner } from '@/hooks/useHardwareScanner'
 import { usePlanPermissions } from '@/hooks/usePlanPermissions'
 import { useScoreSubmit } from '@/hooks/useScoreSubmit'
@@ -968,12 +968,13 @@ function ScannerFrame({ processing, locked }: { processing: boolean; locked?: bo
 // The independent plan never scans, so instead of a locked scanner we surface the
 // manual-entry inputs directly — no button, styled to match the festive kiosk.
 function KioskManualEntryPanel({
-  eventId, submitting, onSubmit, catalog, gameStarted,
+  eventId, submitting, onSubmit, catalog, availability, gameStarted,
 }: {
   eventId: string
   submitting: boolean
   onSubmit: (participantCode: string, actionCode: string) => Promise<void>
   catalog: React.ComponentProps<typeof ManualEntryForm>['catalog']
+  availability?: ManualEntryAvailability
   gameStarted: boolean
 }) {
   return (
@@ -1025,6 +1026,7 @@ function KioskManualEntryPanel({
             submitting={submitting}
             onSubmit={onSubmit}
             catalog={catalog}
+            availability={availability}
             bare
           />
         </div>
@@ -3152,6 +3154,22 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     )
   }, [actions, kioskParticipants, actionCompletionIndex, now])
 
+  const manualEntryAvailability = useMemo<ManualEntryAvailability>(() => ({
+    actions: actions.map((action) => ({
+      id: action.id,
+      is_active: true,
+      max_completions: action.max_completions,
+      daily_limit: action.daily_limit,
+      daily_start_hour: action.daily_start_hour,
+      daily_start_minute: action.daily_start_minute,
+      daily_end_hour: action.daily_end_hour,
+      daily_end_minute: action.daily_end_minute,
+      allowedGroupIds: action.groups.map((group) => group.id),
+    })),
+    participants: kioskParticipants,
+    completionIndex: actionCompletionIndex,
+  }), [actions, kioskParticipants, actionCompletionIndex])
+
   const rotatableActions = useMemo(() => {
     const activeWindowActions = displayableActions.filter(
       (a) => a.daily_limit && hasDailyTimeWindow(getDailyTimeWindow(a)) && isInDailyTimeWindow(a, now),
@@ -3445,7 +3463,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           <div className="kiosk-floatY-2" style={{ position: 'absolute', bottom: 200, left: 50, width: 12, height: 12, borderRadius: 5, background: '#FFCB9A' }} />
 
           <div className="kiosk-centerStack" style={{ gap: KIOSK_CENTER_GAP }}>
-            <EventBrandMark event={event} onLogoClick={() => navigate('/welcome')} />
+            <EventBrandMark event={event} onLogoClick={() => navigate(`/events/${event.id}/control`)} />
 
             {/* Headlines */}
             {!gameStarted && (
@@ -3497,6 +3515,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
                   submitting={submitting}
                   onSubmit={handleManualSubmit}
                   catalog={catalog}
+                  availability={manualEntryAvailability}
                   gameStarted={gameStarted}
                 />
               </div>
@@ -3658,6 +3677,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
               submitting={submitting}
               onSubmit={handleManualSubmit}
               catalog={catalog}
+              availability={manualEntryAvailability}
             />
           </div>
         </div>

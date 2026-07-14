@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Calendar, Share2, ChevronLeft } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -28,7 +28,10 @@ import {
   trackAppError,
   trackActivationOptionsClicked,
   trackCtaClick,
+  trackContactFormOpen,
 } from '@/lib/analytics'
+import { consumePendingCreateEventIntent } from '@/lib/contact'
+import { ContactModal } from '@/components/ContactModal'
 import type { Event as GameEvent } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -58,6 +61,8 @@ export function MyEvents() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [consultOpen, setConsultOpen] = useState(false)
+  const pendingCreateConsumed = useRef(false)
 
   const hasTrialEvent = useMemo(
     () => !isSuperAdmin && events.some((event) => event.plan === 'free'),
@@ -131,6 +136,29 @@ export function MyEvents() {
     }
   }
 
+  // After login from landing CREATE_EVENT intent — start wizard immediately.
+  useEffect(() => {
+    if (loading || pendingCreateConsumed.current || !user) return
+    if (!consumePendingCreateEventIntent()) return
+    pendingCreateConsumed.current = true
+    void handleCreateEvent()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once after initial events load
+  }, [loading, user])
+
+  function handleConsultClick() {
+    trackCtaClick({
+      cta_name: 'contact_us',
+      cta_location: 'events',
+      destination: 'contact_modal',
+      contact_source: 'homepage_contact',
+    })
+    trackContactFormOpen({
+      contact_source: 'homepage_contact',
+      cta_location: 'events',
+    })
+    setConsultOpen(true)
+  }
+
   async function handleDeleteEvent() {
     if (!deletingEvent) return
     setDeleting(true)
@@ -152,13 +180,20 @@ export function MyEvents() {
           title="עדיין אין אירועים"
           description="צרו את האירוע הראשון שלכם והתחילו לנהל משתתפים, קבוצות ומשימות."
           action={
-            <>
-              {error && <ErrorAlert message={error} className="mb-4 max-w-sm" />}
+            <div className="flex flex-col items-center gap-1">
+              {error && <ErrorAlert message={error} className="mb-3 max-w-sm" />}
               <Button variant="gradient" size="lg" loading={creating} onClick={handleCreateEvent}>
                 <Plus size={20} className="ml-2" />
-                צור אירוע ראשון
+                יצירת אירוע
               </Button>
-            </>
+              <button
+                type="button"
+                onClick={handleConsultClick}
+                className="mt-3 text-sm font-medium text-muted transition-colors hover:text-primary"
+              >
+                רוצים להתייעץ לפני שמתחילים?
+              </button>
+            </div>
           }
         />
       ) : (
@@ -234,6 +269,13 @@ export function MyEvents() {
       )}
 
       {hasTrialEvent && <FloatingContactButton variant="compact" location="events" />}
+
+      <ContactModal
+        isOpen={consultOpen}
+        onClose={() => setConsultOpen(false)}
+        source="homepage_contact"
+        location="events"
+      />
     </main>
   )
 }
@@ -360,9 +402,9 @@ function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: Ev
                   color: 'color-mix(in srgb, var(--color-primary) 78%, var(--color-muted))',
                   border: '1px solid color-mix(in srgb, var(--color-primary) 18%, transparent)',
                 }}
-                aria-label="התנסות — מוכנים להפעיל את המשחק באירוע? בחרו אופן הפעלה"
+                aria-label="הפעלת המשחק — בחרו אופן הפעלה"
               >
-                <span>התנסות</span>
+                <span>הפעלת המשחק</span>
                 <ChevronLeft size={12} strokeWidth={2.5} className="opacity-70" aria-hidden />
               </button>
             </Tooltip>

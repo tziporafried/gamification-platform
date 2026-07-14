@@ -105,8 +105,20 @@ export function trackCtaClick(params: {
   cta_name: string
   cta_location: string
   destination: string
+  contact_source?: string
 }) {
   trackEvent('cta_click', params)
+}
+
+/** Contact modal opened (homepage / trial / pricing custom solution). */
+export function trackContactFormOpen(params: {
+  contact_source: string
+  cta_location: string
+}) {
+  trackEvent('contact_form_open', {
+    contact_source: params.contact_source,
+    cta_location: params.cta_location,
+  })
 }
 
 export function trackVideoView(videoId = 'gamify-tour') {
@@ -161,10 +173,15 @@ export function trackContactClick(planOption: string, eventId?: string | null) {
 }
 
 /** Successful contact / upgrade request submit (no PII). */
-export function trackGenerateLead(planName: string, hasLinkedEvent = false) {
+export function trackGenerateLead(
+  planName: string,
+  hasLinkedEvent = false,
+  contactSource?: string,
+) {
   trackEvent('generate_lead', {
     plan_name: planName,
     has_linked_event: hasLinkedEvent,
+    ...(contactSource ? { contact_source: contactSource } : {}),
   })
 }
 

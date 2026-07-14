@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useContext } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { LogOut, Shield, Sparkles } from 'lucide-react'
+import { CalendarDays, LogOut, Shield, Sparkles } from 'lucide-react'
 import { BrandLogo, BrandWordmark } from '@/components/icons/BrandLogo'
 import { useAuth } from '@/contexts/AuthContext'
 import { HeaderSlotContext } from '@/contexts/HeaderSlotContext'
@@ -12,10 +12,15 @@ export function GlobalHeader() {
   const centerSlot = headerSlot?.centerSlot ?? null
   const currentPlan = headerSlot?.currentPlan ?? null
   const currentEventId = headerSlot?.currentEventId ?? null
+  const headerActivationCta = headerSlot?.headerActivationCta ?? null
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const showActivationCta = headerActivationCta
+    ? headerActivationCta.visible
+    : currentPlan === 'free' && location.pathname !== '/plans'
 
   const displayName = profile?.display_name || user?.email?.split('@')[0] || ''
   const avatarUrl = profile?.avatar_url
@@ -55,9 +60,14 @@ export function GlobalHeader() {
         <div className="flex items-center gap-3 shrink-0">
           {user ? (
             <>
-              {(currentPlan === 'free' || currentPlan === 'independent') && location.pathname !== '/plans' && (
+              {showActivationCta && (
                 <button
+                  type="button"
                   onClick={() => {
+                    if (headerActivationCta) {
+                      headerActivationCta.onClick()
+                      return
+                    }
                     const destination = currentEventId ? `/plans?event=${currentEventId}` : '/plans'
                     trackCtaClick({
                       cta_name: 'view_pricing',
@@ -69,7 +79,7 @@ export function GlobalHeader() {
                   className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
                 >
                   <Sparkles size={16} />
-                  <span className="hidden sm:inline">לצפייה באפשרויות</span>
+                  <span className="hidden sm:inline">הפעלת המשחק</span>
                 </button>
               )}
 
@@ -107,8 +117,18 @@ export function GlobalHeader() {
                       <p className="text-xs text-muted truncate">{user.email}</p>
                     </div>
                     <button
+                      onClick={() => {
+                        setMenuOpen(false)
+                        navigate('/events')
+                      }}
+                      className="flex w-full items-center justify-between px-4 py-3 text-sm text-foreground hover:bg-surface-elevated transition-colors"
+                    >
+                      <span>האירועים שלי</span>
+                      <CalendarDays size={15} />
+                    </button>
+                    <button
                       onClick={() => { setMenuOpen(false); signOut().then(() => navigate('/welcome')) }}
-                      className="flex w-full items-center justify-between px-4 py-3 text-sm text-foreground hover:bg-surface-elevated hover:text-danger transition-colors"
+                      className="flex w-full items-center justify-between px-4 py-3 text-sm text-foreground hover:bg-surface-elevated hover:text-danger transition-colors border-t border-border"
                     >
                       <span>התנתקות</span>
                       <LogOut size={15} />

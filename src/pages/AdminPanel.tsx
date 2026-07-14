@@ -77,6 +77,8 @@ const LIMIT_LABELS: Record<string, string> = {
   'plan-independent': 'משחק עצמאי',
   'plan-full': 'חוויה מלאה',
   'plan-organizations': 'פתרון לארגונים',
+  homepage_contact: 'פנייה כללית (דף הבית)',
+  trial_contact: 'פנייה כללית (התנסות)',
 }
 
 const LIMIT_TYPE_TO_PLAN: Record<string, string> = {

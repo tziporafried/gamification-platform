@@ -96,7 +96,7 @@ export function CelebrationModal({ rewards, participantName, onComplete }: Celeb
       className="fixed inset-0 z-50 flex items-center justify-center"
       onKeyDown={handleKeyDown}
     >
-      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-md" />
+      <div className="fixed inset-0 bg-[rgba(40,25,20,0.4)] backdrop-blur-[1px]" />
 
       {showFlash && (
         <div className="fixed inset-0 bg-background animate-screen-flash pointer-events-none z-20" />

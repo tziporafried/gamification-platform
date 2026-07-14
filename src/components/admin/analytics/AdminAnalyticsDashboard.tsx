@@ -11,6 +11,7 @@ import {
   HelpCircle,
   AlertTriangle,
   RefreshCw,
+  MessageCircle,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -354,6 +355,51 @@ export function AdminAnalyticsDashboard() {
                 ]}
                 overallRate={data.productInterest.overallRate}
                 overallLabel="מהצפייה במחירים להשארת פרטים"
+              />
+            </Card>
+          </section>
+
+          {/* 5b. Contact */}
+          <section className="space-y-4">
+            <SectionHeader
+              icon={<MessageCircle size={16} className="text-secondary" />}
+              title="יצירת קשר"
+            />
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+              <KpiCard
+                loading={loading}
+                label="פתחו טופס יצירת קשר"
+                value={data.contact.openUsers}
+                hint="contact_form_open · משתמשים ייחודיים"
+                accent="secondary"
+              />
+              <KpiCard
+                loading={loading}
+                label="השאירו פרטים"
+                value={data.contact.leadUsers}
+                hint="generate_lead"
+                accent="primary"
+              />
+              <KpiCard
+                loading={loading}
+                label="המרה מפתיחה לשליחה"
+                value={formatRate(data.contact.conversionRate)}
+                hint="לידים ÷ פתיחות טופס"
+                accent="tertiary"
+              />
+            </div>
+            <Card className="p-5">
+              <h3 className="mb-4 text-sm font-semibold text-foreground">לידים לפי מקור פנייה</h3>
+              <HorizontalBars
+                loading={loading}
+                unavailable={data.contact.bySourceUnavailable}
+                unavailableDescription="המימד customEvent:contact_source עדיין לא זמין ב-GA4. יש לרשום אותו כ-Custom Dimension ל-event-scoped param contact_source."
+                items={(data.contact.bySource ?? []).map((r) => ({
+                  label: r.label,
+                  value: r.users,
+                }))}
+                emptyTitle="אין לידים עם מקור"
+                emptyDescription="בטווח שנבחר לא נשלחו פניות עם contact_source, או שהמימד עדיין לא נאסף."
               />
             </Card>
           </section>

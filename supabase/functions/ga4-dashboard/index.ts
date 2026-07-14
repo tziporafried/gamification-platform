@@ -87,6 +87,13 @@ interface DashboardPayload {
     templateCount: number | null
     methodUnavailable: boolean
   }
+  contact: {
+    openUsers: number
+    leadUsers: number
+    conversionRate: number | null
+    bySource: NamedMetric[] | null
+    bySourceUnavailable: boolean
+  }
   meta: {
     startDate: string
     endDate: string
@@ -98,6 +105,9 @@ const CTA_NAME_LABELS: Record<string, string> = {
   start_now: 'התחלה עכשיו',
   view_pricing: 'צפייה במחירים',
   login: 'התחברות',
+  contact_us: 'יצירת קשר',
+  open_scanner: 'פתיחת סריקה',
+  open_leaderboard: 'פתיחת לוח שיאים',
 }
 
 const CTA_NAME_ALLOW = new Set(Object.keys(CTA_NAME_LABELS))
@@ -107,9 +117,28 @@ const CTA_LOCATION_LABELS: Record<string, string> = {
   after_video: 'אחרי הסרטון',
   pricing: 'אזור המחירים',
   footer: 'תחתית הדף',
+  floating: 'כפתור צף',
+  faq: 'שאלות נפוצות',
+  events: 'האירועים שלי',
+  wizard: 'אשף הקמה',
+  control: 'מרכז בקרה',
+  trial_scan_limit_modal: 'מודל סיום התנסות',
+  plan_limit_modal: 'מודל מגבלת תוכנית',
+  control_center: 'מרכז בקרה',
 }
 
 const CTA_LOCATION_ALLOW = new Set(Object.keys(CTA_LOCATION_LABELS))
+
+const CONTACT_SOURCE_LABELS: Record<string, string> = {
+  homepage_contact: 'דף הבית',
+  trial_contact: 'מצב התנסות',
+  custom_solution: 'פתרון מותאם',
+  independent: 'משחק עצמאי',
+  full: 'חוויה מלאה',
+  organizations: 'פתרון לארגונים',
+}
+
+const CONTACT_SOURCE_ALLOW = new Set(Object.keys(CONTACT_SOURCE_LABELS))
 
 const CORE_EVENTS = [
   'view_plans',
@@ -121,6 +150,7 @@ const CORE_EVENTS = [
   'faq_open',
   'cta_click',
   'select_plan',
+  'contact_form_open',
   'login_start',
   'login',
   'sign_up',
@@ -465,7 +495,21 @@ Deno.serve(async (req) => {
       limit: 10,
     })
 
-    const [core, homepage, faqQuestions, ctaByName, ctaByLocation, creationMethod] =
+    const leadBySourcePromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'customEvent:contact_source' }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: { matchType: 'EXACT', value: 'generate_lead' },
+        },
+      },
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 20,
+    })
+
+    const [core, homepage, faqQuestions, ctaByName, ctaByLocation, creationMethod, leadBySource] =
       await Promise.all([
         corePromise,
         homepagePromise,
@@ -473,6 +517,7 @@ Deno.serve(async (req) => {
         ctaByNamePromise,
         ctaByLocationPromise,
         creationMethodPromise,
+        leadBySourcePromise,
       ])
 
     if (core.error) {
@@ -577,6 +622,28 @@ Deno.serve(async (req) => {
       }
     }
 
+    let leadBySourceRows: NamedMetric[] | null = null
+    let bySourceUnavailable = false
+    if (leadBySource.error) {
+      bySourceUnavailable = true
+      console.warn('lead by contact_source unavailable', leadBySource.error.message)
+    } else {
+      leadBySourceRows = (leadBySource.rows ?? [])
+        .map((row) => {
+          const key = row.dimensionValues?.[0]?.value ?? ''
+          return {
+            key,
+            label: CONTACT_SOURCE_LABELS[key] ?? key,
+            users: Number(row.metricValues?.[0]?.value ?? 0),
+          }
+        })
+        .filter((r) => r.key && r.key !== '(not set)' && CONTACT_SOURCE_ALLOW.has(r.key))
+        .map(({ label, users }) => ({ label, users }))
+        .sort((a, b) => b.users - a.users)
+    }
+
+    const contactOpenUsers = getEvent(events, 'contact_form_open').users
+
     const payload: DashboardPayload = {
       overview: {
         homepageUsers,
@@ -624,6 +691,13 @@ Deno.serve(async (req) => {
         scratchCount,
         templateCount,
         methodUnavailable,
+      },
+      contact: {
+        openUsers: contactOpenUsers,
+        leadUsers,
+        conversionRate: rate(leadUsers, contactOpenUsers),
+        bySource: leadBySourceRows,
+        bySourceUnavailable,
       },
       meta: { startDate, endDate },
     }

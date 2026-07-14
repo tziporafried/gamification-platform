@@ -13,7 +13,7 @@ export function EventBySlugControl() {
   const { slug } = useParams<{ slug: string }>()
   const [event, setEvent] = useState<Event | null>(null)
   const [state, setState] = useState<PageState>('loading')
-  const { counts } = useEventCounts(event?.id)
+  const { counts, loaded: countsLoaded } = useEventCounts(event?.id)
 
   useEffect(() => {
     async function resolve() {
@@ -43,7 +43,7 @@ export function EventBySlugControl() {
     trackEventOpen('control')
   }, [state, event])
 
-  if (state === 'loading') {
+  if (state === 'loading' || (state === 'ready' && !countsLoaded)) {
     return <FullPageLoader />
   }
 

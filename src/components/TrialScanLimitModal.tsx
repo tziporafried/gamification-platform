@@ -28,7 +28,6 @@ export function TrialScanLimitModal({ isOpen, onClose, eventId }: TrialScanLimit
       onClose={onClose}
       title="סיימתם את ההתנסות! 🎉"
       titleClassName="text-xl font-bold text-foreground"
-      overlayClassName="!bg-[rgba(40,25,20,0.28)] backdrop-blur-[1px] animate-[fade-in_0.3s_ease-out_forwards]"
     >
       <div className="flex flex-col gap-6 pt-1 pb-1">
         <div className="space-y-3 text-center">
@@ -44,7 +43,7 @@ export function TrialScanLimitModal({ isOpen, onClose, eventId }: TrialScanLimit
         </div>
 
         <Button variant="gradient" size="lg" className="w-full font-semibold tracking-wide" onClick={handleViewOptions}>
-          לבחירת אופן הפעלה
+          הפעלת המשחק
         </Button>
       </div>
     </Modal>

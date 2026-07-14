@@ -1,0 +1,407 @@
+import { useState, useEffect, FormEvent } from 'react'
+import { CheckCircle } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
+import { trackGenerateLead, trackAppError } from '@/lib/analytics'
+import {
+  type ContactIntent,
+  type ContactSource,
+  limitTypeForIntent,
+  buildContextNotes,
+} from '@/lib/contact'
+
+export interface ContactFormProps {
+  intent?: ContactIntent
+  /** Stored on the request row for admin routing / labeling. Overrides intent default when set. */
+  limitType?: string
+  /** GA `plan_name` / lead name — must not include PII. */
+  analyticsPlanName?: string
+  eventId?: string | null
+  eventName?: string | null
+  /** Internal entry-point marker for analytics only (not shown in UI). */
+  source?: ContactSource
+  /** Page / surface tag appended to notes (not shown in UI). */
+  pageSource?: string | null
+  /** Optional selected-plan chip (pricing flow). */
+  selectedOptionLabel?: string | null
+  /** When true, hide the in-form heading (e.g. title already shown on Modal). */
+  hideHeading?: boolean
+  heading?: string
+  subheading?: string
+  submitLabel?: string
+  /** When event already has details, use the compact plan-lead field set. */
+  eventPrefill?: {
+    name?: string | null
+    participantCount?: number | null
+  } | null
+  onSubmitted?: () => void
+}
+
+function defaultHeading(intent: ContactIntent, hasEvent: boolean): string {
+  switch (intent) {
+    case 'contact':
+      return 'יש לכם שאלה? אנחנו כאן 😊'
+    case 'plan_lead':
+      return hasEvent ? 'מעולה! נשאר רק לדבר 😊' : 'מעולה, בואו נכיר את האירוע שלכם 🎉'
+    case 'organization_lead':
+      return 'בואו נתאים את Gamify לארגון שלכם'
+    case 'plan_independent':
+      return 'מעולה — נחזור אליכם להשלמת ההפעלה'
+  }
+}
+
+function defaultSubmitLabel(intent: ContactIntent, hasEvent: boolean): string {
+  switch (intent) {
+    case 'contact':
+      return 'שלחו ונחזור אליכם'
+    case 'plan_lead':
+      return hasEvent ? 'חזרו אליי' : 'בואו נדבר'
+    case 'organization_lead':
+      return 'דברו איתנו'
+    case 'plan_independent':
+      return 'שלחו ונחזור להפעלה'
+  }
+}
+
+export function ContactForm({
+  intent = 'contact',
+  limitType,
+  analyticsPlanName,
+  eventId = null,
+  eventName = null,
+  source,
+  pageSource = null,
+  selectedOptionLabel = null,
+  hideHeading = false,
+  heading,
+  subheading,
+  submitLabel,
+  eventPrefill = null,
+  onSubmitted,
+}: ContactFormProps) {
+  const { user, profile } = useAuth()
+  const hasEvent = Boolean(eventId)
+  const compactPlanLead = intent === 'plan_lead' && hasEvent
+
+  const [fullName, setFullName] = useState(profile?.display_name || '')
+  const [email, setEmail] = useState(profile?.email || user?.email || '')
+  const [phone, setPhone] = useState('')
+  const [eventType, setEventType] = useState('')
+  const [eventDate, setEventDate] = useState('')
+  const [dateUndecided, setDateUndecided] = useState(false)
+  const [participantCount, setParticipantCount] = useState(
+    eventPrefill?.participantCount != null ? String(eventPrefill.participantCount) : '',
+  )
+  const [organizationName, setOrganizationName] = useState('')
+  const [callbackPreference, setCallbackPreference] = useState('')
+  const [notes, setNotes] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (profile?.display_name) setFullName(profile.display_name)
+    if (profile?.email || user?.email) setEmail(profile?.email || user?.email || '')
+  }, [profile, user])
+
+  const resolvedLimitType = limitType ?? limitTypeForIntent(intent, source)
+  const resolvedAnalyticsName = analyticsPlanName ?? source ?? resolvedLimitType
+  const resolvedHeading = heading ?? defaultHeading(intent, hasEvent)
+  const resolvedSubmit = submitLabel ?? defaultSubmitLabel(intent, hasEvent)
+  const showEmailField = intent === 'contact'
+  const emailRequired = false
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError('')
+
+    const trimmedName = fullName.trim()
+    const trimmedEmail = email.trim()
+    const trimmedPhone = phone.trim()
+
+    if (!trimmedName) { setError('שם הוא שדה חובה'); return }
+    if (!trimmedPhone) { setError('מספר טלפון הוא שדה חובה'); return }
+    if (showEmailField && emailRequired && !trimmedEmail) {
+      setError('אימייל הוא שדה חובה')
+      return
+    }
+
+    if (intent === 'organization_lead' && !organizationName.trim()) {
+      setError('שם הארגון הוא שדה חובה')
+      return
+    }
+
+    setSubmitting(true)
+
+    const noteParts: string[] = []
+    if (intent === 'organization_lead' && organizationName.trim()) {
+      noteParts.push(`שם הארגון: ${organizationName.trim()}`)
+    }
+    if (!compactPlanLead && eventType.trim()) {
+      noteParts.push(`סוג אירוע / פעילות: ${eventType.trim()}`)
+    }
+    if (!compactPlanLead) {
+      if (dateUndecided) noteParts.push('תאריך האירוע: עדיין לא נקבע')
+      else if (eventDate.trim()) noteParts.push(`תאריך האירוע: ${eventDate.trim()}`)
+    }
+    if (!compactPlanLead && participantCount.trim()) {
+      noteParts.push(`מספר משתתפים משוער: ${participantCount.trim()}`)
+    }
+    if (compactPlanLead && callbackPreference.trim()) {
+      noteParts.push(`מתי נוח לחזור: ${callbackPreference.trim()}`)
+    }
+    if (notes.trim()) {
+      const label =
+        intent === 'contact'
+          ? 'איך אפשר לעזור'
+          : compactPlanLead
+            ? 'משהו שחשוב שנדע'
+            : 'מידע נוסף'
+      noteParts.push(`${label}: ${notes.trim()}`)
+    }
+
+    const contextNotes = buildContextNotes({
+      pageSource,
+      eventName: eventName || eventPrefill?.name || null,
+      route: typeof window !== 'undefined' ? window.location.pathname : null,
+      mode: intent,
+    })
+    if (contextNotes) noteParts.push(`---\n${contextNotes}`)
+
+    const combinedNotes = noteParts.join('\n') || null
+
+    // Prefer known email when the field is hidden; empty string satisfies NOT NULL.
+    const emailToStore =
+      trimmedEmail ||
+      profile?.email ||
+      user?.email ||
+      ''
+
+    const requestId = crypto.randomUUID()
+
+    const { error: insertError } = await supabase
+      .from('contact_upgrade_requests')
+      .insert({
+        id: requestId,
+        user_id: user?.id ?? null,
+        full_name: trimmedName,
+        email: emailToStore,
+        phone: trimmedPhone,
+        notes: combinedNotes,
+        limit_type: resolvedLimitType,
+        event_id: eventId ?? null,
+      })
+
+    if (insertError) {
+      trackAppError('pricing', 'submit_failed')
+      setError('שגיאה בשליחת הבקשה. נסו שנית.')
+      setSubmitting(false)
+      return
+    }
+
+    supabase.functions
+      .invoke('notify-contact-request', { body: { requestId } })
+      .catch((err) => console.error('Failed to notify admins', err))
+
+    trackGenerateLead(resolvedAnalyticsName, Boolean(eventId), source ?? intent)
+    setSubmitting(false)
+    setSubmitted(true)
+    onSubmitted?.()
+  }
+
+  if (submitted) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-6 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full border border-success bg-surface-elevated">
+          <CheckCircle size={26} className="text-success" />
+        </div>
+        <div>
+          <p className="text-base font-semibold text-foreground">הפנייה נשלחה בהצלחה</p>
+          <p className="mt-1 text-sm text-muted">ניצור אתכם קשר בהקדם.</p>
+        </div>
+      </div>
+    )
+  }
+
+  const notesLabel =
+    intent === 'contact'
+      ? 'איך אפשר לעזור?'
+      : compactPlanLead
+        ? 'משהו שחשוב שנדע'
+        : 'מידע נוסף'
+  const notesOptional = intent !== 'contact'
+
+  return (
+    <>
+      {!hideHeading && (
+        <>
+          <h2 className="mb-1 text-lg font-bold text-foreground">{resolvedHeading}</h2>
+          {subheading && <p className="mb-5 text-sm text-muted">{subheading}</p>}
+          {!subheading && intent === 'contact' && (
+            <p className="mb-5 text-sm text-muted">כתבו לנו ונחזור אליכם בהקדם.</p>
+          )}
+          {!subheading && intent !== 'contact' && <div className="mb-5" />}
+        </>
+      )}
+
+      {selectedOptionLabel && (
+        <div className="mb-5 flex items-center gap-2 rounded-xl border border-primary bg-surface-elevated px-4 py-2.5">
+          <span className="text-xs font-semibold text-primary">האפשרות שבחרתם</span>
+          <span className="text-xs font-medium text-foreground">{selectedOptionLabel}</span>
+        </div>
+      )}
+
+      {hasEvent && eventName && intent !== 'contact' && (
+        <p className="mb-4 text-sm text-muted">
+          אירוע: <span className="font-medium text-foreground">{eventName}</span>
+        </p>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted">שם *</label>
+            <input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="ישראל ישראלי"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted">טלפון *</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="050-1234567"
+              dir="ltr"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+            />
+          </div>
+        </div>
+
+        {showEmailField && (
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted">
+              אימייל {emailRequired ? '*' : '(אופציונלי)'}
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="email@example.com"
+              dir="ltr"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+            />
+          </div>
+        )}
+
+        {intent === 'organization_lead' && (
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted">שם הארגון *</label>
+            <input
+              value={organizationName}
+              onChange={(e) => setOrganizationName(e.target.value)}
+              placeholder="שם בית הספר / החברה / הקהילה"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+            />
+          </div>
+        )}
+
+        {!compactPlanLead && (intent === 'plan_lead' || intent === 'organization_lead') && (
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted">
+              {intent === 'organization_lead' ? 'סוג האירוע / הפעילות' : 'סוג אירוע'}
+            </label>
+            <input
+              value={eventType}
+              onChange={(e) => setEventType(e.target.value)}
+              placeholder="לדוגמה: נופש משפחתי, יום גיבוש, קייטנה"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+            />
+          </div>
+        )}
+
+        {!compactPlanLead && intent === 'plan_lead' && (
+          <div className="space-y-2">
+            <label className="mb-1 block text-xs font-semibold text-muted">תאריך אירוע</label>
+            <input
+              type="date"
+              value={eventDate}
+              disabled={dateUndecided}
+              onChange={(e) => setEventDate(e.target.value)}
+              dir="ltr"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary disabled:opacity-50"
+            />
+            <label className="flex items-center gap-2 text-xs text-muted">
+              <input
+                type="checkbox"
+                checked={dateUndecided}
+                onChange={(e) => {
+                  setDateUndecided(e.target.checked)
+                  if (e.target.checked) setEventDate('')
+                }}
+              />
+              עדיין לא נקבע
+            </label>
+          </div>
+        )}
+
+        {!compactPlanLead && (intent === 'plan_lead' || intent === 'organization_lead') && (
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted">מספר משתתפים משוער</label>
+            <input
+              type="number"
+              min="1"
+              value={participantCount}
+              onChange={(e) => setParticipantCount(e.target.value)}
+              placeholder="50"
+              dir="ltr"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+            />
+          </div>
+        )}
+
+        {compactPlanLead && (
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted">מתי נוח לחזור אליכם</label>
+            <input
+              value={callbackPreference}
+              onChange={(e) => setCallbackPreference(e.target.value)}
+              placeholder="לדוגמה: בוקר, אחה״צ, באמצע השבוע"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+            />
+          </div>
+        )}
+
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-muted">
+            {notesLabel}
+            {notesOptional ? ' (אופציונלי)' : ''}
+          </label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={intent === 'contact' ? 'ספרו לנו במה נוכל לעזור' : 'פרטים נוספים'}
+            rows={3}
+            className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+          />
+        </div>
+
+        {error && <p className="text-xs text-danger">{error}</p>}
+
+        <Button
+          type="submit"
+          variant="gradient"
+          size="lg"
+          loading={submitting}
+          className="w-full font-semibold"
+        >
+          {resolvedSubmit}
+        </Button>
+      </form>
+    </>
+  )
+}

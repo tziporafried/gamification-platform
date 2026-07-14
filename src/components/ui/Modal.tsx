@@ -11,9 +11,22 @@ interface ModalProps {
   children: ReactNode
   /** Optional override for the dimming layer behind the dialog. */
   overlayClassName?: string
+  /** Optional override for the dialog panel (e.g. wider form modals). */
+  dialogClassName?: string
+  /** Optional override for the scrollable content area. */
+  contentClassName?: string
 }
 
-export function Modal({ isOpen, onClose, title, titleClassName, children, overlayClassName }: ModalProps) {
+export function Modal({
+  isOpen,
+  onClose,
+  title,
+  titleClassName,
+  children,
+  overlayClassName,
+  dialogClassName,
+  contentClassName,
+}: ModalProps) {
   useEffect(() => {
     if (!isOpen) return
     function handleKey(e: KeyboardEvent) {
@@ -30,16 +43,22 @@ export function Modal({ isOpen, onClose, title, titleClassName, children, overla
   if (!isOpen) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
       <div
-        className={cn('absolute inset-0 bg-foreground/50', overlayClassName)}
+        className={cn(
+          'absolute inset-0 bg-[rgba(40,25,20,0.4)] backdrop-blur-[1px]',
+          overlayClassName,
+        )}
         onClick={onClose}
         aria-hidden="true"
       />
       <div
         role="dialog"
         aria-modal="true"
-        className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-border bg-modal shadow-modal animate-scale-in"
+        className={cn(
+          'relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-border bg-modal shadow-modal animate-scale-in',
+          dialogClassName,
+        )}
       >
         <div className={cn('flex items-center justify-between border-b bg-modal px-6 py-4', theme.border)}>
           <h2 className={titleClassName ?? cn('text-lg font-semibold', theme.text)}>{title}</h2>
@@ -52,7 +71,7 @@ export function Modal({ isOpen, onClose, title, titleClassName, children, overla
             </svg>
           </button>
         </div>
-        <div className="bg-modal px-6 py-4">{children}</div>
+        <div className={cn('bg-modal px-6 py-4', contentClassName)}>{children}</div>
       </div>
     </div>,
     document.body,

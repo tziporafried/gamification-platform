@@ -21,7 +21,7 @@ export function EventControlCenterPage() {
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
   const countKeys = useMemo(() => CONTROL_CENTER_COUNT_KEYS, [])
-  const { counts } = useEventCounts(id, countKeys)
+  const { counts, loaded: countsLoaded } = useEventCounts(id, countKeys)
 
   useEffect(() => {
     async function fetchEvent() {
@@ -48,7 +48,7 @@ export function EventControlCenterPage() {
     trackEventOpen('control')
   }, [event])
 
-  if (loading || !event) return <FullPageLoader />
+  if (loading || !event || !countsLoaded) return <FullPageLoader />
 
   return <ControlCenter event={event} counts={counts} />
 }

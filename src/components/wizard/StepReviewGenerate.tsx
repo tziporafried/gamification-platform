@@ -19,6 +19,7 @@ import { syncEventToTemplate } from '@/lib/templates'
 import type { Event, EventCounts, GroupType } from '@/types'
 import { isEventReady, calculateReadiness, isTemplateReady, calculateTemplateReadiness } from '@/lib/wizard'
 import { trackWizardStepComplete } from '@/lib/analytics'
+import { getPendingActivation, clearPendingActivation } from '@/lib/contact'
 
 interface StepReviewGenerateProps {
   event: Event
@@ -97,6 +98,15 @@ export function StepReviewGenerate({
       await supabase.from('events').update({ status: 'active' }).eq('id', event.id)
     }
     trackWizardStepComplete(6, 'review')
+
+    // Resume activation if user arrived via pricing without an event (self-service path).
+    const pending = getPendingActivation()
+    if (pending?.plan) {
+      clearPendingActivation()
+      navigate(`/plans?event=${event.id}&plan=${pending.plan}&source=post_wizard`)
+      return
+    }
+
     navigate(`/events/${event.id}/control`)
   }
 

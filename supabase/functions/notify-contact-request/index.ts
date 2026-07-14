@@ -27,6 +27,8 @@ const LIMIT_TYPE_LABELS: Record<string, string> = {
   'plan-independent': 'משחק עצמאי',
   'plan-full': 'חוויה מלאה',
   'plan-organizations': 'פתרון לארגונים',
+  homepage_contact: 'פנייה כללית',
+  trial_contact: 'פנייה מהתנסות',
 }
 
 function esc(value: string | null | undefined): string {

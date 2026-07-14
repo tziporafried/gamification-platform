@@ -65,7 +65,7 @@ function DetailModal({ title, children, onClose }: { title: string; children: Re
   return (
     <AnimatePresence>
       <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-        <div className="absolute inset-0 bg-foreground/40 backdrop-blur-md" onClick={onClose} />
+        <div className="absolute inset-0 bg-[rgba(40,25,20,0.4)] backdrop-blur-[1px]" onClick={onClose} />
         <motion.div className="relative w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-card max-h-[85vh] overflow-y-auto"
           initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }} transition={{ duration: 0.25 }}>
           <div className="mb-5 flex items-center justify-between">

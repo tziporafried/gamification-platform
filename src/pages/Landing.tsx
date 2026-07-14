@@ -6,18 +6,20 @@ import { useAuth } from '@/contexts/AuthContext'
 import { AtmosphericBackground } from '@/components/layout/AtmosphericBackground'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
 import { FloatingContactButton } from '@/components/layout/FloatingContactButton'
+import { ContactModal } from '@/components/ContactModal'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { GlobalHeader } from '@/components/layout/GlobalHeader'
 import { BrandLogo } from '@/components/icons/BrandLogo'
 import {
   trackCtaClick,
+  trackContactFormOpen,
   trackFaqOpen,
   trackVideoComplete,
   trackVideoProgress,
   trackVideoView,
 } from '@/lib/analytics'
-import { LANDING_CONTACT_PATH } from '@/lib/contact'
+import { setPendingCreateEventIntent } from '@/lib/contact'
 import { cn } from '@/lib/utils'
 
 const STEPS = [
@@ -121,23 +123,37 @@ export function Landing() {
   const navigate = useNavigate()
   const reducedMotion = useReducedMotion()
   const [faqOpen, setFaqOpen] = useState(() => FAQ_ITEMS.map(() => false))
+  const [contactOpen, setContactOpen] = useState(false)
+  const [contactLocation, setContactLocation] = useState<'faq' | 'footer'>('footer')
 
   function handleCreateEventClick() {
-    const destination = user ? '/events' : '/login'
     trackCtaClick({
       cta_name: 'create_event',
       cta_location: 'footer',
-      destination,
+      destination: user ? '/events' : '/login',
     })
-    navigate(destination)
+    if (user) {
+      navigate('/events')
+      return
+    }
+    // Preserve CREATE_EVENT intent across login (MyEvents consumes it).
+    setPendingCreateEventIntent()
+    navigate(`/login?returnTo=${encodeURIComponent('/events')}`)
   }
 
   function handleContactClick(location: 'faq' | 'footer') {
     trackCtaClick({
       cta_name: 'contact_us',
       cta_location: location,
-      destination: LANDING_CONTACT_PATH,
+      destination: 'contact_modal',
+      contact_source: 'homepage_contact',
     })
+    trackContactFormOpen({
+      contact_source: 'homepage_contact',
+      cta_location: location,
+    })
+    setContactLocation(location)
+    setContactOpen(true)
   }
 
   function toggleFaq(index: number) {
@@ -153,13 +169,14 @@ export function Landing() {
   const motionSafe = !reducedMotion
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-app-radial atmosphere-landing" dir="rtl">
+    <div className="relative min-h-screen bg-app-radial atmosphere-landing" dir="rtl">
       <AtmosphericBackground animated={motionSafe} />
       {motionSafe && <FloatingIconsLayer className="fixed inset-0 z-[1] opacity-70" />}
 
-      <GlobalHeader />
+      <div className="relative z-10">
+        <GlobalHeader />
 
-      <main className="relative z-10 mx-auto max-w-4xl px-4 pb-20 pt-12 sm:px-6">
+        <main className="mx-auto max-w-4xl px-4 pb-20 pt-12 sm:px-6">
         <motion.section
           className="mx-auto mb-10 max-w-2xl text-center sm:mb-12"
           variants={stagger}
@@ -261,9 +278,14 @@ export function Landing() {
                   trackCtaClick({
                     cta_name: 'start_now',
                     cta_location: 'after_video',
-                    destination: '/login',
+                    destination: user ? '/events' : '/login',
                   })
-                  navigate('/login')
+                  if (user) {
+                    navigate('/events')
+                    return
+                  }
+                  setPendingCreateEventIntent()
+                  navigate(`/login?returnTo=${encodeURIComponent('/events')}`)
                 }}
                 className="landing-hero-cta !rounded-full !px-12 !py-4 !text-[19px] !font-extrabold"
               >
@@ -358,13 +380,13 @@ export function Landing() {
           </div>
           <p className="mt-5 text-center text-sm leading-[1.7] text-muted">
             לא מצאתם את התשובה שחיפשתם?{' '}
-            <Link
-              to={LANDING_CONTACT_PATH}
+            <button
+              type="button"
               onClick={() => handleContactClick('faq')}
               className="font-medium text-primary underline-offset-2 hover:underline"
             >
               דברו איתנו
-            </Link>
+            </button>
           </p>
         </section>
 
@@ -401,18 +423,25 @@ export function Landing() {
             <p className="mt-1 text-sm leading-[1.7] text-muted">
               נשמח לחשוב איתכם יחד.
             </p>
-            <Link
-              to={LANDING_CONTACT_PATH}
+            <button
+              type="button"
               onClick={() => handleContactClick('footer')}
               className="mt-4 inline-flex items-center justify-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-primary"
             >
               דברו איתנו
-            </Link>
+            </button>
           </div>
         </motion.section>
       </main>
+      </div>
 
-      <FloatingContactButton location="floating" variant="pill" />
+      <FloatingContactButton location="floating" variant="pill" hidden={contactOpen} />
+      <ContactModal
+        isOpen={contactOpen}
+        onClose={() => setContactOpen(false)}
+        source="homepage_contact"
+        location={contactLocation}
+      />
     </div>
   )
 }

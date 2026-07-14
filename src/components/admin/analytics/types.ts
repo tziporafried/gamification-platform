@@ -59,6 +59,13 @@ export interface AnalyticsDashboardData {
     templateCount: number | null
     methodUnavailable: boolean
   }
+  contact: {
+    openUsers: number
+    leadUsers: number
+    conversionRate: number | null
+    bySource: AnalyticsNamedMetric[] | null
+    bySourceUnavailable: boolean
+  }
   meta: {
     startDate: string
     endDate: string

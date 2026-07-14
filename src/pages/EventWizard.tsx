@@ -325,7 +325,14 @@ export function EventWizard() {
         onChooseScratch={handleChooseScratch}
         onTemplateApplied={handleTemplateApplied}
       />
-      {isTrial && <FloatingContactButton variant="compact" location="wizard" />}
+      {isTrial && (
+        <FloatingContactButton
+          variant="compact"
+          location="wizard"
+          eventId={event.id}
+          eventName={event.name}
+        />
+      )}
     </WizardLayout>
   )
 }
