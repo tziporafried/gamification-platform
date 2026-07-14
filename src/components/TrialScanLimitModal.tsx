@@ -35,15 +35,15 @@ export function TrialScanLimitModal({ isOpen, onClose, eventId }: TrialScanLimit
             ראיתם איך הסריקות, הניקוד והתוצאות מתעדכנים בזמן אמת.
           </p>
           <p className="text-[15px] text-foreground leading-[1.75]">
-            מוכנים להפעיל את המשחק באירוע?
+            מוכנים להפוך את זה למשחק שלכם?
           </p>
           <p className="text-sm text-muted leading-[1.75]">
-            בחרו אופן הפעלה וסריקות הניסיון יאופסו.
+            בחרו את המסלול שמתאים לכם וסריקות הניסיון יאופסו.
           </p>
         </div>
 
         <Button variant="gradient" size="lg" className="w-full font-semibold tracking-wide" onClick={handleViewOptions}>
-          הפעלת המשחק
+          להפעלת המשחק
         </Button>
       </div>
     </Modal>
