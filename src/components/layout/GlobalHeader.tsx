@@ -9,6 +9,8 @@ export function GlobalHeader() {
   const { user, profile, signOut, isSuperAdmin } = useAuth()
   const headerSlot = useContext(HeaderSlotContext)
   const centerSlot = headerSlot?.centerSlot ?? null
+  const currentPlan = headerSlot?.currentPlan ?? null
+  const currentEventId = headerSlot?.currentEventId ?? null
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -52,13 +54,13 @@ export function GlobalHeader() {
         <div className="flex items-center gap-3 shrink-0">
           {user ? (
             <>
-              {location.pathname !== '/plans' && (
+              {(currentPlan === 'free' || currentPlan === 'independent') && location.pathname !== '/plans' && (
                 <button
-                  onClick={() => navigate('/plans')}
+                  onClick={() => navigate(currentEventId ? `/plans?event=${currentEventId}` : '/plans')}
                   className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
                 >
                   <Sparkles size={16} />
-                  <span className="hidden sm:inline">רוצה לשדרג?</span>
+                  <span className="hidden sm:inline">{currentPlan === 'independent' ? 'רוצה לשדרג?' : 'רוצה לשחק?'}</span>
                 </button>
               )}
 

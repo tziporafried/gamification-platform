@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2 } from 'lucide-react'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { Tabs } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SectionHeader } from '@/components/ui/SectionHeader'
@@ -53,6 +55,7 @@ interface UpgradeRequest {
   limit_type: string
   status: string
   created_at: string
+  events: { name: string | null } | null
 }
 
 const STATUS_OPTIONS = [
@@ -95,6 +98,7 @@ function planColor(plan: UserPlan) {
 
 export function AdminPanel() {
   const location = useLocation()
+  const { user: currentUser } = useAuth()
   const [tab, setTab] = useState<AdminTab>('todos')
   const [users, setUsers] = useState<AdminUser[]>([])
   const [requests, setRequests] = useState<UpgradeRequest[]>([])
@@ -103,7 +107,6 @@ export function AdminPanel() {
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [loadingRequests, setLoadingRequests] = useState(false)
   const [newRequestCount, setNewRequestCount] = useState(0)
-  const [updatingRequestId, setUpdatingRequestId] = useState<string | null>(null)
   const [upgradingEventId, setUpgradingEventId] = useState<string | null>(null)
   const [usersError, setUsersError] = useState<string | null>(null)
 
@@ -112,6 +115,16 @@ export function AdminPanel() {
   const [loadingEventsFor, setLoadingEventsFor] = useState<Set<string>>(new Set())
   const [userEvents, setUserEvents] = useState<Map<string, AdminEventRow[]>>(new Map())
   const [updatingEventPlanId, setUpdatingEventPlanId] = useState<string | null>(null)
+
+  // User deletion
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null)
+  const [deletingUser, setDeletingUser] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  // Upgrade request deletion
+  const [deleteRequestTarget, setDeleteRequestTarget] = useState<UpgradeRequest | null>(null)
+  const [deletingRequest, setDeletingRequest] = useState(false)
+  const [deleteRequestError, setDeleteRequestError] = useState<string | null>(null)
 
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true)
@@ -130,7 +143,7 @@ export function AdminPanel() {
     setLoadingRequests(true)
     const { data } = await supabase
       .from('contact_upgrade_requests')
-      .select('*')
+      .select('*, events(name)')
       .order('created_at', { ascending: false })
     if (data) {
       setRequests(data as UpgradeRequest[])
@@ -193,6 +206,23 @@ export function AdminPanel() {
     setUpdatingEventPlanId(null)
   }
 
+  async function deleteUser() {
+    if (!deleteTarget) return
+    setDeletingUser(true)
+    setDeleteError(null)
+    const { error } = await supabase.rpc('delete_user_admin', { p_user_id: deleteTarget.user_id })
+    if (error) {
+      setDeleteError(error.message)
+      setDeletingUser(false)
+      return
+    }
+    setUsers(prev => prev.filter(u => u.user_id !== deleteTarget.user_id))
+    setUserEvents(prev => { const next = new Map(prev); next.delete(deleteTarget.user_id); return next })
+    setExpandedUsers(prev => { const next = new Set(prev); next.delete(deleteTarget.user_id); return next })
+    setDeletingUser(false)
+    setDeleteTarget(null)
+  }
+
   async function upgradeEventPlan(requestId: string, eventId: string, newPlan: string) {
     setUpgradingEventId(requestId)
     const { error } = await supabase.rpc('update_event_plan', {
@@ -206,7 +236,6 @@ export function AdminPanel() {
   }
 
   async function updateRequestStatus(requestId: string, newStatus: string) {
-    setUpdatingRequestId(requestId)
     const { error } = await supabase
       .from('contact_upgrade_requests')
       .update({ status: newStatus })
@@ -223,7 +252,26 @@ export function AdminPanel() {
         return prev
       })
     }
-    setUpdatingRequestId(null)
+  }
+
+  async function deleteRequest() {
+    if (!deleteRequestTarget) return
+    const target = deleteRequestTarget
+    setDeletingRequest(true)
+    setDeleteRequestError(null)
+    const { error } = await supabase
+      .from('contact_upgrade_requests')
+      .delete()
+      .eq('id', target.id)
+    if (error) {
+      setDeleteRequestError(error.message)
+      setDeletingRequest(false)
+      return
+    }
+    setRequests(prev => prev.filter(r => r.id !== target.id))
+    if (target.status === 'new') setNewRequestCount(prev => Math.max(0, prev - 1))
+    setDeletingRequest(false)
+    setDeleteRequestTarget(null)
   }
 
   return (
@@ -305,22 +353,33 @@ export function AdminPanel() {
                       </div>
                     </div>
 
-                    {user.event_count > 0 && (
-                      <button
-                        onClick={() => toggleUserEvents(user.user_id)}
-                        className="flex items-center gap-1.5 shrink-0 rounded-lg px-2.5 py-1.5 text-xs text-muted hover:bg-white/5 hover:text-foreground transition-colors"
-                      >
-                        {isLoadingEvents ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <ChevronDown
-                            size={14}
-                            className={cn('transition-transform duration-200', isExpanded && 'rotate-180')}
-                          />
-                        )}
-                        אירועים
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {user.event_count > 0 && (
+                        <button
+                          onClick={() => toggleUserEvents(user.user_id)}
+                          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted hover:bg-white/5 hover:text-foreground transition-colors"
+                        >
+                          {isLoadingEvents ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <ChevronDown
+                              size={14}
+                              className={cn('transition-transform duration-200', isExpanded && 'rotate-180')}
+                            />
+                          )}
+                          אירועים
+                        </button>
+                      )}
+                      {user.role !== 'super_admin' && user.user_id !== currentUser?.id && (
+                        <button
+                          onClick={() => { setDeleteError(null); setDeleteTarget(user) }}
+                          title="מחק משתמש"
+                          className="flex items-center justify-center rounded-lg p-2 text-muted hover:bg-danger/10 hover:text-danger transition-colors"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {isExpanded && (
@@ -404,7 +463,12 @@ export function AdminPanel() {
                           <span>{new Date(req.created_at).toLocaleDateString('he-IL')} {new Date(req.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                         {req.event_id && (
-                          <p className="text-xs text-gray-500">אירוע: <span className="font-mono text-gray-400">{req.event_id}</span></p>
+                          <p className="text-xs text-gray-500">
+                            אירוע:{' '}
+                            <span className="text-gray-400">
+                              {req.events?.name?.trim() || 'ללא שם'}
+                            </span>
+                          </p>
                         )}
                         {req.notes && (
                           <p className="text-xs text-muted bg-surface-elevated rounded-lg px-3 py-2 mt-1">{req.notes}</p>
@@ -412,29 +476,31 @@ export function AdminPanel() {
                       </div>
 
                       <div className="flex flex-col items-end gap-2 shrink-0">
-                        {req.event_id && LIMIT_TYPE_TO_PLAN[req.limit_type] && req.status !== 'closed' && (
-                          <Button
-                            variant="gradient"
-                            size="sm"
-                            loading={upgradingEventId === req.id}
-                            onClick={() => upgradeEventPlan(req.id, req.event_id!, LIMIT_TYPE_TO_PLAN[req.limit_type])}
-                          >
-                            שדרג אירוע
-                          </Button>
-                        )}
-                        <div className="flex items-center gap-2">
-                          {STATUS_OPTIONS.filter(s => s.value !== req.status).map(s => (
+                        {req.event_id && LIMIT_TYPE_TO_PLAN[req.limit_type] && (
+                          req.status === 'closed' ? (
+                            <span className="flex items-center gap-1.5 text-sm font-semibold text-success">
+                              <CheckCircle size={16} />
+                              שודרג
+                            </span>
+                          ) : (
                             <Button
-                              key={s.value}
-                              variant="outline"
+                              variant="gradient"
                               size="sm"
-                              loading={updatingRequestId === req.id}
-                              onClick={() => updateRequestStatus(req.id, s.value)}
+                              loading={upgradingEventId === req.id}
+                              onClick={() => upgradeEventPlan(req.id, req.event_id!, LIMIT_TYPE_TO_PLAN[req.limit_type])}
                             >
-                              {s.label}
+                              שדרג אירוע
                             </Button>
-                          ))}
-                        </div>
+                          )
+                        )}
+                        <button
+                          onClick={() => { setDeleteRequestError(null); setDeleteRequestTarget(req) }}
+                          title="מחק פנייה"
+                          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted hover:bg-danger/10 hover:text-danger transition-colors"
+                        >
+                          <Trash2 size={14} />
+                          מחק
+                        </button>
                       </div>
                     </div>
                   </Card>
@@ -444,6 +510,56 @@ export function AdminPanel() {
           </>
         )
       )}
+
+      <ConfirmModal
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title="מחיקת משתמש"
+        confirmLabel="מחק לצמיתות"
+        onConfirm={deleteUser}
+        loading={deletingUser}
+      >
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-foreground">
+            האם אתה בטוח שאתה רוצה למחוק את{' '}
+            {deleteTarget?.display_name || deleteTarget?.email}?
+          </p>
+          <p className="text-muted">
+            מחיקה תגרום לכל המידע של הלקוח להימחק — כל האירועים שלו
+            {deleteTarget && deleteTarget.event_count > 0 && <> ({deleteTarget.event_count})</>}, כולל
+            המשתתפים, הקבוצות, המשימות, הניקוד והפרסים. לא ניתן לשחזר.
+          </p>
+          {deleteError && (
+            <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-danger">
+              שגיאה במחיקה: {deleteError}
+            </p>
+          )}
+        </div>
+      </ConfirmModal>
+
+      <ConfirmModal
+        isOpen={deleteRequestTarget !== null}
+        onClose={() => setDeleteRequestTarget(null)}
+        title="מחיקת פניית שדרוג"
+        confirmLabel="מחק פנייה"
+        onConfirm={deleteRequest}
+        loading={deletingRequest}
+      >
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-foreground">
+            האם אתה בטוח שאתה רוצה למחוק את הפנייה של{' '}
+            {deleteRequestTarget?.full_name || deleteRequestTarget?.email}?
+          </p>
+          <p className="text-muted">
+            הפנייה תימחק לצמיתות ולא ניתן יהיה לשחזר אותה.
+          </p>
+          {deleteRequestError && (
+            <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-danger">
+              שגיאה במחיקה: {deleteRequestError}
+            </p>
+          )}
+        </div>
+      </ConfirmModal>
     </main>
   )
 }

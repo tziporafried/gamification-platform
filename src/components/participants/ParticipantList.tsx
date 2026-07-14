@@ -42,6 +42,9 @@ export function ParticipantList({
   const listRef = useRef<HTMLDivElement>(null)
   const prevCountRef = useRef(0)
   const addInputRef = useRef<HTMLInputElement>(null)
+  // Latest participants, read inside stable callbacks without widening their deps.
+  const participantsRef = useRef<ParticipantWithGroups[]>([])
+  useEffect(() => { participantsRef.current = participants }, [participants])
 
   const hasGroups = groupType === 'custom'
 
@@ -127,12 +130,26 @@ export function ParticipantList({
   }, [showAddInput, addInputFocusRequest])
 
   const handleAdded = useCallback((participant: Participant) => {
+    // A participant must belong to at least one group — new participants default
+    // to "all groups" so they're never left ungrouped.
+    const defaultGroups = hasGroups ? groups : []
     setParticipants((prev) => {
-      const next = [...prev, { ...participant, groups: [] }]
+      const next = [...prev, { ...participant, groups: defaultGroups }]
       onCountChange(next.length)
       return next
     })
-  }, [onCountChange])
+    if (defaultGroups.length > 0) {
+      supabase
+        .from('participant_groups')
+        .insert(defaultGroups.map((g) => ({ participant_id: participant.id, group_id: g.id })))
+        .then(({ error: err }) => {
+          if (err) {
+            setError('שגיאה בשיוך המשתתף לקבוצות. הנתונים רועננו.')
+            loadParticipants(true)
+          }
+        })
+    }
+  }, [onCountChange, hasGroups, groups, loadParticipants])
 
   const handleDelete = useCallback(async (id: string) => {
     const { error: deleteError } = await supabase.from('participants').delete().eq('id', id)
@@ -147,7 +164,37 @@ export function ParticipantList({
     })
   }, [onCountChange])
 
+  // Ensure a participant is a member of every group ("all groups"). Only inserts
+  // the memberships that are missing; never removes any.
+  const assignAllGroups = useCallback((participantId: string, currentGroupIds: Set<string>) => {
+    const missing = groups.filter((g) => !currentGroupIds.has(g.id))
+    setParticipants((prev) => prev.map((p) => (
+      p.id === participantId ? { ...p, groups: [...groups] } : p
+    )))
+    if (missing.length === 0) return
+    supabase
+      .from('participant_groups')
+      .insert(missing.map((g) => ({ participant_id: participantId, group_id: g.id })))
+      .then(({ error: err }) => {
+        if (err) {
+          setError('שגיאה בעדכון קבוצות. הנתונים רועננו.')
+          loadParticipants(true)
+        }
+      })
+  }, [groups, loadParticipants])
+
   const handleToggleGroup = useCallback((participantId: string, groupId: string, isMember: boolean) => {
+    // A participant must always belong to at least one group. Removing their last
+    // remaining group snaps the selection back to "all groups" instead of leaving
+    // them ungrouped.
+    if (isMember) {
+      const participant = participantsRef.current.find((p) => p.id === participantId)
+      if (participant && participant.groups.length <= 1) {
+        assignAllGroups(participantId, new Set(participant.groups.map((g) => g.id)))
+        return
+      }
+    }
+
     setParticipants((prev) => prev.map((p) => {
       if (p.id !== participantId) return p
       const newGroups = isMember
@@ -166,33 +213,12 @@ export function ParticipantList({
         loadParticipants(true)
       }
     })
-  }, [groups, loadParticipants])
+  }, [groups, loadParticipants, assignAllGroups])
 
-  const handleSelectAllGroups = useCallback((participantId: string, currentGroupIds: Set<string>, allGroups: Group[]) => {
-    const isAllSelected = allGroups.length > 0 && allGroups.every((g) => currentGroupIds.has(g.id))
-    const newGroups = isAllSelected ? [] : [...allGroups]
-
-    setParticipants((prev) => prev.map((p) => {
-      if (p.id !== participantId) return p
-      return { ...p, groups: newGroups }
-    }))
-
-    const mutation = isAllSelected
-      ? supabase.from('participant_groups').delete().eq('participant_id', participantId)
-      : (() => {
-          const missing = allGroups.filter((g) => !currentGroupIds.has(g.id))
-          return missing.length > 0
-            ? supabase.from('participant_groups').insert(missing.map((g) => ({ participant_id: participantId, group_id: g.id })))
-            : Promise.resolve({ error: null })
-        })()
-
-    mutation.then(({ error: err }: { error: unknown }) => {
-      if (err) {
-        setError('שגיאה בעדכון קבוצות. הנתונים רועננו.')
-        loadParticipants(true)
-      }
-    })
-  }, [loadParticipants])
+  // "All groups" always means membership in every group — it never clears the selection.
+  const handleSelectAllGroups = useCallback((participantId: string, currentGroupIds: Set<string>) => {
+    assignAllGroups(participantId, currentGroupIds)
+  }, [assignAllGroups])
 
   if (loading) {
     return <CenteredLoader />

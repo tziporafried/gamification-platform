@@ -22,7 +22,7 @@ export function WizardLayout({
   headerSuffix,
   children,
 }: WizardLayoutProps) {
-  useEventHeaderBreadcrumb(event.name, headerSuffix)
+  useEventHeaderBreadcrumb(event.name, headerSuffix, event.plan, event.id)
   const { hasIntroPlayed, markIntroPlayed } = useWizardIntroTracking()
 
   return (

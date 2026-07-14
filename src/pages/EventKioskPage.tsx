@@ -5,6 +5,7 @@ import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { computeRanks } from '@/lib/missionUtils'
 import { ManualEntryForm } from '@/components/scoring/ManualEntryForm'
 import { useHardwareScanner } from '@/hooks/useHardwareScanner'
+import { usePlanPermissions } from '@/hooks/usePlanPermissions'
 import { useScoreSubmit } from '@/hooks/useScoreSubmit'
 import { useEventCatalog } from '@/hooks/useEventCatalog'
 import { parseQrPayload } from '@/lib/qrPayload'
@@ -860,7 +861,7 @@ function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () 
 }
 
 // ─── Decorative scanner frame (design-handoff spec) ──────────────────────────
-function ScannerFrame({ processing }: { processing: boolean }) {
+function ScannerFrame({ processing, locked }: { processing: boolean; locked?: boolean }) {
   return (
     <div className="kiosk-fadeUp kiosk-scannerFrame" style={{ animationDelay: '0.1s' }}>
       {/* Rotating conic glow ring */}
@@ -926,6 +927,95 @@ function ScannerFrame({ processing }: { processing: boolean }) {
               <div className="kiosk-bob" style={{ fontSize: 40 }}>⏳</div>
             </div>
           )}
+
+          {/* Locked overlay — scanning not included in this plan */}
+          {locked && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 15,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
+              background: 'rgba(255,248,243,0.88)', backdropFilter: 'blur(3px)',
+            }}>
+              <div style={{
+                width: 76, height: 76, borderRadius: '50%',
+                background: 'linear-gradient(135deg,#4A3C36,#2E221E)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 10px 28px rgba(46,34,30,0.32)',
+              }}>
+                <span style={{ fontSize: 36, lineHeight: 1 }}>🔒</span>
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#2E221E' }}>הסריקה נעולה</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#7D706A' }}>השתמשו בהזנה ידנית</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Inline manual-entry panel (independent plan — no scanner) ───────────────
+// The independent plan never scans, so instead of a locked scanner we surface the
+// manual-entry inputs directly — no button, styled to match the festive kiosk.
+function KioskManualEntryPanel({
+  eventId, submitting, onSubmit, catalog, gameStarted,
+}: {
+  eventId: string
+  submitting: boolean
+  onSubmit: (participantCode: string, actionCode: string) => Promise<void>
+  catalog: React.ComponentProps<typeof ManualEntryForm>['catalog']
+  gameStarted: boolean
+}) {
+  return (
+    <div className="kiosk-fadeUp" style={{
+      animationDelay: '0.1s',
+      position: 'relative',
+      width: 'min(430px, 100%)',
+      maxWidth: '100%',
+      flexShrink: 0,
+    }}>
+      {/* Rotating conic glow ring — echoes the scanner frame */}
+      <div className="kiosk-hueRing" style={{
+        position: 'absolute', inset: '-7%', borderRadius: 34,
+        background: 'conic-gradient(from 0deg,#FF9366,#F2B33C,#FFCB9A,#8FCFA0,#5FB3AA,#FF9366)',
+        opacity: 0.18, filter: 'blur(11px)', zIndex: 0,
+      }} />
+
+      {/* Gradient border card */}
+      <div style={{
+        position: 'relative', zIndex: 1, borderRadius: 28, padding: 4,
+        background: 'linear-gradient(135deg,#FF9366,#F2B33C 40%,#FFCB9A 70%,#8FCFA0)',
+        boxShadow: '0 22px 60px rgba(171,53,0,0.16)',
+      }}>
+        <div style={{
+          borderRadius: 24, background: 'linear-gradient(160deg,#FFFFFF,#FFF6F0)',
+          padding: 'clamp(18px, 2vw, 28px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+        }}>
+          {/* Header */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center' }}>
+            <div className="kiosk-bob" style={{
+              width: 62, height: 62, borderRadius: 18,
+              background: 'linear-gradient(135deg,#FF9366,#F2B33C)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 30, boxShadow: '0 10px 24px rgba(255,147,102,0.4)',
+            }}>⌨️</div>
+            <div style={{ fontSize: 'clamp(20px, 2vw, 24px)', fontWeight: 900, color: '#2E221E' }}>הזנה ידנית</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#7D706A', lineHeight: 1.4 }}>
+              {gameStarted
+                ? 'בחרו שחקן ומשימה — הנקודות נזקפות מיד'
+                : 'בחרו את המשתתף הראשון כדי לפתוח את התחרות'}
+            </div>
+          </div>
+
+          {/* The inputs — always visible, no button to reveal them */}
+          <ManualEntryForm
+            eventId={eventId}
+            accent={KIOSK_ACCENT}
+            submitting={submitting}
+            onSubmit={onSubmit}
+            catalog={catalog}
+            bare
+          />
         </div>
       </div>
     </div>
@@ -1480,7 +1570,7 @@ function StartedNoActivityState() {
           כולם מחכים לפעולה הראשונה
         </div>
         <div style={{ marginTop: 6, fontSize: 14, fontWeight: 800, color: 'rgba(255,255,255,0.84)', lineHeight: 1.45 }}>
-          ברגע שתתבצע הסריקה הראשונה, יתחיל כל הכיף!
+          ברגע שתתבצע הפעולה הראשונה, יתחיל כל הכיף!
         </div>
       </div>
       <SkeletonRows count={3} />
@@ -2563,7 +2653,7 @@ function PrizeChaseStackView({
   if (!gameStarted) {
     return (
       <div className="kiosk-prizeChaseEmpty">
-        המרוץ יתחיל עם הסריקה הראשונה
+        המרוץ יתחיל עם הפעולה הראשונה
       </div>
     )
   }
@@ -3070,7 +3160,14 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   }, [rotatableActions.length])
   const recommendedAction = rotatableActions[recommendedIdx] ?? null
 
-  // Scanner state
+  // Scanner state — QR scanning is a premium feature.
+  //   • free plan → scanner is shown but locked (upgrade teaser)
+  //   • independent plan → no scanner at all; manual entry only, shown inline
+  //   • full / organizations → live QR scanner
+  const { canScanQR, showLockedScanner } = usePlanPermissions(event.plan)
+  const scanningLocked = showLockedScanner
+  const manualOnly = !canScanQR && !showLockedScanner
+  const noScan = scanningLocked || manualOnly
   const { submit, submitting } = useScoreSubmit(event.id)
   const catalog = useEventCatalog(event.id)
   const [scanResult, setScanResult] = useState<ScanResultDisplay | null>(null)
@@ -3172,7 +3269,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     triggerScanSuccess(response.result, response.result.transactionId, reducedMotion)
   }, [gameStarted, submit, showToast, logScoreSubmit, triggerScanSuccess, reducedMotion])
 
-  const bind = useHardwareScanner(gameStarted && !showManual && !submitting, handleScan)
+  const bind = useHardwareScanner(gameStarted && !showManual && !submitting && !noScan, handleScan)
 
   const handleManualSubmit = useCallback(async (participantCode: string, actionCode: string) => {
     if (!gameStarted) {
@@ -3309,7 +3406,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
                   הלוח, המשימות והפרסים יופיעו ברגע שהתחרות תתחיל.
                 </div>
                 <div className="kiosk-arrowBounce" style={{ marginTop: 14, fontSize: 24, fontWeight: 900, color: '#3E8F88' }}>
-                  👇 סרקו כאן כדי להתחיל
+                  {noScan ? '👇 הזינו את המשתתף הראשון כדי להתחיל' : '👇 סרקו כאן כדי להתחיל'}
                 </div>
               </div>
             )}
@@ -3318,10 +3415,12 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
               <div style={{ textAlign: 'center', maxWidth: 620, flexShrink: 0 }}>
                 <div style={{ fontSize: 40, fontWeight: 900, color: '#FF8A3D' }}>🎉 הכול מוכן לרגע הגדול</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#7D706A', lineHeight: 1.45 }}>
-                  סרקו את הכרטיס הראשון ותנו לתחרות להתחיל!
+                  {noScan
+                    ? 'הזינו את המשתתף הראשון ותנו לתחרות להמריא!'
+                    : 'סרקו את הכרטיס הראשון ותנו לתחרות להתחיל!'}
                 </div>
                 <div style={{ fontSize: 17, fontWeight: 800, color: '#3E8F88', lineHeight: 1.45 }}>
-                  הסריקה הראשונה היא רק ההתחלה...
+                  {noScan ? 'ההזנה הראשונה היא רק ההתחלה...' : 'הסריקה הראשונה היא רק ההתחלה...'}
                 </div>
               </div>
             )}
@@ -3329,7 +3428,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             {gameStarted && hasActivity && (
               <div style={{ textAlign: 'center', maxWidth: 620, flexShrink: 0 }}>
                 <div className="kiosk-scanWinHeadline" style={{ fontSize: 40, fontWeight: 900 }}>
-                  <span className="kiosk-scanWinWord" style={{ color: '#FF8A3D', animationDelay: '0s' }}>סרקו</span>
+                  <span className="kiosk-scanWinWord" style={{ color: '#FF8A3D', animationDelay: '0s' }}>{noScan ? 'שחקו' : 'סרקו'}</span>
                   <span className="kiosk-scanWinWord" style={{ color: '#F2A03C', animationDelay: '0.35s' }}>וזכו</span>
                   <span className="kiosk-scanWinWord" style={{ color: '#E8A93C', animationDelay: '0.7s' }}>בנקודות!</span>
                   <span className="kiosk-scanWinWord" style={{ animationDelay: '1.05s' }}>🎯</span>
@@ -3342,30 +3441,67 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
               </div>
             )}
 
-            <div className="kiosk-scannerSlot">
-              <ScannerFrame processing={gameStarted && submitting} />
-            </div>
-
-            <div className="kiosk-centerHints">
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#9A8E88' }}>כוונו את כרטיס ה-QR של המשתתף למסגרת</div>
-              {gameStarted && (
-                <button
-                  onClick={() => setShowManual(true)}
-                  style={{
-                    display: 'inline',
-                    fontSize: 15, fontWeight: 800, color: '#3E8F88',
-                    textDecoration: 'underline', textUnderlineOffset: 3,
-                    background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                  }}>
-                  או בחרו הזנה ידנית — שחקן · משימה
-                </button>
-              )}
-              {!gameStarted && (
-                <div style={{ fontSize: 15, fontWeight: 900, color: '#7D706A', marginTop: 8 }}>
-                  התחרות מתחילה ברגע שהמשתתף הראשון סורק 🚀
+            {manualOnly ? (
+              <div className="kiosk-scannerSlot">
+                <KioskManualEntryPanel
+                  eventId={event.id}
+                  submitting={submitting}
+                  onSubmit={handleManualSubmit}
+                  catalog={catalog}
+                  gameStarted={gameStarted}
+                />
+              </div>
+            ) : (
+              <>
+                <div className="kiosk-scannerSlot">
+                  <ScannerFrame processing={gameStarted && submitting} locked={scanningLocked} />
                 </div>
-              )}
-            </div>
+
+                <div className="kiosk-centerHints">
+                  {scanningLocked ? (
+                    gameStarted ? (
+                      <button
+                        onClick={() => setShowManual(true)}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 8,
+                          fontSize: 18, fontWeight: 900, color: '#fff',
+                          background: 'linear-gradient(135deg,#FF9366,#F2B33C)',
+                          border: 'none', cursor: 'pointer',
+                          padding: '14px 32px', borderRadius: 999,
+                          boxShadow: '0 8px 22px rgba(255,147,102,0.42)',
+                        }}>
+                        ⌨️ הזנה ידנית — שחקן · משימה
+                      </button>
+                    ) : (
+                      <div style={{ fontSize: 15, fontWeight: 900, color: '#7D706A', marginTop: 8 }}>
+                        התחרות מתחילה ברגע שההזנה הידנית הראשונה תתבצע 🚀
+                      </div>
+                    )
+                  ) : (
+                    <>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: '#9A8E88' }}>כוונו את כרטיס ה-QR של המשתתף למסגרת</div>
+                      {gameStarted && (
+                        <button
+                          onClick={() => setShowManual(true)}
+                          style={{
+                            display: 'inline',
+                            fontSize: 15, fontWeight: 800, color: '#3E8F88',
+                            textDecoration: 'underline', textUnderlineOffset: 3,
+                            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                          }}>
+                          או בחרו הזנה ידנית — שחקן · משימה
+                        </button>
+                      )}
+                      {!gameStarted && (
+                        <div style={{ fontSize: 15, fontWeight: 900, color: '#7D706A', marginTop: 8 }}>
+                          התחרות מתחילה ברגע שהמשתתף הראשון סורק 🚀
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Scan-success overlay — covers center column */}

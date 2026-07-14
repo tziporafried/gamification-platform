@@ -50,11 +50,23 @@ export function PlansPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
+  const [currentPlan, setCurrentPlan] = useState<string | null>(null)
 
   useEffect(() => {
     if (profile?.display_name) setFullName(profile.display_name)
     if (profile?.email || user?.email) setEmail(profile?.email || user?.email || '')
   }, [profile, user])
+
+  // Load the event's current plan so the plan it is already on can be disabled.
+  useEffect(() => {
+    if (!eventId) { setCurrentPlan(null); return }
+    supabase
+      .from('events')
+      .select('plan')
+      .eq('id', eventId)
+      .single()
+      .then(({ data }) => setCurrentPlan(data?.plan ?? null))
+  }, [eventId])
 
   useEffect(() => {
     if (selectedOption && formRef.current) {
@@ -153,16 +165,23 @@ export function PlansPage() {
         {/* Card 1 — משחק עצמאי */}
         <OptionCard
           selected={selectedOption === 'independent'}
+          dimmed={currentPlan === 'independent'}
         >
           <div className="mb-4">
             <div className="mb-1 flex items-center gap-2">
               <span className="text-lg">🎮</span>
               <span className="text-base font-bold text-foreground">משחק עצמאי</span>
+              {currentPlan === 'independent' && (
+                <span className="rounded-full border border-border bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold text-muted">
+                  המסלול הנוכחי
+                </span>
+              )}
             </div>
             <div className="flex items-end gap-1 mt-2">
               <span className="text-2xl font-extrabold text-foreground">40</span>
               <span className="mb-0.5 text-sm text-muted">₪ לאירוע</span>
             </div>
+            <p className="mt-1 text-xs text-muted">עד 70 משתתפים</p>
             <p className="mt-2 text-xs text-muted leading-relaxed">
               מתאים למי שרוצה להפעיל את המשחק באופן עצמאי.
             </p>
@@ -182,8 +201,9 @@ export function PlansPage() {
             size="md"
             className="w-full font-medium"
             onClick={() => handleChoose('independent')}
+            disabled={currentPlan === 'independent'}
           >
-            אני מעוניין במשחק עצמאי
+            {currentPlan === 'independent' ? 'המסלול הנוכחי שלכם' : 'אני מעוניין במשחק עצמאי'}
           </Button>
         </OptionCard>
 
@@ -208,7 +228,7 @@ export function PlansPage() {
                 <span className="mb-0.5 text-sm text-muted">₪ לאירוע</span>
               </div>
               <p className="mt-1 text-xs text-muted">יום פעילות נוסף: 15 ₪</p>
-              <p className="mt-1 text-xs text-muted">עד 50 משתתפים</p>
+              <p className="mt-1 text-xs text-muted">עד 70 משתתפים</p>
               <p className="mt-2 text-xs text-muted leading-relaxed">
                 הפתרון המלא להפעלת המשחק.
               </p>
@@ -386,10 +406,12 @@ function OptionCard({
   children,
   featured,
   selected,
+  dimmed,
 }: {
   children: React.ReactNode
   featured?: boolean
   selected?: boolean
+  dimmed?: boolean
 }) {
   return (
     <div
@@ -399,6 +421,7 @@ function OptionCard({
           ? 'border-2 border-primary bg-surface shadow-card'
           : 'border border-border bg-surface shadow-card',
         selected && !featured ? 'border-primary' : '',
+        dimmed ? 'opacity-60' : '',
       ].join(' ')}
     >
       {children}

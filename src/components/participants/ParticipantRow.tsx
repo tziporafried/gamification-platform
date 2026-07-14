@@ -14,7 +14,7 @@ interface ParticipantRowProps {
   allGroups: Group[]
   onDelete: (id: string) => void
   onToggleGroup: (participantId: string, groupId: string, isMember: boolean) => void
-  onSelectAllGroups: (participantId: string, memberIds: Set<string>, allGroups: Group[]) => void
+  onSelectAllGroups: (participantId: string, memberIds: Set<string>) => void
   onError?: (msg: string) => void
 }
 
@@ -165,10 +165,9 @@ export const ParticipantRow = memo(function ParticipantRow({
               groups={groups}
               selectedGroupIds={memberGroupIds}
               allGroupsLabel="כל הקבוצות"
-              emptyLabel="ללא קבוצה"
               tooltip="לאילו קבוצות שייך המשתתף"
               isAllSelected={isAllGroups}
-              onSelectAll={() => onSelectAllGroups(participant.id, memberGroupIds, allGroups)}
+              onSelectAll={() => onSelectAllGroups(participant.id, memberGroupIds)}
               onToggleGroup={(groupId, isMember) => onToggleGroup(participant.id, groupId, isMember)}
               tone="default"
               size="compact"

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trophy, Crown, ScanLine, Lock, Zap, Settings } from 'lucide-react'
+import { Trophy, Crown, ScanLine, Settings } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
@@ -11,10 +11,10 @@ import { useControlCenterLiveStats } from '@/hooks/useControlCenterLiveStats'
 import { EventPlayStatus, resolveEventPlayStatus } from '@/components/event/EventPlayStatus'
 import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
 import { calculateReadiness, isEventReady, getWizardPrefs, resolveGroupType } from '@/lib/wizard'
-import { getLockedTemplate, clearLockedTemplate, completeTemplateImport, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
+import { getLockedTemplate, completeTemplateImport, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
-import type { Event, EventCounts, LockedTemplateStore } from '@/types'
+import type { Event, EventCounts } from '@/types'
 
 interface ControlCenterProps {
   event: Event
@@ -25,30 +25,34 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   const navigate = useNavigate()
   const { isSuperAdmin } = useAuth()
   const isFreePlan = !isSuperAdmin && event.plan === 'free'
-  const [lockedTemplate, setLockedTemplate] = useState<LockedTemplateStore | null>(null)
-  const [completing, setCompleting] = useState(false)
   const [settingsWarningOpen, setSettingsWarningOpen] = useState(false)
-  useEventHeaderBreadcrumb(event.name)
+  useEventHeaderBreadcrumb(event.name, undefined, event.plan, event.id)
 
+  // On a paid plan, any premium template content that was locked while on the
+  // free plan is imported automatically — no banner, no manual step. Safe to run
+  // repeatedly: completeTemplateImport de-dupes by name and clears the store when
+  // done (which re-fires LOCKED_TEMPLATE_CHANGED, but getLockedTemplate is then
+  // null so it no-ops). On failure the store is left in place and retried on the
+  // next mount.
   useEffect(() => {
-    function syncLocked() {
-      setLockedTemplate(getLockedTemplate(event.id))
+    if (isFreePlan) return
+    let importing = false
+    async function importLocked() {
+      if (importing || !getLockedTemplate(event.id)) return
+      importing = true
+      try {
+        await completeTemplateImport(event.id)
+      } catch {
+        // leave the locked template in place; it will be retried later
+      } finally {
+        importing = false
+      }
     }
-    syncLocked()
-    window.addEventListener(LOCKED_TEMPLATE_CHANGED, syncLocked)
-    return () => window.removeEventListener(LOCKED_TEMPLATE_CHANGED, syncLocked)
-  }, [event.id])
+    importLocked()
+    window.addEventListener(LOCKED_TEMPLATE_CHANGED, importLocked)
+    return () => window.removeEventListener(LOCKED_TEMPLATE_CHANGED, importLocked)
+  }, [event.id, isFreePlan])
 
-  async function handleCompleteImport() {
-    setCompleting(true)
-    try {
-      await completeTemplateImport(event.id)
-    } catch {
-      // silently ignore — user can retry
-    } finally {
-      setCompleting(false)
-    }
-  }
   const ready = isEventReady(event, counts)
   const checks = calculateReadiness(event, counts)
 
@@ -148,48 +152,6 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
           {!ready && (
             <div className="mb-4 shrink-0">
               <ReadinessChecklist checks={checks} eventId={event.id} />
-            </div>
-          )}
-
-          {!isFreePlan && lockedTemplate && (
-            <div
-              className="mb-4 shrink-0 rounded-2xl border border-warning bg-surface-elevated p-4"
-            >
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface border border-warning">
-                  <Lock size={18} className="text-warning" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-warning">
-                    תוכן פרמיום ממתין מהתבנית "{lockedTemplate.templateName}"
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted">
-                    {[
-                      lockedTemplate.groups.length > 0 && `${lockedTemplate.groups.length} קבוצות`,
-                      lockedTemplate.tasks.length > 0 && `${lockedTemplate.tasks.length} משימות`,
-                      lockedTemplate.rewards.length > 0 && `${lockedTemplate.rewards.length} פרסים`,
-                    ].filter(Boolean).join(' · ')}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Button
-                    size="sm"
-                    loading={completing}
-                    onClick={handleCompleteImport}
-                    className="border border-warning bg-surface text-warning hover:bg-surface-elevated"
-                  >
-                    <Zap size={13} className="ml-1" />
-                    ייבא הכל
-                  </Button>
-                  <button
-                    onClick={() => clearLockedTemplate(event.id)}
-                    className="text-xs text-muted hover:text-warning transition-colors"
-                    title="הסתר"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 

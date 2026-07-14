@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/Button'
 import { fetchActivityTemplates, applyActivityTemplate, templateGroupType, formatTemplateError } from '@/lib/templates'
 import { saveLockedTemplate } from '@/lib/lockedTemplate'
 import { useAuth } from '@/contexts/AuthContext'
-import type { ActivityTemplateWithContent, GroupType } from '@/types'
+import type { ActivityTemplateWithContent, GroupType, UserPlan } from '@/types'
 
 interface TemplatePickerModalProps {
   eventId: string
+  /** The event's own plan — determines whether premium template content is locked. */
+  plan: UserPlan
   isOpen: boolean
   onChooseScratch: () => void
   onTemplateApplied: (groupType: GroupType, eventName: string) => void
@@ -18,12 +20,15 @@ type Screen = 'choose' | 'templates'
 
 export function TemplatePickerModal({
   eventId,
+  plan,
   isOpen,
   onChooseScratch,
   onTemplateApplied,
 }: TemplatePickerModalProps) {
   const { isSuperAdmin } = useAuth()
-  const isFreePlan = !isSuperAdmin
+  // Plan lives on the event (migration 035); only free-plan events lock the
+  // extra template content. Super admins bypass all plan limits.
+  const isFreePlan = plan === 'free' && !isSuperAdmin
   const [screen, setScreen] = useState<Screen>('choose')
   const [templates, setTemplates] = useState<ActivityTemplateWithContent[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(false)

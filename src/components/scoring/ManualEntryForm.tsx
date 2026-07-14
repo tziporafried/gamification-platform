@@ -21,6 +21,8 @@ interface Props {
     actions: CatalogAction[]
     loading: boolean
   }
+  /** When true, drops the card chrome + heading so the form can sit inside a custom container. */
+  bare?: boolean
 }
 
 function filterByQuery<T extends { name: string }>(items: T[], query: string, limit = 8): T[] {
@@ -29,7 +31,7 @@ function filterByQuery<T extends { name: string }>(items: T[], query: string, li
   return items.filter((item) => item.name.toLowerCase().includes(q)).slice(0, limit)
 }
 
-export function ManualEntryForm({ eventId, accent, submitting, onSubmit, catalog }: Props) {
+export function ManualEntryForm({ eventId, accent, submitting, onSubmit, catalog, bare = false }: Props) {
   const [participantQuery, setParticipantQuery] = useState('')
   const [actionQuery, setActionQuery] = useState('')
   const [selectedParticipant, setSelectedParticipant] = useState<ParticipantOption | null>(null)
@@ -125,9 +127,12 @@ export function ManualEntryForm({ eventId, accent, submitting, onSubmit, catalog
 
   return (
     <form onSubmit={handleSubmit}
-      className="w-full max-w-sm rounded-2xl border border-border bg-surface p-4 space-y-3">
+      className={cn(
+        'space-y-3',
+        bare ? 'w-full' : 'w-full max-w-sm rounded-2xl border border-border bg-surface p-4',
+      )}>
 
-      <p className="text-xs font-black text-muted text-right">הזנה ידנית</p>
+      {!bare && <p className="text-xs font-black text-muted text-right">הזנה ידנית</p>}
 
       <AutocompleteField
         label="שחקן"

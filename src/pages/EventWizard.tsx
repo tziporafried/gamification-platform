@@ -296,6 +296,7 @@ export function EventWizard() {
 
       <TemplatePickerModal
         eventId={event.id}
+        plan={event.plan}
         isOpen={showTemplatePicker}
         onChooseScratch={handleChooseScratch}
         onTemplateApplied={handleTemplateApplied}
