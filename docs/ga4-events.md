@@ -82,7 +82,7 @@ Build verified: `npm run build` passes. Analytics-only instrumentation (no UI / 
 | `begin_checkout` | No purchase / checkout flow (contact request only) |
 | `purchase` | No purchase success path |
 | `video_pause` | Too noisy with native video controls |
-| `contact_click` | Renamed to `select_plan` (same trigger). Update Looker if it used the old name |
+| `contact_click` | Renamed to `select_plan` (same trigger) |
 | Event UUIDs / PII | Not sent on new events (no emails, names, phones, barcode values, prize titles) |
 
 ---

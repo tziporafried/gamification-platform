@@ -13,13 +13,11 @@ import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { AdminStatusPill } from '@/components/ui/StatusBadge'
 import { DevTodoList } from '@/components/dev-todos/DevTodoList'
 import { TemplateAdminList } from '@/components/admin/TemplateAdminList'
+import { AdminAnalyticsDashboard } from '@/components/admin/analytics/AdminAnalyticsDashboard'
 import { cn } from '@/lib/utils'
 import type { UserPlan } from '@/types'
 
 type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates' | 'analytics'
-
-const LOOKER_STUDIO_EMBED_URL =
-  'https://datastudio.google.com/embed/reporting/1e05deb6-4852-4819-8003-615392c3c9c4/page/wPs3F'
 
 const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
   { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },
@@ -515,18 +513,7 @@ export function AdminPanel() {
         )
       )}
 
-      {tab === 'analytics' && (
-        <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
-          <iframe
-            title="אנליטיקות"
-            src={LOOKER_STUDIO_EMBED_URL}
-            className="w-full border-0"
-            style={{ height: 'min(80vh, 900px)', minHeight: 450 }}
-            allowFullScreen
-            sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-          />
-        </div>
-      )}
+      {tab === 'analytics' && <AdminAnalyticsDashboard />}
 
       <ConfirmModal
         isOpen={deleteTarget !== null}
