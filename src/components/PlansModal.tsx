@@ -233,8 +233,8 @@ export function PlansModal({
       onClose={onClose}
       title={title}
       titleClassName="text-xl font-bold text-foreground leading-snug pe-2"
-      dialogClassName="flex max-h-[min(94vh,56rem)] w-[min(96vw,72rem)] max-w-5xl flex-col"
-      contentClassName="flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 sm:py-6"
+      dialogClassName="flex h-[80vh] w-[min(96vw,80rem)] max-w-7xl flex-col"
+      contentClassName="flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-8 sm:py-6"
     >
       <div dir="rtl">
         <p className="mb-6 text-center text-sm leading-relaxed text-muted">
