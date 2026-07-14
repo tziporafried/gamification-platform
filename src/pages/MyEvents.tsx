@@ -18,6 +18,13 @@ import { fetchEventsPlayMeta, type EventPlayMeta } from '@/lib/eventsPlayMeta'
 import { EventPlayStatus, resolveEventPlayStatus, EVENT_PLAY_STATUS } from '@/components/event/EventPlayStatus'
 import { isEventReady, getWizardPrefs } from '@/lib/wizard'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
+import {
+  trackEventCreationStart,
+  trackEventCreated,
+  trackEventDeleted,
+  trackEventOpen,
+  trackAppError,
+} from '@/lib/analytics'
 import type { Event as GameEvent } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -88,6 +95,7 @@ export function MyEvents() {
   async function handleCreateEvent() {
     setError('')
     setCreating(true)
+    trackEventCreationStart()
     const slug = `event-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const { data, error: insertError } = await supabase
       .from('events')
@@ -103,11 +111,13 @@ export function MyEvents() {
     setCreating(false)
 
     if (insertError) {
+      trackAppError('event_creation', 'insert_failed')
       setError(`שגיאה ביצירת אירוע: ${insertError.message}`)
       return
     }
 
     if (data) {
+      trackEventCreated('new')
       navigate(`/events/${data.id}/step/1`)
     }
   }
@@ -119,6 +129,7 @@ export function MyEvents() {
     setEvents(prev => prev.filter(e => e.id !== deletingEvent.id))
     setDeleting(false)
     setDeletingEvent(null)
+    trackEventDeleted()
     setSuccessMsg('האירוע נמחק בהצלחה.')
   }
 
@@ -246,6 +257,7 @@ function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: Ev
       navigate(`/events/${gameEvent.id}/control`)
       return
     }
+    trackEventOpen('wizard')
     navigate(`/events/${gameEvent.id}/step/${getWizardPrefs(gameEvent.id).lastStep}`)
   }
 

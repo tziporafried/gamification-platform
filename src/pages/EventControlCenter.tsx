@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useEventCounts } from '@/hooks/useEventCounts'
 import { ControlCenter } from '@/components/wizard/ControlCenter'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
+import { trackEventOpen } from '@/lib/analytics'
 import type { Event, EventCounts } from '@/types'
 
 const CONTROL_CENTER_COUNT_KEYS: (keyof EventCounts)[] = [
@@ -41,6 +42,11 @@ export function EventControlCenterPage() {
     }
     fetchEvent()
   }, [id, navigate])
+
+  useEffect(() => {
+    if (!event) return
+    trackEventOpen('control')
+  }, [event])
 
   if (loading || !event) return <FullPageLoader />
 

@@ -392,3 +392,68 @@
     animation: none !important;
   }
 }
+
+/* Landing atmosphere — slow orb drift for depth */
+@keyframes landing-orb-drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-3%, 4%) scale(1.06); }
+}
+@keyframes landing-orb-drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(4%, 3%) scale(1.05); }
+}
+@keyframes landing-orb-drift-c {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(3%, -4%) scale(1.07); }
+}
+@keyframes landing-orb-drift-d {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-4%, -3%) scale(1.04); }
+}
+@keyframes landing-orb-drift-e {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(calc(-50% + 2%), calc(-50% - 3%)) scale(1.08); }
+}
+
+.landing-orb-a { animation: landing-orb-drift-a 14s ease-in-out infinite; }
+.landing-orb-b { animation: landing-orb-drift-b 18s ease-in-out infinite; }
+.landing-orb-c { animation: landing-orb-drift-c 16s ease-in-out infinite 0.5s; }
+.landing-orb-d { animation: landing-orb-drift-d 20s ease-in-out infinite 1s; }
+.landing-orb-e { animation: landing-orb-drift-e 17s ease-in-out infinite 0.8s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-orb {
+    animation: none !important;
+  }
+}
+
+.landing-brand-shimmer {
+  background: linear-gradient(
+    105deg,
+    var(--color-primary) 0%,
+    var(--color-primary) 38%,
+    color-mix(in srgb, var(--palette-warning) 70%, white) 50%,
+    var(--color-primary) 62%,
+    var(--color-primary) 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: landing-brand-shimmer 3.6s ease-in-out infinite;
+}
+
+@keyframes landing-brand-shimmer {
+  0%, 100% { background-position: 100% 50%; }
+  50% { background-position: 0% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-brand-shimmer {
+    animation: none !important;
+    background: none;
+    -webkit-background-clip: unset;
+    background-clip: unset;
+    color: var(--color-primary);
+  }
+}

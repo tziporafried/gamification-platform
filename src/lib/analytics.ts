@@ -2,6 +2,11 @@ const MEASUREMENT_ID =
   (import.meta.env.VITE_GA_MEASUREMENT_ID as string | undefined) || 'G-R9RCTZ6BK5'
 
 const LANDING_REFERRER_KEY = 'gamify_landing_referrer'
+const PENDING_AUTH_METHOD_KEY = 'gamify_pending_auth_method'
+
+/** Dedupe window to absorb React StrictMode double-effects / rapid remounts. */
+const DEDUPE_WINDOW_MS = 800
+const recentEventKeys = new Map<string, number>()
 
 declare global {
   interface Window {
@@ -10,8 +15,18 @@ declare global {
   }
 }
 
+type AnalyticsParams = Record<string, string | number | boolean | undefined>
+
 function isEnabled() {
   return Boolean(MEASUREMENT_ID && typeof window !== 'undefined')
+}
+
+function shouldSkipDedupe(key: string): boolean {
+  const now = Date.now()
+  const last = recentEventKeys.get(key) ?? 0
+  if (now - last < DEDUPE_WINDOW_MS) return true
+  recentEventKeys.set(key, now)
+  return false
 }
 
 /** Capture external referrer once per session (which site brought the visitor). */
@@ -62,6 +77,7 @@ export function initAnalytics() {
 /** Track SPA route as a page view, including landing referrer. */
 export function trackPageView(path: string) {
   if (!isEnabled() || !window.gtag) return
+  if (shouldSkipDedupe(`page_view:${path}`)) return
 
   window.gtag('event', 'page_view', {
     page_path: path,
@@ -73,15 +89,26 @@ export function trackPageView(path: string) {
 }
 
 /** Generic GA4 event helper. */
-export function trackEvent(
-  eventName: string,
-  params?: Record<string, string | number | boolean | undefined>,
-) {
+export function trackEvent(eventName: string, params?: AnalyticsParams) {
   if (!isEnabled() || !window.gtag) return
   window.gtag('event', eventName, params)
 }
 
-/** Count a home demo video view (call once when playback starts). */
+function trackEventDeduped(dedupeKey: string, eventName: string, params?: AnalyticsParams) {
+  if (shouldSkipDedupe(dedupeKey)) return
+  trackEvent(eventName, params)
+}
+
+// ─── Marketing / video ───────────────────────────────────────────────────────
+
+export function trackCtaClick(params: {
+  cta_name: string
+  cta_location: string
+  destination: string
+}) {
+  trackEvent('cta_click', params)
+}
+
 export function trackVideoView(videoId = 'gamify-tour') {
   trackEvent('video_view', {
     video_id: videoId,
@@ -96,6 +123,61 @@ export function trackVideoComplete(videoId = 'gamify-tour') {
   })
 }
 
+export function trackVideoProgress(
+  progressPercent: 25 | 50 | 75,
+  videoId = 'gamify-tour',
+) {
+  trackEvent('video_progress', {
+    video_id: videoId,
+    video_title: 'Gamify tour',
+    progress_percent: progressPercent,
+  })
+}
+
+// ─── Pricing / plans ─────────────────────────────────────────────────────────
+
+/** User opened the plans / pricing page. (Covers requested view_pricing.) */
+export function trackViewPlans(hasLinkedEvent = false) {
+  trackEventDeduped(`view_plans:${hasLinkedEvent ? 'linked' : 'none'}`, 'view_plans', {
+    page_path: '/plans',
+    has_linked_event: hasLinkedEvent,
+  })
+}
+
+/**
+ * User chose a plan option and opened the contact form.
+ * Replaces the former `contact_click` event name (same trigger) to align with GA naming.
+ */
+export function trackSelectPlan(planName: string, hasLinkedEvent = false) {
+  trackEvent('select_plan', {
+    plan_name: planName,
+    has_linked_event: hasLinkedEvent,
+  })
+}
+
+/** @deprecated Alias — fires `select_plan` (replaces legacy `contact_click` name). */
+export function trackContactClick(planOption: string, eventId?: string | null) {
+  trackSelectPlan(planOption, Boolean(eventId))
+}
+
+/** Successful contact / upgrade request submit (no PII). */
+export function trackGenerateLead(planName: string, hasLinkedEvent = false) {
+  trackEvent('generate_lead', {
+    plan_name: planName,
+    has_linked_event: hasLinkedEvent,
+  })
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
+export function trackLoginView() {
+  trackEventDeduped('login_view', 'login_view')
+}
+
+export function trackLoginStart(method: 'email' | 'google') {
+  trackEvent('login_start', { method })
+}
+
 /** GA4 recommended event — successful login. */
 export function trackLogin(method: 'email' | 'google') {
   trackEvent('login', { method })
@@ -106,28 +188,16 @@ export function trackSignUp(method: 'email' | 'google') {
   trackEvent('sign_up', { method })
 }
 
-/** User opened the plans / pricing page. */
-export function trackViewPlans(eventId?: string | null) {
-  trackEvent('view_plans', {
-    page_path: '/plans',
-    ...(eventId ? { event_id: eventId } : {}),
-  })
-}
-
-/** User opened the contact form (chose a plan option), even if they never submit. */
-export function trackContactClick(
-  planOption: string,
-  eventId?: string | null,
+export function trackLoginError(
+  errorType: 'validation' | 'network' | 'credentials' | 'oauth',
+  method?: 'email' | 'google',
 ) {
-  trackEvent('contact_click', {
-    plan_option: planOption,
-    ...(eventId ? { event_id: eventId } : {}),
+  trackEvent('login_error', {
+    error_type: errorType,
+    ...(method ? { method } : {}),
   })
 }
 
-const PENDING_AUTH_METHOD_KEY = 'gamify_pending_auth_method'
-
-/** Mark that an OAuth redirect is in progress so we can attribute the return. */
 export function markPendingAuthMethod(method: 'google') {
   try {
     sessionStorage.setItem(PENDING_AUTH_METHOD_KEY, method)
@@ -154,4 +224,118 @@ export function consumePendingOAuthAuth(userCreatedAt: string | undefined) {
   const isNew = Number.isFinite(createdMs) && Date.now() - createdMs < 120_000
   if (isNew) trackSignUp('google')
   else trackLogin('google')
+}
+
+// ─── Event creation / wizard ─────────────────────────────────────────────────
+
+export function trackEventCreationStart() {
+  trackEvent('event_creation_start')
+}
+
+export function trackEventCreated(creationMethod: 'scratch' | 'new' = 'new') {
+  trackEvent('event_created', { creation_method: creationMethod })
+}
+
+/** User chose how to start building the event (after the event row already exists). */
+export function trackEventStartMethod(method: 'scratch' | 'template') {
+  trackEvent('event_start_method', { method })
+}
+
+export function trackFaqOpen(question: string, questionIndex: number) {
+  trackEvent('faq_open', {
+    question,
+    question_index: questionIndex,
+  })
+}
+
+export function trackWizardStepView(stepNumber: number, stepName: string) {
+  trackEventDeduped(`wizard_step_view:${stepNumber}`, 'wizard_step_view', {
+    step_number: stepNumber,
+    step_name: stepName,
+  })
+}
+
+export function trackWizardStepComplete(stepNumber: number, stepName: string) {
+  trackEvent('wizard_step_complete', {
+    step_number: stepNumber,
+    step_name: stepName,
+  })
+}
+
+export function trackWizardBack(fromStep: number, toStep: number) {
+  trackEvent('wizard_back', {
+    from_step: fromStep,
+    to_step: toStep,
+  })
+}
+
+export function trackWizardExit(stepNumber: number, stepName: string) {
+  trackEvent('wizard_exit', {
+    step_number: stepNumber,
+    step_name: stepName,
+  })
+}
+
+// ─── Event management ────────────────────────────────────────────────────────
+
+export function trackEventOpen(destination: 'control' | 'wizard') {
+  trackEvent('event_open', { destination })
+}
+
+export function trackEventEditStart(wasActive: boolean) {
+  trackEvent('event_edit_start', { was_active: wasActive })
+}
+
+export function trackEventUpdated() {
+  trackEvent('event_updated')
+}
+
+export function trackEventDeleted() {
+  trackEvent('event_deleted')
+}
+
+// ─── Scanning / leaderboard ──────────────────────────────────────────────────
+
+export function trackScannerView(plan?: string) {
+  trackEventDeduped(`scanner_view:${plan ?? 'unknown'}`, 'scanner_view', {
+    ...(plan ? { plan } : {}),
+  })
+}
+
+export function trackScanSuccess(source: 'qr_scan' | 'manual_entry') {
+  trackEvent('scan_success', { source })
+}
+
+export function trackScanFailed(
+  errorType: 'not_started' | 'invalid_qr' | 'submit_failed',
+  source?: 'qr_scan' | 'manual_entry',
+) {
+  trackEvent('scan_failed', {
+    error_type: errorType,
+    ...(source ? { source } : {}),
+  })
+}
+
+/** Prize celebration after a successful scan — no user-authored prize text. */
+export function trackPrizeRevealed(prizeCount: number) {
+  trackEvent('prize_revealed', {
+    prize_type: 'milestone',
+    prize_count: prizeCount,
+  })
+}
+
+export function trackLeaderboardView() {
+  trackEventDeduped('leaderboard_view', 'leaderboard_view')
+}
+
+// ─── Errors (sparse — not an error monitoring system) ────────────────────────
+
+export function trackAppError(
+  errorArea: 'auth' | 'event_creation' | 'scanner' | 'pricing',
+  errorType: string,
+) {
+  trackEventDeduped(`app_error:${errorArea}:${errorType}`, 'app_error', {
+    error_area: errorArea,
+    error_type: errorType,
+  })
 }

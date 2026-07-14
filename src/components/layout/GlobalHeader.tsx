@@ -4,6 +4,7 @@ import { LogOut, Shield, Sparkles } from 'lucide-react'
 import { BrandLogo, BrandWordmark } from '@/components/icons/BrandLogo'
 import { useAuth } from '@/contexts/AuthContext'
 import { HeaderSlotContext } from '@/contexts/HeaderSlotContext'
+import { trackCtaClick } from '@/lib/analytics'
 
 export function GlobalHeader() {
   const { user, profile, signOut, isSuperAdmin } = useAuth()
@@ -56,7 +57,15 @@ export function GlobalHeader() {
             <>
               {(currentPlan === 'free' || currentPlan === 'independent') && location.pathname !== '/plans' && (
                 <button
-                  onClick={() => navigate(currentEventId ? `/plans?event=${currentEventId}` : '/plans')}
+                  onClick={() => {
+                    const destination = currentEventId ? `/plans?event=${currentEventId}` : '/plans'
+                    trackCtaClick({
+                      cta_name: 'view_pricing',
+                      cta_location: 'header',
+                      destination: '/plans',
+                    })
+                    navigate(destination)
+                  }}
                   className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
                 >
                   <Sparkles size={16} />
@@ -111,6 +120,13 @@ export function GlobalHeader() {
           ) : (
             <Link
               to="/login"
+              onClick={() =>
+                trackCtaClick({
+                  cta_name: 'login',
+                  cta_location: 'header',
+                  destination: '/login',
+                })
+              }
               className="text-sm font-medium text-muted transition-colors hover:text-foreground"
             >
               התחברות

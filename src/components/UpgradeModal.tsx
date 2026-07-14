@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { trackCtaClick } from '@/lib/analytics'
 
 interface UpgradeModalProps {
   isOpen: boolean
@@ -12,6 +13,11 @@ export function UpgradeModal({ isOpen, onClose, eventId }: UpgradeModalProps) {
   const navigate = useNavigate()
 
   function handleStart() {
+    trackCtaClick({
+      cta_name: 'view_pricing',
+      cta_location: 'upgrade_modal',
+      destination: '/plans',
+    })
     onClose()
     navigate(`/plans?event=${eventId}`)
   }

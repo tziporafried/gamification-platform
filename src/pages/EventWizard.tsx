@@ -23,7 +23,18 @@ import { StepRewards } from '@/components/wizard/StepRewards'
 import { StepReviewGenerate } from '@/components/wizard/StepReviewGenerate'
 import { TemplatePickerModal } from '@/components/wizard/TemplatePickerModal'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
+import {
+  trackWizardStepView,
+  trackWizardStepComplete,
+  trackWizardBack,
+  trackEventStartMethod,
+} from '@/lib/analytics'
 import type { ActivityTemplate, Event, GroupType } from '@/types'
+import { WIZARD_STEPS } from '@/types'
+
+function stepNameFor(stepNumber: number): string {
+  return WIZARD_STEPS.find((s) => s.step === stepNumber)?.id ?? `step_${stepNumber}`
+}
 
 export function EventWizard() {
   const { id, step: stepParam } = useParams<{ id: string; step?: string }>()
@@ -65,6 +76,11 @@ export function EventWizard() {
       return next
     })
   }, [currentStep])
+
+  useEffect(() => {
+    if (loading || !event) return
+    trackWizardStepView(currentStep, stepNameFor(currentStep))
+  }, [currentStep, loading, event])
 
   useEffect(() => {
     async function detectTemplateMode() {
@@ -156,11 +172,14 @@ export function EventWizard() {
   }, [id, navigate, isTemplateMode])
 
   const goNext = useCallback(() => {
+    trackWizardStepComplete(currentStep, stepNameFor(currentStep))
     goToStep(adjustWizardStep(currentStep, 'next', isTemplateMode))
   }, [currentStep, goToStep, isTemplateMode])
 
   const goBack = useCallback(() => {
-    goToStep(adjustWizardStep(currentStep, 'prev', isTemplateMode))
+    const toStep = adjustWizardStep(currentStep, 'prev', isTemplateMode)
+    trackWizardBack(currentStep, toStep)
+    goToStep(toStep)
   }, [currentStep, goToStep, isTemplateMode])
 
   useEffect(() => {
@@ -179,11 +198,13 @@ export function EventWizard() {
 
   function handleChooseScratch() {
     setStartMethod('scratch')
+    trackEventStartMethod('scratch')
   }
 
   function handleTemplateApplied(appliedGroupType: GroupType, eventName: string) {
     setGroupType(appliedGroupType)
     setStartMethod('template')
+    trackEventStartMethod('template')
     refreshCounts()
     if (eventName) {
       setEvent((prev) => (prev ? { ...prev, name: eventName } : prev))

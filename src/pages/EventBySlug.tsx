@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { useEventCounts } from '@/hooks/useEventCounts'
 import { ControlCenter } from '@/components/wizard/ControlCenter'
+import { trackEventOpen } from '@/lib/analytics'
 import type { Event } from '@/types'
 
 type PageState = 'loading' | 'not_found' | 'no_permission' | 'ready'
@@ -36,6 +37,11 @@ export function EventBySlugControl() {
     }
     resolve()
   }, [slug])
+
+  useEffect(() => {
+    if (state !== 'ready' || !event) return
+    trackEventOpen('control')
+  }, [state, event])
 
   if (state === 'loading') {
     return <FullPageLoader />

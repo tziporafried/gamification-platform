@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { WinnersCeremony } from '@/components/leaderboard/WinnersCeremony'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
+import { trackLeaderboardView } from '@/lib/analytics'
 import type { Event } from '@/types'
 
 export function EventDisplayPage() {
@@ -31,6 +32,11 @@ export function EventDisplayPage() {
     }
     fetchEvent()
   }, [id, navigate])
+
+  useEffect(() => {
+    if (!event) return
+    trackLeaderboardView()
+  }, [event])
 
   if (loading || !event) return <FullPageLoader />
 

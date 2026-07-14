@@ -34,6 +34,13 @@ import { formatDistanceToNow } from 'date-fns'
 import { he } from 'date-fns/locale'
 import type { Event, GroupLeaderboardEntry, ParticipantLeaderboardEntry } from '@/types'
 import type { ScoreSubmitResult } from '@/hooks/useScoreSubmit'
+import {
+  trackScannerView,
+  trackScanSuccess,
+  trackScanFailed,
+  trackPrizeRevealed,
+  trackAppError,
+} from '@/lib/analytics'
 import '@/styles/kiosk.css'
 
 const KIOSK_ACCENT = hexToRgb('#AB3500') ?? { r: 171, g: 53, b: 0 }
@@ -3225,6 +3232,9 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
       tone: '#EF8A4E',
     })
     const { celebrationRewards } = result
+    if (celebrationRewards.length > 0) {
+      trackPrizeRevealed(celebrationRewards.length)
+    }
     scanDismissTimer.current = setTimeout(() => {
       setScanResult(null)
       if (celebrationRewards.length > 0) {
@@ -3255,16 +3265,23 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
 
   const handleScan = useCallback(async (raw: string) => {
     if (!gameStarted) {
+      trackScanFailed('not_started', 'qr_scan')
       showToast('התחרות עדיין לא התחילה')
       return
     }
     const parsed = parseQrPayload(raw)
-    if (!parsed.ok) { showToast('קוד QR לא תקין'); return }
+    if (!parsed.ok) {
+      trackScanFailed('invalid_qr', 'qr_scan')
+      showToast('קוד QR לא תקין')
+      return
+    }
     const response = await submit(parsed.data.participantCode, parsed.data.actionCode)
     if (!response.ok) {
+      trackScanFailed('submit_failed', 'qr_scan')
       showToast(response.error)
       return
     }
+    trackScanSuccess('qr_scan')
     logScoreSubmit('qr_scan', response.result)
     triggerScanSuccess(response.result, response.result.transactionId, reducedMotion)
   }, [gameStarted, submit, showToast, logScoreSubmit, triggerScanSuccess, reducedMotion])
@@ -3273,14 +3290,17 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
 
   const handleManualSubmit = useCallback(async (participantCode: string, actionCode: string) => {
     if (!gameStarted) {
+      trackScanFailed('not_started', 'manual_entry')
       showToast('התחרות עדיין לא התחילה')
       return
     }
     const response = await submit(participantCode, actionCode)
     if (!response.ok) {
+      trackScanFailed('submit_failed', 'manual_entry')
       showToast(response.error)
       return
     }
+    trackScanSuccess('manual_entry')
     logScoreSubmit('manual_entry', response.result)
     setShowManual(false)
     triggerScanSuccess(response.result, response.result.transactionId, reducedMotion)
@@ -3722,6 +3742,16 @@ export function EventKioskPage() {
 
   const gameStarted = event ? isGameStarted(event) : false
   const data = useKioskData(id ?? '', gameStarted)
+
+  useEffect(() => {
+    if (!event) return
+    trackScannerView(event.plan)
+  }, [event])
+
+  useEffect(() => {
+    if (!event || !data.error || data.loading) return
+    trackAppError('scanner', 'load_failed')
+  }, [event, data.error, data.loading])
 
   useEffect(() => {
     if (!id) return

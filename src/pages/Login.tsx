@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react'
+import { useState, useEffect, FormEvent } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { CheckCircle2, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -9,7 +9,14 @@ import { GoogleIcon } from '@/components/icons/GoogleIcon'
 import { Button } from '@/components/ui/Button'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Input } from '@/components/ui/Input'
-import { trackLogin, trackSignUp, markPendingAuthMethod } from '@/lib/analytics'
+import {
+  trackLogin,
+  trackSignUp,
+  markPendingAuthMethod,
+  trackLoginView,
+  trackLoginStart,
+  trackLoginError,
+} from '@/lib/analytics'
 import { safeReturnTo, cn } from '@/lib/utils'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -32,13 +39,19 @@ export function Login() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    trackLoginView()
+  }, [])
+
   async function handleGoogleSignIn() {
     setError('')
     setGoogleLoading(true)
+    trackLoginStart('google')
     try {
       markPendingAuthMethod('google')
       await signInWithGoogle(returnTo)
     } catch {
+      trackLoginError('oauth', 'google')
       setError('שגיאה בהתחברות. נסו שוב.')
       setGoogleLoading(false)
     }
@@ -54,18 +67,22 @@ export function Login() {
     const trimmedEmail = passwordEmail.trim()
     if (!trimmedEmail || !password) {
       setPasswordError('יש להזין אימייל וסיסמה')
+      trackLoginError('validation', 'email')
       return
     }
     if (!EMAIL_PATTERN.test(trimmedEmail)) {
       setPasswordError('כתובת האימייל אינה תקינה')
+      trackLoginError('validation', 'email')
       return
     }
     if (password.length < MIN_PASSWORD_LENGTH) {
       setPasswordError(`הסיסמה חייבת להכיל לפחות ${MIN_PASSWORD_LENGTH} תווים`)
+      trackLoginError('validation', 'email')
       return
     }
 
     setPasswordLoading(true)
+    trackLoginStart('email')
     const result = await signInOrSignUp(trimmedEmail, password)
     setPasswordLoading(false)
 
@@ -84,6 +101,7 @@ export function Login() {
         setConfirmationRequired(true)
         return
       case 'error':
+        trackLoginError(result.reason === 'network' ? 'network' : 'credentials', 'email')
         setPasswordError(
           result.reason === 'network'
             ? 'לא ניתן להתחבר כרגע. נסו שוב בעוד רגע.'

@@ -12,6 +12,7 @@ import { theme } from '@/lib/theme'
 import type { Event } from '@/types'
 import { supabase } from '@/lib/supabase'
 import { updateTemplateMetadata } from '@/lib/templates'
+import { trackEventUpdated } from '@/lib/analytics'
 
 interface StepEventDetailsProps {
   event: Event
@@ -141,7 +142,10 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
         .single()
 
       setSaving(false)
-      if (data) onEventUpdated(data)
+      if (data) {
+        trackEventUpdated()
+        onEventUpdated(data)
+      }
     } else {
       setSaving(false)
     }

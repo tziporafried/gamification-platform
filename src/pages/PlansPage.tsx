@@ -4,7 +4,7 @@ import { Check, X, CheckCircle, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { trackContactClick, trackViewPlans } from '@/lib/analytics'
+import { trackSelectPlan, trackViewPlans, trackGenerateLead, trackAppError } from '@/lib/analytics'
 
 type Option = 'independent' | 'full' | 'organizations'
 
@@ -54,7 +54,7 @@ export function PlansPage() {
   const [currentPlan, setCurrentPlan] = useState<string | null>(null)
 
   useEffect(() => {
-    trackViewPlans(eventId)
+    trackViewPlans(Boolean(eventId))
   }, [eventId])
 
   useEffect(() => {
@@ -85,7 +85,7 @@ export function PlansPage() {
     setSelectedOption(option)
     setSubmitted(false)
     setError('')
-    trackContactClick(option, eventId)
+    trackSelectPlan(option, Boolean(eventId))
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -127,6 +127,7 @@ export function PlansPage() {
       })
 
     if (insertError) {
+      trackAppError('pricing', 'submit_failed')
       setError('שגיאה בשליחת הבקשה. נסו שנית.')
       setSubmitting(false)
       return
@@ -138,6 +139,7 @@ export function PlansPage() {
       .invoke('notify-contact-request', { body: { requestId } })
       .catch((err) => console.error('Failed to notify admins', err))
 
+    trackGenerateLead(selectedOption!, Boolean(eventId))
     setSubmitting(false)
     setSubmitted(true)
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })

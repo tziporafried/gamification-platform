@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2 } from 'lucide-react'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2, BarChart3 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
@@ -16,13 +16,17 @@ import { TemplateAdminList } from '@/components/admin/TemplateAdminList'
 import { cn } from '@/lib/utils'
 import type { UserPlan } from '@/types'
 
-type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates'
+type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates' | 'analytics'
+
+const LOOKER_STUDIO_EMBED_URL =
+  'https://datastudio.google.com/embed/reporting/1e05deb6-4852-4819-8003-615392c3c9c4/page/wPs3F'
 
 const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
   { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },
   { id: 'templates', label: 'תבניות', icon: Sparkles },
   { id: 'customers', label: 'לקוחות', icon: Users },
   { id: 'upgrade-requests', label: 'פניות שדרוג', icon: MessageSquare },
+  { id: 'analytics', label: 'אנליטיקות', icon: BarChart3 },
 ]
 
 interface AdminUser {
@@ -275,7 +279,7 @@ export function AdminPanel() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6">
+    <main className={cn('mx-auto px-4 py-6', tab === 'analytics' ? 'max-w-6xl' : 'max-w-5xl')}>
       <Tabs
         tabs={TABS.map(({ id, label, icon: Icon }) => ({
           id,
@@ -509,6 +513,19 @@ export function AdminPanel() {
             </div>
           </>
         )
+      )}
+
+      {tab === 'analytics' && (
+        <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
+          <iframe
+            title="אנליטיקות"
+            src={LOOKER_STUDIO_EMBED_URL}
+            className="w-full border-0"
+            style={{ height: 'min(80vh, 900px)', minHeight: 450 }}
+            allowFullScreen
+            sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+          />
+        </div>
       )}
 
       <ConfirmModal

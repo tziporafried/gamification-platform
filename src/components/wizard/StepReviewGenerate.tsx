@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabase'
 import { syncEventToTemplate } from '@/lib/templates'
 import type { Event, EventCounts, GroupType } from '@/types'
 import { isEventReady, calculateReadiness, isTemplateReady, calculateTemplateReadiness } from '@/lib/wizard'
+import { trackWizardStepComplete } from '@/lib/analytics'
 
 interface StepReviewGenerateProps {
   event: Event
@@ -95,6 +96,7 @@ export function StepReviewGenerate({
     if (event.status !== 'active') {
       await supabase.from('events').update({ status: 'active' }).eq('id', event.id)
     }
+    trackWizardStepComplete(6, 'review')
     navigate(`/events/${event.id}/control`)
   }
 

@@ -14,6 +14,7 @@ import { calculateReadiness, isEventReady, getWizardPrefs, resolveGroupType } fr
 import { getLockedTemplate, completeTemplateImport, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
+import { trackEventEditStart, trackCtaClick } from '@/lib/analytics'
 import type { Event, EventCounts } from '@/types'
 
 interface ControlCenterProps {
@@ -83,6 +84,11 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   const playStatus = resolveEventPlayStatus(ready, liveStats.totalScans)
 
   function handleAction(route: string) {
+    trackCtaClick({
+      cta_name: route === 'kiosk' ? 'open_scanner' : 'open_leaderboard',
+      cta_location: 'control_center',
+      destination: `/events/${event.id}/${route}`,
+    })
     window.open(`/events/${event.id}/${route}`, '_blank', 'noopener,noreferrer')
   }
 
@@ -95,6 +101,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   }
 
   function navigateToSettings() {
+    trackEventEditStart(event.status === 'active')
     navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`)
   }
 
