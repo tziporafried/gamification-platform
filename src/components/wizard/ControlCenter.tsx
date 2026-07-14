@@ -214,34 +214,38 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
               {event.name}
             </h1>
 
-            {isTrial && ready ? (
-              <p className="text-sm font-bold text-primary">✨ מצב התנסות</p>
+            {showPrimaryActivationCta ? (
+              <div
+                role="status"
+                className="mt-4 w-full max-w-2xl overflow-hidden rounded-xl border border-primary/20 bg-[color-mix(in_srgb,var(--color-primary)_7%,var(--color-surface-elevated))] text-right shadow-sm"
+              >
+                <div className="flex flex-col gap-4 border-s-4 border-primary p-4 sm:flex-row sm:items-center sm:gap-5 sm:p-4 sm:ps-5">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="text-xs font-bold text-primary">✨ מצב התנסות</p>
+                    <p className="text-base font-bold leading-snug text-foreground">
+                      המשחק שלכם מוכן! 🎉
+                    </p>
+                    <p className="text-sm leading-relaxed text-foreground/85">
+                      בצעו כמה סריקות ניסיון וצפו בתוצאות מתעדכנות בזמן אמת.
+                    </p>
+                    <p className="text-xs font-medium leading-relaxed text-foreground/65">
+                      בהפעלת המשחק, סריקות הניסיון יאופסו כדי שתתחילו מאפס.
+                    </p>
+                  </div>
+                  <Button
+                    ref={activationCtaRef}
+                    type="button"
+                    variant="gradient"
+                    size="md"
+                    className="w-full shrink-0 font-semibold tracking-wide sm:w-auto sm:min-w-[11rem]"
+                    onClick={handleChooseActivation}
+                  >
+                    הפעלת המשחק
+                  </Button>
+                </div>
+              </div>
             ) : (
               <EventPlayStatus status={playStatus} />
-            )}
-
-            {showPrimaryActivationCta && (
-              <div className="mt-3 max-w-md space-y-1.5 text-center lg:max-w-xl">
-                <p className="text-base font-bold leading-snug text-foreground sm:text-lg">
-                  המשחק שלכם מוכן! 🎉
-                </p>
-                <p className="text-sm leading-relaxed text-foreground/85">
-                  בצעו כמה סריקות ניסיון וצפו בתוצאות מתעדכנות בזמן אמת.
-                </p>
-                <p className="mx-auto w-full max-w-[20rem] text-xs font-medium leading-relaxed text-foreground/70 lg:max-w-none">
-                  בהפעלת המשחק, סריקות הניסיון יאופסו כדי שתתחילו מאפס.
-                </p>
-                <Button
-                  ref={activationCtaRef}
-                  type="button"
-                  variant="gradient"
-                  size="md"
-                  className="mt-3 w-full font-semibold tracking-wide sm:w-auto sm:min-w-[13rem]"
-                  onClick={handleChooseActivation}
-                >
-                  הפעלת המשחק
-                </Button>
-              </div>
             )}
           </motion.div>
 
