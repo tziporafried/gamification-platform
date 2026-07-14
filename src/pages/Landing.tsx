@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
 import { AtmosphericBackground } from '@/components/layout/AtmosphericBackground'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
+import { FloatingContactButton } from '@/components/layout/FloatingContactButton'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { GlobalHeader } from '@/components/layout/GlobalHeader'
@@ -16,6 +17,7 @@ import {
   trackVideoProgress,
   trackVideoView,
 } from '@/lib/analytics'
+import { LANDING_CONTACT_PATH } from '@/lib/contact'
 import { cn } from '@/lib/utils'
 
 const STEPS = [
@@ -128,6 +130,14 @@ export function Landing() {
       destination,
     })
     navigate(destination)
+  }
+
+  function handleContactClick(location: 'faq' | 'footer') {
+    trackCtaClick({
+      cta_name: 'contact_us',
+      cta_location: location,
+      destination: LANDING_CONTACT_PATH,
+    })
   }
 
   function toggleFaq(index: number) {
@@ -346,6 +356,16 @@ export function Landing() {
               />
             ))}
           </div>
+          <p className="mt-5 text-center text-sm leading-[1.7] text-muted">
+            לא מצאתם את התשובה שחיפשתם?{' '}
+            <Link
+              to={LANDING_CONTACT_PATH}
+              onClick={() => handleContactClick('faq')}
+              className="font-medium text-primary underline-offset-2 hover:underline"
+            >
+              דברו איתנו
+            </Link>
+          </p>
         </section>
 
         <motion.section
@@ -357,7 +377,7 @@ export function Landing() {
         >
           <h2 className="mb-4 text-[26px] font-bold text-primary">מוכנים להתחיל?</h2>
           <p className="mx-auto mb-8 max-w-xl leading-[1.7] text-muted">
-            צרו אירוע, עברו את שלבי ההקמה והדפיסו כרטיסים - תוך דקות תוכלו לראות איך נראה משחק אמיתי עם עמדת סריקה ולוח שיאים חי.
+            צרו את האירוע הראשון שלכם ותראו איך Gamify עובד בפועל.
           </p>
           <motion.div
             whileHover={motionSafe ? { scale: 1.04 } : undefined}
@@ -373,8 +393,26 @@ export function Landing() {
               צרו את האירוע הראשון שלכם
             </Button>
           </motion.div>
+
+          <div className="mx-auto mt-10 max-w-md border-t border-border/60 pt-8">
+            <p className="text-sm font-medium leading-[1.7] text-foreground">
+              יש לכם שאלה או אירוע מיוחד?
+            </p>
+            <p className="mt-1 text-sm leading-[1.7] text-muted">
+              נשמח לחשוב איתכם יחד.
+            </p>
+            <Link
+              to={LANDING_CONTACT_PATH}
+              onClick={() => handleContactClick('footer')}
+              className="mt-4 inline-flex items-center justify-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-primary"
+            >
+              דברו איתנו
+            </Link>
+          </div>
         </motion.section>
       </main>
+
+      <FloatingContactButton location="floating" variant="pill" />
     </div>
   )
 }

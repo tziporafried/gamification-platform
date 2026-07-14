@@ -15,6 +15,7 @@ import { getTemplateByDraftEventId, fetchActivityTemplateById, seedTemplateDraft
 import { useTemplateAutoSync } from '@/hooks/useTemplateAutoSync'
 import { WizardLayout } from '@/components/wizard/WizardLayout'
 import { WizardStepPanel } from '@/components/wizard/WizardStepPanel'
+import { FloatingContactButton } from '@/components/layout/FloatingContactButton'
 import { StepEventDetails } from '@/components/wizard/StepEventDetails'
 import { StepParticipants } from '@/components/wizard/StepParticipants'
 import { StepGroups } from '@/components/wizard/StepGroups'
@@ -213,6 +214,8 @@ export function EventWizard() {
 
   if (loading || templateLoading || !event) return <FullPageLoader />
 
+  const isTrial = !isSuperAdmin && event.plan === 'free'
+
   return (
     <WizardLayout
       event={event}
@@ -322,6 +325,7 @@ export function EventWizard() {
         onChooseScratch={handleChooseScratch}
         onTemplateApplied={handleTemplateApplied}
       />
+      {isTrial && <FloatingContactButton variant="compact" location="wizard" />}
     </WizardLayout>
   )
 }

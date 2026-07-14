@@ -15,6 +15,7 @@ import { DeleteButton, IconButton } from '@/components/ui/IconButton'
 import { PageTitle } from '@/components/ui/PageTitle'
 import { ShareEventModal } from '@/components/ShareEventModal'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
+import { FloatingContactButton } from '@/components/layout/FloatingContactButton'
 import { fetchEventsPlayMeta, type EventPlayMeta } from '@/lib/eventsPlayMeta'
 import { EventPlayStatus, resolveEventPlayStatus, EVENT_PLAY_STATUS, ACTIVATION_MODE_LABELS } from '@/components/event/EventPlayStatus'
 import { isEventReady, getWizardPrefs } from '@/lib/wizard'
@@ -46,7 +47,7 @@ const CREATE_EVENT_BTN_CLASS = cn(
 )
 
 export function MyEvents() {
-  const { user } = useAuth()
+  const { user, isSuperAdmin } = useAuth()
   const navigate = useNavigate()
   const [events, setEvents] = useState<GameEvent[]>([])
   const [playMeta, setPlayMeta] = useState<Record<string, EventPlayMeta>>({})
@@ -57,6 +58,11 @@ export function MyEvents() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+
+  const hasTrialEvent = useMemo(
+    () => !isSuperAdmin && events.some((event) => event.plan === 'free'),
+    [events, isSuperAdmin],
+  )
 
   useEffect(() => {
     async function fetchEvents() {
@@ -226,6 +232,8 @@ export function MyEvents() {
           onDismiss={() => setSuccessMsg('')}
         />
       )}
+
+      {hasTrialEvent && <FloatingContactButton variant="compact" location="events" />}
     </main>
   )
 }

@@ -15,6 +15,7 @@ import { getLockedTemplate, completeTemplateImport, LOCKED_TEMPLATE_CHANGED } fr
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 import { trackEventEditStart, trackCtaClick, trackActivationOptionsViewed } from '@/lib/analytics'
+import { FloatingContactButton } from '@/components/layout/FloatingContactButton'
 import type { Event, EventCounts } from '@/types'
 
 interface ControlCenterProps {
@@ -281,6 +282,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
             />
           )}
       </main>
+      {isTrial && <FloatingContactButton variant="compact" location="control" />}
     </div>
   )
 }
