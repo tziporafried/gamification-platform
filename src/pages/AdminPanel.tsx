@@ -36,6 +36,7 @@ interface AdminUser {
   avatar_url: string | null
   role: string
   created_at: string
+  last_sign_in_at: string | null
   event_count: number
   event_names: string
 }
@@ -100,6 +101,14 @@ function planLabel(plan: UserPlan) {
 
 function planColor(plan: UserPlan) {
   return PLAN_OPTIONS.find(p => p.value === plan)?.color ?? 'text-gray-400'
+}
+
+function formatLastSignIn(iso: string | null) {
+  if (!iso) return 'טרם התחבר'
+  const d = new Date(iso)
+  const date = d.toLocaleDateString('he-IL')
+  const time = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+  return `${date} ${time}`
 }
 
 export function AdminPanel() {
@@ -429,6 +438,9 @@ export function AdminPanel() {
                         <p className="text-xs text-muted mt-0.5">
                           הצטרף {new Date(user.created_at).toLocaleDateString('he-IL')}
                           {user.event_count > 0 && <> · {user.event_count} אירועים</>}
+                        </p>
+                        <p className="text-xs text-muted mt-0.5">
+                          כניסה אחרונה: {formatLastSignIn(user.last_sign_in_at)}
                         </p>
                       </div>
                     </div>
