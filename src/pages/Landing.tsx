@@ -40,17 +40,6 @@ const FEATURES = [
 
 const FAQ_ITEMS: { question: string; answer: ReactNode }[] = [
   {
-    question: 'כמה עולה להשתמש במערכת?',
-    answer: (
-      <>
-        <Link to="/plans" className="font-medium text-primary hover:underline">
-          בדף המחירון
-        </Link>
-        {' '}תמצאו את המסלולים - משחק עצמאי, חוויה מלאה ופתרון לארגונים - ואפשר גם לשלוח בקשה ונחזור אליכם.
-      </>
-    ),
-  },
-  {
     question: 'כמה זמן לוקח להקים משחק?',
     answer: 'ברוב המקרים ניתן להקים משחק ראשון בתוך מספר דקות בתהליך הקמה קליל - מהגדרת פרטי האירוע ועד להדפסת כרטיסי QR.',
   },
@@ -78,6 +67,17 @@ const FAQ_ITEMS: { question: string; answer: ReactNode }[] = [
     question: 'אפשר להוסיף משימה לזמן קצוב?',
     answer: 'בהחלט. אפשר להגדיר משימה שתקפה רק לחלון זמן מסוים - למשל חצי שעה. זה מוסיף מתח, מגביר את הכיף ומחזק את התחרות בין המשתתפים.',
   },
+  {
+    question: 'כמה עולה להשתמש במערכת?',
+    answer: (
+      <>
+        <Link to="/plans" className="font-medium text-primary hover:underline">
+          בדף המחירון
+        </Link>
+        {' '}תמצאו את המסלולים - משחק עצמאי, חוויה מלאה ופתרון לארגונים - ואפשר גם לשלוח בקשה ונחזור אליכם.
+      </>
+    ),
+  },
 ]
 
 export function Landing() {
@@ -100,7 +100,7 @@ export function Landing() {
       <GlobalHeader />
 
       <main className="relative z-10 mx-auto max-w-4xl px-4 pb-20 pt-12 sm:px-6">
-        <section className="mx-auto mb-20 max-w-2xl text-center sm:mb-[88px]">
+        <section className="mx-auto mb-10 max-w-2xl text-center sm:mb-12">
           <BrandLogo className="mx-auto mb-6 h-28 w-28 sm:h-36 sm:w-36" />
           <h1 className="mb-5 text-[34px] font-black leading-[1.2] text-foreground sm:text-[42px]">
             סבתא? דודה?
@@ -124,23 +124,24 @@ export function Landing() {
             הופכים את כל הנופש לכיף אחד גדול עם משימות, אתגרים, תחרויות, ניקוד, פרסים ולוח אלופים שכווווולם רוצים לכבוש.
           </p>
 
-          <p className="mx-auto mb-9 max-w-[500px] text-base font-bold leading-[1.6] text-primary [text-shadow:0_0_18px_rgba(171,53,0,0.35)]">
+          <p className="mx-auto mb-0 max-w-[500px] text-base font-bold leading-[1.6] text-primary [text-shadow:0_0_18px_rgba(171,53,0,0.35)]">
             פחות שעמום, יותר צחוק, יותר גיבוש, ורגעים שלא שוכחים.
           </p>
-
-          <Button
-            size="lg"
-            variant="gradient"
-            onClick={() => navigate('/login')}
-            className="landing-hero-cta !rounded-full !px-12 !py-4 !text-[19px] !font-extrabold"
-          >
-            בואו נשחק
-          </Button>
         </section>
 
         <section className="mb-20 sm:mb-[88px]">
           <div className="w-full overflow-hidden rounded-2xl bg-foreground/5 shadow-lift">
             <LandingDemoVideo />
+          </div>
+          <div className="mt-10 text-center">
+            <Button
+              size="lg"
+              variant="gradient"
+              onClick={() => navigate('/login')}
+              className="landing-hero-cta !rounded-full !px-12 !py-4 !text-[19px] !font-extrabold"
+            >
+              בואו נשחק
+            </Button>
           </div>
         </section>
 
@@ -206,7 +207,7 @@ export function Landing() {
             size="lg"
             variant="gradient"
             onClick={handleCreateEventClick}
-            className="!rounded-xl !px-7 !py-3.5 !text-base !font-semibold"
+            className="landing-hero-cta !rounded-full !px-12 !py-4 !text-[19px] !font-extrabold"
           >
             צרו את האירוע הראשון שלכם
           </Button>

@@ -1,0 +1,17 @@
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+# Archived demo recordings (large binary files)
+/recordings/
+
+# Generated assets
+/assets/*.wav
+/assets/*.mp3
+/out/
+node_modules/
