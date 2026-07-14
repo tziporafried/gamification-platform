@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { canPerformAction } from '@/lib/canPerformAction'
 import { countCompletionsOnIsraelDate } from '@/lib/israelTime'
+import { isTrialScanLimitError } from '@/lib/plans'
 import type { NewlyAwardedReward } from '@/types'
 
 export interface ScoreSubmitResult {
@@ -17,11 +18,15 @@ export interface ScoreSubmitResult {
   points: number
   participantTotalPoints: number
   celebrationRewards: NewlyAwardedReward[]
+  /** Total successful scans for this event after this insert (1-based for the new scan). */
+  eventScanCount: number
 }
+
+export type ScoreSubmitErrorCode = 'TRIAL_SCAN_LIMIT_REACHED'
 
 export type ScoreSubmitResponse =
   | { ok: true; result: ScoreSubmitResult }
-  | { ok: false; error: string }
+  | { ok: false; error: string; code?: ScoreSubmitErrorCode }
 
 interface UseScoreSubmitReturn {
   submit: (participantCode: string, actionCode: string) => Promise<ScoreSubmitResponse>
@@ -161,7 +166,13 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
         .select('id')
         .single()
 
-      if (insertError) throw insertError
+      if (insertError) {
+        if (isTrialScanLimitError(insertError.message)) {
+          setSubmitting(false)
+          return { ok: false, error: insertError.message, code: 'TRIAL_SCAN_LIMIT_REACHED' }
+        }
+        throw insertError
+      }
 
       const { data: participantTransactions, error: totalError } = await supabase
         .from('point_transactions')
@@ -175,6 +186,24 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
         (sum, tx) => sum + (tx.points ?? 0),
         0,
       )
+
+      const { count: eventScanCountFallback, error: scanCountError } = await supabase
+        .from('point_transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('event_id', eventId)
+
+      if (scanCountError) throw scanCountError
+
+      const { data: eventQuota } = await supabase
+        .from('events')
+        .select('plan, trial_scans_used')
+        .eq('id', eventId)
+        .maybeSingle()
+
+      const eventScanCount =
+        eventQuota?.plan === 'free' && typeof eventQuota.trial_scans_used === 'number'
+          ? eventQuota.trial_scans_used
+          : (eventScanCountFallback ?? 0)
 
       let celebrationRewards: NewlyAwardedReward[] = []
       try {
@@ -203,13 +232,18 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
           points: action.points,
           participantTotalPoints,
           celebrationRewards,
+          eventScanCount,
         },
       }
     } catch (err) {
-      const error = err instanceof Error ? err.message : 'משהו השתבש.'
-      setLastError(error)
+      const message = err instanceof Error ? err.message : 'משהו השתבש.'
+      if (isTrialScanLimitError(message)) {
+        setSubmitting(false)
+        return { ok: false, error: message, code: 'TRIAL_SCAN_LIMIT_REACHED' }
+      }
+      setLastError(message)
       setSubmitting(false)
-      return { ok: false, error }
+      return { ok: false, error: message }
     }
   }, [eventId, user])
 

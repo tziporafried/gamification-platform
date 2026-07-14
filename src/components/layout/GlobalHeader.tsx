@@ -69,7 +69,7 @@ export function GlobalHeader() {
                   className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
                 >
                   <Sparkles size={16} />
-                  <span className="hidden sm:inline">{currentPlan === 'independent' ? 'רוצה לשדרג?' : 'רוצה לשחק?'}</span>
+                  <span className="hidden sm:inline">לצפייה באפשרויות</span>
                 </button>
               )}
 

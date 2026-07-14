@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Calendar, Share2 } from 'lucide-react'
+import { Plus, Calendar, Share2, ChevronLeft } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { Tooltip } from '@/components/ui/Tooltip'
 import { Modal } from '@/components/ui/Modal'
 import { ModalActions } from '@/components/ui/ModalActions'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
@@ -15,7 +16,7 @@ import { PageTitle } from '@/components/ui/PageTitle'
 import { ShareEventModal } from '@/components/ShareEventModal'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { fetchEventsPlayMeta, type EventPlayMeta } from '@/lib/eventsPlayMeta'
-import { EventPlayStatus, resolveEventPlayStatus, EVENT_PLAY_STATUS } from '@/components/event/EventPlayStatus'
+import { EventPlayStatus, resolveEventPlayStatus, EVENT_PLAY_STATUS, ACTIVATION_MODE_LABELS } from '@/components/event/EventPlayStatus'
 import { isEventReady, getWizardPrefs } from '@/lib/wizard'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
 import {
@@ -24,6 +25,8 @@ import {
   trackEventDeleted,
   trackEventOpen,
   trackAppError,
+  trackActivationOptionsClicked,
+  trackCtaClick,
 } from '@/lib/analytics'
 import type { Event as GameEvent } from '@/types'
 import { cn } from '@/lib/utils'
@@ -237,7 +240,7 @@ interface EventRowProps {
 
 function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: EventRowProps) {
   const { isSuperAdmin } = useAuth()
-  const isFreePlan = !isSuperAdmin && gameEvent.plan === 'free'
+  const isTrial = !isSuperAdmin && gameEvent.plan === 'free'
   const navigate = useNavigate()
 
   const isReady = useMemo(() => {
@@ -247,10 +250,11 @@ function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: Ev
 
   const playStatus = useMemo(() => {
     if (!playMeta) return 'preparing' as const
-    return resolveEventPlayStatus(isReady, playMeta.totalScans)
-  }, [isReady, playMeta])
+    return resolveEventPlayStatus(isReady, playMeta.totalScans, { isTrial })
+  }, [isReady, playMeta, isTrial])
 
   const statusColor = EVENT_PLAY_STATUS[playStatus].color
+  const activationLabel = !isSuperAdmin ? ACTIVATION_MODE_LABELS[gameEvent.plan] : null
 
   function navigateToPlay() {
     if (isReady) {
@@ -269,6 +273,18 @@ function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: Ev
   function handleShare(e: React.MouseEvent) {
     e.stopPropagation()
     onShare()
+  }
+
+  function handleTrialBadgeClick(e: React.MouseEvent | React.KeyboardEvent) {
+    e.stopPropagation()
+    e.preventDefault()
+    trackActivationOptionsClicked(gameEvent.id, 'events_page_trial_badge')
+    trackCtaClick({
+      cta_name: 'view_activation_options',
+      cta_location: 'events_page_trial_badge',
+      destination: '/plans',
+    })
+    navigate(`/plans?event=${gameEvent.id}&source=events_page_trial_badge`)
   }
 
   return (
@@ -300,7 +316,51 @@ function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: Ev
           <p className="shrink-0 text-[11px] leading-none text-muted/45">
             נוצר {new Date(gameEvent.created_at).toLocaleDateString('he-IL')}
           </p>
-          {isFreePlan && <Badge label="משחק התנסות" color="var(--color-primary)" variant="quiet" />}
+          {isTrial ? (
+            <Tooltip
+              portal
+              rich
+              side="bottom"
+              content={
+                <span className="block space-y-1.5">
+                  <span className="block text-[13px] font-bold leading-snug text-foreground">
+                    מוכנים להפעיל את המשחק באירוע?
+                  </span>
+                  <span className="block text-xs leading-relaxed text-muted">
+                    בחרו את אפשרות ההפעלה שמתאימה לכם והמשיכו להפעלת המשחק.
+                  </span>
+                </span>
+              }
+            >
+              <button
+                type="button"
+                onClick={handleTrialBadgeClick}
+                onKeyDown={(e) => {
+                  e.stopPropagation()
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    handleTrialBadgeClick(e)
+                  }
+                }}
+                className={cn(
+                  'inline-flex shrink-0 items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium',
+                  'cursor-pointer transition-colors duration-[180ms] ease-out',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-1',
+                  'hover:brightness-[0.97]',
+                )}
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-elevated))',
+                  color: 'color-mix(in srgb, var(--color-primary) 78%, var(--color-muted))',
+                  border: '1px solid color-mix(in srgb, var(--color-primary) 18%, transparent)',
+                }}
+                aria-label="התנסות — מוכנים להפעיל את המשחק באירוע? בחרו אופן הפעלה"
+              >
+                <span>התנסות</span>
+                <ChevronLeft size={12} strokeWidth={2.5} className="opacity-70" aria-hidden />
+              </button>
+            </Tooltip>
+          ) : activationLabel ? (
+            <Badge label={activationLabel} color="var(--color-primary)" variant="quiet" />
+          ) : null}
         </div>
       </div>
 

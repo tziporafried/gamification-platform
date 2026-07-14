@@ -4,7 +4,8 @@ import { Check, X, CheckCircle, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { trackSelectPlan, trackViewPlans, trackGenerateLead, trackAppError } from '@/lib/analytics'
+import { trackSelectPlan, trackViewPlans, trackGenerateLead, trackAppError, trackActivationOptionsViewed } from '@/lib/analytics'
+import { TrialActivationResetModal } from '@/components/TrialActivationResetModal'
 
 type Option = 'independent' | 'full' | 'organizations'
 
@@ -38,6 +39,7 @@ export function PlansPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const eventId = searchParams.get('event')
+  const activationSource = searchParams.get('source')
   const { user, profile } = useAuth()
   const formRef = useRef<HTMLDivElement>(null)
 
@@ -52,10 +54,19 @@ export function PlansPage() {
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
   const [currentPlan, setCurrentPlan] = useState<string | null>(null)
+  const [pendingOption, setPendingOption] = useState<Option | null>(null)
+  const [resetModalOpen, setResetModalOpen] = useState(false)
 
   useEffect(() => {
     trackViewPlans(Boolean(eventId))
   }, [eventId])
+
+  useEffect(() => {
+    if (!eventId) return
+    if (activationSource === 'trial_scan_limit' || activationSource === 'game_home_trial' || activationSource === 'events_page_trial_badge') {
+      trackActivationOptionsViewed(eventId, activationSource)
+    }
+  }, [eventId, activationSource])
 
   useEffect(() => {
     if (profile?.display_name) setFullName(profile.display_name)
@@ -82,10 +93,23 @@ export function PlansPage() {
   }, [selectedOption])
 
   function handleChoose(option: Option) {
-    setSelectedOption(option)
     setSubmitted(false)
     setError('')
+    if (currentPlan === 'free') {
+      setPendingOption(option)
+      setResetModalOpen(true)
+      return
+    }
+    setSelectedOption(option)
     trackSelectPlan(option, Boolean(eventId))
+  }
+
+  function handleResetContinue() {
+    if (!pendingOption) return
+    setSelectedOption(pendingOption)
+    trackSelectPlan(pendingOption, Boolean(eventId))
+    setResetModalOpen(false)
+    setPendingOption(null)
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -147,6 +171,12 @@ export function PlansPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-10" dir="rtl">
+      <TrialActivationResetModal
+        isOpen={resetModalOpen}
+        onClose={() => { setResetModalOpen(false); setPendingOption(null) }}
+        onContinue={handleResetContinue}
+      />
+
       <button
         onClick={() => navigate(-1)}
         className="mb-10 flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors"
@@ -158,12 +188,12 @@ export function PlansPage() {
       {/* Header */}
       <div className="mb-10 text-center">
         <h1 className="text-2xl font-bold text-foreground mb-3 leading-snug">
-          איך תרצו להפעיל את המשחק באירוע שלכם?
+          איך תרצו להפעיל את המשחק?
         </h1>
         <p className="text-muted text-sm max-w-lg mx-auto leading-relaxed">
-          בחרו את האפשרות המתאימה לכם.
+          בחרו את האפשרות שמתאימה לאירוע שלכם.
           <br />
-          לאחר הבחירה ניצור אתכם קשר ונעזור לכם להפיק אירוע בלתי נשכח.
+          לאחר הבחירה תוכלו להמשיך להכין את המשחק.
         </p>
       </div>
 

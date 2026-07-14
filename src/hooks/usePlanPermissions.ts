@@ -1,10 +1,12 @@
 import type { UserPlan } from '@/types'
 
-const QR_SCAN_PLANS = ['full', 'organizations'] as const
+/** Plans with live QR scanning (trial included — capped server-side at 5 scans). */
+const QR_SCAN_PLANS = ['free', 'full', 'organizations'] as const
 
 export function usePlanPermissions(plan: UserPlan) {
   return {
     canScanQR: (QR_SCAN_PLANS as readonly string[]).includes(plan),
-    showLockedScanner: plan === 'free',
+    /** Locked decorative scanner teaser — no longer used; trial scans for real. */
+    showLockedScanner: false,
   }
 }

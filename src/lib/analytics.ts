@@ -307,12 +307,70 @@ export function trackScanSuccess(source: 'qr_scan' | 'manual_entry') {
 }
 
 export function trackScanFailed(
-  errorType: 'not_started' | 'invalid_qr' | 'submit_failed',
+  errorType: 'not_started' | 'invalid_qr' | 'submit_failed' | 'trial_scan_limit',
   source?: 'qr_scan' | 'manual_entry',
 ) {
   trackEvent('scan_failed', {
     error_type: errorType,
     ...(source ? { source } : {}),
+  })
+}
+
+/** Successful trial-mode scan (event still on free / trial plan). */
+export function trackTrialScanCompleted(eventId: string, scanNumber: number) {
+  trackEvent('trial_scan_completed', {
+    event_id: eventId,
+    scan_number: scanNumber,
+  })
+}
+
+/** User attempted a scan after exhausting the trial quota. */
+export function trackTrialScanLimitReached(eventId: string, allowedScans: number) {
+  trackEvent('trial_scan_limit_reached', {
+    event_id: eventId,
+    allowed_scans: allowedScans,
+  })
+}
+
+/** User clicked a CTA that opens activation options. */
+export function trackActivationOptionsClicked(
+  eventId: string,
+  source: 'events_page_trial_badge',
+) {
+  trackEvent('activation_options_clicked', {
+    event_id: eventId,
+    source,
+  })
+}
+
+/** User opened activation options from trial UX (game home or scan-limit modal). */
+export function trackActivationOptionsViewed(
+  eventId: string,
+  source: 'trial_scan_limit' | 'game_home_trial' | 'events_page_trial_badge',
+) {
+  trackEvent('activation_options_viewed', {
+    event_id: eventId,
+    source,
+  })
+}
+
+/** Trial event successfully moved to a real activation mode. */
+export function trackTrialActivated(
+  eventId: string,
+  activationMode: string,
+  trialScansUsed: number,
+) {
+  trackEvent('trial_activated', {
+    event_id: eventId,
+    activation_mode: activationMode,
+    trial_scans_used: trialScansUsed,
+  })
+}
+
+/** Trial runtime activity data wiped after activation. */
+export function trackTrialDataReset(eventId: string) {
+  trackEvent('trial_data_reset', {
+    event_id: eventId,
   })
 }
 

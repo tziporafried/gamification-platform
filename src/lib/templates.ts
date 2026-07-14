@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase'
-import { FREE_PLAN_LIMITS } from '@/lib/plans'
 import { setWizardPrefs } from '@/lib/wizard'
 import type {
   ActivityTemplate,
@@ -434,16 +433,16 @@ export async function applyActivityTemplate(
     }
   }
 
-  const groupLimit  = isFreePlan ? FREE_PLAN_LIMITS.groups  : template.groups.length
-  const taskLimit   = isFreePlan ? FREE_PLAN_LIMITS.actions : template.tasks.length
-  const rewardLimit = isFreePlan ? FREE_PLAN_LIMITS.rewards : template.rewards.length
+  // Trial mode no longer clips template content — import the full template.
+  // `isFreePlan` kept for call-site API compatibility.
+  void isFreePlan
 
-  const importedGroups  = template.groups.slice(0, groupLimit)
-  const importedTasks   = template.tasks.slice(0, taskLimit)
-  const importedRewards = template.rewards.slice(0, rewardLimit)
-  const lockedGroups    = template.groups.slice(groupLimit)
-  const lockedTasks     = template.tasks.slice(taskLimit)
-  const lockedRewards   = template.rewards.slice(rewardLimit)
+  const importedGroups  = template.groups
+  const importedTasks   = template.tasks
+  const importedRewards = template.rewards
+  const lockedGroups: typeof template.groups = []
+  const lockedTasks: typeof template.tasks = []
+  const lockedRewards: typeof template.rewards = []
 
   const [existingGroupsRes, existingActionsRes, existingRewardsRes] = await Promise.all([
     template.group_type === 'custom'

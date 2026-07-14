@@ -4,12 +4,11 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { fetchActivityTemplates, applyActivityTemplate, templateGroupType, formatTemplateError } from '@/lib/templates'
 import { saveLockedTemplate } from '@/lib/lockedTemplate'
-import { useAuth } from '@/contexts/AuthContext'
 import type { ActivityTemplateWithContent, GroupType, UserPlan } from '@/types'
 
 interface TemplatePickerModalProps {
   eventId: string
-  /** The event's own plan — determines whether premium template content is locked. */
+  /** Event activation mode — reserved for call-site compatibility. */
   plan: UserPlan
   isOpen: boolean
   onChooseScratch: () => void
@@ -25,10 +24,8 @@ export function TemplatePickerModal({
   onChooseScratch,
   onTemplateApplied,
 }: TemplatePickerModalProps) {
-  const { isSuperAdmin } = useAuth()
-  // Plan lives on the event (migration 035); only free-plan events lock the
-  // extra template content. Super admins bypass all plan limits.
-  const isFreePlan = plan === 'free' && !isSuperAdmin
+  // Trial mode no longer clips template content; `plan` kept for call-site API.
+  void plan
   const [screen, setScreen] = useState<Screen>('choose')
   const [templates, setTemplates] = useState<ActivityTemplateWithContent[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(false)
@@ -60,7 +57,7 @@ export function TemplatePickerModal({
     setApplying(template.id)
     setError('')
     try {
-      const result = await applyActivityTemplate(eventId, template, isFreePlan)
+      const result = await applyActivityTemplate(eventId, template, false)
 
       if (result.isPartial) {
         const importedGroupNames = new Set(result.importedNames.groups)

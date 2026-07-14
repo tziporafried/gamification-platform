@@ -42,6 +42,12 @@ Build verified: `npm run build` passes. Analytics-only instrumentation (no UI / 
 | `scanner_view` | Kiosk / scanner screen opened | `plan` | `EventKioskPage.tsx` |
 | `scan_success` | Successful QR scan or manual entry | `source` (`qr_scan` \| `manual_entry`) | `EventKioskPage.tsx` |
 | `scan_failed` | Scan / score submit failed | `error_type`, `source` | `EventKioskPage.tsx` |
+| `trial_scan_completed` | Successful scan while event is in trial (`plan=free`) | `event_id`, `scan_number` | `EventKioskPage.tsx` |
+| `trial_scan_limit_reached` | Scan attempted after trial quota exhausted | `event_id`, `allowed_scans` | `EventKioskPage.tsx` |
+| `activation_options_viewed` | Plans page opened from trial UX | `event_id`, `source` (`trial_scan_limit` \| `game_home_trial` \| `events_page_trial_badge`) | `PlansPage.tsx` |
+| `activation_options_clicked` | Click on My Events trial badge CTA | `event_id`, `source` (`events_page_trial_badge`) | `MyEvents.tsx` |
+| `trial_activated` | Event left trial for a real activation mode | `event_id`, `activation_mode`, `trial_scans_used` | `AdminPanel.tsx` (after `update_event_plan`) |
+| `trial_data_reset` | Trial runtime scores/rewards wiped on activation | `event_id` | `AdminPanel.tsx` |
 | `prize_revealed` | Prize celebration after successful scan | `prize_type` (`milestone`), `prize_count` | `EventKioskPage.tsx` |
 | `leaderboard_view` | Leaderboard / display screen opened | — | `EventDisplay.tsx` |
 | `app_error` | Significant failure in a core flow | `error_area`, `error_type` | plans / event creation / scanner |
@@ -69,7 +75,8 @@ Build verified: `npm run build` passes. Analytics-only instrumentation (no UI / 
 | `after_video` | Below landing demo video |
 | `pricing` | FAQ pricing link |
 | `footer` | Landing bottom CTA |
-| `upgrade_modal` | Plan-limit upgrade modal |
+| `trial_scan_limit_modal` | Trial scan-quota activation modal |
+| `plan_limit_modal` | Paid-plan entity cap modal (e.g. 70 participants) |
 | `control_center` | Event control center actions |
 
 ---

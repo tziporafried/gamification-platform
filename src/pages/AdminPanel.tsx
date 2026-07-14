@@ -14,6 +14,8 @@ import { AdminStatusPill } from '@/components/ui/StatusBadge'
 import { DevTodoList } from '@/components/dev-todos/DevTodoList'
 import { TemplateAdminList } from '@/components/admin/TemplateAdminList'
 import { AdminAnalyticsDashboard } from '@/components/admin/analytics/AdminAnalyticsDashboard'
+import { TrialActivationResetModal } from '@/components/TrialActivationResetModal'
+import { trackTrialActivated, trackTrialDataReset } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 import type { UserPlan } from '@/types'
 
@@ -23,7 +25,7 @@ const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
   { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },
   { id: 'templates', label: 'תבניות', icon: Sparkles },
   { id: 'customers', label: 'לקוחות', icon: Users },
-  { id: 'upgrade-requests', label: 'פניות שדרוג', icon: MessageSquare },
+  { id: 'upgrade-requests', label: 'פניות הפעלה', icon: MessageSquare },
   { id: 'analytics', label: 'אנליטיקות', icon: BarChart3 },
 ]
 
@@ -84,7 +86,7 @@ const LIMIT_TYPE_TO_PLAN: Record<string, string> = {
 }
 
 const PLAN_OPTIONS: { value: UserPlan; label: string; color: string }[] = [
-  { value: 'free',          label: 'חינמי',      color: 'text-gray-400' },
+  { value: 'free',          label: 'התנסות',    color: 'text-gray-400' },
   { value: 'independent',   label: 'עצמאי',      color: 'text-blue-400' },
   { value: 'full',          label: 'מלא',        color: 'text-green-400' },
   { value: 'organizations', label: 'ארגונים',    color: 'text-amber-400' },
@@ -127,6 +129,17 @@ export function AdminPanel() {
   const [deleteRequestTarget, setDeleteRequestTarget] = useState<UpgradeRequest | null>(null)
   const [deletingRequest, setDeletingRequest] = useState(false)
   const [deleteRequestError, setDeleteRequestError] = useState<string | null>(null)
+
+  // Trial → activation confirm (clears trial runtime data once)
+  const [pendingPlanChange, setPendingPlanChange] = useState<{
+    kind: 'dropdown' | 'request'
+    userId?: string
+    requestId?: string
+    eventId: string
+    previousPlan: UserPlan
+    newPlan: UserPlan
+  } | null>(null)
+  const [activatingPlan, setActivatingPlan] = useState(false)
 
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true)
@@ -189,23 +202,98 @@ export function AdminPanel() {
     setLoadingEventsFor(prev => { const next = new Set(prev); next.delete(userId); return next })
   }
 
-  async function changeEventPlan(userId: string, eventId: string, newPlan: UserPlan) {
-    setUpdatingEventPlanId(eventId)
-    const { error } = await supabase.rpc('update_event_plan', {
+  async function applyEventPlanChange(
+    eventId: string,
+    newPlan: UserPlan,
+    opts?: { userId?: string; requestId?: string },
+  ) {
+    const { data, error } = await supabase.rpc('update_event_plan', {
       p_event_id: eventId,
       p_new_plan: newPlan,
     })
-    if (!error) {
+    if (error) return { ok: false as const, error }
+
+    const result = data as {
+      previous_plan?: string
+      new_plan?: string
+      did_reset?: boolean
+      trial_scans_used?: number
+    } | null
+
+    if (opts?.userId) {
       setUserEvents(prev => {
-        const events = prev.get(userId)
+        const events = prev.get(opts.userId!)
         if (!events) return prev
         return new Map(prev).set(
-          userId,
-          events.map(e => e.event_id === eventId ? { ...e, plan: newPlan } : e)
+          opts.userId!,
+          events.map(e => e.event_id === eventId ? { ...e, plan: newPlan } : e),
         )
       })
     }
-    setUpdatingEventPlanId(null)
+
+    if (opts?.requestId) {
+      await updateRequestStatus(opts.requestId, 'closed')
+    }
+
+    if (result?.previous_plan === 'free' && result.new_plan && result.new_plan !== 'free') {
+      trackTrialActivated(eventId, result.new_plan, result.trial_scans_used ?? 0)
+      if (result.did_reset) {
+        trackTrialDataReset(eventId)
+      }
+    }
+
+    return { ok: true as const }
+  }
+
+  function requestEventPlanChange(
+    userId: string,
+    eventId: string,
+    previousPlan: UserPlan,
+    newPlan: UserPlan,
+  ) {
+    if (previousPlan === newPlan) return
+    if (previousPlan === 'free' && newPlan !== 'free') {
+      setPendingPlanChange({ kind: 'dropdown', userId, eventId, previousPlan, newPlan })
+      return
+    }
+    void (async () => {
+      setUpdatingEventPlanId(eventId)
+      await applyEventPlanChange(eventId, newPlan, { userId })
+      setUpdatingEventPlanId(null)
+    })()
+  }
+
+  async function changeEventPlan(userId: string, eventId: string, newPlan: UserPlan) {
+    const events = userEvents.get(userId)
+    const previousPlan = events?.find(e => e.event_id === eventId)?.plan ?? 'free'
+    requestEventPlanChange(userId, eventId, previousPlan, newPlan)
+  }
+
+  function upgradeEventPlan(requestId: string, eventId: string, newPlan: string) {
+    setPendingPlanChange({
+      kind: 'request',
+      requestId,
+      eventId,
+      previousPlan: 'free',
+      newPlan: newPlan as UserPlan,
+    })
+  }
+
+  async function confirmPendingPlanChange() {
+    if (!pendingPlanChange) return
+    setActivatingPlan(true)
+    const { kind, userId, requestId, eventId, newPlan } = pendingPlanChange
+    if (kind === 'dropdown') {
+      setUpdatingEventPlanId(eventId)
+      await applyEventPlanChange(eventId, newPlan, { userId })
+      setUpdatingEventPlanId(null)
+    } else {
+      setUpgradingEventId(requestId!)
+      await applyEventPlanChange(eventId, newPlan, { requestId })
+      setUpgradingEventId(null)
+    }
+    setActivatingPlan(false)
+    setPendingPlanChange(null)
   }
 
   async function deleteUser() {
@@ -223,18 +311,6 @@ export function AdminPanel() {
     setExpandedUsers(prev => { const next = new Set(prev); next.delete(deleteTarget.user_id); return next })
     setDeletingUser(false)
     setDeleteTarget(null)
-  }
-
-  async function upgradeEventPlan(requestId: string, eventId: string, newPlan: string) {
-    setUpgradingEventId(requestId)
-    const { error } = await supabase.rpc('update_event_plan', {
-      p_event_id: eventId,
-      p_new_plan: newPlan,
-    })
-    if (!error) {
-      await updateRequestStatus(requestId, 'closed')
-    }
-    setUpgradingEventId(null)
   }
 
   async function updateRequestStatus(requestId: string, newStatus: string) {
@@ -434,14 +510,14 @@ export function AdminPanel() {
         ) : requests.length === 0 ? (
           <EmptyState
             icon={<MessageSquare size={32} />}
-            title="אין פניות שדרוג"
-            description="פניות שדרוג חדשות יופיעו כאן"
+            title="אין פניות הפעלה"
+            description="פניות חדשות להפעלת אירוע יופיעו כאן"
           />
         ) : (
           <>
             <SectionHeader
               icon={<MessageSquare size={18} className="text-accent" />}
-              title={`${requests.length} פניות שדרוג${newRequestCount > 0 ? ` (${newRequestCount} חדשות)` : ''}`}
+              title={`${requests.length} פניות הפעלה${newRequestCount > 0 ? ` (${newRequestCount} חדשות)` : ''}`}
               className="mb-6"
             />
 
@@ -482,7 +558,7 @@ export function AdminPanel() {
                           req.status === 'closed' ? (
                             <span className="flex items-center gap-1.5 text-sm font-semibold text-success">
                               <CheckCircle size={16} />
-                              שודרג
+                              הופעל
                             </span>
                           ) : (
                             <Button
@@ -491,7 +567,7 @@ export function AdminPanel() {
                               loading={upgradingEventId === req.id}
                               onClick={() => upgradeEventPlan(req.id, req.event_id!, LIMIT_TYPE_TO_PLAN[req.limit_type])}
                             >
-                              שדרג אירוע
+                              הפעל אירוע
                             </Button>
                           )
                         )}
@@ -514,6 +590,13 @@ export function AdminPanel() {
       )}
 
       {tab === 'analytics' && <AdminAnalyticsDashboard />}
+
+      <TrialActivationResetModal
+        isOpen={pendingPlanChange !== null}
+        onClose={() => { if (!activatingPlan) setPendingPlanChange(null) }}
+        onContinue={() => void confirmPendingPlanChange()}
+        loading={activatingPlan}
+      />
 
       <ConfirmModal
         isOpen={deleteTarget !== null}
@@ -544,7 +627,7 @@ export function AdminPanel() {
       <ConfirmModal
         isOpen={deleteRequestTarget !== null}
         onClose={() => setDeleteRequestTarget(null)}
-        title="מחיקת פניית שדרוג"
+        title="מחיקת פניית הפעלה"
         confirmLabel="מחק פנייה"
         onConfirm={deleteRequest}
         loading={deletingRequest}

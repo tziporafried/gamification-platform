@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
+import type { UserPlan } from '@/types'
 
-export type EventPlayStatusKind = 'preparing' | 'ready' | 'active'
+export type EventPlayStatusKind = 'preparing' | 'settings_complete' | 'ready' | 'active'
 
 export interface EventPlayStatusConfig {
   label: string
@@ -16,6 +17,12 @@ export const EVENT_PLAY_STATUS: Record<EventPlayStatusKind, EventPlayStatusConfi
     dotClass: 'bg-warning',
     textClass: 'text-warning',
   },
+  settings_complete: {
+    label: 'ההגדרות הושלמו',
+    color: 'var(--color-secondary)',
+    dotClass: 'bg-secondary',
+    textClass: 'text-secondary',
+  },
   ready: {
     label: 'מוכן למשחק',
     color: 'var(--color-secondary)',
@@ -30,8 +37,20 @@ export const EVENT_PLAY_STATUS: Record<EventPlayStatusKind, EventPlayStatusConfi
   },
 }
 
-export function resolveEventPlayStatus(ready: boolean, totalScans: number): EventPlayStatusKind {
+export const ACTIVATION_MODE_LABELS: Record<UserPlan, string> = {
+  free: 'התנסות',
+  independent: 'משחק עצמאי',
+  full: 'חוויה מלאה',
+  organizations: 'פתרון לארגונים',
+}
+
+export function resolveEventPlayStatus(
+  ready: boolean,
+  totalScans: number,
+  opts?: { isTrial?: boolean },
+): EventPlayStatusKind {
   if (!ready) return 'preparing'
+  if (opts?.isTrial) return 'settings_complete'
   if (totalScans > 0) return 'active'
   return 'ready'
 }

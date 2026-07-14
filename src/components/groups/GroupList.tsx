@@ -34,14 +34,14 @@ function LockedGroupCard({ group }: { group: ActivityTemplateGroup }) {
             <Lock size={16} className="text-muted" />
           </div>
           <div className="text-[9px] font-bold uppercase tracking-widest text-muted">
-            פרמיום
+            התנסות
           </div>
           <span className="w-full min-w-0 truncate text-xl font-bold leading-9 text-muted">
             {group.name}
           </span>
           <div className="flex justify-center">
-            <span className="rounded-full border border-warning bg-surface-elevated px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
-              שדרוג נדרש
+            <span className="rounded-full border border-border bg-surface-elevated px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-muted">
+              זמין באפשרויות הפעלה
             </span>
           </div>
         </div>

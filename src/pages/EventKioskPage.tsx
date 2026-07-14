@@ -39,8 +39,12 @@ import {
   trackScanSuccess,
   trackScanFailed,
   trackPrizeRevealed,
+  trackTrialScanCompleted,
+  trackTrialScanLimitReached,
   trackAppError,
 } from '@/lib/analytics'
+import { TrialScanLimitModal } from '@/components/TrialScanLimitModal'
+import { TRIAL_SCAN_LIMIT } from '@/lib/plans'
 import '@/styles/kiosk.css'
 
 const KIOSK_ACCENT = hexToRgb('#AB3500') ?? { r: 171, g: 53, b: 0 }
@@ -3167,19 +3171,21 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   }, [rotatableActions.length])
   const recommendedAction = rotatableActions[recommendedIdx] ?? null
 
-  // Scanner state — QR scanning is a premium feature.
-  //   • free plan → scanner is shown but locked (upgrade teaser)
-  //   • independent plan → no scanner at all; manual entry only, shown inline
+  // Scanner access by activation mode:
+  //   • free (trial) → live QR with server-enforced 5-scan trial quota
+  //   • independent → no scanner; manual entry only
   //   • full / organizations → live QR scanner
   const { canScanQR, showLockedScanner } = usePlanPermissions(event.plan)
   const scanningLocked = showLockedScanner
   const manualOnly = !canScanQR && !showLockedScanner
   const noScan = scanningLocked || manualOnly
+  const isTrial = event.plan === 'free'
   const { submit, submitting } = useScoreSubmit(event.id)
   const catalog = useEventCatalog(event.id)
   const [scanResult, setScanResult] = useState<ScanResultDisplay | null>(null)
   const [rewardWin, setRewardWin] = useState<RewardWinDisplay | null>(null)
   const [showManual, setShowManual] = useState(false)
+  const [trialLimitOpen, setTrialLimitOpen] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const scanDismissTimer = useRef<ReturnType<typeof setTimeout>>()
@@ -3263,6 +3269,12 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     })
   }, [])
 
+  const handleTrialLimit = useCallback(() => {
+    trackTrialScanLimitReached(event.id, TRIAL_SCAN_LIMIT)
+    trackScanFailed('trial_scan_limit', 'qr_scan')
+    setTrialLimitOpen(true)
+  }, [event.id])
+
   const handleScan = useCallback(async (raw: string) => {
     if (!gameStarted) {
       trackScanFailed('not_started', 'qr_scan')
@@ -3277,16 +3289,23 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     }
     const response = await submit(parsed.data.participantCode, parsed.data.actionCode)
     if (!response.ok) {
+      if (response.code === 'TRIAL_SCAN_LIMIT_REACHED') {
+        handleTrialLimit()
+        return
+      }
       trackScanFailed('submit_failed', 'qr_scan')
       showToast(response.error)
       return
     }
     trackScanSuccess('qr_scan')
+    if (isTrial) {
+      trackTrialScanCompleted(event.id, response.result.eventScanCount)
+    }
     logScoreSubmit('qr_scan', response.result)
     triggerScanSuccess(response.result, response.result.transactionId, reducedMotion)
-  }, [gameStarted, submit, showToast, logScoreSubmit, triggerScanSuccess, reducedMotion])
+  }, [gameStarted, submit, showToast, logScoreSubmit, triggerScanSuccess, reducedMotion, handleTrialLimit, isTrial, event.id])
 
-  const bind = useHardwareScanner(gameStarted && !showManual && !submitting && !noScan, handleScan)
+  const bind = useHardwareScanner(gameStarted && !showManual && !submitting && !noScan && !trialLimitOpen, handleScan)
 
   const handleManualSubmit = useCallback(async (participantCode: string, actionCode: string) => {
     if (!gameStarted) {
@@ -3296,15 +3315,25 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     }
     const response = await submit(participantCode, actionCode)
     if (!response.ok) {
+      if (response.code === 'TRIAL_SCAN_LIMIT_REACHED') {
+        trackTrialScanLimitReached(event.id, TRIAL_SCAN_LIMIT)
+        trackScanFailed('trial_scan_limit', 'manual_entry')
+        setShowManual(false)
+        setTrialLimitOpen(true)
+        return
+      }
       trackScanFailed('submit_failed', 'manual_entry')
       showToast(response.error)
       return
     }
     trackScanSuccess('manual_entry')
+    if (isTrial) {
+      trackTrialScanCompleted(event.id, response.result.eventScanCount)
+    }
     logScoreSubmit('manual_entry', response.result)
     setShowManual(false)
     triggerScanSuccess(response.result, response.result.transactionId, reducedMotion)
-  }, [gameStarted, submit, showToast, logScoreSubmit, triggerScanSuccess, reducedMotion])
+  }, [gameStarted, submit, showToast, logScoreSubmit, triggerScanSuccess, reducedMotion, isTrial, event.id])
 
   return (
     <div style={{
@@ -3647,6 +3676,12 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           ⚠️ {toastMsg}
         </div>
       )}
+
+      <TrialScanLimitModal
+        isOpen={trialLimitOpen}
+        onClose={() => setTrialLimitOpen(false)}
+        eventId={event.id}
+      />
     </div>
   )
 }

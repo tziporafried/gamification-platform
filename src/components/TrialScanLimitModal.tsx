@@ -3,44 +3,43 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { trackCtaClick } from '@/lib/analytics'
 
-interface UpgradeModalProps {
+interface TrialScanLimitModalProps {
   isOpen: boolean
   onClose: () => void
   eventId: string
 }
 
-/** Shown when a paid-plan entity cap is hit (e.g. 70 participants). */
-export function UpgradeModal({ isOpen, onClose, eventId }: UpgradeModalProps) {
+export function TrialScanLimitModal({ isOpen, onClose, eventId }: TrialScanLimitModalProps) {
   const navigate = useNavigate()
 
-  function handleStart() {
+  function handleViewOptions() {
     trackCtaClick({
       cta_name: 'view_activation_options',
-      cta_location: 'plan_limit_modal',
+      cta_location: 'trial_scan_limit_modal',
       destination: '/plans',
     })
     onClose()
-    navigate(`/plans?event=${eventId}`)
+    navigate(`/plans?event=${eventId}&source=trial_scan_limit`)
   }
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="הגעתם למגבלת המשתתפים"
+      title="מוכנים להפעיל את המשחק באירוע? 🎉"
       titleClassName="text-xl font-bold text-foreground"
     >
       <div className="flex flex-col gap-6 pt-1 pb-1">
         <div className="space-y-3 text-center">
           <p className="text-[15px] text-foreground leading-[1.75]">
-            באפשרות ההפעלה הנוכחית אפשר להוסיף עד 70 משתתפים.
+            השלמתם את סריקות הניסיון וראיתם איך המשחק עובד.
           </p>
           <p className="text-sm text-muted leading-[1.75]">
-            לצפייה באפשרויות הפעלה נוספות שמתאימות לאירוע שלכם.
+            כדי להמשיך לסרוק ולהפעיל את המשחק באירוע, בחרו את אפשרות ההפעלה שמתאימה לכם.
           </p>
         </div>
 
-        <Button variant="gradient" size="lg" className="w-full font-semibold tracking-wide" onClick={handleStart}>
+        <Button variant="gradient" size="lg" className="w-full font-semibold tracking-wide" onClick={handleViewOptions}>
           לצפייה באפשרויות
         </Button>
       </div>

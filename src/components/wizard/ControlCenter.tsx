@@ -14,7 +14,7 @@ import { calculateReadiness, isEventReady, getWizardPrefs, resolveGroupType } fr
 import { getLockedTemplate, completeTemplateImport, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
-import { trackEventEditStart, trackCtaClick } from '@/lib/analytics'
+import { trackEventEditStart, trackCtaClick, trackActivationOptionsViewed } from '@/lib/analytics'
 import type { Event, EventCounts } from '@/types'
 
 interface ControlCenterProps {
@@ -25,7 +25,7 @@ interface ControlCenterProps {
 export function ControlCenter({ event, counts }: ControlCenterProps) {
   const navigate = useNavigate()
   const { isSuperAdmin } = useAuth()
-  const isFreePlan = !isSuperAdmin && event.plan === 'free'
+  const isTrial = !isSuperAdmin && event.plan === 'free'
   const [settingsWarningOpen, setSettingsWarningOpen] = useState(false)
   useEventHeaderBreadcrumb(event.name, undefined, event.plan, event.id)
 
@@ -36,7 +36,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   // null so it no-ops). On failure the store is left in place and retried on the
   // next mount.
   useEffect(() => {
-    if (isFreePlan) return
+    if (isTrial) return
     let importing = false
     async function importLocked() {
       if (importing || !getLockedTemplate(event.id)) return
@@ -52,7 +52,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
     importLocked()
     window.addEventListener(LOCKED_TEMPLATE_CHANGED, importLocked)
     return () => window.removeEventListener(LOCKED_TEMPLATE_CHANGED, importLocked)
-  }, [event.id, isFreePlan])
+  }, [event.id, isTrial])
 
   const ready = isEventReady(event, counts)
   const checks = calculateReadiness(event, counts)
@@ -81,7 +81,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
     }),
     [liveStats, isGroupsMode, counts.rewards],
   )
-  const playStatus = resolveEventPlayStatus(ready, liveStats.totalScans)
+  const playStatus = resolveEventPlayStatus(ready, liveStats.totalScans, { isTrial })
 
   function handleAction(route: string) {
     trackCtaClick({
@@ -103,6 +103,16 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   function navigateToSettings() {
     trackEventEditStart(event.status === 'active')
     navigate(`/events/${event.id}/step/${getWizardPrefs(event.id).lastStep}`)
+  }
+
+  function handleChooseActivation() {
+    trackCtaClick({
+      cta_name: 'view_activation_options',
+      cta_location: 'control_center',
+      destination: '/plans',
+    })
+    trackActivationOptionsViewed(event.id, 'game_home_trial')
+    navigate(`/plans?event=${event.id}&source=game_home_trial`)
   }
 
   return (
@@ -134,7 +144,13 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
           ready && summaryItems.length > 0 ? 'pb-[4.5rem]' : 'pb-5',
         )}
       >
-          <motion.div className="mb-14 flex shrink-0 flex-col items-center text-center" initial={false}>
+          <motion.div
+            className={cn(
+              'flex shrink-0 flex-col items-center text-center',
+              isTrial && ready ? 'mb-10' : 'mb-14',
+            )}
+            initial={false}
+          >
             {event.logo_url && (
               <img
                 src={event.logo_url}
@@ -153,7 +169,34 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
               {event.name}
             </h1>
 
-            <EventPlayStatus status={playStatus} />
+            {isTrial && ready ? (
+              <p className="text-sm font-bold text-primary">✨ מצב התנסות</p>
+            ) : (
+              <EventPlayStatus status={playStatus} />
+            )}
+
+            {isTrial && ready && (
+              <div className="mt-3 max-w-md space-y-1.5 text-center lg:max-w-xl">
+                <p className="text-base font-bold leading-snug text-foreground sm:text-lg">
+                  המשחק שלכם מוכן! 🎉
+                </p>
+                <p className="text-sm leading-relaxed text-foreground/85">
+                  בצעו כמה סריקות ניסיון וצפו בתוצאות מתעדכנות בזמן אמת.
+                </p>
+                <p className="mx-auto w-full max-w-[20rem] text-xs font-medium leading-relaxed text-foreground/70 lg:max-w-none">
+                  בהפעלת המשחק, סריקות הניסיון יאופסו כדי שתתחילו מאפס.
+                </p>
+                <Button
+                  type="button"
+                  variant="gradient"
+                  size="md"
+                  className="mt-3 w-full font-semibold tracking-wide sm:w-auto sm:min-w-[13rem]"
+                  onClick={handleChooseActivation}
+                >
+                  לבחירת אופן הפעלה
+                </Button>
+              </div>
+            )}
           </motion.div>
 
           {!ready && (
@@ -179,9 +222,9 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
             <ControlActionCard
               onClick={() => handleAction('kiosk')}
               gradient="gradient-reward-legendary"
-              title="🔥 שחקו בלי להפסיק"
-              description="סרקו משימות וצברו נקודות"
-              cta="פתח ←"
+              title={isTrial ? 'נסו את המשחק 🎯' : '🔥 שחקו בלי להפסיק'}
+              description={isTrial ? 'בצעו סריקות ניסיון וצפו בתוצאות בזמן אמת' : 'סרקו משימות וצברו נקודות'}
+              cta={isTrial ? 'לסריקת ניסיון ←' : 'פתח ←'}
               decoration={
                 <motion.div
                   className="pointer-events-none absolute left-6 right-6 z-10 h-[2px] bg-white/35"
@@ -200,7 +243,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
               onClick={() => handleAction('display')}
               gradient="gradient-reward-rich"
               title="שיאים"
-              description="צפו בדירוג המתעדכן בזמן אמת"
+              description={isTrial ? 'צפו בתוצאות סריקות הניסיון' : 'צפו בדירוג המתעדכן בזמן אמת'}
               cta="צפו בדירוג ←"
               decoration={
                 <motion.div

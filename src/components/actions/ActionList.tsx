@@ -50,8 +50,8 @@ function LockedActionCard({ task }: { task: TemplateTask }) {
               <span className="text-[11px] leading-none" aria-hidden>⭐</span>
               +{task.points.toLocaleString()} נק׳
             </span>
-            <span className="inline-flex w-fit rounded-full border border-warning bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
-              שדרוג נדרש
+            <span className="inline-flex w-fit rounded-full border border-border bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted">
+              זמין באפשרויות הפעלה
             </span>
           </div>
         </div>
