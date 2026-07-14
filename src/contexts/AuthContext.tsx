@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
 import { User, isAuthRetryableFetchError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { consumePendingOAuthAuth } from '@/lib/analytics'
 import type { UserProfile } from '@/types'
 
 export type SignInOrSignUpResult =
@@ -62,6 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(u)
       if (u) {
         fetchProfile(u.id)
+        if (event === 'SIGNED_IN') {
+          consumePendingOAuthAuth(u.created_at)
+        }
       } else {
         setProfile(null)
       }

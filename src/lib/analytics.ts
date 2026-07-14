@@ -95,3 +95,44 @@ export function trackVideoComplete(videoId = 'gamify-tour') {
     video_title: 'Gamify tour',
   })
 }
+
+/** GA4 recommended event — successful login. */
+export function trackLogin(method: 'email' | 'google') {
+  trackEvent('login', { method })
+}
+
+/** GA4 recommended event — successful sign-up / account creation. */
+export function trackSignUp(method: 'email' | 'google') {
+  trackEvent('sign_up', { method })
+}
+
+const PENDING_AUTH_METHOD_KEY = 'gamify_pending_auth_method'
+
+/** Mark that an OAuth redirect is in progress so we can attribute the return. */
+export function markPendingAuthMethod(method: 'google') {
+  try {
+    sessionStorage.setItem(PENDING_AUTH_METHOD_KEY, method)
+  } catch {
+    /* private mode / blocked storage */
+  }
+}
+
+/**
+ * If the user just returned from OAuth, fire login/sign_up once and clear the flag.
+ * New accounts (created in the last 2 minutes) count as sign_up.
+ */
+export function consumePendingOAuthAuth(userCreatedAt: string | undefined) {
+  let method: string | null = null
+  try {
+    method = sessionStorage.getItem(PENDING_AUTH_METHOD_KEY)
+    if (method) sessionStorage.removeItem(PENDING_AUTH_METHOD_KEY)
+  } catch {
+    return
+  }
+  if (method !== 'google') return
+
+  const createdMs = userCreatedAt ? new Date(userCreatedAt).getTime() : NaN
+  const isNew = Number.isFinite(createdMs) && Date.now() - createdMs < 120_000
+  if (isNew) trackSignUp('google')
+  else trackLogin('google')
+}

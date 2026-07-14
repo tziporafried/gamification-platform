@@ -9,6 +9,7 @@ import { GoogleIcon } from '@/components/icons/GoogleIcon'
 import { Button } from '@/components/ui/Button'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Input } from '@/components/ui/Input'
+import { trackLogin, trackSignUp, markPendingAuthMethod } from '@/lib/analytics'
 import { safeReturnTo, cn } from '@/lib/utils'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -35,6 +36,7 @@ export function Login() {
     setError('')
     setGoogleLoading(true)
     try {
+      markPendingAuthMethod('google')
       await signInWithGoogle(returnTo)
     } catch {
       setError('שגיאה בהתחברות. נסו שוב.')
@@ -69,10 +71,16 @@ export function Login() {
 
     switch (result.status) {
       case 'signed-in':
+        trackLogin('email')
+        navigate(safeReturnTo(returnTo ?? null))
+        return
       case 'signed-up':
+        trackSignUp('email')
         navigate(safeReturnTo(returnTo ?? null))
         return
       case 'confirmation-required':
+        // Account was created; email confirmation still pending.
+        trackSignUp('email')
         setConfirmationRequired(true)
         return
       case 'error':
