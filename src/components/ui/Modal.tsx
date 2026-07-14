@@ -9,9 +9,11 @@ interface ModalProps {
   title: string
   titleClassName?: string
   children: ReactNode
+  /** Optional override for the dimming layer behind the dialog. */
+  overlayClassName?: string
 }
 
-export function Modal({ isOpen, onClose, title, titleClassName, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, titleClassName, children, overlayClassName }: ModalProps) {
   useEffect(() => {
     if (!isOpen) return
     function handleKey(e: KeyboardEvent) {
@@ -30,7 +32,7 @@ export function Modal({ isOpen, onClose, title, titleClassName, children }: Moda
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-foreground/50"
+        className={cn('absolute inset-0 bg-foreground/50', overlayClassName)}
         onClick={onClose}
         aria-hidden="true"
       />
