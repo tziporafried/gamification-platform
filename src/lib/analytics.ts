@@ -114,6 +114,17 @@ export function trackViewPlans(eventId?: string | null) {
   })
 }
 
+/** User opened the contact form (chose a plan option), even if they never submit. */
+export function trackContactClick(
+  planOption: string,
+  eventId?: string | null,
+) {
+  trackEvent('contact_click', {
+    plan_option: planOption,
+    ...(eventId ? { event_id: eventId } : {}),
+  })
+}
+
 const PENDING_AUTH_METHOD_KEY = 'gamify_pending_auth_method'
 
 /** Mark that an OAuth redirect is in progress so we can attribute the return. */

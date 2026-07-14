@@ -4,7 +4,7 @@ import { Check, X, CheckCircle, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { trackViewPlans } from '@/lib/analytics'
+import { trackContactClick, trackViewPlans } from '@/lib/analytics'
 
 type Option = 'independent' | 'full' | 'organizations'
 
@@ -85,6 +85,7 @@ export function PlansPage() {
     setSelectedOption(option)
     setSubmitted(false)
     setError('')
+    trackContactClick(option, eventId)
   }
 
   async function handleSubmit(e: FormEvent) {
