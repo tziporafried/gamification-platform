@@ -74,6 +74,7 @@ export async function fetchAnalyticsDashboard(
   }
 
   const payload = data as AnalyticsDashboardData
+
   if (!payload.contact) {
     payload.contact = {
       openUsers: 0,
@@ -84,6 +85,35 @@ export async function fetchAnalyticsDashboard(
       opensBySource: null,
       opensBySourceUnavailable: true,
     }
+  } else {
+    payload.contact.opensBySource ??= null
+    payload.contact.opensBySourceUnavailable ??= true
+  }
+
+  if (!payload.productInterest) {
+    payload.productInterest = {
+      plansViewedUsers: payload.overview?.pricingUsers ?? 0,
+      planSelectedUsers: 0,
+      leadUsers: payload.overview?.leadUsers ?? 0,
+      step2Rate: null,
+      step3Rate: null,
+      overallRate: null,
+      activationOptionsViewedUsers: 0,
+      activationOptionsClickedUsers: 0,
+      trialActivatedUsers: 0,
+      byPlan: null,
+      byPlanUnavailable: true,
+      activationBySource: null,
+      activationBySourceUnavailable: true,
+    }
+  } else {
+    payload.productInterest.activationOptionsViewedUsers ??= 0
+    payload.productInterest.activationOptionsClickedUsers ??= 0
+    payload.productInterest.trialActivatedUsers ??= 0
+    payload.productInterest.byPlan ??= null
+    payload.productInterest.byPlanUnavailable ??= true
+    payload.productInterest.activationBySource ??= null
+    payload.productInterest.activationBySourceUnavailable ??= true
   }
 
   return payload
