@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   AlertTriangle,
   BarChart3,
@@ -101,6 +101,18 @@ function toDonutSlices(items: { label: string; users: number }[] | null | undefi
       value: item.users,
       color: CHART_COLORS[i % CHART_COLORS.length],
     }))
+}
+
+/** Temporary review wrapper — grayed candidates pending deletion approval */
+function RemovalCandidate({ reason, children }: { reason: string; children: ReactNode }) {
+  return (
+    <div className="rounded-xl border border-dashed border-muted/60 bg-[color-mix(in_srgb,var(--color-muted)_8%,var(--color-surface))] opacity-60 grayscale">
+      <p className="border-b border-dashed border-muted/40 px-4 py-2 text-[11px] font-medium text-muted">
+        מועמד להסרה · {reason}
+      </p>
+      <div className="p-3">{children}</div>
+    </div>
+  )
 }
 
 export function AdminAnalyticsDashboard() {
@@ -249,10 +261,12 @@ export function AdminAnalyticsDashboard() {
       })
     }
 
-    if (perf.length === 0) {
-      for (const row of data?.utm.contentBreakdown ?? []) {
-        const key = row.content.trim().toLowerCase()
-        if (byCode.has(key)) continue
+    // Always merge contentBreakdown so session-only affiliates aren't dropped
+    // when linkPerformance already has at least one customEvent row.
+    for (const row of data?.utm.contentBreakdown ?? []) {
+      const key = row.content.trim().toLowerCase()
+      const existing = byCode.get(key)
+      if (!existing) {
         byCode.set(key, {
           content: row.content,
           source: null,
@@ -262,6 +276,8 @@ export function AdminAnalyticsDashboard() {
           plansViewUsers: 0,
           leadUsers: 0,
         })
+      } else if (row.users > existing.users) {
+        byCode.set(key, { ...existing, users: row.users })
       }
     }
 
@@ -269,7 +285,13 @@ export function AdminAnalyticsDashboard() {
     // once GA reports appear for that content code.
 
     return [...byCode.values()]
-      .filter((row) => row.users > 0)
+      .filter(
+        (row) =>
+          row.users > 0 ||
+          row.videoViewUsers > 0 ||
+          row.plansViewUsers > 0 ||
+          row.leadUsers > 0,
+      )
       .sort((a, b) => {
         if (b.users !== a.users) return b.users - a.users
         return (labelFor(a.content) ?? a.content).localeCompare(
@@ -550,84 +572,33 @@ export function AdminAnalyticsDashboard() {
             </section>
           )}
 
-          {/* Secondary: funnel */}
-          <section>
-            <Card className="space-y-1 p-5">
-              <div className="mb-1 flex items-center gap-2">
-                <Route size={16} className="text-secondary" />
-                <h2 className="text-sm font-semibold text-foreground">מסלול ההתעניינות</h2>
-              </div>
-              <FunnelChart
-                loading={loading}
-                infoTooltip={INTEREST_INFO}
-                steps={[
-                  { label: 'מבקרים', value: data.overview.homepageUsers },
-                  { label: 'צפו בסרטון', value: data.video.startedUsers },
-                  { label: 'צפו במחירים', value: data.overview.pricingUsers },
-                  { label: 'פתחו טופס', value: data.contact.openUsers },
-                  { label: 'השאירו פרטים', value: data.overview.leadUsers },
-                ]}
-                overallRate={data.overview.leadConversionRate}
-                overallLabel="המרה ממבקר לליד"
-              />
-            </Card>
-          </section>
-
           {/* Video */}
           <section className="space-y-3">
             <SectionHeader
               icon={<Video size={16} className="text-secondary" />}
               title="ביצועי הסרטון"
             />
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Card className="p-5">
-                <h3 className="mb-4 text-sm font-semibold text-foreground">מסלול הצפייה</h3>
-                <VideoProgressTrack
-                  loading={loading}
-                  milestones={videoMilestones}
-                  baseUsers={data.video.startedUsers}
-                  unavailable={data.video.milestonesUnavailable}
-                  unavailableNote="אבני דרך 25% / 50% / 75% עדיין לא זמינות לדיווח. מוצגים התחלה וסיום בלבד."
-                />
-              </Card>
-              <Card className="flex flex-col justify-center p-5">
-                <h3 className="mb-4 text-sm font-semibold text-foreground">שיעור השלמה</h3>
-                <SimpleDonut
-                  loading={loading}
-                  size="lg"
-                  slices={[
-                    {
-                      label: 'השלימו',
-                      value: data.video.completedUsers,
-                      color: 'var(--color-secondary)',
-                    },
-                    {
-                      label: 'לא השלימו',
-                      value: Math.max(
-                        0,
-                        data.video.startedUsers - data.video.completedUsers,
-                      ),
-                      color: 'var(--color-border)',
-                    },
-                  ]}
-                  centerValue={formatRate(data.video.completionRate)}
-                  centerLabel="השלימו את הסרטון"
-                  emptyTitle="אין צפיות"
-                  emptyDescription="בטווח שנבחר אף משתמש לא התחיל לצפות בסרטון."
-                />
-                {videoInsight && (
-                  <p
-                    className={`mt-4 rounded-lg border px-3 py-2 text-xs ${
-                      videoInsight.kind === 'positive'
-                        ? 'border-success/30 bg-success/5'
-                        : 'border-warning/30 bg-warning/5'
-                    }`}
-                  >
-                    {videoInsight.text}
-                  </p>
-                )}
-              </Card>
-            </div>
+            <Card className="p-5">
+              <h3 className="mb-4 text-sm font-semibold text-foreground">מסלול הצפייה</h3>
+              <VideoProgressTrack
+                loading={loading}
+                milestones={videoMilestones}
+                baseUsers={data.video.startedUsers}
+                unavailable={data.video.milestonesUnavailable}
+                unavailableNote="אבני דרך 25% / 50% / 75% עדיין לא זמינות לדיווח. מוצגים התחלה וסיום בלבד."
+              />
+              {videoInsight && (
+                <p
+                  className={`mt-4 rounded-lg border px-3 py-2 text-xs ${
+                    videoInsight.kind === 'positive'
+                      ? 'border-success/30 bg-success/5'
+                      : 'border-warning/30 bg-warning/5'
+                  }`}
+                >
+                  {videoInsight.text}
+                </p>
+              )}
+            </Card>
           </section>
 
           {/* FAQ */}
@@ -761,57 +732,6 @@ export function AdminAnalyticsDashboard() {
                     </p>
                   </Card>
                 )}
-                {linkDetailRows.some((r) => r.users > 0) && (
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <Card className="p-5">
-                      <h3 className="mb-4 text-sm font-semibold text-foreground">
-                        ביצועי לינקים
-                      </h3>
-                      <RankedBarChart
-                        loading={loading}
-                        unavailable={
-                          data.utm.linkPerformance === null && data.utm.contentBreakdown === null
-                        }
-                        unavailableDescription="יש לרשום ב-GA4 את הפרמטר utm_content כ-Event-scoped Custom Dimension."
-                        emptyTitle="אין לינקים בסינון"
-                        emptyDescription="נסו לבחור אפיליאייט אחר או לנקות סינון."
-                        valueLabel="מבקרים"
-                        items={linkDetailRows
-                          .filter((r) => r.users > 0)
-                          .map((r) => ({
-                            label: r.source
-                              ? `${linkDisplayLabel(r.content)}\u00A0·\u00A0${utmSourceLabel(r.source)}`
-                              : linkDisplayLabel(r.content),
-                            value: r.users,
-                          }))
-                          .sort((a, b) => b.value - a.value)}
-                        color="var(--color-accent)"
-                      />
-                      <p className="mt-2 text-[11px] text-muted">ממוין לפי מבקרים · לחיצה על הסינון למעלה מצמצמת</p>
-                    </Card>
-
-                    <Card className="p-5">
-                      <h3 className="mb-4 text-sm font-semibold text-foreground">
-                        המרה לליד לפי לינק
-                      </h3>
-                      <RankedBarChart
-                        loading={loading}
-                        emptyTitle="אין המרות לליד"
-                        emptyDescription="עדיין אין לידים מהלינקים שנבחרו."
-                        valueLabel="המרה %"
-                        items={linkDetailRows
-                          .filter((r) => r.users > 0)
-                          .map((r) => ({
-                            label: linkDisplayLabel(r.content),
-                            value: ratePct(r.leadUsers, r.users) ?? 0,
-                          }))
-                          .sort((a, b) => b.value - a.value)}
-                        color="var(--color-secondary)"
-                      />
-                      <p className="mt-2 text-[11px] text-muted">אחוז מבקרים שהפכו לליד</p>
-                    </Card>
-                  </div>
-                )}
 
                 {linkDetailRows.length > 0 && (
                   <Card className="overflow-hidden p-0">
@@ -925,43 +845,17 @@ export function AdminAnalyticsDashboard() {
               title="מחירים ויצירת קשר"
             />
             <Card className="p-5">
-              <div className="grid gap-6 lg:grid-cols-5">
-                <div className="lg:col-span-3">
-                  <FunnelChart
-                    loading={loading}
-                    infoTooltip={INTEREST_INFO}
-                    steps={[
-                      { label: 'ראו מחירים', value: data.productInterest.plansViewedUsers },
-                      { label: 'פתחו טופס', value: data.contact.openUsers },
-                      { label: 'השאירו פרטים', value: data.contact.leadUsers },
-                    ]}
-                  />
-                </div>
-                <div className="flex flex-col justify-center lg:col-span-2">
-                  <SimpleDonut
-                    loading={loading}
-                    slices={[
-                      {
-                        label: 'לידים',
-                        value: data.productInterest.leadUsers,
-                        color: 'var(--color-secondary)',
-                      },
-                      {
-                        label: 'לא הפכו לליד',
-                        value: Math.max(
-                          0,
-                          data.productInterest.plansViewedUsers - data.productInterest.leadUsers,
-                        ),
-                        color: 'var(--color-border)',
-                      },
-                    ]}
-                    centerValue={formatRate(data.productInterest.plansToLeadRate)}
-                    centerLabel="המרה ממחירים לליד"
-                    emptyTitle="אין צפיות במחירים"
-                    emptyDescription="בטווח שנבחר אין נתונים."
-                  />
-                </div>
-              </div>
+              <FunnelChart
+                loading={loading}
+                infoTooltip={INTEREST_INFO}
+                steps={[
+                  { label: 'ראו מחירים', value: data.productInterest.plansViewedUsers },
+                  { label: 'פתחו טופס', value: data.contact.openUsers },
+                  { label: 'השאירו פרטים', value: data.contact.leadUsers },
+                ]}
+                overallRate={data.productInterest.plansToLeadRate}
+                overallLabel="המרה ממחירים לליד"
+              />
               {plansDropInsight && (
                 <p className="mt-4 rounded-lg border border-border bg-surface-elevated px-3 py-2 text-xs text-foreground">
                   {plansDropInsight}
@@ -1085,19 +979,243 @@ export function AdminAnalyticsDashboard() {
               title="התחברות"
             />
             <Card className="p-5">
-              <div className="grid gap-6 lg:grid-cols-5">
-                <div className="lg:col-span-3">
+              <FunnelChart
+                loading={loading}
+                compact
+                steps={[
+                  { label: 'ראו מסך התחברות', value: data.login.viewedUsers },
+                  { label: 'התחילו התחברות', value: data.login.startedUsers },
+                  { label: 'התחברו בהצלחה', value: data.login.successfulUsers },
+                ]}
+                overallRate={loginCompletion}
+                overallLabel="השלימו התחברות"
+              />
+              {(data.login.errorCount > 0 || data.login.signUpUsers > 0) && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {data.login.errorCount > 0 && (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-warning/40 bg-warning/5 px-3 py-1.5 text-xs font-medium text-foreground">
+                      <AlertTriangle size={12} className="text-warning" />
+                      {formatNumber(data.login.errorCount)} שגיאות התחברות
+                    </span>
+                  )}
+                  {data.login.signUpUsers > 0 && (
+                    <span className="inline-flex items-center rounded-lg border border-border bg-surface-elevated px-3 py-1.5 text-xs text-muted">
+                      נרשמו: {formatNumber(data.login.signUpUsers)} משתמשים ייחודיים
+                    </span>
+                  )}
+                </div>
+              )}
+            </Card>
+          </section>
+
+          {/* Event creation */}
+          <section className="space-y-3">
+            <SectionHeader
+              icon={<Package size={16} className="text-secondary" />}
+              title="יצירת אירוע"
+            />
+            <Card className="p-5">
+              <p className="mb-4 text-xs text-muted">
+                התחילו:{' '}
+                <span className="font-semibold tabular-nums text-foreground">
+                  {formatNumber(data.eventCreation.startUsers)}
+                </span>
+                {' · '}
+                יצרו:{' '}
+                <span className="font-semibold tabular-nums text-foreground">
+                  {formatNumber(data.eventCreation.creatorUsers)}
+                </span>
+                {' · '}
+                סה״כ אירועים:{' '}
+                <span className="font-semibold tabular-nums text-foreground">
+                  {formatNumber(data.eventCreation.eventCount)}
+                </span>
+                {eventCreationCompletion !== null && (
+                  <>
+                    {' · '}
+                    השלמה:{' '}
+                    <span className="font-semibold tabular-nums text-foreground">
+                      {formatRate(eventCreationCompletion)}
+                    </span>
+                  </>
+                )}
+              </p>
+              {data.eventCreation.methodUnavailable ? (
+                <EmptyState
+                  compact
+                  icon={<Package size={20} />}
+                  title="אופן יצירה עדיין לא זמין"
+                  description="פירוט מאפס / מתבנית יתרענן כש-creation_method יהיה זמין."
+                />
+              ) : (
+                <>
+                  <h3 className="mb-3 text-sm font-semibold text-foreground">אופן יצירת אירוע</h3>
+                  <SimpleDonut
+                    loading={loading}
+                    slices={[
+                      {
+                        label: 'מאפס',
+                        value: data.eventCreation.scratchCount ?? 0,
+                        color: 'var(--color-primary)',
+                      },
+                      {
+                        label: 'מתבנית',
+                        value: data.eventCreation.templateCount ?? 0,
+                        color: 'var(--color-secondary)',
+                      },
+                    ]}
+                    centerLabel="אירועים"
+                    showLegendPercent
+                    emptyTitle="אין נתוני יצירה"
+                    emptyDescription="עדיין לא נוצרו אירועים בטווח שנבחר."
+                  />
+                </>
+              )}
+            </Card>
+          </section>
+
+          {/* Review zone: candidates for removal */}
+          <section className="space-y-4 border-t border-dashed border-muted/50 pt-8">
+            <div className="rounded-xl border border-dashed border-muted/50 bg-[color-mix(in_srgb,var(--color-muted)_6%,transparent)] px-4 py-3">
+              <h2 className="text-sm font-semibold text-muted">מועמדים להסרה</h2>
+              <p className="mt-1 text-xs text-muted">
+                וידג׳טים כפולים / פחות שימושיים — מסומנים באפור. אשרי מחיקה ואסיר אותם.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <RemovalCandidate reason="חוזר על סיכום מהיר + משפך מחירים/ליד">
+                <Card className="space-y-1 p-5">
+                  <div className="mb-1 flex items-center gap-2">
+                    <Route size={16} className="text-secondary" />
+                    <h2 className="text-sm font-semibold text-foreground">מסלול ההתעניינות</h2>
+                  </div>
                   <FunnelChart
                     loading={loading}
-                    compact
+                    infoTooltip={INTEREST_INFO}
                     steps={[
-                      { label: 'ראו מסך התחברות', value: data.login.viewedUsers },
-                      { label: 'התחילו התחברות', value: data.login.startedUsers },
-                      { label: 'התחברו בהצלחה', value: data.login.successfulUsers },
+                      { label: 'מבקרים', value: data.overview.homepageUsers },
+                      { label: 'צפו בסרטון', value: data.video.startedUsers },
+                      { label: 'צפו במחירים', value: data.overview.pricingUsers },
+                      { label: 'פתחו טופס', value: data.contact.openUsers },
+                      { label: 'השאירו פרטים', value: data.overview.leadUsers },
                     ]}
+                    overallRate={data.overview.leadConversionRate}
+                    overallLabel="המרה ממבקר לליד"
                   />
-                </div>
-                <div className="flex flex-col justify-center lg:col-span-2">
+                </Card>
+              </RemovalCandidate>
+
+              <RemovalCandidate reason="חוזר על מסלול הצפייה (השלמה כבר מופיעה שם)">
+                <Card className="flex flex-col justify-center p-5">
+                  <h3 className="mb-4 text-sm font-semibold text-foreground">שיעור השלמת סרטון</h3>
+                  <SimpleDonut
+                    loading={loading}
+                    size="lg"
+                    slices={[
+                      {
+                        label: 'השלימו',
+                        value: data.video.completedUsers,
+                        color: 'var(--color-secondary)',
+                      },
+                      {
+                        label: 'לא השלימו',
+                        value: Math.max(0, data.video.startedUsers - data.video.completedUsers),
+                        color: 'var(--color-border)',
+                      },
+                    ]}
+                    centerValue={formatRate(data.video.completionRate)}
+                    centerLabel="השלימו את הסרטון"
+                    emptyTitle="אין צפיות"
+                    emptyDescription="בטווח שנבחר אף משתמש לא התחיל לצפות בסרטון."
+                  />
+                </Card>
+              </RemovalCandidate>
+
+              {linkDetailRows.some((r) => r.users > 0) && (
+                <RemovalCandidate reason="הטבלה למעלה כבר מציגה מבקרים ואחוז ליד לפי לינק">
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <Card className="p-5">
+                      <h3 className="mb-4 text-sm font-semibold text-foreground">ביצועי לינקים</h3>
+                      <RankedBarChart
+                        loading={loading}
+                        unavailable={
+                          data.utm.linkPerformance === null && data.utm.contentBreakdown === null
+                        }
+                        unavailableDescription="יש לרשום ב-GA4 את הפרמטר utm_content כ-Event-scoped Custom Dimension."
+                        emptyTitle="אין לינקים בסינון"
+                        emptyDescription="נסו לבחור אפיליאייט אחר או לנקות סינון."
+                        valueLabel="מבקרים"
+                        items={linkDetailRows
+                          .filter((r) => r.users > 0)
+                          .map((r) => ({
+                            label: r.source
+                              ? `${linkDisplayLabel(r.content)}\u00A0·\u00A0${utmSourceLabel(r.source)}`
+                              : linkDisplayLabel(r.content),
+                            value: r.users,
+                          }))
+                          .sort((a, b) => b.value - a.value)}
+                        color="var(--color-accent)"
+                      />
+                    </Card>
+                    <Card className="p-5">
+                      <h3 className="mb-4 text-sm font-semibold text-foreground">
+                        המרה לליד לפי לינק
+                      </h3>
+                      <RankedBarChart
+                        loading={loading}
+                        emptyTitle="אין המרות לליד"
+                        emptyDescription="עדיין אין לידים מהלינקים שנבחרו."
+                        valueLabel="המרה %"
+                        items={linkDetailRows
+                          .filter((r) => r.users > 0)
+                          .map((r) => ({
+                            label: linkDisplayLabel(r.content),
+                            value: ratePct(r.leadUsers, r.users) ?? 0,
+                          }))
+                          .sort((a, b) => b.value - a.value)}
+                        color="var(--color-secondary)"
+                      />
+                    </Card>
+                  </div>
+                </RemovalCandidate>
+              )}
+
+              <RemovalCandidate reason="חוזר על משפך מחירים → ליד">
+                <Card className="p-5">
+                  <h3 className="mb-4 text-sm font-semibold text-foreground">
+                    דונאט המרה ממחירים לליד
+                  </h3>
+                  <SimpleDonut
+                    loading={loading}
+                    slices={[
+                      {
+                        label: 'לידים',
+                        value: data.productInterest.leadUsers,
+                        color: 'var(--color-secondary)',
+                      },
+                      {
+                        label: 'לא הפכו לליד',
+                        value: Math.max(
+                          0,
+                          data.productInterest.plansViewedUsers - data.productInterest.leadUsers,
+                        ),
+                        color: 'var(--color-border)',
+                      },
+                    ]}
+                    centerValue={formatRate(data.productInterest.plansToLeadRate)}
+                    centerLabel="המרה ממחירים לליד"
+                    emptyTitle="אין צפיות במחירים"
+                    emptyDescription="בטווח שנבחר אין נתונים."
+                  />
+                </Card>
+              </RemovalCandidate>
+
+              <RemovalCandidate reason="חוזר על משפך ההתחברות">
+                <Card className="p-5">
+                  <h3 className="mb-4 text-sm font-semibold text-foreground">
+                    דונאט השלמת התחברות
+                  </h3>
                   <SimpleDonut
                     loading={loading}
                     slices={[
@@ -1117,35 +1235,11 @@ export function AdminAnalyticsDashboard() {
                     emptyTitle="אין ניסיונות התחברות"
                     emptyDescription="בטווח שנבחר אין נתוני התחברות."
                   />
-                </div>
-              </div>
-              {(data.login.errorCount > 0 || data.login.signUpUsers > 0) && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {data.login.errorCount > 0 && (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-warning/40 bg-warning/5 px-3 py-1.5 text-xs font-medium text-foreground">
-                      <AlertTriangle size={12} className="text-warning" />
-                      {formatNumber(data.login.errorCount)} שגיאות התחברות
-                    </span>
-                  )}
-                  {data.login.signUpUsers > 0 && (
-                    <span className="inline-flex items-center rounded-lg border border-border bg-surface-elevated px-3 py-1.5 text-xs text-muted">
-                      נרשמו: {formatNumber(data.login.signUpUsers)} משתמשים ייחודיים
-                    </span>
-                  )}
-                </div>
-              )}
-            </Card>
-          </section>
+                </Card>
+              </RemovalCandidate>
 
-          {/* Event creation funnel */}
-          <section className="space-y-3">
-            <SectionHeader
-              icon={<Package size={16} className="text-secondary" />}
-              title="יצירת אירוע"
-            />
-            <Card className="p-5">
-              <div className="grid gap-6 lg:grid-cols-5">
-                <div className="lg:col-span-3">
+              <RemovalCandidate reason="משפך דו-שלבי דל — המספרים כבר בשורת הסיכום של יצירת אירוע">
+                <Card className="p-5">
                   <FunnelChart
                     loading={loading}
                     compact
@@ -1156,48 +1250,9 @@ export function AdminAnalyticsDashboard() {
                     overallRate={eventCreationCompletion}
                     overallLabel="השלימו יצירת אירוע"
                   />
-                </div>
-                <div className="flex flex-col justify-center gap-4 lg:col-span-2">
-                  <p className="text-xs text-muted">
-                    סה״כ אירועים שנוצרו:{' '}
-                    <span className="font-semibold tabular-nums text-foreground">
-                      {formatNumber(data.eventCreation.eventCount)}
-                    </span>
-                  </p>
-                  {data.eventCreation.methodUnavailable ? (
-                    <EmptyState
-                      compact
-                      icon={<Package size={20} />}
-                      title="אופן יצירה עדיין לא זמין"
-                      description="פירוט מאפס / מתבנית יתרענן כש-creation_method יהיה זמין."
-                    />
-                  ) : (
-                    <>
-                      <h3 className="text-sm font-semibold text-foreground">אופן יצירת אירוע</h3>
-                      <SimpleDonut
-                        loading={loading}
-                        slices={[
-                          {
-                            label: 'מאפס',
-                            value: data.eventCreation.scratchCount ?? 0,
-                            color: 'var(--color-primary)',
-                          },
-                          {
-                            label: 'מתבנית',
-                            value: data.eventCreation.templateCount ?? 0,
-                            color: 'var(--color-secondary)',
-                          },
-                        ]}
-                        centerLabel="אירועים"
-                        showLegendPercent
-                        emptyTitle="אין נתוני יצירה"
-                        emptyDescription="עדיין לא נוצרו אירועים בטווח שנבחר."
-                      />
-                    </>
-                  )}
-                </div>
-              </div>
-            </Card>
+                </Card>
+              </RemovalCandidate>
+            </div>
           </section>
         </>
       )}

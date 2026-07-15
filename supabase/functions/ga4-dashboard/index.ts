@@ -802,6 +802,49 @@ function preferBreakdown<T extends { users: number }>(
   return primary ?? fallback ?? []
 }
 
+/** Merge content breakdowns by code — keep every affiliate with traffic from either source. */
+function mergeContentBreakdowns(
+  primary: UtmContentRow[] | null,
+  fallback: UtmContentRow[] | null,
+): UtmContentRow[] | null {
+  if (primary === null && fallback === null) return null
+  const byCode = new Map<string, number>()
+  for (const row of [...(primary ?? []), ...(fallback ?? [])]) {
+    const code = row.content.trim().toLowerCase()
+    if (!code || isUnsetDimension(code)) continue
+    byCode.set(code, Math.max(byCode.get(code) ?? 0, row.users))
+  }
+  const merged = [...byCode.entries()]
+    .map(([content, users]) => ({ content, users }))
+    .filter((r) => r.users > 0)
+    .sort((a, b) => b.users - a.users)
+  return merged.length > 0 ? merged : (primary ?? fallback ?? [])
+}
+
+function mergeUsersByKey(...maps: Map<string, number>[]): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const map of maps) {
+    for (const [key, users] of map) {
+      out.set(key, Math.max(out.get(key) ?? 0, users))
+    }
+  }
+  return out
+}
+
+function mergeSourceByContent(
+  ...maps: Map<string, string>[]
+): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const map of maps) {
+    for (const [content, source] of map) {
+      if (!out.has(content) && source && !isUnsetDimension(source)) {
+        out.set(content, source)
+      }
+    }
+  }
+  return out
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -1760,7 +1803,9 @@ Deno.serve(async (req) => {
 
     // Prefer customEvent; fall back to session dims populated from short UTM URLs
     const sourceBreakdown = preferBreakdown(customSource, sessionSourceFromContent)
-    const contentBreakdown = preferBreakdown(customContent, sessionContent)
+    // Merge content codes from BOTH sources — never drop older session-only affiliates
+    // just because a newer customEvent code exists.
+    const contentBreakdown = mergeContentBreakdowns(customContent, sessionContent)
 
     const customSourceOk = !utmSourceReport.error
     const customContentOk = !utmContentReport.error
@@ -1787,46 +1832,94 @@ Deno.serve(async (req) => {
       taggedVisitors = Number(utmTaggedVisitorsReport.rows?.[0]?.metricValues?.[0]?.value ?? 0)
     }
 
-    const useCustomPerformance = Boolean(customContent && customContent.length > 0)
-    const videoReport = useCustomPerformance ? utmContentVideoReport : sessionContentVideoReport
-    const plansReport = useCustomPerformance ? utmContentPlansReport : sessionContentPlansReport
-    const leadsReport = useCustomPerformance ? utmContentLeadsReport : sessionContentLeadsReport
-    const contentSourceRows = useCustomPerformance
-      ? utmContentSourceReport
-      : sessionContentSourceReport
-    const contentRowsForPerf = useCustomPerformance ? utmContentReport : sessionContentReport
+    const customVideoByContent = utmContentVideoReport.error
+      ? new Map<string, number>()
+      : usersByKey(utmContentVideoReport.rows)
+    const sessionVideoByContent = sessionContentVideoReport.error
+      ? new Map<string, number>()
+      : usersByKey(sessionContentVideoReport.rows)
+    const customPlansByContent = utmContentPlansReport.error
+      ? new Map<string, number>()
+      : usersByKey(utmContentPlansReport.rows)
+    const sessionPlansByContent = sessionContentPlansReport.error
+      ? new Map<string, number>()
+      : usersByKey(sessionContentPlansReport.rows)
+    const customLeadsByContent = utmContentLeadsReport.error
+      ? new Map<string, number>()
+      : usersByKey(utmContentLeadsReport.rows)
+    const sessionLeadsByContent = sessionContentLeadsReport.error
+      ? new Map<string, number>()
+      : usersByKey(sessionContentLeadsReport.rows)
 
-    if (videoReport.error) {
-      console.warn('utm content × video_view unavailable', videoReport.error.message)
-    }
-    if (plansReport.error) {
-      console.warn('utm content × view_plans unavailable', plansReport.error.message)
-    }
-    if (leadsReport.error) {
-      console.warn('utm content × generate_lead unavailable', leadsReport.error.message)
-    }
+    const videoByContent = mergeUsersByKey(customVideoByContent, sessionVideoByContent)
+    const plansByContent = mergeUsersByKey(customPlansByContent, sessionPlansByContent)
+    const leadsByContent = mergeUsersByKey(customLeadsByContent, sessionLeadsByContent)
 
-    const sourceByContent = contentSourceRows.error
-      ? new Map<string, string>()
-      : dominantSourceByContent(contentSourceRows.rows)
+    const sourceByContent = mergeSourceByContent(
+      utmContentSourceReport.error
+        ? new Map<string, string>()
+        : dominantSourceByContent(utmContentSourceReport.rows),
+      sessionContentSourceReport.error
+        ? new Map<string, string>()
+        : dominantSourceByContent(sessionContentSourceReport.rows),
+    )
+
+    // Visitor counts: merge customEvent + session content maps (max per code)
+    const customUsersByContent = utmContentReport.error
+      ? new Map<string, { users: number; newUsers: number }>()
+      : new Map(
+          mapUtmDimensionRows(utmContentReport.rows).map((r) => [
+            r.key.toLowerCase(),
+            { users: r.users, newUsers: r.newUsers },
+          ]),
+        )
+    const sessionUsersByContent = sessionContentReport.error
+      ? new Map<string, { users: number; newUsers: number }>()
+      : new Map(
+          mapUtmDimensionRows(sessionContentReport.rows).map((r) => [
+            r.key.toLowerCase(),
+            { users: r.users, newUsers: r.newUsers },
+          ]),
+        )
+
+    const allContentCodes = new Set<string>([
+      ...customUsersByContent.keys(),
+      ...sessionUsersByContent.keys(),
+      ...videoByContent.keys(),
+      ...plansByContent.keys(),
+      ...leadsByContent.keys(),
+    ])
 
     let linkPerformance: LinkPerformanceRow[] | null = null
-    if (!contentRowsForPerf.error) {
-      const videoByContent = videoReport.error ? new Map<string, number>() : usersByKey(videoReport.rows)
-      const plansByContent = plansReport.error ? new Map<string, number>() : usersByKey(plansReport.rows)
-      const leadsByContent = leadsReport.error ? new Map<string, number>() : usersByKey(leadsReport.rows)
-
-      linkPerformance = mapUtmDimensionRows(contentRowsForPerf.rows).map(
-        ({ key, users, newUsers }) => ({
-          content: key,
-          source: sourceByContent.get(key) ?? null,
-          users,
-          newUsers,
-          videoViewUsers: videoByContent.get(key) ?? 0,
-          plansViewUsers: plansByContent.get(key) ?? 0,
-          leadUsers: leadsByContent.get(key) ?? 0,
-        }),
-      )
+    if (allContentCodes.size > 0) {
+      linkPerformance = [...allContentCodes]
+        .map((code) => {
+          const custom = customUsersByContent.get(code)
+          const session = sessionUsersByContent.get(code)
+          const users = Math.max(custom?.users ?? 0, session?.users ?? 0)
+          const newUsers = Math.max(custom?.newUsers ?? 0, session?.newUsers ?? 0)
+          const videoViewUsers = videoByContent.get(code) ?? 0
+          const plansViewUsers = plansByContent.get(code) ?? 0
+          const leadUsers = leadsByContent.get(code) ?? 0
+          return {
+            content: code,
+            source: sourceByContent.get(code) ?? null,
+            users,
+            newUsers,
+            videoViewUsers,
+            plansViewUsers,
+            leadUsers,
+          }
+        })
+        // Keep affiliates that have any meaningful signal (visitors or funnel events)
+        .filter(
+          (r) =>
+            r.users > 0 ||
+            r.videoViewUsers > 0 ||
+            r.plansViewUsers > 0 ||
+            r.leadUsers > 0,
+        )
+        .sort((a, b) => b.users - a.users || b.leadUsers - a.leadUsers)
     }
 
     // Reconcile KPI with visible breakdowns — never show 46 tagged with empty charts
