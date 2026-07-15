@@ -1,7 +1,12 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react'
 import { User, isAuthRetryableFetchError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { consumePendingOAuthAuth } from '@/lib/analytics'
+import {
+  consumePendingOAuthAuth,
+  getUtmAttribution,
+  restoreUtmAttribution,
+} from '@/lib/analytics'
+import { hasUtmAttribution } from '@/lib/utmAttribution'
 import type { UserProfile } from '@/types'
 
 export type SignInOrSignUpResult =
@@ -25,10 +30,28 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+/** Persist session UTMs onto the user profile (first-touch only). */
+async function claimSessionAffiliate() {
+  const utm = getUtmAttribution()
+  if (!hasUtmAttribution(utm)) return
+  const { error } = await supabase.rpc('claim_affiliate_attribution', { p_attribution: utm })
+  if (error) {
+    // eslint-disable-next-line no-console
+    console.warn('[affiliate] claim failed:', error.message)
+  }
+}
+
+function applyProfileAffiliate(profile: UserProfile | null): UserProfile | null {
+  if (!profile?.affiliate_attribution) return profile
+  restoreUtmAttribution(profile.affiliate_attribution)
+  return profile
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const claimedForUserRef = useRef<string | null>(null)
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
@@ -36,12 +59,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('*')
       .eq('id', userId)
       .single()
-    setProfile(data as UserProfile | null)
+    const next = applyProfileAffiliate(data as UserProfile | null)
+    setProfile(next)
+    return next
   }, [])
 
   const refreshProfile = useCallback(async () => {
     if (user) await fetchProfile(user.id)
   }, [user, fetchProfile])
+
+  const syncAffiliateForUser = useCallback(async (userId: string) => {
+    if (claimedForUserRef.current === userId) return
+    claimedForUserRef.current = userId
+    await claimSessionAffiliate()
+    await fetchProfile(userId)
+  }, [fetchProfile])
 
   useEffect(() => {
     let cancelled = false
@@ -51,7 +83,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const u = session?.user ?? null
       setUser(u)
       if (u) {
-        fetchProfile(u.id).finally(() => setLoading(false))
+        syncAffiliateForUser(u.id).finally(() => {
+          if (!cancelled) setLoading(false)
+        })
       } else {
         setLoading(false)
       }
@@ -62,11 +96,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const u = session?.user ?? null
       setUser(u)
       if (u) {
-        fetchProfile(u.id)
         if (event === 'SIGNED_IN') {
+          claimedForUserRef.current = null
+          syncAffiliateForUser(u.id)
           consumePendingOAuthAuth(u.created_at)
+        } else {
+          fetchProfile(u.id)
         }
       } else {
+        claimedForUserRef.current = null
         setProfile(null)
       }
     })
@@ -75,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true
       subscription.unsubscribe()
     }
-  }, [fetchProfile])
+  }, [fetchProfile, syncAffiliateForUser])
 
   const signInWithGoogle = useCallback(async (redirectTo?: string) => {
     await supabase.auth.signInWithOAuth({
@@ -98,7 +136,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // account yet for this email, so try creating one. If an account does exist, Supabase will
     // reject this with an "already registered" style error, which we treat as wrong credentials
     // rather than creating a duplicate account.
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
+    const utm = getUtmAttribution()
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: hasUtmAttribution(utm)
+        ? { data: { affiliate_attribution: utm } }
+        : undefined,
+    })
 
     if (signUpError) {
       if (isAuthRetryableFetchError(signUpError)) {

@@ -87,6 +87,25 @@ export function getUtmAttribution(): UtmAttribution {
   }
 }
 
+/**
+ * Restore first-touch attribution into session storage when the URL/session
+ * has none — e.g. returning logged-in user so homepage keeps affiliate UTMs.
+ * Does not overwrite an attribution already captured this session.
+ */
+export function restoreUtmAttribution(raw: unknown): UtmAttribution {
+  if (typeof window === 'undefined') return {}
+  const fromProfile = normalizeUtmAttribution(raw)
+  if (!Object.keys(fromProfile).length) return getUtmAttribution()
+  const existing = getUtmAttribution()
+  if (Object.keys(existing).length) return existing
+  try {
+    sessionStorage.setItem(UTM_ATTRIBUTION_KEY, JSON.stringify(fromProfile))
+  } catch {
+    /* private mode / blocked storage */
+  }
+  return fromProfile
+}
+
 function getUtmAttributionParams(): AnalyticsParams {
   return utmAttributionToParams(getUtmAttribution())
 }

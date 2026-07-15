@@ -20,8 +20,8 @@ import { PlansPage } from '@/pages/PlansPage'
 export default function App() {
   return (
     <BrowserRouter>
-      <AnalyticsListener />
       <AuthProvider>
+        <AnalyticsListener />
         <PlansModalProvider>
           <Routes>
             <Route path="/" element={<Landing />} />

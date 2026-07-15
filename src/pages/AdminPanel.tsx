@@ -46,6 +46,17 @@ interface AdminUser {
   last_sign_in_at: string | null
   event_count: number
   event_names: string
+  affiliate_attribution: Record<string, string> | null
+}
+
+function affiliateLabel(attr: Record<string, string> | null | undefined): string | null {
+  if (!attr) return null
+  const content = attr.utm_content?.trim()
+  const source = attr.utm_source?.trim()
+  if (content && source) return `${content} · ${source}`
+  if (content) return content
+  if (source) return source
+  return null
 }
 
 interface AdminEventRow {
@@ -456,6 +467,11 @@ export function AdminPanel() {
                         <p className="text-xs text-muted mt-0.5">
                           כניסה אחרונה: {formatLastSignIn(user.last_sign_in_at)}
                         </p>
+                        {affiliateLabel(user.affiliate_attribution) && (
+                          <p className="text-xs text-brand-400 mt-0.5 truncate" title="אפיליאייט (first-touch)">
+                            אפיליאייט: {affiliateLabel(user.affiliate_attribution)}
+                          </p>
+                        )}
                       </div>
                     </div>
 

@@ -9,6 +9,8 @@ export interface UserProfile {
   display_name: string | null;
   avatar_url: string | null;
   role: UserRole;
+  /** First-touch UTM attribution captured on register/login when present. */
+  affiliate_attribution?: Record<string, string> | null;
   created_at: string;
   updated_at: string;
 }

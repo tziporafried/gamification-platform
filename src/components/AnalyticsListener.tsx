@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
 import {
   captureUtmAttribution,
   getUtmAttribution,
   initAnalytics,
+  restoreUtmAttribution,
   trackPageView,
   trackWizardExit,
 } from '@/lib/analytics'
@@ -23,11 +25,30 @@ function stepNameFor(stepNumber: number): string {
 export function AnalyticsListener() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { profile } = useAuth()
   const prevPathRef = useRef(location.pathname)
 
   useEffect(() => {
     initAnalytics()
   }, [])
+
+  // Returning users: restore first-touch affiliate from profile into session + URL (homepage etc).
+  useEffect(() => {
+    if (!profile?.affiliate_attribution) return
+    restoreUtmAttribution(profile.affiliate_attribution)
+    if (SKIP_UTM_URL_PERSIST.test(location.pathname)) return
+    const utm = getUtmAttribution()
+    if (searchNeedsUtmPersist(location.search, utm)) {
+      navigate(
+        {
+          pathname: location.pathname,
+          search: withPersistedUtmSearch(location.search, utm),
+          hash: location.hash,
+        },
+        { replace: true },
+      )
+    }
+  }, [profile?.affiliate_attribution, location.pathname, location.search, location.hash, navigate])
 
   useEffect(() => {
     // Keep affiliate UTMs visible in the address bar across SPA navigations.
