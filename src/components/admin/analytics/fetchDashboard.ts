@@ -165,6 +165,22 @@ function normalizePayload(raw: AnalyticsDashboardData): AnalyticsDashboardData {
   } else {
     payload.timeSeries.days ??= []
     payload.timeSeries.unavailable ??= false
+    payload.timeSeries.days = payload.timeSeries.days.map((day) => ({
+      ...day,
+      visitors: day.visitors ?? 0,
+      newUsers: day.newUsers ?? 0,
+      videoView: day.videoView ?? 0,
+      videoComplete: day.videoComplete ?? 0,
+      viewPlans: day.viewPlans ?? 0,
+      selectPlan: day.selectPlan ?? 0,
+      contactFormOpen: day.contactFormOpen ?? 0,
+      generateLead: day.generateLead ?? 0,
+      ctaClick: day.ctaClick ?? 0,
+      faqOpen: day.faqOpen ?? 0,
+      loginView: day.loginView ?? 0,
+      signUp: day.signUp ?? 0,
+      eventCreated: day.eventCreated ?? 0,
+    }))
   }
 
   if (!payload.trafficSources) {

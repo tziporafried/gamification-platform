@@ -269,11 +269,30 @@ export function AdminAnalyticsDashboard() {
 
       {!error && data && (
         <>
-          {/* 4 primary KPIs */}
+          {/* Hero: trend first — primary decision surface */}
+          <section>
+            <Card className="p-5 sm:p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={18} className="text-secondary" />
+                  <h2 className="text-base font-semibold text-foreground">מגמה לאורך זמן</h2>
+                </div>
+                <p className="text-xs text-muted">המבט המרכזי על הביצועים בטווח שנבחר</p>
+              </div>
+              <TrendLineChart
+                days={data.timeSeries.days}
+                loading={loading}
+                unavailable={data.timeSeries.unavailable}
+                height={460}
+              />
+            </Card>
+          </section>
+
+          {/* Compact KPI strip */}
           <section className="space-y-3">
             <SectionHeader
               icon={<Users size={16} className="text-secondary" />}
-              title="סקירה כללית"
+              title="סיכום מהיר"
             />
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <KpiCard
@@ -376,9 +395,9 @@ export function AdminAnalyticsDashboard() {
             </section>
           )}
 
-          {/* Hero: interest path + trend */}
-          <section className="grid gap-4 lg:grid-cols-5">
-            <Card className="space-y-1 p-5 lg:col-span-3">
+          {/* Secondary: funnel */}
+          <section>
+            <Card className="space-y-1 p-5">
               <div className="mb-1 flex items-center gap-2">
                 <Route size={16} className="text-secondary" />
                 <h2 className="text-sm font-semibold text-foreground">מסלול ההתעניינות</h2>
@@ -395,18 +414,6 @@ export function AdminAnalyticsDashboard() {
                 ]}
                 overallRate={data.overview.leadConversionRate}
                 overallLabel="המרה ממבקר לליד"
-              />
-            </Card>
-
-            <Card className="p-5 lg:col-span-2">
-              <div className="mb-3 flex items-center gap-2">
-                <TrendingUp size={16} className="text-secondary" />
-                <h2 className="text-sm font-semibold text-foreground">מגמה לאורך זמן</h2>
-              </div>
-              <TrendLineChart
-                days={data.timeSeries.days}
-                loading={loading}
-                unavailable={data.timeSeries.unavailable}
               />
             </Card>
           </section>

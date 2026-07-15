@@ -20,9 +20,18 @@ export interface AnalyticsQuestionRow {
 export interface AnalyticsTimeSeriesDay {
   date: string
   visitors: number
+  newUsers: number
   videoView: number
+  videoComplete: number
   viewPlans: number
+  selectPlan: number
+  contactFormOpen: number
   generateLead: number
+  ctaClick: number
+  faqOpen: number
+  loginView: number
+  signUp: number
+  eventCreated: number
 }
 
 export interface AnalyticsUtmSourceRow {

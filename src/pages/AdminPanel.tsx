@@ -372,7 +372,7 @@ export function AdminPanel() {
   }
 
   return (
-    <main className={cn('mx-auto px-4 py-6', tab === 'analytics' || tab === 'events' || tab === 'scanners' ? 'max-w-6xl' : 'max-w-5xl')}>
+    <main className={cn('mx-auto px-4 py-6', tab === 'analytics' ? 'max-w-7xl' : tab === 'events' || tab === 'scanners' ? 'max-w-6xl' : 'max-w-5xl')}>
       <Tabs
         tabs={TABS.map(({ id, label, icon: Icon }) => ({
           id,

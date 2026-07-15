@@ -48,9 +48,18 @@ interface QuestionRow {
 interface TimeSeriesDay {
   date: string
   visitors: number
+  newUsers: number
   videoView: number
+  videoComplete: number
   viewPlans: number
+  selectPlan: number
+  contactFormOpen: number
   generateLead: number
+  ctaClick: number
+  faqOpen: number
+  loginView: number
+  signUp: number
+  eventCreated: number
 }
 
 interface UtmSourceRow {
@@ -466,21 +475,35 @@ function eachDateInclusive(startDate: string, endDate: string): string[] {
   return out
 }
 
+function emptyTimeSeriesDay(date: string): TimeSeriesDay {
+  return {
+    date,
+    visitors: 0,
+    newUsers: 0,
+    videoView: 0,
+    videoComplete: 0,
+    viewPlans: 0,
+    selectPlan: 0,
+    contactFormOpen: 0,
+    generateLead: 0,
+    ctaClick: 0,
+    faqOpen: 0,
+    loginView: 0,
+    signUp: 0,
+    eventCreated: 0,
+  }
+}
+
 function buildTimeSeriesDays(
   startDate: string,
   endDate: string,
   visitorRows: Ga4Row[] | undefined,
   eventRows: Ga4Row[] | undefined,
+  newUserRows: Ga4Row[] | undefined,
 ): TimeSeriesDay[] {
   const byDate = new Map<string, TimeSeriesDay>()
   for (const date of eachDateInclusive(startDate, endDate)) {
-    byDate.set(date, {
-      date,
-      visitors: 0,
-      videoView: 0,
-      viewPlans: 0,
-      generateLead: 0,
-    })
+    byDate.set(date, emptyTimeSeriesDay(date))
   }
 
   for (const row of visitorRows ?? []) {
@@ -490,6 +513,13 @@ function buildTimeSeriesDays(
     day.visitors = Number(row.metricValues?.[0]?.value ?? 0)
   }
 
+  for (const row of newUserRows ?? []) {
+    const date = formatGa4Date(row.dimensionValues?.[0]?.value ?? '')
+    const day = byDate.get(date)
+    if (!day) continue
+    day.newUsers = Number(row.metricValues?.[0]?.value ?? 0)
+  }
+
   for (const row of eventRows ?? []) {
     const date = formatGa4Date(row.dimensionValues?.[0]?.value ?? '')
     const eventName = row.dimensionValues?.[1]?.value ?? ''
@@ -497,8 +527,16 @@ function buildTimeSeriesDays(
     if (!day) continue
     const users = Number(row.metricValues?.[0]?.value ?? 0)
     if (eventName === 'video_view') day.videoView = users
+    if (eventName === 'video_complete') day.videoComplete = users
     if (eventName === 'view_plans') day.viewPlans = users
+    if (eventName === 'select_plan') day.selectPlan = users
+    if (eventName === 'contact_form_open') day.contactFormOpen = users
     if (eventName === 'generate_lead') day.generateLead = users
+    if (eventName === 'cta_click') day.ctaClick = users
+    if (eventName === 'faq_open') day.faqOpen = users
+    if (eventName === 'login_view') day.loginView = users
+    if (eventName === 'sign_up') day.signUp = users
+    if (eventName === 'event_created') day.eventCreated = users
   }
 
   return [...byDate.values()]
@@ -883,6 +921,15 @@ Deno.serve(async (req) => {
       limit: 400,
     })
 
+    // Daily first-time users (GA4 newUsers) — site-wide
+    const timeSeriesNewUsersPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'date' }],
+      metrics: [{ name: 'newUsers' }],
+      orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
+      limit: 400,
+    })
+
     // Daily unique users for key events
     const timeSeriesEventsPromise = runReport(accessToken, propertyId, {
       dateRanges,
@@ -891,7 +938,21 @@ Deno.serve(async (req) => {
       dimensionFilter: {
         filter: {
           fieldName: 'eventName',
-          inListFilter: { values: ['video_view', 'view_plans', 'generate_lead'] },
+          inListFilter: {
+            values: [
+              'video_view',
+              'video_complete',
+              'view_plans',
+              'select_plan',
+              'contact_form_open',
+              'generate_lead',
+              'cta_click',
+              'faq_open',
+              'login_view',
+              'sign_up',
+              'event_created',
+            ],
+          },
         },
       },
       orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
@@ -1000,6 +1061,7 @@ Deno.serve(async (req) => {
       ctaMatrix,
       timeSeriesVisitors,
       timeSeriesEvents,
+      timeSeriesNewUsers,
       trafficSourcesReport,
       utmTaggedVisitors,
       utmSourceReport,
@@ -1023,6 +1085,7 @@ Deno.serve(async (req) => {
       ctaMatrixPromise,
       timeSeriesVisitorsPromise,
       timeSeriesEventsPromise,
+      timeSeriesNewUsersPromise,
       trafficSourcesPromise,
       utmTaggedVisitorsPromise,
       utmSourcePromise,
@@ -1231,20 +1294,15 @@ Deno.serve(async (req) => {
         .sort((a, b) => b.users - a.users)
     }
 
-    let timeSeriesDays: TimeSeriesDay[] = eachDateInclusive(startDate, endDate).map((date) => ({
-      date,
-      visitors: 0,
-      videoView: 0,
-      viewPlans: 0,
-      generateLead: 0,
-    }))
+    let timeSeriesDays: TimeSeriesDay[] = eachDateInclusive(startDate, endDate).map(emptyTimeSeriesDay)
     let timeSeriesUnavailable = false
-    if (timeSeriesVisitors.error && timeSeriesEvents.error) {
+    if (timeSeriesVisitors.error && timeSeriesEvents.error && timeSeriesNewUsers.error) {
       timeSeriesUnavailable = true
       console.warn(
         'time series unavailable',
         timeSeriesVisitors.error?.message,
         timeSeriesEvents.error?.message,
+        timeSeriesNewUsers.error?.message,
       )
     } else {
       if (timeSeriesVisitors.error) {
@@ -1253,11 +1311,15 @@ Deno.serve(async (req) => {
       if (timeSeriesEvents.error) {
         console.warn('time series events unavailable', timeSeriesEvents.error.message)
       }
+      if (timeSeriesNewUsers.error) {
+        console.warn('time series newUsers unavailable', timeSeriesNewUsers.error.message)
+      }
       timeSeriesDays = buildTimeSeriesDays(
         startDate,
         endDate,
         timeSeriesVisitors.error ? [] : timeSeriesVisitors.rows,
         timeSeriesEvents.error ? [] : timeSeriesEvents.rows,
+        timeSeriesNewUsers.error ? [] : timeSeriesNewUsers.rows,
       )
     }
 
