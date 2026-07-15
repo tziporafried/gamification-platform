@@ -1,6 +1,19 @@
-import { useState, useRef, type ReactNode } from 'react'
+import { useState, useRef, useEffect, Fragment, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check } from 'lucide-react'
+import {
+  ScanLine,
+  Settings2,
+  Printer,
+  PlugZap,
+  Ticket,
+  Trophy,
+  Flame,
+  ChevronLeft,
+  ChevronDown,
+  QrCode,
+  AppWindow,
+  type LucideIcon,
+} from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePlansModal } from '@/contexts/PlansModalContext'
@@ -16,6 +29,7 @@ import {
   trackCtaClick,
   trackContactFormOpen,
   trackFaqOpen,
+  trackHowItWorksView,
   trackVideoComplete,
   trackVideoProgress,
   trackVideoView,
@@ -23,70 +37,118 @@ import {
 import { setPendingCreateEventIntent } from '@/lib/contact'
 import { cn } from '@/lib/utils'
 
-const STEPS = [
+const SETUP_STEPS = [
   {
-    icon: '🪄',
-    title: 'בונים את המשחק בכמה קליקים',
-    body: 'שישה שלבים מלווים אתכם: פרטי הפעילות, חלוקה לקבוצות (כולם יחד או קבוצות נפרדות), הוספת משתתפים, הגדרת משימות וניקוד, פרסים - ובסיום מייצרים ומדפיסים כרטיסי QR מוכנים לאירוע.',
+    id: 'setup',
+    icon: Settings2,
+    title: 'בוחרים ומגדירים משחק',
+    body: 'כמה קליקים והמשחק שלכם מוכן.',
   },
   {
-    icon: '📱',
-    title: 'המשתתפים סורקים וצוברים נקודות',
-    body: 'בעמדת הסריקה, כשמשתתף משלים משימה הוא סורק את כרטיס ה-QR שקיבל מראש - והנקודות נרשמות מיד. פרסים נפתחים אוטומטית כשמגיעים לסף הנדרש.',
+    id: 'print',
+    icon: Printer,
+    title: 'מורידים ומדפיסים',
+    body: 'מקבלים קובץ כרטיסי QR מוכן להדפסה.',
   },
   {
-    icon: '🏆',
-    title: 'התחרות נשארת חיה על המסך',
-    body: 'מסך "שיאנים בלייב" נפתח בלשונית נפרדת ומציג דירוג משתתפים וקבוצות שמתעדכן עם כל ניקוד. אפשר להקרין אותו על מסך גדול כדי שכולם יראו מי מוביל.',
+    id: 'scanner',
+    icon: ScanLine,
+    title: 'מקבלים מאיתנו סורק',
+    body: 'במשחק המלא, הסורק כבר כלול.',
+  },
+  {
+    id: 'play',
+    icon: PlugZap,
+    title: 'מחברים ומתחילים לשחק',
+    body: 'פותחים את Gamify, מחברים את הסורק ומתחילים לסרוק.',
   },
 ] as const
 
-const FEATURES = [
-  'הקמה קלילה בשישה שלבים',
-  'חלוקה לקבוצות או משחק משותף',
-  'ניהול משתתפים, משימות ופרסים',
-  'יצירה והדפסה של כרטיסי QR',
-  'עמדת סריקה לניקוד אוטומטי',
-  'לוח שיאים חי להקרנה',
-  'מרכז בקרה לאירוע',
+const EVENT_STEPS = [
+  {
+    icon: Ticket,
+    title: 'הכרטיסים מחולקים - והמשחק יוצא לדרך',
+    body: 'כל משתתף מקבל את כרטיס ה-QR שהודפס לאירוע, עם המשימות הרלוונטיות.',
+  },
+  {
+    icon: ScanLine,
+    title: 'סורקים וצוברים נקודות',
+    body: 'בעמדת הסריקה משלימים משימה, סורקים את הכרטיס - והנקודות נרשמות מיד. פרסים נפתחים אוטומטית כשמגיעים לסף.',
+  },
+  {
+    icon: Trophy,
+    title: 'הדירוג מתעדכן מול כולם',
+    body: 'מסך "שיאנים בלייב" מציג דירוג משתתפים וקבוצות שמתעדכן עם כל ניקוד. אפשר להקרין אותו כדי שכולם יראו מי מוביל.',
+  },
+  {
+    icon: Flame,
+    title: 'התחרות מתחממת',
+    body: 'מתח, צחוק וגיבוש - האירוע הופך לחוויה שכולם מדברים עליה.',
+  },
 ] as const
+
+const PRICING_VALUES: { id: string; label: string; icon: LucideIcon }[] = [
+  { id: 'access', label: 'מערכת המשחק', icon: AppWindow },
+  { id: 'qr', label: 'קובץ QR להדפסה', icon: QrCode },
+  { id: 'scanner', label: 'סורק לשימוש באירוע', icon: ScanLine },
+]
 
 const FAQ_ITEMS: { question: string; answer: ReactNode }[] = [
   {
     question: 'מאיפה יהיה לי סורק?',
-    answer: 'scanners', // special-cased in FAQ render to link to the plans (routes) page
+    answer: 'scanners',
+  },
+  {
+    question: 'אפשר לשחק גם בלי סורק?',
+    answer: 'withoutScanner',
+  },
+  {
+    question: 'איך מקבלים את כרטיסי ה-QR?',
+    answer:
+      'בסיום הגדרת המשחק המערכת מפיקה קובץ כרטיסי QR מוכן להורדה ולהדפסה. מורידים את הקובץ ומדפיסים את הכרטיסים בעצמכם.',
   },
   {
     question: 'כמה זמן לוקח להקים משחק?',
-    answer: 'ברוב המקרים ניתן להקים משחק ראשון בתוך מספר דקות בתהליך הקמה קליל - מהגדרת פרטי האירוע ועד להדפסת כרטיסי QR.',
+    answer:
+      'ברוב המקרים אפשר להקים משחק ראשון בתוך כמה דקות - מהגדרת האירוע והמשימות ועד להורדת קובץ כרטיסי ה-QR להדפסה.',
   },
   {
     question: 'האם אפשר ליצור כמה קבוצות?',
-    answer: 'כן. בוחרים "כולם יחד" או יוצרים קבוצות עם צבעים נפרדים. לוח השיאים מציג גם דירוג משתתפים וגם דירוג קבוצות.',
+    answer:
+      'כן. אפשר לשחק כולם יחד או לחלק את המשתתפים לקבוצות. לכל קבוצה צבע משלה, ולוח השיאים מציג גם את דירוג המשתתפים וגם את דירוג הקבוצות.',
   },
   {
     question: 'איך המשתתפים משחקים?',
-    answer: 'למשתתפים אין התחברות לאפליקציה. כל משתתף מקבל כרטיס QR מודפס עם המשימות הרלוונטיות, מבצע את הפעילות בשטח, ובעמדת הסריקה סורק את הכרטיס - והנקודות מתעדכנות אוטומטית.',
+    answer:
+      'כל משתתף מקבל כרטיס QR מודפס עם המשימות שלו, מבצע אותן במהלך הפעילות וצובר נקודות. במשחק המלא סורקים את הכרטיס בעמדת הסריקה והניקוד מתעדכן אוטומטית. במשחק הבסיסי מזינים את הסריקות ידנית מתוך המערכת.',
   },
   {
     question: 'איך מציגים את הדירוג?',
-    answer: 'ממרכז הבקרה של האירוע פותחים את "שיאנים בלייב" - מסך נפרד שמתעדכן עם כל ניקוד חדש. אפשר להקרין אותו על מסך גדול.',
+    answer:
+      'ממרכז הבקרה של האירוע פותחים את "שיאנים בלייב" - מסך שמתעדכן בזמן אמת עם כל ניקוד חדש. אפשר להציג אותו על מסך גדול כדי שכולם יעקבו אחרי התחרות.',
   },
   {
     question: 'האם צריך להתקין אפליקציה?',
-    answer: 'לא. מנהלי האירוע עובדים מהדפדפן - תהליך ההקמה, עמדת הסריקה ולוח השיאים. למשתתפים מספיקים כרטיסי QR מודפסים ועמדת סריקה באירוע.',
+    answer:
+      'לא. Gamify פועלת ישירות מהדפדפן ואין צורך להתקין אפליקציה. גם המשתתפים לא צריכים להתחבר או להוריד דבר - הם משחקים עם כרטיסי ה-QR המודפסים.',
+  },
+  {
+    question: 'מה עושים אם אין חיבור לאינטרנט במקום האירוע?',
+    answer: 'offline',
   },
   {
     question: 'לאילו סוגי אירועים המערכת מתאימה?',
-    answer: 'ימי גיבוש, פעילויות חינוכיות, משחקי ניווט, אירועי חברה, פעילויות קהילתיות וכל פעילות המבוססת על משימות, ניקוד ותחרות.',
+    answer:
+      'Gamify מתאימה לימי גיבוש, פעילויות חינוכיות, משחקי ניווט, אירועי חברה, פעילויות קהילתיות וכל פעילות שמבוססת על משימות, ניקוד ותחרות.',
   },
   {
     question: 'אפשר להוסיף משימה לזמן קצוב?',
-    answer: 'בהחלט. אפשר להגדיר משימה שתקפה רק לחלון זמן מסוים - למשל חצי שעה. זה מוסיף מתח, מגביר את הכיף ומחזק את התחרות בין המשתתפים.',
+    answer:
+      'כן. אפשר להגדיר משימה שפעילה רק בחלון זמן מסוים - למשל לחצי שעה - ולהוסיף עוד מתח ותחרות למשחק.',
   },
   {
     question: 'כמה עולה להשתמש במערכת?',
-    answer: 'pricing', // special-cased in FAQ render to open PlansModal
+    answer: 'pricing',
   },
 ]
 
@@ -109,19 +171,41 @@ const viewportOnce = { once: true, amount: 0.25 } as const
 export function Landing() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { openPlans } = usePlansModal()
+  const { openPlans, isOpen: plansOpen } = usePlansModal()
   const reducedMotion = useReducedMotion()
-  const [faqOpen, setFaqOpen] = useState(() => FAQ_ITEMS.map(() => false))
+  const [faqOpenIndex, setFaqOpenIndex] = useState<number | null>(null)
   const [contactOpen, setContactOpen] = useState(false)
   const [contactLocation, setContactLocation] = useState<'faq' | 'footer'>('footer')
+  const howItWorksRef = useRef<HTMLElement>(null)
+  const withoutScannerCtaRef = useRef<HTMLButtonElement>(null)
+  const restoreFocusToWithoutScannerRef = useRef(false)
 
-  function handleOpenPlans() {
+  useEffect(() => {
+    if (plansOpen || !restoreFocusToWithoutScannerRef.current) return
+    restoreFocusToWithoutScannerRef.current = false
+    queueMicrotask(() => withoutScannerCtaRef.current?.focus())
+  }, [plansOpen])
+
+  function handleOpenPlans(ctaLocation: string) {
     trackCtaClick({
       cta_name: 'view_pricing',
-      cta_location: 'pricing',
+      cta_location: ctaLocation,
       destination: 'plans_modal',
     })
     openPlans()
+  }
+
+  function handleOpenPlansWithoutScanner() {
+    trackCtaClick({
+      cta_name: 'view_pricing',
+      cta_location: 'faq_without_scanner',
+      destination: 'plans_modal',
+    })
+    restoreFocusToWithoutScannerRef.current = true
+    openPlans({
+      focusPlan: 'independent',
+      source: 'faq_without_scanner',
+    })
   }
 
   function handleCreateEventClick() {
@@ -134,7 +218,6 @@ export function Landing() {
       navigate('/events')
       return
     }
-    // Preserve CREATE_EVENT intent across login (MyEvents consumes it).
     setPendingCreateEventIntent()
     navigate(`/login?returnTo=${encodeURIComponent('/events')}`)
   }
@@ -154,13 +237,20 @@ export function Landing() {
     setContactOpen(true)
   }
 
+  function scrollToHowItWorks() {
+    trackCtaClick({
+      cta_name: 'scroll_how_it_works',
+      cta_location: 'after_video',
+      destination: '#how-it-works',
+    })
+    howItWorksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   function toggleFaq(index: number) {
-    setFaqOpen((current) => {
-      const willOpen = !current[index]
-      if (willOpen) {
-        trackFaqOpen(FAQ_ITEMS[index].question, index)
-      }
-      return current.map((open, itemIndex) => (itemIndex === index ? !open : open))
+    setFaqOpenIndex((current) => {
+      if (current === index) return null
+      trackFaqOpen(FAQ_ITEMS[index].question, index)
+      return index
     })
   }
 
@@ -175,95 +265,184 @@ export function Landing() {
         <GlobalHeader />
 
         <main className="mx-auto max-w-4xl px-4 pb-20 pt-12 sm:px-6">
-        <motion.section
-          className="mx-auto mb-10 max-w-2xl text-center sm:mb-12"
-          variants={stagger}
-          initial={motionSafe ? 'hidden' : false}
-          animate="visible"
-        >
-          <motion.div
-            variants={fadeUp}
-            transition={{ duration: 0.55, ease: EASE_OUT }}
-            className="mb-6 flex justify-center"
+          {/* 1. Hero */}
+          <motion.section
+            className="mx-auto mb-10 max-w-2xl text-center sm:mb-12"
+            variants={stagger}
+            initial={motionSafe ? 'hidden' : false}
+            animate="visible"
           >
             <motion.div
-              animate={
-                motionSafe
-                  ? { y: [0, -10, 0], rotate: [0, -2.5, 2.5, 0] }
-                  : undefined
-              }
-              transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+              variants={fadeUp}
+              transition={{ duration: 0.55, ease: EASE_OUT }}
+              className="mb-6 flex justify-center"
             >
-              <BrandLogo className="h-28 w-28 sm:h-36 sm:w-36 drop-shadow-[0_12px_28px_rgba(171,53,0,0.28)]" />
+              <motion.div
+                animate={
+                  motionSafe
+                    ? { y: [0, -10, 0], rotate: [0, -2.5, 2.5, 0] }
+                    : undefined
+                }
+                transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                <BrandLogo className="h-28 w-28 sm:h-36 sm:w-36 drop-shadow-[0_12px_28px_rgba(171,53,0,0.28)]" />
+              </motion.div>
             </motion.div>
-          </motion.div>
 
-          <motion.h1
-            variants={fadeUp}
+            <motion.h1
+              variants={fadeUp}
+              transition={{ duration: 0.55, ease: EASE_OUT }}
+              className="mb-5 text-[34px] font-black leading-[1.2] text-foreground sm:text-[42px]"
+            >
+              סבתא? דודה?
+              <br />
+              אחראית על ה-
+              <span className={cn('text-primary', motionSafe && 'landing-brand-shimmer')}>Vibe</span>
+              {' '}בנופש המשפחתי?
+            </motion.h1>
+
+            <motion.p
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: EASE_OUT }}
+              className="mb-4 text-lg leading-[1.6] text-foreground"
+            >
+              מכירים את הרגע בנופש שמישהו אומר...
+            </motion.p>
+
+            <motion.p
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: EASE_OUT }}
+              className="mb-5 text-xl font-bold italic text-muted"
+            >
+              "טוב... אז מה עושים עכשיו?"
+            </motion.p>
+
+            <motion.p
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: EASE_OUT }}
+              className="mb-5 text-[26px] font-black leading-[1.3] text-foreground sm:text-[30px]"
+            >
+              עם{' '}
+              <span className={cn('text-primary', motionSafe && 'landing-brand-shimmer')}>Gamify</span>
+              {' '}זה פשוט לא קורה.
+            </motion.p>
+
+            <motion.p
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: EASE_OUT }}
+              className="mx-auto mb-6 max-w-[500px] text-[17px] leading-[1.7] text-foreground"
+            >
+              הופכים את כל הנופש לכיף אחד גדול עם משימות, אתגרים, תחרויות, ניקוד, פרסים ולוח אלופים שכווווולם רוצים לכבוש.
+            </motion.p>
+
+            <motion.p
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: EASE_OUT }}
+              className="mx-auto mb-0 max-w-[500px] text-base font-bold leading-[1.6] text-primary [text-shadow:0_0_18px_rgba(171,53,0,0.35)]"
+            >
+              פחות שעמום, יותר צחוק, יותר גיבוש, ורגעים שלא שוכחים.
+            </motion.p>
+          </motion.section>
+
+          {/* 2. Video */}
+          <motion.section
+            className="mb-20 sm:mb-[88px]"
+            initial={motionSafe ? { opacity: 0, y: 28 } : false}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={viewportOnce}
             transition={{ duration: 0.55, ease: EASE_OUT }}
-            className="mb-5 text-[34px] font-black leading-[1.2] text-foreground sm:text-[42px]"
           >
-            סבתא? דודה?
-            <br />
-            אחראית על ה-
-            <span className={cn('text-primary', motionSafe && 'landing-brand-shimmer')}>Vibe</span>
-            {' '}בנופש המשפחתי?
-          </motion.h1>
+            <div className="w-full overflow-hidden rounded-2xl bg-foreground/5 shadow-lift">
+              <LandingDemoVideo />
+            </div>
+            <div className="mt-10 text-center">
+              <motion.div
+                whileHover={motionSafe ? { scale: 1.04 } : undefined}
+                whileTap={motionSafe ? { scale: 0.97 } : undefined}
+                className="inline-block"
+              >
+                <Button
+                  size="lg"
+                  variant="gradient"
+                  onClick={scrollToHowItWorks}
+                  className="landing-hero-cta !rounded-full !px-12 !py-4 !text-[19px] !font-extrabold"
+                >
+                  אז איך זה עובד? ↓
+                </Button>
+              </motion.div>
+            </div>
+          </motion.section>
 
-          <motion.p
-            variants={fadeUp}
+          {/* 3. How it works — setup flow */}
+          <motion.section
+            ref={howItWorksRef}
+            id="how-it-works"
+            className="mb-20 scroll-mt-24 sm:mb-[88px]"
+            initial={motionSafe ? { opacity: 0, y: 24 } : false}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={viewportOnce}
             transition={{ duration: 0.5, ease: EASE_OUT }}
-            className="mb-4 text-lg leading-[1.6] text-foreground"
+            onViewportEnter={trackHowItWorksView}
           >
-            מכירים את הרגע בנופש שמישהו אומר...
-          </motion.p>
+            <SectionTitle className="mb-3 text-[30px] font-black leading-tight sm:mb-4 sm:text-[38px]">
+              איך זה עובד בפועל?
+            </SectionTitle>
+            <p className="mb-10 mt-0 max-w-2xl text-right text-lg font-semibold leading-[1.65] text-foreground sm:text-xl">
+              ארבעה שלבים פשוטים - מההגדרה באתר ועד לסריקה באירוע.
+            </p>
 
-          <motion.p
-            variants={fadeUp}
+            <SetupSnakeFlow motionSafe={motionSafe} />
+          </motion.section>
+
+          {/* 4. Event-time experience */}
+          <section className="mb-20 sm:mb-[88px]">
+            <SectionTitle>ומה קורה באירוע עצמו?</SectionTitle>
+            <p className="mb-6 mt-0 max-w-2xl text-right text-base leading-[1.65] text-muted">
+              מהרגע שהאורחים מגיעים עם הכרטיסים - ככה נראית החוויה בשטח.
+            </p>
+            <div className="space-y-4">
+              {EVENT_STEPS.map((step, index) => (
+                <StepCard
+                  key={step.title}
+                  step={index + 1}
+                  icon={step.icon}
+                  title={step.title}
+                  body={step.body}
+                  delay={index * 0.08}
+                  motionSafe={motionSafe}
+                />
+              ))}
+            </div>
+          </section>
+
+          {/* 5. Compact pricing */}
+          <motion.section
+            className="mb-20 text-center sm:mb-[88px]"
+            initial={motionSafe ? { opacity: 0, y: 20 } : false}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={viewportOnce}
             transition={{ duration: 0.5, ease: EASE_OUT }}
-            className="mb-5 text-xl font-bold italic text-muted"
           >
-            "טוב... אז מה עושים עכשיו?"
-          </motion.p>
-
-          <motion.p
-            variants={fadeUp}
-            transition={{ duration: 0.5, ease: EASE_OUT }}
-            className="mb-5 text-[26px] font-black leading-[1.3] text-foreground sm:text-[30px]"
-          >
-            עם{' '}
-            <span className={cn('text-primary', motionSafe && 'landing-brand-shimmer')}>Gamify</span>
-            {' '}זה פשוט לא קורה.
-          </motion.p>
-
-          <motion.p
-            variants={fadeUp}
-            transition={{ duration: 0.5, ease: EASE_OUT }}
-            className="mx-auto mb-6 max-w-[500px] text-[17px] leading-[1.7] text-foreground"
-          >
-            הופכים את כל הנופש לכיף אחד גדול עם משימות, אתגרים, תחרויות, ניקוד, פרסים ולוח אלופים שכווווולם רוצים לכבוש.
-          </motion.p>
-
-          <motion.p
-            variants={fadeUp}
-            transition={{ duration: 0.5, ease: EASE_OUT }}
-            className="mx-auto mb-0 max-w-[500px] text-base font-bold leading-[1.6] text-primary [text-shadow:0_0_18px_rgba(171,53,0,0.35)]"
-          >
-            פחות שעמום, יותר צחוק, יותר גיבוש, ורגעים שלא שוכחים.
-          </motion.p>
-        </motion.section>
-
-        <motion.section
-          className="mb-20 sm:mb-[88px]"
-          initial={motionSafe ? { opacity: 0, y: 28 } : false}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={viewportOnce}
-          transition={{ duration: 0.55, ease: EASE_OUT }}
-        >
-          <div className="w-full overflow-hidden rounded-2xl bg-foreground/5 shadow-lift">
-            <LandingDemoVideo />
-          </div>
-          <div className="mt-10 text-center">
+            <SectionTitle className="mb-4 text-center sm:mb-5">כמה זה עולה?</SectionTitle>
+            <p className="mb-3 text-[34px] font-black leading-[1.15] tracking-tight text-primary sm:text-[48px]">
+              משחק מלא ב־
+              <span className="whitespace-nowrap">₪150</span>
+              {' '}לאירוע
+            </p>
+            <p className="mb-8 text-base font-semibold text-foreground sm:text-lg">
+              כל מה שצריך לחוויית המשחק, בלי מנוי.
+            </p>
+            <ul className="mx-auto mb-9 flex max-w-2xl flex-col items-stretch justify-center gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+              {PRICING_VALUES.map(({ id, label, icon: Icon }) => (
+                <li
+                  key={id}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-surface-modal px-4 py-2.5 text-sm font-medium text-foreground shadow-card sm:text-[15px]"
+                >
+                  <Icon size={16} strokeWidth={2.25} className="shrink-0 text-primary" aria-hidden="true" />
+                  {label}
+                </li>
+              ))}
+            </ul>
             <motion.div
               whileHover={motionSafe ? { scale: 1.04 } : undefined}
               whileTap={motionSafe ? { scale: 0.97 } : undefined}
@@ -272,195 +451,167 @@ export function Landing() {
               <Button
                 size="lg"
                 variant="gradient"
-                onClick={() => {
-                  trackCtaClick({
-                    cta_name: 'start_now',
-                    cta_location: 'after_video',
-                    destination: user ? '/events' : '/login',
-                  })
-                  if (user) {
-                    navigate('/events')
-                    return
-                  }
-                  setPendingCreateEventIntent()
-                  navigate(`/login?returnTo=${encodeURIComponent('/events')}`)
-                }}
-                className="landing-hero-cta !rounded-full !px-12 !py-4 !text-[19px] !font-extrabold"
+                onClick={() => handleOpenPlans('pricing_section')}
+                className="!rounded-full !px-10 !py-3.5 !text-[17px] !font-extrabold"
               >
-                בואו נשחק
+                לכל המחירים והמסלולים
               </Button>
             </motion.div>
-          </div>
-        </motion.section>
+            <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-muted">
+              מחפשים משהו בסיסי יותר? יש מסלולים החל מ־₪40 לאירוע.
+            </p>
+          </motion.section>
 
-        <section className="mb-20 sm:mb-[88px]">
-          <SectionTitle>כך מתנהל אירוע ב-Gamify</SectionTitle>
-          <div className="space-y-5">
-            {STEPS.map((step, index) => (
-              <StepCard
-                key={step.title}
-                step={index + 1}
-                {...step}
-                delay={index * 0.1}
-                motionSafe={motionSafe}
-              />
-            ))}
-          </div>
-        </section>
-
-        <section className="mb-20 sm:mb-[88px]">
-          <SectionTitle>כל מה שצריך כדי להפעיל משחק מוצלח</SectionTitle>
-          <motion.div
-            initial={motionSafe ? { opacity: 0, y: 24 } : false}
+          {/* 7. Tech-ease callout */}
+          <motion.section
+            className="mb-20 text-center sm:mb-[88px]"
+            initial={motionSafe ? { opacity: 0, y: 16 } : false}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={viewportOnce}
-            transition={{ duration: 0.5, ease: EASE_OUT }}
+            transition={{ duration: 0.45, ease: EASE_OUT }}
           >
-            <Card className="p-6 sm:p-8">
-              <motion.ul
-                className="space-y-3"
-                variants={stagger}
-                initial={motionSafe ? 'hidden' : false}
-                whileInView="visible"
-                viewport={viewportOnce}
+            <SectionTitle className="mb-3 text-center sm:mb-4">זה מסובך?</SectionTitle>
+            <p className="mb-3 text-[32px] font-black leading-none text-primary sm:text-[38px]">
+              ממש לא.
+            </p>
+            <p className="mx-auto max-w-md text-base leading-[1.7] text-foreground sm:text-lg">
+              אם אתם יודעים לחבר סורק למחשב ולפתוח דפדפן — אתם מסודרים.
+            </p>
+          </motion.section>
+
+          {/* 8. FAQ accordion */}
+          <section className="mb-20 sm:mb-[88px]">
+            <SectionTitle className="mb-5 sm:mb-6">שאלות נפוצות</SectionTitle>
+            <div className="space-y-2">
+              {FAQ_ITEMS.map((item, index) => (
+                <FaqItem
+                  key={item.question}
+                  id={`faq-panel-${index}`}
+                  question={item.question}
+                  answer={
+                    item.answer === 'pricing' ? (
+                      <>
+                        משלמים לפי אירוע - החל מ-₪40.
+                        {' '}
+                        <button
+                          type="button"
+                          className="font-medium text-primary hover:underline"
+                          onClick={() => handleOpenPlans('pricing')}
+                        >
+                          באפשרויות ההפעלה
+                        </button>
+                        {' '}
+                        תמצאו את המסלולים - משחק בסיסי, משחק מלא ופתרון לארגונים - ואפשר גם לשלוח בקשה
+                        ונחזור אליכם.
+                      </>
+                    ) : item.answer === 'scanners' ? (
+                      <>
+                        במשחק המלא תקבלו מאיתנו סורק מתאים לשימוש באירוע - אין צורך לרכוש סורק בעצמכם.
+                        {' '}
+                        <button
+                          type="button"
+                          className="font-medium text-primary hover:underline"
+                          onClick={() => handleOpenPlans('pricing')}
+                        >
+                          לכל המחירים והמסלולים
+                        </button>
+                        .
+                      </>
+                    ) : item.answer === 'offline' ? (
+                      <div className="space-y-2.5">
+                        <p>
+                          אנחנו עובדים על אפשרות להפעלת Gamify גם ללא חיבור לאינטרנט, ונשמח לשמוע מה
+                          אתם צריכים.
+                        </p>
+                        <button
+                          type="button"
+                          className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                          onClick={() => handleContactClick('faq')}
+                        >
+                          דברו איתנו
+                        </button>
+                      </div>
+                    ) : item.answer === 'withoutScanner' ? (
+                      <div className="space-y-2">
+                        <p>
+                          כן. במשחק הבסיסי מעדכנים את הסריקות ידנית מתוך המערכת במקום להשתמש בסורק.
+                          שאר ניהול המשחק נשאר ב-Gamify כרגיל.
+                        </p>
+                        <button
+                          ref={withoutScannerCtaRef}
+                          type="button"
+                          className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                          onClick={handleOpenPlansWithoutScanner}
+                        >
+                          למסלולים ולמחירים
+                        </button>
+                      </div>
+                    ) : (
+                      item.answer
+                    )
+                  }
+                  open={faqOpenIndex === index}
+                  onToggle={() => toggleFaq(index)}
+                  motionSafe={motionSafe}
+                />
+              ))}
+            </div>
+            <p className="mt-5 text-center text-sm leading-[1.7] text-muted">
+              לא מצאתם את התשובה שחיפשתם?{' '}
+              <button
+                type="button"
+                onClick={() => handleContactClick('faq')}
+                className="font-medium text-primary underline-offset-2 hover:underline"
               >
-                {FEATURES.map((feature) => (
-                  <motion.li
-                    key={feature}
-                    variants={fadeUp}
-                    transition={{ duration: 0.4, ease: EASE_OUT }}
-                    className="flex items-start gap-3 text-right text-foreground"
-                  >
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface-elevated text-secondary">
-                      <Check size={12} strokeWidth={3} />
-                    </span>
-                    <span className="leading-[1.7]">{feature}</span>
-                  </motion.li>
-                ))}
-              </motion.ul>
-            </Card>
-          </motion.div>
-        </section>
-
-        <motion.section
-          className="mb-20 sm:mb-[88px]"
-          initial={motionSafe ? { opacity: 0, y: 24 } : false}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={viewportOnce}
-          transition={{ duration: 0.5, ease: EASE_OUT }}
-        >
-          <SectionTitle>עדיין לא בטוחים איך זה עובד?</SectionTitle>
-          <Card className="space-y-4 p-6 text-right text-foreground sm:p-8">
-            <p className="leading-[1.7]">אין צורך להתחייב לפני שמבינים את המערכת.</p>
-            <p className="leading-[1.7]">אחרי ההתחברות אפשר ליצור אירוע ולעבור על כל שלבי ההקמה.</p>
-            <p className="leading-[1.7]">
-              תהליך ההקמה מוביל אתכם שלב אחר שלב - מהגדרת פרטי האירוע, דרך משתתפים ומשימות, ועד להדפסת כרטיסי QR ופתיחת מרכז הבקרה.
+                דברו איתנו
+              </button>
             </p>
-            <p className="font-medium leading-[1.7] text-primary">
-              הדרך הטובה ביותר להכיר את Gamify היא פשוט ליצור אירוע ולהריץ אותו.
-            </p>
-          </Card>
-        </motion.section>
+          </section>
 
-        <section className="mb-20 sm:mb-[88px]">
-          <SectionTitle>שאלות נפוצות</SectionTitle>
-          <div className="space-y-3">
-            {FAQ_ITEMS.map((item, index) => (
-              <FaqItem
-                key={item.question}
-                question={item.question}
-                answer={
-                  item.answer === 'pricing' ? (
-                    <>
-                      <button
-                        type="button"
-                        className="font-medium text-primary hover:underline"
-                        onClick={handleOpenPlans}
-                      >
-                        באפשרויות ההפעלה
-                      </button>
-                      {' '}
-                      תמצאו את המסלולים - משחק עצמאי, חוויה מלאה ופתרון לארגונים - ואפשר גם לשלוח בקשה
-                      ונחזור אליכם.
-                    </>
-                  ) : item.answer === 'scanners' ? (
-                    <>
-                      הסורק עלינו (מותנה בחבילה שרכשת). לדף המסלולים שלנו לחצי{' '}
-                      <button
-                        type="button"
-                        className="font-medium text-primary hover:underline"
-                        onClick={handleOpenPlans}
-                      >
-                        כאן
-                      </button>
-                      .
-                    </>
-                  ) : (
-                    item.answer
-                  )
-                }
-                open={faqOpen[index]}
-                onToggle={() => toggleFaq(index)}
-                motionSafe={motionSafe}
-                delay={index * 0.04}
-              />
-            ))}
-          </div>
-          <p className="mt-5 text-center text-sm leading-[1.7] text-muted">
-            לא מצאתם את התשובה שחיפשתם?{' '}
-            <button
-              type="button"
-              onClick={() => handleContactClick('faq')}
-              className="font-medium text-primary underline-offset-2 hover:underline"
-            >
-              דברו איתנו
-            </button>
-          </p>
-        </section>
-
-        <motion.section
-          className="text-center"
-          initial={motionSafe ? { opacity: 0, scale: 0.96 } : false}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={viewportOnce}
-          transition={{ duration: 0.55, ease: EASE_OUT }}
-        >
-          <h2 className="mb-4 text-[26px] font-bold text-primary">מוכנים להתחיל?</h2>
-          <p className="mx-auto mb-8 max-w-xl leading-[1.7] text-muted">
-            צרו את האירוע הראשון שלכם ותראו איך Gamify עובד בפועל.
-          </p>
-          <motion.div
-            whileHover={motionSafe ? { scale: 1.04 } : undefined}
-            whileTap={motionSafe ? { scale: 0.97 } : undefined}
-            className="inline-block"
+          {/* 9. Final CTA */}
+          <motion.section
+            className="text-center"
+            initial={motionSafe ? { opacity: 0, scale: 0.96 } : false}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={viewportOnce}
+            transition={{ duration: 0.55, ease: EASE_OUT }}
           >
-            <Button
-              size="lg"
-              variant="gradient"
-              onClick={handleCreateEventClick}
-              className="landing-hero-cta !rounded-full !px-12 !py-4 !text-[19px] !font-extrabold"
+            <h2 className="mb-4 text-[26px] font-bold text-primary">מוכנים להתחיל?</h2>
+            <p className="mx-auto mb-8 max-w-xl leading-[1.7] text-muted">
+              המשחק הראשון שלכם במרחק כמה קליקים.
+            </p>
+            <motion.div
+              whileHover={motionSafe ? { scale: 1.04 } : undefined}
+              whileTap={motionSafe ? { scale: 0.97 } : undefined}
+              className="inline-block"
             >
-              צרו את האירוע הראשון שלכם
-            </Button>
-          </motion.div>
+              <Button
+                size="lg"
+                variant="gradient"
+                onClick={handleCreateEventClick}
+                className="landing-hero-cta !rounded-full !px-12 !py-4 !text-[19px] !font-extrabold"
+              >
+                צרו את האירוע הראשון שלכם
+              </Button>
+            </motion.div>
 
-          <div className="mx-auto mt-10 max-w-md border-t border-border/60 pt-8">
-            <p className="text-sm font-medium leading-[1.7] text-foreground">
-              יש לכם שאלה או אירוע מיוחד?
-            </p>
-            <p className="mt-1 text-sm leading-[1.7] text-muted">
-              נשמח לחשוב איתכם יחד.
-            </p>
-            <button
-              type="button"
-              onClick={() => handleContactClick('footer')}
-              className="mt-4 inline-flex items-center justify-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-primary"
-            >
-              דברו איתנו
-            </button>
-          </div>
-        </motion.section>
-      </main>
+            <div className="mx-auto mt-10 max-w-md border-t border-border/60 pt-8">
+              <p className="text-sm font-medium leading-[1.7] text-foreground">
+                יש לכם שאלה או אירוע מיוחד?
+              </p>
+              <p className="mt-1 text-sm leading-[1.7] text-muted">
+                נשמח לחשוב איתכם יחד.
+              </p>
+              <button
+                type="button"
+                onClick={() => handleContactClick('footer')}
+                className="mt-4 inline-flex items-center justify-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-primary"
+              >
+                דברו איתנו
+              </button>
+            </div>
+          </motion.section>
+        </main>
       </div>
 
       <FloatingContactButton location="floating" variant="pill" hidden={contactOpen} />
@@ -503,7 +654,6 @@ function LandingDemoVideo() {
       trackVideoComplete('gamify-tour')
     }
     milestonesRef.current.clear()
-    // Prefer the opening frame over a blank/black post-ended state.
     const video = e.currentTarget
     video.pause()
     video.currentTime = 0
@@ -526,11 +676,18 @@ function LandingDemoVideo() {
   )
 }
 
-function SectionTitle({ children }: { children: ReactNode }) {
+function SectionTitle({
+  children,
+  className,
+}: {
+  children: ReactNode
+  /** Override spacing — default is tight for a subtitle directly underneath. */
+  className?: string
+}) {
   const reducedMotion = useReducedMotion()
   return (
     <motion.h2
-      className="mb-6 text-right text-[26px] font-bold text-primary sm:mb-8"
+      className={cn('mb-2 text-right text-[26px] font-bold text-primary', className)}
       initial={reducedMotion ? false : { opacity: 0, x: 16 }}
       whileInView={{ opacity: 1, x: 0 }}
       viewport={viewportOnce}
@@ -541,16 +698,203 @@ function SectionTitle({ children }: { children: ReactNode }) {
   )
 }
 
+const SETUP_SNAKE_MS = 2200
+const SETUP_ARROW_SLOT = 'w-10 shrink-0' // equal gap for each desktop arrow
+
+function SetupSnakeFlow({
+  motionSafe,
+}: {
+  motionSafe: boolean
+}) {
+  const [active, setActive] = useState(0)
+  const [running, setRunning] = useState(false)
+  /** Bumps to restart the interval after hover jumps to a step. */
+  const [timelineKey, setTimelineKey] = useState(0)
+  const stepCount = SETUP_STEPS.length
+
+  useEffect(() => {
+    if (!motionSafe || !running) return
+    const id = window.setInterval(() => {
+      setActive((current) => (current + 1) % stepCount)
+    }, SETUP_SNAKE_MS)
+    return () => window.clearInterval(id)
+  }, [motionSafe, running, stepCount, timelineKey])
+
+  function focusStep(index: number) {
+    if (!motionSafe) return
+    setActive(index)
+    setTimelineKey((key) => key + 1)
+  }
+
+  return (
+    <motion.div
+      className="flex flex-col gap-2 md:flex-row md:items-stretch md:gap-0"
+      onViewportEnter={() => setRunning(true)}
+      onViewportLeave={() => setRunning(false)}
+      viewport={{ amount: 0.35 }}
+    >
+      {SETUP_STEPS.map((step, index) => {
+        const isActive = !motionSafe || active === index
+        const showArrow = motionSafe && active === index && index < stepCount - 1
+
+        return (
+          <Fragment key={step.id}>
+            <div
+              className="flex min-h-0 min-w-0 flex-1 outline-none"
+              tabIndex={0}
+              onMouseEnter={() => focusStep(index)}
+              onFocus={() => focusStep(index)}
+            >
+              <SetupStepCard
+                step={index + 1}
+                icon={step.icon}
+                title={step.title}
+                body={step.body}
+                delay={index * 0.08}
+                motionSafe={motionSafe}
+                active={isActive}
+              />
+            </div>
+
+            {index < stepCount - 1 && (
+              <>
+                <div
+                  aria-hidden="true"
+                  className={cn(
+                    'relative hidden shrink-0 items-start justify-center pt-[2.35rem] md:flex',
+                    SETUP_ARROW_SLOT,
+                  )}
+                >
+                  <AnimatePresence mode="wait">
+                    {showArrow && (
+                      <motion.div
+                        key={`desk-arrow-${active}`}
+                        className="text-primary"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.4, ease: EASE_OUT }}
+                      >
+                        <ChevronLeft size={26} strokeWidth={2.5} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <div
+                  aria-hidden="true"
+                  className="flex h-9 items-center justify-center md:hidden"
+                >
+                  <AnimatePresence mode="wait">
+                    {showArrow ? (
+                      <motion.div
+                        key={`mobile-arrow-${active}`}
+                        className="text-primary"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.4, ease: EASE_OUT }}
+                      >
+                        <ChevronDown size={24} strokeWidth={2.5} />
+                      </motion.div>
+                    ) : (
+                      <span className="h-4 w-px bg-primary/15" />
+                    )}
+                  </AnimatePresence>
+                </div>
+              </>
+            )}
+          </Fragment>
+        )
+      })}
+    </motion.div>
+  )
+}
+
+function SetupStepCard({
+  step,
+  icon: Icon,
+  title,
+  body,
+  delay,
+  motionSafe,
+  active,
+}: {
+  step: number
+  icon: LucideIcon
+  title: string
+  body: ReactNode
+  delay: number
+  motionSafe: boolean
+  active: boolean
+}) {
+  return (
+    <motion.div
+      initial={motionSafe ? { opacity: 0, y: 20 } : false}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={viewportOnce}
+      transition={{ duration: 0.45, ease: EASE_OUT, delay }}
+      className="flex h-full w-full min-w-0"
+    >
+      <Card
+        className={cn(
+          'relative z-[1] flex h-full w-full cursor-pointer flex-col bg-surface-modal p-5 text-right transition-[box-shadow,border-color,background-color,opacity] duration-500 sm:p-6',
+          active
+            ? 'border-primary shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_22%,transparent),0_12px_28px_-10px_color-mix(in_srgb,var(--color-primary)_42%,transparent)]'
+            : 'border-border opacity-[0.88] shadow-card',
+        )}
+      >
+        <div className="mb-3.5 flex items-center gap-3">
+          <span
+            className={cn(
+              'relative z-[1] flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-black transition-all duration-500',
+              active
+                ? 'bg-primary text-primary-foreground shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_28%,transparent),0_4px_12px_color-mix(in_srgb,var(--color-primary)_35%,transparent)]'
+                : 'bg-primary/55 text-primary-foreground',
+            )}
+          >
+            {step}
+          </span>
+          <span
+            className={cn(
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-500',
+              active ? 'bg-primary/15 text-primary' : 'bg-surface-elevated text-primary/80',
+            )}
+          >
+            <Icon size={20} strokeWidth={2.25} aria-hidden="true" />
+          </span>
+        </div>
+        <h3
+          className={cn(
+            'mb-2 text-base font-bold leading-snug sm:text-lg',
+            active ? 'text-primary' : 'text-foreground',
+          )}
+        >
+          {title}
+        </h3>
+        <p
+          className={cn(
+            'text-[15px] leading-[1.7] sm:text-base',
+            active ? 'text-foreground' : 'text-muted',
+          )}
+        >
+          {body}
+        </p>
+      </Card>
+    </motion.div>
+  )
+}
+
 function StepCard({
   step,
-  icon,
+  icon: Icon,
   title,
   body,
   delay,
   motionSafe,
 }: {
   step: number
-  icon: string
+  icon: LucideIcon
   title: string
   body: string
   delay: number
@@ -566,25 +910,12 @@ function StepCard({
     >
       <Card className="border-r-[5px] border-r-primary p-5 text-right sm:p-6">
         <div className="mb-3 flex items-center gap-3">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-elevated text-sm font-bold text-primary">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-base font-black text-primary-foreground shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_28%,transparent),0_4px_12px_color-mix(in_srgb,var(--color-primary)_35%,transparent)]">
             {step}
           </span>
-          <motion.span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-elevated text-lg"
-            animate={
-              motionSafe
-                ? { y: [0, -4, 0], rotate: [0, -6, 6, 0] }
-                : undefined
-            }
-            transition={{
-              duration: 2.8,
-              repeat: Infinity,
-              ease: 'easeInOut',
-              delay: step * 0.35,
-            }}
-          >
-            {icon}
-          </motion.span>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-elevated text-primary">
+            <Icon size={18} strokeWidth={2.25} aria-hidden="true" />
+          </span>
           <h3 className="text-lg font-bold text-primary">{title}</h3>
         </div>
         <p className="leading-[1.7] text-foreground">{body}</p>
@@ -594,61 +925,58 @@ function StepCard({
 }
 
 function FaqItem({
+  id,
   question,
   answer,
   open,
   onToggle,
   motionSafe,
-  delay,
 }: {
+  id: string
   question: string
   answer: ReactNode
   open: boolean
   onToggle: () => void
   motionSafe: boolean
-  delay: number
 }) {
   return (
-    <motion.div
-      initial={motionSafe ? { opacity: 0, y: 12 } : false}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={viewportOnce}
-      transition={{ duration: 0.4, ease: EASE_OUT, delay }}
-    >
-      <Card className="overflow-hidden">
-        <button
-          type="button"
-          onClick={onToggle}
-          className="flex w-full items-center justify-between gap-4 p-5 text-right transition-colors hover:bg-surface-elevated/50 sm:px-6"
-          aria-expanded={open}
-        >
-          <span className="font-bold text-primary">{question}</span>
-          <span
-            className={cn(
-              'shrink-0 text-lg font-light leading-none text-muted transition-transform duration-200',
-              open && 'rotate-45',
-            )}
-          >
-            +
-          </span>
-        </button>
-        <AnimatePresence initial={false}>
-          {open && (
-            <motion.div
-              key="faq-body"
-              initial={motionSafe ? { height: 0, opacity: 0 } : false}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={motionSafe ? { height: 0, opacity: 0 } : undefined}
-              transition={{ duration: 0.28, ease: EASE_OUT }}
-              className="overflow-hidden"
-            >
-              <div className="border-t border-border px-5 pb-5 pt-4 text-right leading-[1.7] text-foreground sm:px-6 sm:pb-6">
-                {answer}
-              </div>
-            </motion.div>
+    <div className="overflow-hidden rounded-xl border border-border bg-surface-modal shadow-card">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3.5 text-right transition-colors hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 sm:px-5"
+        aria-expanded={open}
+        aria-controls={id}
+      >
+        <span className="text-[15px] font-bold leading-snug text-primary sm:text-base">{question}</span>
+        <ChevronDown
+          size={20}
+          strokeWidth={2.25}
+          aria-hidden="true"
+          className={cn(
+            'shrink-0 text-primary transition-transform duration-200',
+            open && 'rotate-180',
           )}
-        </AnimatePresence>
-      </Card>
-    </motion.div>
+        />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            id={id}
+            key="faq-body"
+            role="region"
+            initial={motionSafe ? { height: 0, opacity: 0 } : false}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={motionSafe ? { height: 0, opacity: 0 } : undefined}
+            transition={{ duration: 0.28, ease: EASE_OUT }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-border px-4 pb-4 pt-3 text-right text-sm leading-[1.7] text-foreground sm:px-5 sm:pb-5 sm:text-base">
+              {answer}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }

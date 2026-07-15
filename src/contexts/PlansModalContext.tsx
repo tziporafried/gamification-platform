@@ -7,6 +7,8 @@ export type OpenPlansOptions = {
   eventId?: string | null
   source?: string | null
   plan?: PlansOption | null
+  /** Temporary visual emphasis on a plan card (no form open). */
+  focusPlan?: PlansOption | null
 }
 
 interface PlansModalContextType {
@@ -26,6 +28,7 @@ export function PlansModalProvider({ children }: { children: ReactNode }) {
       eventId: opts.eventId ?? null,
       source: opts.source ?? null,
       plan: opts.plan ?? null,
+      focusPlan: opts.focusPlan ?? null,
     })
     setIsOpen(true)
   }, [])
@@ -48,6 +51,7 @@ export function PlansModalProvider({ children }: { children: ReactNode }) {
         eventId={options.eventId}
         source={options.source}
         initialPlan={options.plan}
+        focusPlan={options.focusPlan}
       />
     </PlansModalContext.Provider>
   )
