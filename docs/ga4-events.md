@@ -70,36 +70,53 @@ Build verified: `npm run build` passes.
 
 ---
 
-## Admin Analytics dashboard (Plans + Contact)
+## Admin Analytics dashboard
 
 UI: Admin panel → **ניתוח נתונים** (`AdminAnalyticsDashboard.tsx`).  
 Data: Edge Function `ga4-dashboard` (`supabase/functions/ga4-dashboard`).
 
-### Section: Plans ואפשרויות הפעלה
+Main question the dashboard answers: interest → where it starts → where it drops.
+
+### Layout (business-first)
+
+1. Date filter  
+2. **דורש תשומת לב** — up to 3 derived insights (unique-user cohorts only)  
+3. **מסלול ההמרה** — visitors → video → plans → form open → lead (cohort comparison, not sequential funnel)  
+4. **סקירה כללית** — visitors, video, plans, leads, lead conversion, event creators  
+5. **ביצועי הסרטון** — start → 25/50/75 → complete (+ largest drop insight)  
+6. **עניין בדף הבית** — top FAQ + CTA × location  
+7. **מחירים ויצירת קשר** — plans → form open → lead  
+8. **שימוש במוצר** — login / event creation (separate from marketing funnel)
+
+### Section: מחירים ויצירת קשר
 
 | UI metric | GA4 event / dimension |
 |---|---|
-| פתחו את מודל ההפעלה | `view_plans` (unique users) |
-| בחרו מסלול | `select_plan` |
-| השאירו פרטים (כולל) | `generate_lead` (all sources in range) |
-| צפייה מהפעלת ניסיון | `activation_options_viewed` |
-| לחיצה על באדג׳ הפעלה | `activation_options_clicked` |
-| הופעלו מניסיון | `trial_activated` |
-| משפך: פתיחה → בחירה → ליד | `view_plans` → `select_plan` → `generate_lead` |
+| ראו מחירים | `view_plans` (unique users) |
+| פתחו טופס | `contact_form_open` |
+| שלחו פרטים | `generate_lead` |
+| המרה ממחירים לליד | leads ÷ `view_plans` |
 | בחירת מסלול לפי תוכנית | `select_plan` × `customEvent:plan_name` |
-| פתיחת מודל לפי מקור כניסה | `activation_options_viewed` × `customEvent:source` |
+| לידים לפי מקור פנייה | `generate_lead` × `customEvent:contact_source` |
 
-> Note: the funnel’s lead step uses **all** `generate_lead` users in the date range (contact + plans), not only plan leads. Use “לידים לפי מקור” below to separate.
+> Note: stage ratios compare independent unique-user cohorts in the date range — not a closed sequential funnel. Lead users include all `generate_lead` sources.
 
-### Section: יצירת קשר
+### Section: ביצועי הסרטון
 
 | UI metric | GA4 event / dimension |
 |---|---|
-| פתחו טופס יצירת קשר | `contact_form_open` |
-| השאירו פרטים | `generate_lead` |
-| המרה מפתיחה לשליחה | leads ÷ form opens |
-| פתיחות טופס לפי מקור | `contact_form_open` × `customEvent:contact_source` |
-| לידים לפי מקור פנייה | `generate_lead` × `customEvent:contact_source` |
+| התחילו | `video_view` |
+| 25% / 50% / 75% | `video_progress` × `customEvent:progress_percent` |
+| סיימו | `video_complete` |
+
+### Section: שימוש במוצר
+
+| UI metric | GA4 event |
+|---|---|
+| התחברו | `login` |
+| נרשמו | `sign_up` |
+| התחילו יצירת אירוע | `event_creation_start` |
+| יצרו אירוע | `event_created` (unique users) |
 
 ### Custom dimensions required in GA4 (event-scoped)
 
@@ -114,6 +131,7 @@ Register these params as Custom Dimensions so breakdown charts work in the admin
 | `source` | `activation_options_viewed`, `activation_options_clicked` |
 | `question` | `faq_open` |
 | `creation_method` | `event_created` |
+| `progress_percent` | `video_progress` |
 
 If a dimension is missing, the matching chart shows an “unavailable” state; KPIs from core event counts still work.
 

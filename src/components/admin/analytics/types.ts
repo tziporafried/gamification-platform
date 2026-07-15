@@ -5,6 +5,12 @@ export interface AnalyticsNamedMetric {
   users: number
 }
 
+export interface AnalyticsCtaMatrixRow {
+  name: string
+  location: string
+  users: number
+}
+
 export interface AnalyticsQuestionRow {
   question: string
   users: number
@@ -19,11 +25,17 @@ export interface AnalyticsDashboardData {
     loginViewUsers: number
     leadUsers: number
     eventsCreated: number
+    eventCreators: number
+    leadConversionRate: number | null
   }
   video: {
     startedUsers: number
+    reached25Users: number | null
+    reached50Users: number | null
+    reached75Users: number | null
     completedUsers: number
     completionRate: number | null
+    milestonesUnavailable: boolean
   }
   homepageInterest: {
     faqUsers: number
@@ -34,8 +46,10 @@ export interface AnalyticsDashboardData {
     totalUsers: number
     byName: AnalyticsNamedMetric[] | null
     byLocation: AnalyticsNamedMetric[] | null
+    byNameAndLocation: AnalyticsCtaMatrixRow[] | null
     byNameUnavailable: boolean
     byLocationUnavailable: boolean
+    byNameAndLocationUnavailable: boolean
   }
   productInterest: {
     plansViewedUsers: number
@@ -44,6 +58,8 @@ export interface AnalyticsDashboardData {
     step2Rate: number | null
     step3Rate: number | null
     overallRate: number | null
+    formOpenRate: number | null
+    plansToLeadRate: number | null
     activationOptionsViewedUsers: number
     activationOptionsClickedUsers: number
     trialActivatedUsers: number
@@ -60,6 +76,7 @@ export interface AnalyticsDashboardData {
     errorCount: number
   }
   eventCreation: {
+    startUsers: number
     eventCount: number
     creatorUsers: number
     scratchCount: number | null
@@ -113,4 +130,14 @@ export class AnalyticsFetchError extends Error {
     this.missing = missing
     this.detail = detail
   }
+}
+
+export type InsightSeverity = 'critical' | 'warning' | 'positive'
+
+export interface AnalyticsInsight {
+  id: string
+  severity: InsightSeverity
+  title: string
+  detail: string
+  counts: string
 }

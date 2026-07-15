@@ -47,9 +47,14 @@ Presets: `today` | `7d` | `14d` | `28d` | `custom`
 
 ## Reports
 
-1. Core events by `eventName` (totalUsers + eventCount)
+1. Core events by `eventName` (totalUsers + eventCount) — includes `video_progress`, `event_creation_start`
 2. Homepage `page_view` with `pagePath = /`
-3. FAQ questions (`customEvent:question`) — soft-fail
+3. FAQ questions (`customEvent:question`) — soft-fail, limit 50
 4. CTA by name (`customEvent:cta_name`) — soft-fail
 5. CTA by location (`customEvent:cta_location`) — soft-fail
-6. Event creation method (`customEvent:creation_method`) — soft-fail
+6. CTA name × location matrix — soft-fail
+7. Video progress milestones (`customEvent:progress_percent`) — soft-fail
+8. Event creation method (`customEvent:creation_method`) — soft-fail
+9. Lead / contact open by `contact_source` — soft-fail
+10. Select plan by `plan_name` — soft-fail
+11. Activation options by `source` — soft-fail

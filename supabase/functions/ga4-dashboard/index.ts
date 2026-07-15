@@ -33,6 +33,12 @@ interface NamedMetric {
   users: number
 }
 
+interface CtaMatrixRow {
+  name: string
+  location: string
+  users: number
+}
+
 interface QuestionRow {
   question: string
   users: number
@@ -47,11 +53,17 @@ interface DashboardPayload {
     loginViewUsers: number
     leadUsers: number
     eventsCreated: number
+    eventCreators: number
+    leadConversionRate: number | null
   }
   video: {
     startedUsers: number
+    reached25Users: number | null
+    reached50Users: number | null
+    reached75Users: number | null
     completedUsers: number
     completionRate: number | null
+    milestonesUnavailable: boolean
   }
   homepageInterest: {
     faqUsers: number
@@ -62,8 +74,10 @@ interface DashboardPayload {
     totalUsers: number
     byName: NamedMetric[] | null
     byLocation: NamedMetric[] | null
+    byNameAndLocation: CtaMatrixRow[] | null
     byNameUnavailable: boolean
     byLocationUnavailable: boolean
+    byNameAndLocationUnavailable: boolean
   }
   productInterest: {
     plansViewedUsers: number
@@ -72,6 +86,8 @@ interface DashboardPayload {
     step2Rate: number | null
     step3Rate: number | null
     overallRate: number | null
+    formOpenRate: number | null
+    plansToLeadRate: number | null
     activationOptionsViewedUsers: number
     activationOptionsClickedUsers: number
     trialActivatedUsers: number
@@ -88,6 +104,7 @@ interface DashboardPayload {
     errorCount: number
   }
   eventCreation: {
+    startUsers: number
     eventCount: number
     creatorUsers: number
     scratchCount: number | null
@@ -178,8 +195,10 @@ const CORE_EVENTS = [
   'login_view',
   'generate_lead',
   'event_created',
+  'event_creation_start',
   'video_view',
   'video_complete',
+  'video_progress',
   'faq_open',
   'cta_click',
   'select_plan',
@@ -506,7 +525,7 @@ Deno.serve(async (req) => {
         },
       },
       orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
-      limit: 10,
+      limit: 50,
     })
 
     const ctaByNamePromise = runReport(accessToken, propertyId, {
@@ -606,6 +625,36 @@ Deno.serve(async (req) => {
       limit: 20,
     })
 
+    const videoProgressPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'customEvent:progress_percent' }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: { matchType: 'EXACT', value: 'video_progress' },
+        },
+      },
+      limit: 10,
+    })
+
+    const ctaMatrixPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [
+        { name: 'customEvent:cta_name' },
+        { name: 'customEvent:cta_location' },
+      ],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: { matchType: 'EXACT', value: 'cta_click' },
+        },
+      },
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 50,
+    })
+
     const [
       core,
       homepage,
@@ -617,6 +666,8 @@ Deno.serve(async (req) => {
       contactOpenBySource,
       selectPlanByName,
       activationBySource,
+      videoProgress,
+      ctaMatrix,
     ] = await Promise.all([
       corePromise,
       homepagePromise,
@@ -628,6 +679,8 @@ Deno.serve(async (req) => {
       contactOpenBySourcePromise,
       selectPlanByNamePromise,
       activationBySourcePromise,
+      videoProgressPromise,
+      ctaMatrixPromise,
     ])
 
     if (core.error) {
@@ -780,10 +833,59 @@ Deno.serve(async (req) => {
       )
     }
 
+    let reached25Users: number | null = 0
+    let reached50Users: number | null = 0
+    let reached75Users: number | null = 0
+    let milestonesUnavailable = false
+    if (videoProgress.error) {
+      milestonesUnavailable = true
+      reached25Users = null
+      reached50Users = null
+      reached75Users = null
+      console.warn('video_progress by progress_percent unavailable', videoProgress.error.message)
+    } else {
+      for (const row of videoProgress.rows ?? []) {
+        const key = String(row.dimensionValues?.[0]?.value ?? '').replace(/\.0$/, '')
+        const users = Number(row.metricValues?.[0]?.value ?? 0)
+        if (key === '25') reached25Users = users
+        if (key === '50') reached50Users = users
+        if (key === '75') reached75Users = users
+      }
+    }
+
+    let byNameAndLocation: CtaMatrixRow[] | null = null
+    let byNameAndLocationUnavailable = false
+    if (ctaMatrix.error) {
+      byNameAndLocationUnavailable = true
+      console.warn('CTA name×location unavailable', ctaMatrix.error.message)
+    } else {
+      byNameAndLocation = (ctaMatrix.rows ?? [])
+        .map((row) => {
+          const nameKey = row.dimensionValues?.[0]?.value ?? ''
+          const locKey = row.dimensionValues?.[1]?.value ?? ''
+          return {
+            nameKey,
+            locKey,
+            name: CTA_NAME_LABELS[nameKey] ?? nameKey,
+            location: CTA_LOCATION_LABELS[locKey] ?? locKey,
+            users: Number(row.metricValues?.[0]?.value ?? 0),
+          }
+        })
+        .filter(
+          (r) =>
+            CTA_NAME_ALLOW.has(r.nameKey) &&
+            CTA_LOCATION_ALLOW.has(r.locKey) &&
+            r.users > 0,
+        )
+        .map(({ name, location, users }) => ({ name, location, users }))
+        .sort((a, b) => b.users - a.users)
+    }
+
     const contactOpenUsers = getEvent(events, 'contact_form_open').users
     const activationViewed = getEvent(events, 'activation_options_viewed').users
     const activationClicked = getEvent(events, 'activation_options_clicked').users
     const trialActivated = getEvent(events, 'trial_activated').users
+    const eventCreationStart = getEvent(events, 'event_creation_start').users
 
     const payload: DashboardPayload = {
       overview: {
@@ -793,11 +895,17 @@ Deno.serve(async (req) => {
         loginViewUsers: getEvent(events, 'login_view').users,
         leadUsers,
         eventsCreated: eventCreated.count,
+        eventCreators: eventCreated.users,
+        leadConversionRate: rate(leadUsers, homepageUsers),
       },
       video: {
         startedUsers: videoStarted,
+        reached25Users,
+        reached50Users,
+        reached75Users,
         completedUsers: videoCompleted,
         completionRate: rate(videoCompleted, videoStarted),
+        milestonesUnavailable,
       },
       homepageInterest: {
         faqUsers: getEvent(events, 'faq_open').users,
@@ -808,8 +916,10 @@ Deno.serve(async (req) => {
         totalUsers: getEvent(events, 'cta_click').users,
         byName,
         byLocation,
+        byNameAndLocation,
         byNameUnavailable,
         byLocationUnavailable,
+        byNameAndLocationUnavailable,
       },
       productInterest: {
         plansViewedUsers: plansViewed,
@@ -818,6 +928,8 @@ Deno.serve(async (req) => {
         step2Rate: rate(planSelected, plansViewed),
         step3Rate: rate(leadUsers, planSelected),
         overallRate: rate(leadUsers, plansViewed),
+        formOpenRate: rate(contactOpenUsers, plansViewed),
+        plansToLeadRate: rate(leadUsers, plansViewed),
         activationOptionsViewedUsers: activationViewed,
         activationOptionsClickedUsers: activationClicked,
         trialActivatedUsers: trialActivated,
@@ -834,6 +946,7 @@ Deno.serve(async (req) => {
         errorCount: getEvent(events, 'login_error').count,
       },
       eventCreation: {
+        startUsers: eventCreationStart,
         eventCount: eventCreated.count,
         creatorUsers: eventCreated.users,
         scratchCount,

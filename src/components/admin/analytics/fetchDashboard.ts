@@ -55,6 +55,114 @@ function throwFromBody(body: ErrorBody | null, fallbackMessage: string): never {
   )
 }
 
+function rate(numerator: number, denominator: number): number | null {
+  if (denominator <= 0) return null
+  return Math.round((numerator / denominator) * 1000) / 10
+}
+
+/** Normalize older Edge Function payloads so the UI can render safely. */
+function normalizePayload(raw: AnalyticsDashboardData): AnalyticsDashboardData {
+  const payload = { ...raw }
+
+  payload.overview = {
+    ...payload.overview,
+    eventCreators: payload.overview.eventCreators ?? payload.eventCreation?.creatorUsers ?? 0,
+    leadConversionRate:
+      payload.overview.leadConversionRate ??
+      rate(payload.overview.leadUsers ?? 0, payload.overview.homepageUsers ?? 0),
+  }
+
+  payload.video = {
+    startedUsers: payload.video?.startedUsers ?? 0,
+    completedUsers: payload.video?.completedUsers ?? 0,
+    completionRate: payload.video?.completionRate ?? null,
+    reached25Users: payload.video?.reached25Users ?? null,
+    reached50Users: payload.video?.reached50Users ?? null,
+    reached75Users: payload.video?.reached75Users ?? null,
+    milestonesUnavailable: payload.video?.milestonesUnavailable ?? true,
+  }
+
+  if (!payload.contact) {
+    payload.contact = {
+      openUsers: 0,
+      leadUsers: payload.overview?.leadUsers ?? 0,
+      conversionRate: null,
+      bySource: null,
+      bySourceUnavailable: true,
+      opensBySource: null,
+      opensBySourceUnavailable: true,
+    }
+  } else {
+    payload.contact.opensBySource ??= null
+    payload.contact.opensBySourceUnavailable ??= true
+  }
+
+  if (!payload.productInterest) {
+    payload.productInterest = {
+      plansViewedUsers: payload.overview?.pricingUsers ?? 0,
+      planSelectedUsers: 0,
+      leadUsers: payload.overview?.leadUsers ?? 0,
+      step2Rate: null,
+      step3Rate: null,
+      overallRate: null,
+      formOpenRate: null,
+      plansToLeadRate: null,
+      activationOptionsViewedUsers: 0,
+      activationOptionsClickedUsers: 0,
+      trialActivatedUsers: 0,
+      byPlan: null,
+      byPlanUnavailable: true,
+      activationBySource: null,
+      activationBySourceUnavailable: true,
+    }
+  } else {
+    payload.productInterest.activationOptionsViewedUsers ??= 0
+    payload.productInterest.activationOptionsClickedUsers ??= 0
+    payload.productInterest.trialActivatedUsers ??= 0
+    payload.productInterest.byPlan ??= null
+    payload.productInterest.byPlanUnavailable ??= true
+    payload.productInterest.activationBySource ??= null
+    payload.productInterest.activationBySourceUnavailable ??= true
+    payload.productInterest.formOpenRate ??= rate(
+      payload.contact.openUsers,
+      payload.productInterest.plansViewedUsers,
+    )
+    payload.productInterest.plansToLeadRate ??=
+      payload.productInterest.overallRate ??
+      rate(payload.productInterest.leadUsers, payload.productInterest.plansViewedUsers)
+  }
+
+  if (!payload.ctas) {
+    payload.ctas = {
+      totalUsers: 0,
+      byName: null,
+      byLocation: null,
+      byNameAndLocation: null,
+      byNameUnavailable: true,
+      byLocationUnavailable: true,
+      byNameAndLocationUnavailable: true,
+    }
+  } else {
+    payload.ctas.byNameAndLocation ??= null
+    payload.ctas.byNameAndLocationUnavailable ??= true
+  }
+
+  if (!payload.eventCreation) {
+    payload.eventCreation = {
+      startUsers: 0,
+      eventCount: payload.overview?.eventsCreated ?? 0,
+      creatorUsers: payload.overview?.eventCreators ?? 0,
+      scratchCount: null,
+      templateCount: null,
+      methodUnavailable: true,
+    }
+  } else {
+    payload.eventCreation.startUsers ??= 0
+  }
+
+  return payload
+}
+
 export async function fetchAnalyticsDashboard(
   params: AnalyticsFetchParams,
 ): Promise<AnalyticsDashboardData> {
@@ -87,48 +195,5 @@ export async function fetchAnalyticsDashboard(
     throw new AnalyticsFetchError('תשובה לא תקינה מהשרת', 'UNKNOWN')
   }
 
-  const payload = data as AnalyticsDashboardData
-
-  if (!payload.contact) {
-    payload.contact = {
-      openUsers: 0,
-      leadUsers: payload.overview?.leadUsers ?? 0,
-      conversionRate: null,
-      bySource: null,
-      bySourceUnavailable: true,
-      opensBySource: null,
-      opensBySourceUnavailable: true,
-    }
-  } else {
-    payload.contact.opensBySource ??= null
-    payload.contact.opensBySourceUnavailable ??= true
-  }
-
-  if (!payload.productInterest) {
-    payload.productInterest = {
-      plansViewedUsers: payload.overview?.pricingUsers ?? 0,
-      planSelectedUsers: 0,
-      leadUsers: payload.overview?.leadUsers ?? 0,
-      step2Rate: null,
-      step3Rate: null,
-      overallRate: null,
-      activationOptionsViewedUsers: 0,
-      activationOptionsClickedUsers: 0,
-      trialActivatedUsers: 0,
-      byPlan: null,
-      byPlanUnavailable: true,
-      activationBySource: null,
-      activationBySourceUnavailable: true,
-    }
-  } else {
-    payload.productInterest.activationOptionsViewedUsers ??= 0
-    payload.productInterest.activationOptionsClickedUsers ??= 0
-    payload.productInterest.trialActivatedUsers ??= 0
-    payload.productInterest.byPlan ??= null
-    payload.productInterest.byPlanUnavailable ??= true
-    payload.productInterest.activationBySource ??= null
-    payload.productInterest.activationBySourceUnavailable ??= true
-  }
-
-  return payload
+  return normalizePayload(data as AnalyticsDashboardData)
 }
