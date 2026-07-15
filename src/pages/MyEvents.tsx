@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Calendar, Share2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -29,7 +29,6 @@ import {
   trackCtaClick,
   trackContactFormOpen,
 } from '@/lib/analytics'
-import { consumePendingCreateEventIntent } from '@/lib/contact'
 import { ContactModal } from '@/components/ContactModal'
 import type { Event as GameEvent } from '@/types'
 import { cn } from '@/lib/utils'
@@ -61,7 +60,6 @@ export function MyEvents() {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [consultOpen, setConsultOpen] = useState(false)
-  const pendingCreateConsumed = useRef(false)
 
   const hasTrialEvent = useMemo(
     () => !isSuperAdmin && events.some((event) => event.plan === 'free'),
@@ -134,15 +132,6 @@ export function MyEvents() {
       navigate(`/events/${data.id}/step/1`)
     }
   }
-
-  // After login from landing CREATE_EVENT intent — start wizard immediately.
-  useEffect(() => {
-    if (loading || pendingCreateConsumed.current || !user) return
-    if (!consumePendingCreateEventIntent()) return
-    pendingCreateConsumed.current = true
-    void handleCreateEvent()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once after initial events load
-  }, [loading, user])
 
   function handleConsultClick() {
     trackCtaClick({

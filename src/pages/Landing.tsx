@@ -34,7 +34,6 @@ import {
   trackVideoProgress,
   trackVideoView,
 } from '@/lib/analytics'
-import { setPendingCreateEventIntent } from '@/lib/contact'
 import { cn } from '@/lib/utils'
 
 const SETUP_STEPS = [
@@ -234,7 +233,6 @@ export function Landing() {
       navigate('/events')
       return
     }
-    setPendingCreateEventIntent()
     navigate(`/login?returnTo=${encodeURIComponent('/events')}`)
   }
 
