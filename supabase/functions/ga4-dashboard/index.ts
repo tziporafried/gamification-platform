@@ -1061,7 +1061,7 @@ Deno.serve(async (req) => {
     }
     const { startDate, endDate } = range
     const dateRanges = [{ startDate, endDate }]
-    // Always scope the time-series trend to affiliate/link content (empty = all tagged).
+    // [] = whole site (no UTM filter); non-empty = only those affiliate content codes.
     const affiliateContents = normalizeUtmContents(body.utmContents)
 
     let accessToken: string
