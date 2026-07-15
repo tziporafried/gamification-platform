@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
   BarChart3,
+  Filter,
   ChevronDown,
   ChevronUp,
   HelpCircle,
@@ -131,6 +132,8 @@ export function AdminAnalyticsDashboard() {
         preset,
         startDate: preset === 'custom' ? startDate : undefined,
         endDate: preset === 'custom' ? endDate : undefined,
+        // empty = all tagged affiliates for the trend series
+        utmContents: selectedAffiliates,
       })
       setData(result)
     } catch (err) {
@@ -143,7 +146,7 @@ export function AdminAnalyticsDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [preset, startDate, endDate])
+  }, [preset, startDate, endDate, selectedAffiliates])
 
   useEffect(() => {
     void load()
@@ -217,24 +220,6 @@ export function AdminAnalyticsDashboard() {
   const eventCreationCompletion = data
     ? calcStepRate(data.eventCreation.startUsers, data.eventCreation.creatorUsers)
     : null
-
-  const trendLooksEmpty = useMemo(() => {
-    if (!data || data.timeSeries.unavailable) return false
-    const hasOverview =
-      data.overview.homepageUsers > 0 ||
-      data.overview.leadUsers > 0 ||
-      data.video.startedUsers > 0
-    if (!hasOverview) return false
-    const hasTrend = data.timeSeries.days.some(
-      (d) =>
-        d.visitors > 0 ||
-        d.newUsers > 0 ||
-        d.videoView > 0 ||
-        d.viewPlans > 0 ||
-        d.generateLead > 0,
-    )
-    return !hasTrend
-  }, [data])
 
   /** Performance rows + pre-registered labels that have no traffic yet. */
   const linkDetailRows = useMemo(() => {
@@ -311,6 +296,24 @@ export function AdminAnalyticsDashboard() {
 
   const affiliatesFiltered = selectedAffiliates.length > 0
 
+  const trendLooksEmpty = useMemo(() => {
+    if (!data || data.timeSeries.unavailable) return false
+    // Trend is affiliate-scoped — only warn when affiliate traffic exists but series is flat.
+    const hasAffiliateSignal =
+      filteredLinkRows.some((r) => r.users > 0) ||
+      (selectedAffiliates.length === 0 && data.utm.taggedVisitors > 0)
+    if (!hasAffiliateSignal) return false
+    const hasTrend = data.timeSeries.days.some(
+      (d) =>
+        d.visitors > 0 ||
+        d.newUsers > 0 ||
+        d.videoView > 0 ||
+        d.viewPlans > 0 ||
+        d.generateLead > 0,
+    )
+    return !hasTrend
+  }, [data, filteredLinkRows, selectedAffiliates])
+
   return (
     <div className="space-y-7">
       {/* Header — unchanged */}
@@ -349,17 +352,6 @@ export function AdminAnalyticsDashboard() {
         error={linkLabelError}
       />
 
-      <AffiliateFilterBar
-        options={affiliateOptions}
-        selected={selectedAffiliates}
-        onChange={setSelectedAffiliates}
-      />
-      <AffiliateMetricsStrip
-        rows={filteredLinkRows}
-        loading={loading}
-        filtered={affiliatesFiltered}
-      />
-
       {error && !loading && (
         <Card className="space-y-3 p-5">
           <ErrorAlert
@@ -392,29 +384,62 @@ export function AdminAnalyticsDashboard() {
 
       {!error && data && (
         <>
-          {/* Hero: trend first — primary decision surface */}
+          {/* Affiliate frame: filter + KPI boxes + trend only */}
           <section>
-            <Card className="p-5 sm:p-6">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <TrendingUp size={18} className="text-secondary" />
-                  <h2 className="text-base font-semibold text-foreground">מגמה לאורך זמן</h2>
+            <Card className="space-y-4 border-2 border-secondary/40 p-5 sm:p-6 shadow-card">
+              <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border pb-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Filter size={18} className="text-secondary" />
+                    <h2 className="text-base font-semibold text-foreground">נתוני אפיליאייטים</h2>
+                  </div>
+                  <p className="mt-1 text-xs text-muted">
+                    המסגרת הזו מסוננת לפי אפיליאייט — הקוביות וגרף המגמה בלבד. כל שאר הדאשבורד
+                    למטה מציג את האתר כולו.
+                  </p>
                 </div>
-                <p className="text-xs text-muted">המבט המרכזי על הביצועים בטווח שנבחר</p>
+                <span className="rounded-full border border-secondary/40 bg-secondary/10 px-2.5 py-1 text-[11px] font-medium text-foreground">
+                  {affiliatesFiltered ? 'מסונן' : 'כל האפיליאייטים'}
+                </span>
               </div>
-              {trendLooksEmpty && (
-                <div className="mb-4 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
-                  נתוני המגמה היומית ריקים למרות שיש תנועה בטווח. ייתכן ש-Edge Function{' '}
-                  <code className="text-xs">ga4-dashboard</code> לא עודכן — הריצו:{' '}
-                  <code className="text-xs">supabase functions deploy ga4-dashboard</code>
-                </div>
-              )}
-              <TrendLineChart
-                days={data.timeSeries.days}
-                loading={loading}
-                unavailable={data.timeSeries.unavailable}
-                height={460}
+
+              <AffiliateFilterBar
+                options={affiliateOptions}
+                selected={selectedAffiliates}
+                onChange={setSelectedAffiliates}
               />
+              <AffiliateMetricsStrip
+                rows={filteredLinkRows}
+                loading={loading}
+                filtered={affiliatesFiltered}
+              />
+
+              <div className="border-t border-border pt-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp size={16} className="text-secondary" />
+                    <h3 className="text-sm font-semibold text-foreground">מגמה לפי אפיליאייט</h3>
+                  </div>
+                  <p className="text-[11px] text-muted">
+                    {affiliatesFiltered
+                      ? 'מסונן לפי הבחירה למעלה'
+                      : 'כל התנועה שמגיעה מלינקי אפיליאייט'}
+                  </p>
+                </div>
+                {trendLooksEmpty && (
+                  <div className="mb-4 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
+                    מגמת האפיליאייט ריקה. אם יש תנועה באתר אבל לא כאן — ייתכן שעדיין אין כניסות
+                    מלינקים מסומנים בטווח, או שצריך לדפלוי מחדש את{' '}
+                    <code className="text-xs">ga4-dashboard</code>.
+                  </div>
+                )}
+                <TrendLineChart
+                  days={data.timeSeries.days}
+                  loading={loading}
+                  unavailable={data.timeSeries.unavailable}
+                  height={420}
+                />
+              </div>
             </Card>
           </section>
 
@@ -736,11 +761,11 @@ export function AdminAnalyticsDashboard() {
                     </p>
                   </Card>
                 )}
-                {filteredLinkRows.some((r) => r.users > 0) && (
+                {linkDetailRows.some((r) => r.users > 0) && (
                   <div className="grid gap-4 lg:grid-cols-2">
                     <Card className="p-5">
                       <h3 className="mb-4 text-sm font-semibold text-foreground">
-                        ביצועי לינקים{affiliatesFiltered ? ' (מסונן)' : ''}
+                        ביצועי לינקים
                       </h3>
                       <RankedBarChart
                         loading={loading}
@@ -751,7 +776,7 @@ export function AdminAnalyticsDashboard() {
                         emptyTitle="אין לינקים בסינון"
                         emptyDescription="נסו לבחור אפיליאייט אחר או לנקות סינון."
                         valueLabel="מבקרים"
-                        items={filteredLinkRows
+                        items={linkDetailRows
                           .filter((r) => r.users > 0)
                           .map((r) => ({
                             label: r.source
@@ -767,14 +792,14 @@ export function AdminAnalyticsDashboard() {
 
                     <Card className="p-5">
                       <h3 className="mb-4 text-sm font-semibold text-foreground">
-                        המרה לליד לפי לינק{affiliatesFiltered ? ' (מסונן)' : ''}
+                        המרה לליד לפי לינק
                       </h3>
                       <RankedBarChart
                         loading={loading}
                         emptyTitle="אין המרות לליד"
                         emptyDescription="עדיין אין לידים מהלינקים שנבחרו."
                         valueLabel="המרה %"
-                        items={filteredLinkRows
+                        items={linkDetailRows
                           .filter((r) => r.users > 0)
                           .map((r) => ({
                             label: linkDisplayLabel(r.content),
@@ -788,13 +813,12 @@ export function AdminAnalyticsDashboard() {
                   </div>
                 )}
 
-                {filteredLinkRows.length > 0 && (
+                {linkDetailRows.length > 0 && (
                   <Card className="overflow-hidden p-0">
                     <div className="border-b border-border px-5 py-3">
                       <h3 className="text-sm font-semibold text-foreground">ביצועי לינקים — פירוט</h3>
                       <p className="mt-0.5 text-[11px] text-muted">
-                        כולל משתמשים חדשים ואחוזי המרה. מוצגים רק לינקים עם תנועה בתקופה שנבחרה.
-                        {affiliatesFiltered ? ' · מוצג לפי הסינון שנבחר' : ''}
+                        כולל משתמשים חדשים ואחוזי המרה. מוצגים רק לינקים עם תנועה בתקופה שנבחרה (לא מושפע מסינון המסגרת למעלה).
                       </p>
                       {linkLabelError && (
                         <p className="mt-2 text-xs text-danger">{linkLabelError}</p>
@@ -817,7 +841,7 @@ export function AdminAnalyticsDashboard() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/60">
-                          {filteredLinkRows.map((row) => {
+                          {linkDetailRows.map((row) => {
                             const hasLead = row.leadUsers > 0
                             return (
                               <tr

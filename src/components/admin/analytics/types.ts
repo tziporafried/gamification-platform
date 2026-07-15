@@ -169,6 +169,8 @@ export interface AnalyticsFetchParams {
   preset: AnalyticsDatePreset
   startDate?: string
   endDate?: string
+  /** Affiliate content codes for the trend series. [] = all tagged links. */
+  utmContents?: string[]
 }
 
 export type AnalyticsFetchErrorCode =

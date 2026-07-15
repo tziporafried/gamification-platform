@@ -236,6 +236,7 @@ export async function fetchAnalyticsDashboard(
       preset: params.preset,
       startDate: params.startDate,
       endDate: params.endDate,
+      utmContents: params.utmContents ?? [],
     },
   })
 

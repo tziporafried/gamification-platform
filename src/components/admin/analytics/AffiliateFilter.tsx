@@ -1,5 +1,4 @@
 import { cn } from '@/lib/utils'
-import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { KpiCard, formatNumber, formatRate } from './KpiCard'
 import { Filter, UserPlus, Percent, Users, Video, Eye, MessageCircle } from 'lucide-react'
@@ -59,7 +58,7 @@ export function AffiliateFilterBar({
   }
 
   return (
-    <Card className="space-y-3 p-4">
+    <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Filter size={16} className="text-secondary" />
@@ -72,8 +71,7 @@ export function AffiliateFilterBar({
         )}
       </div>
       <p className="text-[11px] text-muted">
-        בחרו לינק אחד או יותר עם תנועה — המטריקות והטבלאות למטה יסתננו בהתאם. ללא בחירה מוצגים
-        כולם.
+        הסינון משפיע רק על הקוביות ועל גרף המגמה בתוך המסגרת. שאר הדאשבורד נשאר לכל האתר.
       </p>
       <div className="flex flex-wrap gap-2">
         <button
@@ -112,7 +110,7 @@ export function AffiliateFilterBar({
           )
         })}
       </div>
-    </Card>
+    </div>
   )
 }
 
@@ -135,8 +133,8 @@ export function AffiliateMetricsStrip({
     <div className="space-y-2">
       <p className="text-xs text-muted">
         {filtered
-          ? `מטריקות לאפיליאייטים שנבחרו (${rows.length})`
-          : `סיכום כל האפיליאייטים (${rows.length})`}
+          ? `קוביות לפי האפיליאייטים שנבחרו (${rows.length})`
+          : `קוביות לפי כל האפיליאייטים עם תנועה (${rows.length})`}
       </p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <KpiCard

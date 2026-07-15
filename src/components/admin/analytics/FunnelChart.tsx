@@ -86,7 +86,7 @@ export function FunnelChart({
               )}
               <div className="mx-auto" style={{ width: `${widthPct}%`, minWidth: '9rem' }}>
                 <div
-                  className={`flex items-center justify-between gap-3 rounded-lg bg-secondary/85 px-3 text-secondary-foreground shadow-sm ${
+                  className={`flex items-center justify-between gap-3 rounded-lg bg-secondary px-3 text-secondary-foreground shadow-sm ${
                     compact ? 'py-2' : 'py-2.5'
                   }`}
                   style={{

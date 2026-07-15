@@ -26,6 +26,12 @@ interface RequestBody {
   startDate?: string
   endDate?: string
   preset?: DatePreset
+  /**
+   * When present (including []), time series is scoped to affiliate/link content codes.
+   * [] = any set utm_content / sessionManualAdContent
+   * ['nh','rs'] = only those codes
+   */
+  utmContents?: string[]
 }
 
 interface NamedMetric {
@@ -670,6 +676,49 @@ function notSetFilter(fieldName: string) {
   }
 }
 
+/** Normalize affiliate content codes from the request body. Always returns an array. */
+function normalizeUtmContents(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const item of raw) {
+    const code = String(item ?? '')
+      .trim()
+      .toLowerCase()
+    if (!code || seen.has(code)) continue
+    seen.add(code)
+    out.push(code)
+  }
+  return out
+}
+
+/**
+ * Filter to tagged affiliate traffic.
+ * empty codes → any non-(not set) content; non-empty → exact code list.
+ */
+function utmContentDimFilter(fieldName: string, codes: string[]) {
+  if (codes.length === 0) return notSetFilter(fieldName)
+  return {
+    filter: {
+      fieldName,
+      inListFilter: { values: codes },
+    },
+  }
+}
+
+function reportMetricSum(report: Ga4Report, metricIndex = 0): number {
+  if (report.error) return -1
+  let sum = 0
+  for (const row of report.rows ?? []) {
+    sum += Number(row.metricValues?.[metricIndex]?.value ?? 0)
+  }
+  return sum
+}
+
+function preferGa4Report(primary: Ga4Report, fallback: Ga4Report): Ga4Report {
+  return reportMetricSum(primary) >= reportMetricSum(fallback) ? primary : fallback
+}
+
 function usersByKey(rows: Ga4Row[] | undefined): Map<string, number> {
   const map = new Map<string, number>()
   for (const row of mapUtmDimensionRows(rows)) {
@@ -821,6 +870,8 @@ Deno.serve(async (req) => {
     }
     const { startDate, endDate } = range
     const dateRanges = [{ startDate, endDate }]
+    // Always scope the time-series trend to affiliate/link content (empty = all tagged).
+    const affiliateContents = normalizeUtmContents(body.utmContents)
 
     let accessToken: string
     try {
@@ -1010,24 +1061,64 @@ Deno.serve(async (req) => {
       limit: 50,
     })
 
-    // Daily site traffic — totalUsers + newUsers (GA4 first-time visitors)
-    const timeSeriesTrafficPromise = runReport(accessToken, propertyId, {
+    // Daily traffic/events scoped to affiliate content (customEvent + session fallbacks)
+    const affiliateContentCustom = 'customEvent:utm_content'
+    const affiliateContentSession = 'sessionManualAdContent'
+
+    const timeSeriesTrafficCustomPromise = runReport(accessToken, propertyId, {
       dateRanges,
       dimensions: [{ name: 'date' }],
       metrics: [{ name: 'totalUsers' }, { name: 'newUsers' }],
+      dimensionFilter: utmContentDimFilter(affiliateContentCustom, affiliateContents),
       orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
       limit: 400,
     })
 
-    // Daily unique users for key events (same event set as aggregate KPIs)
-    const timeSeriesEventsPromise = runReport(accessToken, propertyId, {
+    const timeSeriesTrafficSessionPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'date' }],
+      metrics: [{ name: 'totalUsers' }, { name: 'newUsers' }],
+      dimensionFilter: utmContentDimFilter(affiliateContentSession, affiliateContents),
+      orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
+      limit: 400,
+    })
+
+    const timeSeriesEventsCustomPromise = runReport(accessToken, propertyId, {
       dateRanges,
       dimensions: [{ name: 'date' }, { name: 'eventName' }],
       metrics: [{ name: 'totalUsers' }],
       dimensionFilter: {
-        filter: {
-          fieldName: 'eventName',
-          inListFilter: { values: TIME_SERIES_EVENT_NAMES },
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'eventName',
+                inListFilter: { values: TIME_SERIES_EVENT_NAMES },
+              },
+            },
+            utmContentDimFilter(affiliateContentCustom, affiliateContents),
+          ],
+        },
+      },
+      orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
+      limit: 10000,
+    })
+
+    const timeSeriesEventsSessionPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'date' }, { name: 'eventName' }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'eventName',
+                inListFilter: { values: TIME_SERIES_EVENT_NAMES },
+              },
+            },
+            utmContentDimFilter(affiliateContentSession, affiliateContents),
+          ],
         },
       },
       orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
@@ -1264,8 +1355,10 @@ Deno.serve(async (req) => {
       activationBySource,
       videoProgress,
       ctaMatrix,
-      timeSeriesTraffic,
-      timeSeriesEvents,
+      timeSeriesTrafficCustomReport,
+      timeSeriesTrafficSessionReport,
+      timeSeriesEventsCustomReport,
+      timeSeriesEventsSessionReport,
       trafficSourcesReport,
       utmSourceReport,
       utmMediumReport,
@@ -1295,8 +1388,10 @@ Deno.serve(async (req) => {
       activationBySourcePromise,
       videoProgressPromise,
       ctaMatrixPromise,
-      timeSeriesTrafficPromise,
-      timeSeriesEventsPromise,
+      timeSeriesTrafficCustomPromise,
+      timeSeriesTrafficSessionPromise,
+      timeSeriesEventsCustomPromise,
+      timeSeriesEventsSessionPromise,
       trafficSourcesPromise,
       utmSourcePromise,
       utmMediumPromise,
@@ -1517,6 +1612,15 @@ Deno.serve(async (req) => {
     let timeSeriesUnavailable = false
     const timeSeriesWarnings: string[] = []
 
+    const timeSeriesTraffic = preferGa4Report(
+      timeSeriesTrafficSessionReport,
+      timeSeriesTrafficCustomReport,
+    )
+    const timeSeriesEvents = preferGa4Report(
+      timeSeriesEventsSessionReport,
+      timeSeriesEventsCustomReport,
+    )
+
     if (timeSeriesTraffic.error && timeSeriesEvents.error) {
       timeSeriesUnavailable = true
       console.warn(
@@ -1542,8 +1646,9 @@ Deno.serve(async (req) => {
 
       if (!timeSeriesHasSignal(timeSeriesDays) && homepageUsers > 0) {
         console.warn(
-          'time series empty despite homepage traffic',
+          'affiliate time series empty despite homepage traffic',
           `range=${startDate}..${endDate}`,
+          `affiliateContents=${affiliateContents.length ? affiliateContents.join(',') : '(all tagged)'}`,
           `trafficRows=${timeSeriesTraffic.rows?.length ?? 0}`,
           `eventRows=${timeSeriesEvents.rows?.length ?? 0}`,
         )
