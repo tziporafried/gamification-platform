@@ -115,7 +115,6 @@ export function AdminAnalyticsDashboard() {
   const [selectedAffiliates, setSelectedAffiliates] = useState<string[]>([])
 
   const {
-    labelsByCode,
     labelFor,
     displayLabel: linkDisplayLabel,
     saveLabel,
@@ -281,24 +280,19 @@ export function AdminAnalyticsDashboard() {
       }
     }
 
-    for (const code of Object.keys(labelsByCode)) {
-      if (byCode.has(code)) continue
-      byCode.set(code, {
-        content: code,
-        source: 'share',
-        users: 0,
-        newUsers: 0,
-        videoViewUsers: 0,
-        plansViewUsers: 0,
-        leadUsers: 0,
-      })
-    }
+    // Do not auto-list created links with zero traffic — labels still map names
+    // once GA reports appear for that content code.
 
-    return [...byCode.values()].sort((a, b) => {
-      if (b.users !== a.users) return b.users - a.users
-      return (labelFor(a.content) ?? a.content).localeCompare(labelFor(b.content) ?? b.content, 'he')
-    })
-  }, [data, labelsByCode, labelFor])
+    return [...byCode.values()]
+      .filter((row) => row.users > 0)
+      .sort((a, b) => {
+        if (b.users !== a.users) return b.users - a.users
+        return (labelFor(a.content) ?? a.content).localeCompare(
+          labelFor(b.content) ?? b.content,
+          'he',
+        )
+      })
+  }, [data, labelFor])
 
   const affiliateOptions = useMemo(
     () =>
@@ -799,7 +793,7 @@ export function AdminAnalyticsDashboard() {
                     <div className="border-b border-border px-5 py-3">
                       <h3 className="text-sm font-semibold text-foreground">ביצועי לינקים — פירוט</h3>
                       <p className="mt-0.5 text-[11px] text-muted">
-                        כולל משתמשים חדשים ואחוזי המרה. לינקים חדשים מופיעים גם לפני תנועה.
+                        כולל משתמשים חדשים ואחוזי המרה. מוצגים רק לינקים עם תנועה בתקופה שנבחרה.
                         {affiliatesFiltered ? ' · מוצג לפי הסינון שנבחר' : ''}
                       </p>
                       {linkLabelError && (

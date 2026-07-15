@@ -72,7 +72,8 @@ export function AffiliateFilterBar({
         )}
       </div>
       <p className="text-[11px] text-muted">
-        בחרו לינק אחד או יותר — המטריקות והטבלאות למטה יסתננו בהתאם. ללא בחירה מוצגים כולם.
+        בחרו לינק אחד או יותר עם תנועה — המטריקות והטבלאות למטה יסתננו בהתאם. ללא בחירה מוצגים
+        כולם.
       </p>
       <div className="flex flex-wrap gap-2">
         <button
