@@ -3,11 +3,10 @@ import { Calendar, Eye } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
 import { Card } from '@/components/ui/Card'
-import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { StatusBadge, STATUS_COLORS, PLAN_BADGE_COLORS } from '@/components/ui/StatusBadge'
-import { EventWizard } from '@/pages/EventWizard'
+import { EventDetailsModal } from '@/components/admin/EventDetailsModal'
 import { cn } from '@/lib/utils'
 import type { EventStatus, UserPlan } from '@/types'
 
@@ -145,7 +144,7 @@ export function AdminEventsList() {
                   <th className="px-4 py-3 text-right font-medium">תוכנית</th>
                   <th className="px-4 py-3 text-right font-medium">סטטוס</th>
                   <th className="px-4 py-3 text-right font-medium">נוצר</th>
-                  <th className="px-4 py-3 text-right font-medium">ויזארד</th>
+                  <th className="px-4 py-3 text-right font-medium">פרטים</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-game-border/50">
@@ -204,25 +203,13 @@ export function AdminEventsList() {
         </Card>
       )}
 
-      <Modal
-        isOpen={preview !== null}
-        onClose={() => setPreview(null)}
-        title={preview?.name?.trim() || 'ויזארד האירוע'}
-        dialogClassName="max-w-5xl h-[min(92vh,920px)]"
-        contentClassName="!flex !min-h-0 !flex-1 !overflow-hidden !p-0"
-      >
-        {preview && (
-          <div className="flex h-full min-h-0 flex-col">
-            <div className="shrink-0 border-b border-border px-4 py-2 text-xs text-muted">
-              משתמש: {preview.owner_name}
-              {preview.owner_email ? ` · ${preview.owner_email}` : ''}
-            </div>
-            <div className="min-h-0 flex-1">
-              <EventWizard key={preview.id} embedded eventId={preview.id} />
-            </div>
-          </div>
-        )}
-      </Modal>
+      {preview && (
+        <EventDetailsModal
+          eventId={preview.id}
+          eventName={preview.name?.trim() || 'ללא שם'}
+          onClose={() => setPreview(null)}
+        />
+      )}
     </>
   )
 }

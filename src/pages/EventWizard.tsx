@@ -37,28 +37,17 @@ function stepNameFor(stepNumber: number): string {
   return WIZARD_STEPS.find((s) => s.step === stepNumber)?.id ?? `step_${stepNumber}`
 }
 
-interface EventWizardProps {
-  /** Render inside a modal/panel without redirecting away on missing events. */
-  embedded?: boolean
-  /** Required when embedded: drives the wizard without a nested Router. */
-  eventId?: string
-}
-
-export function EventWizard({ embedded = false, eventId: eventIdProp }: EventWizardProps) {
-  const { id: paramId, step: stepParam } = useParams<{ id: string; step?: string }>()
+export function EventWizard() {
+  const { id, step: stepParam } = useParams<{ id: string; step?: string }>()
   const navigate = useNavigate()
   const { isSuperAdmin } = useAuth()
-  const id = embedded ? eventIdProp : paramId
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
-  const [notFound, setNotFound] = useState(false)
-  const [embeddedStep, setEmbeddedStep] = useState(1)
 
   const currentStep = useMemo(() => {
-    if (embedded) return embeddedStep
     const n = parseInt(stepParam ?? '', 10)
     return Number.isFinite(n) && n >= 1 && n <= 6 ? n : 1
-  }, [embedded, embeddedStep, stepParam])
+  }, [stepParam])
 
   const [visitedSteps, setVisitedSteps] = useState<Set<number>>(() => new Set([currentStep]))
   const [startMethod, setStartMethod] = useState<'scratch' | 'template' | null>(null)
@@ -108,7 +97,6 @@ export function EventWizard({ embedded = false, eventId: eventIdProp }: EventWiz
   useEffect(() => {
     async function fetchEvent() {
       if (!id) return
-      setNotFound(false)
       const { data } = await supabase
         .from('events')
         .select('*')
@@ -117,11 +105,6 @@ export function EventWizard({ embedded = false, eventId: eventIdProp }: EventWiz
         .single()
 
       if (!data) {
-        if (embedded) {
-          setNotFound(true)
-          setLoading(false)
-          return
-        }
         navigate('/events', { replace: true })
         return
       }
@@ -129,7 +112,7 @@ export function EventWizard({ embedded = false, eventId: eventIdProp }: EventWiz
       setLoading(false)
     }
     fetchEvent()
-  }, [id, navigate, embedded]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id, navigate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setDraftSynced(false)
@@ -177,31 +160,17 @@ export function EventWizard({ embedded = false, eventId: eventIdProp }: EventWiz
   ])
 
   useEffect(() => {
-    if (embedded) return
     if (!id || loading || !event || stepParam || isTemplateMode) return
     const { lastStep } = getWizardPrefs(id)
     navigate(`/events/${id}/step/${lastStep}`, { replace: true })
-  }, [id, loading, event, stepParam, navigate, isTemplateMode, embedded])
-
-  // Initialize local step once when the embedded wizard finishes loading an event.
-  useEffect(() => {
-    if (!embedded || !id || loading || !event) return
-    const { lastStep } = getWizardPrefs(id)
-    const step = normalizeWizardStep(lastStep, false)
-    setEmbeddedStep(step)
-    setVisitedSteps(new Set([step]))
-  }, [embedded, id, loading]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id, loading, event, stepParam, navigate, isTemplateMode])
 
   const goToStep = useCallback((s: number) => {
     const normalized = normalizeWizardStep(s, isTemplateMode)
     const clamped = Math.max(1, Math.min(6, normalized))
     if (id) setWizardPrefs(id, { lastStep: clamped })
-    if (embedded) {
-      setEmbeddedStep(clamped)
-      return
-    }
     navigate(`/events/${id}/step/${clamped}`, { replace: true })
-  }, [id, navigate, isTemplateMode, embedded])
+  }, [id, navigate, isTemplateMode])
 
   const goNext = useCallback(() => {
     trackWizardStepComplete(currentStep, stepNameFor(currentStep))
@@ -243,27 +212,7 @@ export function EventWizard({ embedded = false, eventId: eventIdProp }: EventWiz
     }
   }
 
-  if (loading || templateLoading) {
-    if (embedded) {
-      return (
-        <div className="flex h-full items-center justify-center text-muted">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
-        </div>
-      )
-    }
-    return <FullPageLoader />
-  }
-
-  if (notFound || !event) {
-    if (embedded) {
-      return (
-        <div className="flex h-full items-center justify-center p-8 text-sm text-muted">
-          האירוע לא נמצא או הועבר לארכיון
-        </div>
-      )
-    }
-    return <FullPageLoader />
-  }
+  if (loading || templateLoading || !event) return <FullPageLoader />
 
   const isTrial = !isSuperAdmin && event.plan === 'free'
 
@@ -275,7 +224,6 @@ export function EventWizard({ embedded = false, eventId: eventIdProp }: EventWiz
       onStepClick={goToStep}
       hiddenSteps={isTemplateMode ? [...TEMPLATE_SKIP_STEPS] : undefined}
       headerSuffix={isTemplateMode ? 'עריכת תבנית' : undefined}
-      embedded={embedded}
     >
       <WizardStepPanel active={currentStep === 1}>
         <StepEventDetails
