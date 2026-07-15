@@ -687,25 +687,66 @@ function dominantSourceByContent(rows: Ga4Row[] | undefined): Map<string, string
   return new Map([...best.entries()].map(([content, { source }]) => [content, source]))
 }
 
+/** Prefer real UTM values: exclude (not set) at query time so limit isn't wasted. */
+function utmDimensionReport(
+  accessToken: string,
+  propertyId: string,
+  dateRanges: { startDate: string; endDate: string }[],
+  fieldName: string,
+) {
+  return runReport(accessToken, propertyId, {
+    dateRanges,
+    dimensions: [{ name: fieldName }],
+    metrics: [{ name: 'totalUsers' }],
+    dimensionFilter: notSetFilter(fieldName),
+    orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+    limit: 50,
+  })
+}
+
+/**
+ * Tagged visitors = anyone with utm_source OR utm_content set.
+ * Medium/campaign are optional and must not alone define "tagged" for short links.
+ */
 async function fetchTaggedVisitors(
   accessToken: string,
   propertyId: string,
   dateRanges: { startDate: string; endDate: string }[],
-  availableParams: UtmParam[],
+  sourceField: string | null,
+  contentField: string | null,
 ): Promise<Ga4Report> {
-  if (availableParams.length === 0) {
+  const expressions = [sourceField, contentField]
+    .filter((f): f is string => Boolean(f))
+    .map((field) => notSetFilter(field))
+
+  if (expressions.length === 0) {
     return { rows: [{ metricValues: [{ value: '0' }] }] }
   }
+
   return runReport(accessToken, propertyId, {
     dateRanges,
     metrics: [{ name: 'totalUsers' }],
-    dimensionFilter: {
-      orGroup: {
-        expressions: availableParams.map((param) => notSetFilter(`customEvent:${param}`)),
-      },
-    },
+    dimensionFilter:
+      expressions.length === 1
+        ? expressions[0]
+        : { orGroup: { expressions } },
     limit: 1,
   })
+}
+
+function sumBreakdownUsers(rows: { users: number }[] | null | undefined): number {
+  return (rows ?? []).reduce((sum, r) => sum + r.users, 0)
+}
+
+/** Prefer customEvent rows; fall back to GA4 session UTM dimensions when empty. */
+function preferBreakdown<T extends { users: number }>(
+  primary: T[] | null,
+  fallback: T[] | null,
+): T[] | null {
+  if (primary === null && fallback === null) return null
+  if (primary && primary.length > 0) return primary
+  if (fallback && fallback.length > 0) return fallback
+  return primary ?? fallback ?? []
 }
 
 Deno.serve(async (req) => {
@@ -998,55 +1039,102 @@ Deno.serve(async (req) => {
       limit: 50,
     })
 
-    // UTM dimension breakdowns — each queried independently (partial tags supported)
-    const utmSourcePromise = runReport(accessToken, propertyId, {
+    // UTM — customEvent params (our attached attribution) + GA4 session UTM fallbacks.
+    // Session dimensions are auto-filled from landing URL even when only source+content are present.
+    const utmSourcePromise = utmDimensionReport(
+      accessToken,
+      propertyId,
       dateRanges,
-      dimensions: [{ name: 'customEvent:utm_source' }],
-      metrics: [{ name: 'totalUsers' }],
-      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
-      limit: 50,
-    })
+      'customEvent:utm_source',
+    )
+    const utmMediumPromise = utmDimensionReport(
+      accessToken,
+      propertyId,
+      dateRanges,
+      'customEvent:utm_medium',
+    )
+    const utmCampaignPromise = utmDimensionReport(
+      accessToken,
+      propertyId,
+      dateRanges,
+      'customEvent:utm_campaign',
+    )
+    const utmContentPromise = utmDimensionReport(
+      accessToken,
+      propertyId,
+      dateRanges,
+      'customEvent:utm_content',
+    )
 
-    const utmMediumPromise = runReport(accessToken, propertyId, {
+    const sessionContentPromise = utmDimensionReport(
+      accessToken,
+      propertyId,
       dateRanges,
-      dimensions: [{ name: 'customEvent:utm_medium' }],
-      metrics: [{ name: 'totalUsers' }],
-      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
-      limit: 50,
-    })
-
-    const utmCampaignPromise = runReport(accessToken, propertyId, {
+      'sessionManualAdContent',
+    )
+    const sessionMediumPromise = utmDimensionReport(
+      accessToken,
+      propertyId,
       dateRanges,
-      dimensions: [{ name: 'customEvent:utm_campaign' }],
-      metrics: [{ name: 'totalUsers' }],
-      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
-      limit: 50,
-    })
-
-    const utmContentPromise = runReport(accessToken, propertyId, {
+      'sessionMedium',
+    )
+    const sessionCampaignPromise = utmDimensionReport(
+      accessToken,
+      propertyId,
       dateRanges,
-      dimensions: [{ name: 'customEvent:utm_content' }],
-      metrics: [{ name: 'totalUsers' }],
-      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
-      limit: 50,
-    })
+      'sessionCampaignName',
+    )
 
     const utmContentSourcePromise = runReport(accessToken, propertyId, {
       dateRanges,
       dimensions: [{ name: 'customEvent:utm_content' }, { name: 'customEvent:utm_source' }],
       metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            notSetFilter('customEvent:utm_content'),
+            notSetFilter('customEvent:utm_source'),
+          ],
+        },
+      },
       orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
       limit: 200,
     })
 
-    const utmContentVideoPromise = runReport(accessToken, propertyId, {
+    const sessionContentSourcePromise = runReport(accessToken, propertyId, {
       dateRanges,
-      dimensions: [{ name: 'customEvent:utm_content' }],
+      dimensions: [{ name: 'sessionManualAdContent' }, { name: 'sessionSource' }],
       metrics: [{ name: 'totalUsers' }],
       dimensionFilter: {
-        filter: {
-          fieldName: 'eventName',
-          stringFilter: { matchType: 'EXACT', value: 'video_view' },
+        andGroup: {
+          expressions: [
+            notSetFilter('sessionManualAdContent'),
+            notSetFilter('sessionSource'),
+          ],
+        },
+      },
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 200,
+    })
+
+    const contentFieldForEvents = 'customEvent:utm_content'
+    const sessionContentField = 'sessionManualAdContent'
+
+    const utmContentVideoPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: contentFieldForEvents }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'eventName',
+                stringFilter: { matchType: 'EXACT', value: 'video_view' },
+              },
+            },
+            notSetFilter(contentFieldForEvents),
+          ],
         },
       },
       orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
@@ -1055,12 +1143,19 @@ Deno.serve(async (req) => {
 
     const utmContentPlansPromise = runReport(accessToken, propertyId, {
       dateRanges,
-      dimensions: [{ name: 'customEvent:utm_content' }],
+      dimensions: [{ name: contentFieldForEvents }],
       metrics: [{ name: 'totalUsers' }],
       dimensionFilter: {
-        filter: {
-          fieldName: 'eventName',
-          stringFilter: { matchType: 'EXACT', value: 'view_plans' },
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'eventName',
+                stringFilter: { matchType: 'EXACT', value: 'view_plans' },
+              },
+            },
+            notSetFilter(contentFieldForEvents),
+          ],
         },
       },
       orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
@@ -1069,12 +1164,83 @@ Deno.serve(async (req) => {
 
     const utmContentLeadsPromise = runReport(accessToken, propertyId, {
       dateRanges,
-      dimensions: [{ name: 'customEvent:utm_content' }],
+      dimensions: [{ name: contentFieldForEvents }],
       metrics: [{ name: 'totalUsers' }],
       dimensionFilter: {
-        filter: {
-          fieldName: 'eventName',
-          stringFilter: { matchType: 'EXACT', value: 'generate_lead' },
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'eventName',
+                stringFilter: { matchType: 'EXACT', value: 'generate_lead' },
+              },
+            },
+            notSetFilter(contentFieldForEvents),
+          ],
+        },
+      },
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 50,
+    })
+
+    // Session-content performance fallbacks when customEvent:utm_content is empty
+    const sessionContentVideoPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: sessionContentField }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'eventName',
+                stringFilter: { matchType: 'EXACT', value: 'video_view' },
+              },
+            },
+            notSetFilter(sessionContentField),
+          ],
+        },
+      },
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 50,
+    })
+
+    const sessionContentPlansPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: sessionContentField }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'eventName',
+                stringFilter: { matchType: 'EXACT', value: 'view_plans' },
+              },
+            },
+            notSetFilter(sessionContentField),
+          ],
+        },
+      },
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 50,
+    })
+
+    const sessionContentLeadsPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: sessionContentField }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'eventName',
+                stringFilter: { matchType: 'EXACT', value: 'generate_lead' },
+              },
+            },
+            notSetFilter(sessionContentField),
+          ],
         },
       },
       orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
@@ -1101,10 +1267,17 @@ Deno.serve(async (req) => {
       utmMediumReport,
       utmCampaignReport,
       utmContentReport,
+      sessionContentReport,
+      sessionMediumReport,
+      sessionCampaignReport,
       utmContentSourceReport,
+      sessionContentSourceReport,
       utmContentVideoReport,
       utmContentPlansReport,
       utmContentLeadsReport,
+      sessionContentVideoReport,
+      sessionContentPlansReport,
+      sessionContentLeadsReport,
     ] = await Promise.all([
       corePromise,
       homepagePromise,
@@ -1125,10 +1298,17 @@ Deno.serve(async (req) => {
       utmMediumPromise,
       utmCampaignPromise,
       utmContentPromise,
+      sessionContentPromise,
+      sessionMediumPromise,
+      sessionCampaignPromise,
       utmContentSourcePromise,
+      sessionContentSourcePromise,
       utmContentVideoPromise,
       utmContentPlansPromise,
       utmContentLeadsPromise,
+      sessionContentVideoPromise,
+      sessionContentPlansPromise,
+      sessionContentLeadsPromise,
     ])
 
     if (core.error) {
@@ -1380,15 +1560,18 @@ Deno.serve(async (req) => {
 
     const utmUnavailableParams: string[] = []
 
-    let sourceBreakdown: UtmSourceRow[] | null = null
+    // ── customEvent breakdowns ──
+    let customSource: UtmSourceRow[] | null = null
     if (isUtmDimensionUnavailable(utmSourceReport, 'utm_source')) {
       if (!utmUnavailableParams.includes('utm_source')) utmUnavailableParams.push('utm_source')
       console.warn('utm_source breakdown unavailable', utmSourceReport.error?.message)
     } else if (!utmSourceReport.error) {
-      sourceBreakdown = mapUtmDimensionRows(utmSourceReport.rows).map(({ key, users }) => ({
+      customSource = mapUtmDimensionRows(utmSourceReport.rows).map(({ key, users }) => ({
         source: key,
         users,
       }))
+    } else {
+      console.warn('utm_source report error', utmSourceReport.error?.message)
     }
 
     let mediumBreakdown: UtmMediumRow[] | null = null
@@ -1413,34 +1596,79 @@ Deno.serve(async (req) => {
       }))
     }
 
-    let contentBreakdown: UtmContentRow[] | null = null
+    let customContent: UtmContentRow[] | null = null
     if (isUtmDimensionUnavailable(utmContentReport, 'utm_content')) {
       if (!utmUnavailableParams.includes('utm_content')) utmUnavailableParams.push('utm_content')
       console.warn('utm_content breakdown unavailable', utmContentReport.error?.message)
     } else if (!utmContentReport.error) {
-      contentBreakdown = mapUtmDimensionRows(utmContentReport.rows).map(({ key, users }) => ({
+      customContent = mapUtmDimensionRows(utmContentReport.rows).map(({ key, users }) => ({
         content: key,
         users,
       }))
+    } else {
+      console.warn('utm_content report error', utmContentReport.error?.message)
     }
 
-    const availableTagParams = UTM_PARAMS.filter((param) => {
-      const report =
-        param === 'utm_source'
-          ? utmSourceReport
-          : param === 'utm_medium'
-            ? utmMediumReport
-            : param === 'utm_campaign'
-              ? utmCampaignReport
-              : utmContentReport
-      return !report.error
-    })
+    // ── session UTM fallbacks (auto from landing URL: ?utm_source=share&utm_content=rs) ──
+    // Do NOT use raw sessionSource alone — it includes google/(direct). Prefer content×source pairs.
+    const sessionContent: UtmContentRow[] | null = sessionContentReport.error
+      ? null
+      : mapUtmDimensionRows(sessionContentReport.rows).map(({ key, users }) => ({
+          content: key,
+          users,
+        }))
 
+    const sessionSourceFromContent: UtmSourceRow[] | null = sessionContentSourceReport.error
+      ? null
+      : (() => {
+          const buckets = new Map<string, number>()
+          for (const row of sessionContentSourceReport.rows ?? []) {
+            const content = (row.dimensionValues?.[0]?.value ?? '').trim()
+            const source = (row.dimensionValues?.[1]?.value ?? '').trim()
+            const users = Number(row.metricValues?.[0]?.value ?? 0)
+            if (users <= 0 || isUnsetDimension(content) || isUnsetDimension(source)) continue
+            buckets.set(source, (buckets.get(source) ?? 0) + users)
+          }
+          return [...buckets.entries()]
+            .map(([source, users]) => ({ source, users }))
+            .sort((a, b) => b.users - a.users)
+        })()
+
+    if (!sessionMediumReport.error) {
+      const sessionMedium = mapUtmDimensionRows(sessionMediumReport.rows).map(({ key, users }) => ({
+        medium: key,
+        users,
+      }))
+      mediumBreakdown = preferBreakdown(mediumBreakdown, sessionMedium)
+    }
+    if (!sessionCampaignReport.error) {
+      const sessionCampaign = mapUtmDimensionRows(sessionCampaignReport.rows).map(({ key, users }) => ({
+        campaign: key,
+        users,
+      }))
+      campaignBreakdown = preferBreakdown(campaignBreakdown, sessionCampaign)
+    }
+
+    // Prefer customEvent; fall back to session dims populated from short UTM URLs
+    const sourceBreakdown = preferBreakdown(customSource, sessionSourceFromContent)
+    const contentBreakdown = preferBreakdown(customContent, sessionContent)
+
+    const customSourceOk = !utmSourceReport.error
+    const customContentOk = !utmContentReport.error
+    const sessionContentOk = !sessionContentReport.error
+
+    // Prefer content+source custom fields; for session fallback count by content (short-link id)
+    // so organic sessionSource (google/direct) is never treated as "tagged".
     const utmTaggedVisitorsReport = await fetchTaggedVisitors(
       accessToken,
       propertyId,
       dateRanges,
-      availableTagParams,
+      customSourceOk ? 'customEvent:utm_source' : null,
+      customContentOk
+        ? 'customEvent:utm_content'
+        : sessionContentOk
+          ? 'sessionManualAdContent'
+          : null,
     )
 
     let taggedVisitors = 0
@@ -1450,42 +1678,36 @@ Deno.serve(async (req) => {
       taggedVisitors = Number(utmTaggedVisitorsReport.rows?.[0]?.metricValues?.[0]?.value ?? 0)
     }
 
-    if (utmContentVideoReport.error && isUtmDimensionUnavailable(utmContentVideoReport, 'utm_content')) {
-      if (!utmUnavailableParams.includes('utm_content')) utmUnavailableParams.push('utm_content')
-      console.warn('utm_content × video_view unavailable', utmContentVideoReport.error.message)
-    } else if (utmContentVideoReport.error) {
-      console.warn('utm_content × video_view unavailable', utmContentVideoReport.error.message)
+    const useCustomPerformance = Boolean(customContent && customContent.length > 0)
+    const videoReport = useCustomPerformance ? utmContentVideoReport : sessionContentVideoReport
+    const plansReport = useCustomPerformance ? utmContentPlansReport : sessionContentPlansReport
+    const leadsReport = useCustomPerformance ? utmContentLeadsReport : sessionContentLeadsReport
+    const contentSourceRows = useCustomPerformance
+      ? utmContentSourceReport
+      : sessionContentSourceReport
+    const contentRowsForPerf = useCustomPerformance ? utmContentReport : sessionContentReport
+
+    if (videoReport.error) {
+      console.warn('utm content × video_view unavailable', videoReport.error.message)
     }
-    if (utmContentPlansReport.error && isUtmDimensionUnavailable(utmContentPlansReport, 'utm_content')) {
-      if (!utmUnavailableParams.includes('utm_content')) utmUnavailableParams.push('utm_content')
-      console.warn('utm_content × view_plans unavailable', utmContentPlansReport.error.message)
-    } else if (utmContentPlansReport.error) {
-      console.warn('utm_content × view_plans unavailable', utmContentPlansReport.error.message)
+    if (plansReport.error) {
+      console.warn('utm content × view_plans unavailable', plansReport.error.message)
     }
-    if (utmContentLeadsReport.error && isUtmDimensionUnavailable(utmContentLeadsReport, 'utm_content')) {
-      if (!utmUnavailableParams.includes('utm_content')) utmUnavailableParams.push('utm_content')
-      console.warn('utm_content × generate_lead unavailable', utmContentLeadsReport.error.message)
-    } else if (utmContentLeadsReport.error) {
-      console.warn('utm_content × generate_lead unavailable', utmContentLeadsReport.error.message)
+    if (leadsReport.error) {
+      console.warn('utm content × generate_lead unavailable', leadsReport.error.message)
     }
 
-    const sourceByContent = utmContentSourceReport.error
+    const sourceByContent = contentSourceRows.error
       ? new Map<string, string>()
-      : dominantSourceByContent(utmContentSourceReport.rows)
+      : dominantSourceByContent(contentSourceRows.rows)
 
     let linkPerformance: LinkPerformanceRow[] | null = null
-    if (!utmContentReport.error) {
-      const videoByContent = utmContentVideoReport.error
-        ? new Map<string, number>()
-        : usersByKey(utmContentVideoReport.rows)
-      const plansByContent = utmContentPlansReport.error
-        ? new Map<string, number>()
-        : usersByKey(utmContentPlansReport.rows)
-      const leadsByContent = utmContentLeadsReport.error
-        ? new Map<string, number>()
-        : usersByKey(utmContentLeadsReport.rows)
+    if (!contentRowsForPerf.error) {
+      const videoByContent = videoReport.error ? new Map<string, number>() : usersByKey(videoReport.rows)
+      const plansByContent = plansReport.error ? new Map<string, number>() : usersByKey(plansReport.rows)
+      const leadsByContent = leadsReport.error ? new Map<string, number>() : usersByKey(leadsReport.rows)
 
-      linkPerformance = mapUtmDimensionRows(utmContentReport.rows).map(({ key, users }) => ({
+      linkPerformance = mapUtmDimensionRows(contentRowsForPerf.rows).map(({ key, users }) => ({
         content: key,
         source: sourceByContent.get(key) ?? null,
         users,
@@ -1495,17 +1717,28 @@ Deno.serve(async (req) => {
       }))
     }
 
-    // Fallback tagged visitors from available breakdowns when the combined filter fails.
-    if (taggedVisitors <= 0) {
-      if (sourceBreakdown && sourceBreakdown.length > 0) {
-        taggedVisitors = sourceBreakdown.reduce((sum, r) => sum + r.users, 0)
-      } else if (contentBreakdown && contentBreakdown.length > 0) {
-        taggedVisitors = contentBreakdown.reduce((sum, r) => sum + r.users, 0)
-      }
+    // Reconcile KPI with visible breakdowns — never show 46 tagged with empty charts
+    const breakdownSignal = Math.max(
+      sumBreakdownUsers(sourceBreakdown),
+      sumBreakdownUsers(contentBreakdown),
+      sumBreakdownUsers(linkPerformance),
+    )
+    if (taggedVisitors <= 0 && breakdownSignal > 0) {
+      taggedVisitors = breakdownSignal
+    } else if (taggedVisitors > 0 && breakdownSignal <= 0) {
+      console.warn(
+        'utm tagged visitors had signal without breakdowns; zeroing KPI to match charts',
+        `tagged=${taggedVisitors}`,
+      )
+      taggedVisitors = 0
     }
 
-    // Section unavailable only when neither primary breakdown (source nor content) works.
-    const utmUnavailable = Boolean(utmSourceReport.error) && Boolean(utmContentReport.error)
+    // Section unavailable only when neither customEvent nor session content/source works
+    const utmUnavailable =
+      customSource === null &&
+      customContent === null &&
+      sessionContent === null &&
+      sessionSourceFromContent === null
 
     if (utmUnavailable && utmUnavailableParams.length === 0) {
       utmUnavailableParams.push('utm_source', 'utm_content')
