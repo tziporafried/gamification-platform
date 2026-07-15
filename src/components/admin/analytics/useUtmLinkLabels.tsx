@@ -159,16 +159,17 @@ export function LinkLabelEditor({
   if (!editing) {
     return (
       <div className="flex min-w-0 items-center gap-2">
-        <div className="min-w-0">
-          <p className="truncate font-medium text-foreground">
-            {displayLabel ?? (
-              <span className="font-normal text-muted">ללא שם — לחצו לעריכה</span>
-            )}
-          </p>
-          <p className="font-mono text-[11px] text-muted" dir="ltr">
+        <p className="min-w-0 truncate text-sm text-foreground">
+          {displayLabel ? (
+            <span className="font-medium">{displayLabel}</span>
+          ) : (
+            <span className="text-muted">ללא שם — לחצו לעריכה</span>
+          )}
+          <span className="mx-1.5 text-muted/50">·</span>
+          <span className="font-mono text-[11px] text-muted" dir="ltr">
             {contentCode}
-          </p>
-        </div>
+          </span>
+        </p>
         <button
           type="button"
           onClick={() => setEditing(true)}

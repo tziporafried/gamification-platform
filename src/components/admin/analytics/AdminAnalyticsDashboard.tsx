@@ -694,7 +694,7 @@ export function AdminAnalyticsDashboard() {
                           ? data.utm.linkPerformance
                               .map((r) => ({
                                 label: r.source
-                                  ? `${linkDisplayLabel(r.content)} · ${utmSourceLabel(r.source)}`
+                                  ? `${linkDisplayLabel(r.content)}\u00A0·\u00A0${utmSourceLabel(r.source)}`
                                   : linkDisplayLabel(r.content),
                                 value: r.users,
                               }))

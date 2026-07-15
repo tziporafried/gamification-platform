@@ -23,6 +23,12 @@ interface RankedBarChartProps {
   color?: string
 }
 
+function truncateOneLine(label: string, max = 28): string {
+  const compact = label.replace(/\s+/g, ' ').trim()
+  if (compact.length <= max) return compact
+  return `${compact.slice(0, max - 1)}…`
+}
+
 export function RankedBarChart({
   items,
   loading,
@@ -56,8 +62,8 @@ export function RankedBarChart({
   }
 
   const data = populated.map((item) => ({
-    name: item.label.length > 22 ? `${item.label.slice(0, 21)}…` : item.label,
-    full: item.label,
+    name: truncateOneLine(item.label),
+    full: item.label.replace(/\s+/g, ' ').trim(),
     value: item.value,
   }))
   const height = Math.max(180, data.length * 34 + 32)
@@ -65,14 +71,19 @@ export function RankedBarChart({
   return (
     <div style={{ height }} className="w-full" dir="ltr">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 44, left: 4, bottom: 4 }}>
+        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 44, left: 8, bottom: 4 }}>
           <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" horizontal={false} />
           <XAxis type="number" hide />
           <YAxis
             type="category"
             dataKey="name"
-            width={110}
-            tick={{ fill: 'var(--color-foreground)', fontSize: 11 }}
+            width={150}
+            interval={0}
+            tick={{
+              fill: 'var(--color-foreground)',
+              fontSize: 11,
+              style: { whiteSpace: 'nowrap' as const },
+            }}
             axisLine={false}
             tickLine={false}
             reversed
