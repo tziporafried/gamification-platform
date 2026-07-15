@@ -56,8 +56,10 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         className={cn(
-          'relative z-10 flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-modal shadow-modal animate-scale-in',
-          dialogClassName,
+          // Default max-w-md only when callers don't override width — `cn` does not
+          // tailwind-merge, so a hard-coded max-w-md would beat dialogClassName.
+          'relative z-10 flex w-full flex-col overflow-hidden rounded-2xl border border-border bg-modal shadow-modal animate-scale-in',
+          dialogClassName ?? 'max-w-md',
         )}
       >
         <div className={cn('flex shrink-0 items-center justify-between border-b bg-modal px-6 py-4', theme.border)}>

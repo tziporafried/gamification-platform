@@ -239,7 +239,7 @@ export function PlansModal({
       onClose={onClose}
       title={title}
       titleClassName="text-xl font-bold text-foreground leading-snug pe-2"
-      dialogClassName="flex h-[80vh] w-[min(96vw,80rem)] max-w-7xl flex-col"
+      dialogClassName="flex max-h-[min(92vh,56rem)] w-[min(96vw,80rem)] max-w-7xl flex-col"
       contentClassName="flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-8 sm:py-6"
     >
       <div dir="rtl">
@@ -249,7 +249,7 @@ export function PlansModal({
         {createError && <p className="mb-4 text-center text-sm text-danger">{createError}</p>}
         {creatingEvent && <p className="mb-4 text-center text-sm text-muted">יוצרים אירוע...</p>}
 
-        <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="mb-8 grid grid-cols-1 items-stretch gap-5 lg:grid-cols-3">
           <OptionCard
             selected={selectedOption === 'independent' && formVisible}
             dimmed={currentPlan === 'independent'}
@@ -294,15 +294,15 @@ export function PlansModal({
             </Button>
           </OptionCard>
 
-          <div className="relative">
-            <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
+          <div className="relative pt-3">
+            <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2">
               <span className="rounded-full bg-primary px-3.5 py-1 text-xs font-semibold text-primary-foreground shadow-sm">
                 הכי פופולרי
               </span>
             </div>
             <OptionCard featured selected={selectedOption === 'full' && formVisible}>
               <div className="mb-4">
-                <div className="mb-1 flex items-center gap-2">
+                <div className="mb-1 flex items-center gap-2 pt-1">
                   <span className="text-lg">⭐</span>
                   <span className="text-base font-bold text-foreground">חוויה מלאה</span>
                 </div>
