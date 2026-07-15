@@ -51,25 +51,41 @@ interface AdminUser {
   affiliate_attribution: Record<string, string> | null
 }
 
-function affiliateContentCode(attr: Record<string, string> | null | undefined): string | null {
-  const content = attr?.utm_content?.trim()
-  return content ? content.toLowerCase() : null
+function asAffiliateAttr(raw: unknown): Record<string, string> | null {
+  if (!raw) return null
+  let obj: unknown = raw
+  if (typeof raw === 'string') {
+    try {
+      obj = JSON.parse(raw)
+    } catch {
+      return null
+    }
+  }
+  if (!obj || typeof obj !== 'object') return null
+  const record = obj as Record<string, unknown>
+  const out: Record<string, string> = {}
+  for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'] as const) {
+    const val = record[key]
+    if (typeof val === 'string' && val.trim()) out[key] = val.trim()
+  }
+  return Object.keys(out).length ? out : null
 }
 
-function affiliateLabel(
-  attr: Record<string, string> | null | undefined,
-  labelFor: (code: string) => string | null,
-): string | null {
-  if (!attr) return null
-  const content = attr.utm_content?.trim()
-  const source = attr.utm_source?.trim()
-  if (content) {
-    const named = labelFor(content)
-    if (named) return named
-    return source ? `${content} · ${source}` : content
-  }
-  if (source) return source
+/** Prefer utm_content (share-link code); fall back to utm_source so filter matches display. */
+function affiliateFilterCode(attr: unknown): string | null {
+  const parsed = asAffiliateAttr(attr)
+  if (!parsed) return null
+  const content = parsed.utm_content?.trim()
+  if (content) return content.toLowerCase()
+  const source = parsed.utm_source?.trim()
+  if (source) return source.toLowerCase()
   return null
+}
+
+function affiliateLabel(attr: unknown, labelFor: (code: string) => string | null): string | null {
+  const code = affiliateFilterCode(attr)
+  if (!code) return null
+  return labelFor(code) ?? code
 }
 
 interface AdminEventRow {
@@ -234,7 +250,7 @@ export function AdminPanel() {
   const affiliateOptions = useMemo(() => {
     const counts = new Map<string, number>()
     for (const user of users) {
-      const code = affiliateContentCode(user.affiliate_attribution)
+      const code = affiliateFilterCode(user.affiliate_attribution)
       if (!code) continue
       counts.set(code, (counts.get(code) ?? 0) + 1)
     }
@@ -255,7 +271,7 @@ export function AdminPanel() {
     if (selectedAffiliates.length === 0) return users
     const set = new Set(selectedAffiliates)
     return users.filter((user) => {
-      const code = affiliateContentCode(user.affiliate_attribution)
+      const code = affiliateFilterCode(user.affiliate_attribution)
       return code != null && set.has(code)
     })
   }, [users, selectedAffiliates])
@@ -503,7 +519,7 @@ export function AdminPanel() {
               const isExpanded = expandedUsers.has(user.user_id)
               const isLoadingEvents = loadingEventsFor.has(user.user_id)
               const events = userEvents.get(user.user_id) ?? []
-              const contentCode = affiliateContentCode(user.affiliate_attribution)
+              const contentCode = affiliateFilterCode(user.affiliate_attribution)
               const affiliate = affiliateLabel(user.affiliate_attribution, labelFor)
 
               return (
