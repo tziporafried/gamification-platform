@@ -33,6 +33,7 @@ import { SimpleDonut } from './SimpleDonut'
 import { InsightCards } from './InsightCards'
 import { VideoProgressTrack } from './VideoProgressTrack'
 import { fetchAnalyticsDashboard } from './fetchDashboard'
+import { LinkLabelEditor, useUtmLinkLabels } from './useUtmLinkLabels'
 import {
   buildAttentionInsights,
   buildFaqInsight,
@@ -110,6 +111,13 @@ export function AdminAnalyticsDashboard() {
   const [showAllFaq, setShowAllFaq] = useState(false)
   const [showExtraOverview, setShowExtraOverview] = useState(false)
   const [showActivationDetails, setShowActivationDetails] = useState(false)
+  const {
+    labelFor,
+    displayLabel: linkDisplayLabel,
+    saveLabel,
+    savingCode,
+    error: linkLabelError,
+  } = useUtmLinkLabels()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -686,13 +694,16 @@ export function AdminAnalyticsDashboard() {
                           ? data.utm.linkPerformance
                               .map((r) => ({
                                 label: r.source
-                                  ? `${r.content} · ${utmSourceLabel(r.source)}`
-                                  : r.content,
+                                  ? `${linkDisplayLabel(r.content)} · ${utmSourceLabel(r.source)}`
+                                  : linkDisplayLabel(r.content),
                                 value: r.users,
                               }))
                               .sort((a, b) => b.value - a.value)
                           : (data.utm.contentBreakdown ?? [])
-                              .map((r) => ({ label: r.content, value: r.users }))
+                              .map((r) => ({
+                                label: linkDisplayLabel(r.content),
+                                value: r.users,
+                              }))
                               .sort((a, b) => b.value - a.value)
                       }
                       color="var(--color-accent)"
@@ -701,16 +712,19 @@ export function AdminAnalyticsDashboard() {
                   </Card>
                 </div>
 
-                {data.utm.linkPerformance && data.utm.linkPerformance.length > 0 && (
+                {(data.utm.linkPerformance?.length || data.utm.contentBreakdown?.length) ? (
                   <Card className="overflow-hidden p-0">
                     <div className="border-b border-border px-5 py-3">
                       <h3 className="text-sm font-semibold text-foreground">ביצועי לינקים — פירוט</h3>
                       <p className="mt-0.5 text-[11px] text-muted">
-                        שיוך לפי הקשר הכניסה המסומן — לא בהכרח סיבתיות ישירה
+                        לחצו על העיפרון כדי למפות מזהה קצר (למשל rs) לשם אמיתי — נשמר לכל האדמינים
                       </p>
+                      {linkLabelError && (
+                        <p className="mt-2 text-xs text-danger">{linkLabelError}</p>
+                      )}
                     </div>
                     <div className="overflow-x-auto">
-                      <table className="w-full min-w-[560px] text-sm" dir="rtl">
+                      <table className="w-full min-w-[640px] text-sm" dir="rtl">
                         <thead>
                           <tr className="border-b border-border bg-white/[0.02] text-xs text-muted">
                             <th className="px-4 py-2.5 text-right font-medium">לינק</th>
@@ -722,7 +736,17 @@ export function AdminAnalyticsDashboard() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/60">
-                          {data.utm.linkPerformance
+                          {(data.utm.linkPerformance && data.utm.linkPerformance.length > 0
+                            ? data.utm.linkPerformance
+                            : (data.utm.contentBreakdown ?? []).map((r) => ({
+                                content: r.content,
+                                source: null as string | null,
+                                users: r.users,
+                                videoViewUsers: 0,
+                                plansViewUsers: 0,
+                                leadUsers: 0,
+                              }))
+                          )
                             .slice()
                             .sort((a, b) => b.users - a.users)
                             .map((row) => {
@@ -739,8 +763,15 @@ export function AdminAnalyticsDashboard() {
                                       : undefined
                                   }
                                 >
-                                  <td className="px-4 py-2.5 font-medium text-foreground">
-                                    {row.content}
+                                  <td className="px-4 py-2.5">
+                                    <LinkLabelEditor
+                                      contentCode={row.content}
+                                      displayLabel={labelFor(row.content)}
+                                      saving={savingCode === row.content.trim().toLowerCase()}
+                                      onSave={async (name) => {
+                                        await saveLabel(row.content, name)
+                                      }}
+                                    />
                                   </td>
                                   <td className="px-4 py-2.5 text-muted">
                                     {row.source ? utmSourceLabel(row.source) : '—'}
@@ -771,7 +802,7 @@ export function AdminAnalyticsDashboard() {
                       </table>
                     </div>
                   </Card>
-                )}
+                ) : null}
               </>
             )}
           </section>
