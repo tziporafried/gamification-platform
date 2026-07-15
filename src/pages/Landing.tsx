@@ -53,6 +53,10 @@ const FEATURES = [
 
 const FAQ_ITEMS: { question: string; answer: ReactNode }[] = [
   {
+    question: 'מאיפה יהיה לי סורק?',
+    answer: 'scanners', // special-cased in FAQ render to link to the plans (routes) page
+  },
+  {
     question: 'כמה זמן לוקח להקים משחק?',
     answer: 'ברוב המקרים ניתן להקים משחק ראשון בתוך מספר דקות בתהליך הקמה קליל - מהגדרת פרטי האירוע ועד להדפסת כרטיסי QR.',
   },
@@ -378,6 +382,18 @@ export function Landing() {
                       {' '}
                       תמצאו את המסלולים - משחק עצמאי, חוויה מלאה ופתרון לארגונים - ואפשר גם לשלוח בקשה
                       ונחזור אליכם.
+                    </>
+                  ) : item.answer === 'scanners' ? (
+                    <>
+                      הסורק עלינו (מותנה בחבילה שרכשת). לדף המסלולים שלנו לחצי{' '}
+                      <button
+                        type="button"
+                        className="font-medium text-primary hover:underline"
+                        onClick={handleOpenPlans}
+                      >
+                        כאן
+                      </button>
+                      .
                     </>
                   ) : (
                     item.answer

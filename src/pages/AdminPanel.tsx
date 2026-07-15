@@ -15,6 +15,7 @@ import { DevTodoList } from '@/components/dev-todos/DevTodoList'
 import { TemplateAdminList } from '@/components/admin/TemplateAdminList'
 import { AdminAnalyticsDashboard } from '@/components/admin/analytics/AdminAnalyticsDashboard'
 import { AdminEventsList } from '@/components/admin/AdminEventsList'
+import { EventDetailsModal } from '@/components/admin/EventDetailsModal'
 import { TrialActivationResetModal } from '@/components/TrialActivationResetModal'
 import { trackTrialActivated, trackTrialDataReset } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
@@ -132,6 +133,7 @@ export function AdminPanel() {
   const [loadingEventsFor, setLoadingEventsFor] = useState<Set<string>>(new Set())
   const [userEvents, setUserEvents] = useState<Map<string, AdminEventRow[]>>(new Map())
   const [updatingEventPlanId, setUpdatingEventPlanId] = useState<string | null>(null)
+  const [detailEvent, setDetailEvent] = useState<{ id: string; name: string } | null>(null)
 
   // User deletion
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null)
@@ -485,9 +487,13 @@ export function AdminPanel() {
                       ) : (
                         events.map(ev => (
                           <div key={ev.event_id} className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-white/[0.02]">
-                            <span className="text-sm text-foreground truncate flex-1">
+                            <button
+                              type="button"
+                              onClick={() => setDetailEvent({ id: ev.event_id, name: ev.event_name })}
+                              className="flex-1 truncate text-right text-sm text-foreground hover:text-brand-400 hover:underline transition-colors"
+                            >
                               {ev.event_name || <span className="text-muted italic">ללא שם</span>}
-                            </span>
+                            </button>
                             <div className="flex items-center gap-2 shrink-0">
                               <span className={cn('text-xs font-medium', planColor(ev.plan))}>
                                 {planLabel(ev.plan)}
@@ -608,6 +614,14 @@ export function AdminPanel() {
       )}
 
       {tab === 'analytics' && <AdminAnalyticsDashboard />}
+
+      {detailEvent && (
+        <EventDetailsModal
+          eventId={detailEvent.id}
+          eventName={detailEvent.name}
+          onClose={() => setDetailEvent(null)}
+        />
+      )}
 
       <TrialActivationResetModal
         isOpen={pendingPlanChange !== null}
