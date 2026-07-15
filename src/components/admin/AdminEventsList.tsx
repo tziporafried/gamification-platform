@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Calendar, Eye } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
+import { fetchEventsPlayMeta } from '@/lib/eventsPlayMeta'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { StatusBadge, STATUS_COLORS, PLAN_BADGE_COLORS } from '@/components/ui/StatusBadge'
 import { EventDetailsModal } from '@/components/admin/EventDetailsModal'
-import { cn } from '@/lib/utils'
 import type { EventStatus, UserPlan } from '@/types'
 
 interface AdminEventRow {
@@ -19,6 +19,10 @@ interface AdminEventRow {
   owner_admin_id: string
   owner_name: string
   owner_email: string
+  groups: number
+  participants: number
+  tasks: number
+  rewards: number
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -67,30 +71,34 @@ export function AdminEventsList() {
     const draftSet = new Set(draftIds)
     const rows = (eventsRes.data ?? []).filter((row) => !draftSet.has(row.id))
     const ownerIds = [...new Set(rows.map((row) => row.owner_admin_id))]
+    const eventIds = rows.map((row) => row.id)
 
-    let profileMap = new Map<string, { display_name: string | null; email: string }>()
-    if (ownerIds.length > 0) {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('id, display_name, email')
-        .in('id', ownerIds)
+    const [profilesResult, playMeta] = await Promise.all([
+      ownerIds.length > 0
+        ? supabase
+            .from('user_profiles')
+            .select('id, display_name, email')
+            .in('id', ownerIds)
+        : Promise.resolve({ data: [] as { id: string; display_name: string | null; email: string }[], error: null }),
+      fetchEventsPlayMeta(eventIds),
+    ])
 
-      if (profilesError) {
-        setError(profilesError.message)
-        setEvents([])
-        setLoading(false)
-        return
-      }
-
-      profileMap = new Map(
-        (profiles ?? []).map((p) => [p.id, { display_name: p.display_name, email: p.email }]),
-      )
+    if (profilesResult.error) {
+      setError(profilesResult.error.message)
+      setEvents([])
+      setLoading(false)
+      return
     }
+
+    const profileMap = new Map(
+      (profilesResult.data ?? []).map((p) => [p.id, { display_name: p.display_name, email: p.email }]),
+    )
 
     setEvents(
       rows.map((row) => {
         const profile = profileMap.get(row.owner_admin_id)
         const email = profile?.email ?? ''
+        const counts = playMeta[row.id]?.counts
         return {
           id: row.id,
           name: row.name,
@@ -100,6 +108,10 @@ export function AdminEventsList() {
           owner_admin_id: row.owner_admin_id,
           owner_name: profile ? ownerDisplayName(profile.display_name, email) : 'משתמש לא ידוע',
           owner_email: email,
+          groups: counts?.groups ?? 0,
+          participants: counts?.participants ?? 0,
+          tasks: counts?.tasks ?? 0,
+          rewards: counts?.rewards ?? 0,
         }
       }),
     )
@@ -136,20 +148,35 @@ export function AdminEventsList() {
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[760px] text-sm">
               <thead>
                 <tr className="border-b border-game-border bg-white/[0.02] text-xs text-muted">
                   <th className="px-4 py-3 text-right font-medium">שם האירוע</th>
                   <th className="px-4 py-3 text-right font-medium">משתמש</th>
                   <th className="px-4 py-3 text-right font-medium">תוכנית</th>
                   <th className="px-4 py-3 text-right font-medium">סטטוס</th>
+                  <th className="px-4 py-3 text-center font-medium">קבוצות</th>
+                  <th className="px-4 py-3 text-center font-medium">משתתפים</th>
+                  <th className="px-4 py-3 text-center font-medium">משימות</th>
+                  <th className="px-4 py-3 text-center font-medium">פרסים</th>
                   <th className="px-4 py-3 text-right font-medium">נוצר</th>
-                  <th className="px-4 py-3 text-right font-medium">פרטים</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-game-border/50">
                 {events.map((event) => (
-                  <tr key={event.id} className="hover:bg-white/[0.02]">
+                  <tr
+                    key={event.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setPreview(event)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setPreview(event)
+                      }
+                    }}
+                    className="cursor-pointer hover:bg-white/[0.04]"
+                  >
                     <td className="px-4 py-3">
                       <span className="font-medium text-foreground">
                         {event.name?.trim() || (
@@ -179,21 +206,12 @@ export function AdminEventsList() {
                         color={STATUS_COLORS[event.status as keyof typeof STATUS_COLORS] ?? 'var(--color-muted)'}
                       />
                     </td>
+                    <td className="px-4 py-3 text-center tabular-nums text-muted">{event.groups}</td>
+                    <td className="px-4 py-3 text-center tabular-nums text-muted">{event.participants}</td>
+                    <td className="px-4 py-3 text-center tabular-nums text-muted">{event.tasks}</td>
+                    <td className="px-4 py-3 text-center tabular-nums text-muted">{event.rewards}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-muted">
                       {new Date(event.created_at).toLocaleDateString('he-IL')}
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => setPreview(event)}
-                        className={cn(
-                          'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs',
-                          'text-muted transition-colors hover:bg-white/5 hover:text-foreground',
-                        )}
-                      >
-                        <Eye size={14} />
-                        צפייה
-                      </button>
                     </td>
                   </tr>
                 ))}
