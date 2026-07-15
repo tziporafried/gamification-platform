@@ -31,7 +31,7 @@ Build verified: `npm run build` passes.
 | `login_start` | User starts a login attempt | `method` | `Login.tsx` |
 | `login_error` | Login fails | `error_type`, `method` | `Login.tsx` |
 | `event_creation_start` | User clicks create event | — | `MyEvents.tsx`, `PlansModal.tsx` |
-| `event_created` | Event row inserted successfully | `creation_method` | `MyEvents.tsx`, `PlansModal.tsx` |
+| `event_created` | Event row inserted successfully | `creation_method` (`new` \| `scratch` \| `template`) | `MyEvents.tsx` |
 | `wizard_step_view` | Wizard step shown | `step_number`, `step_name` | `EventWizard.tsx` |
 | `wizard_step_complete` | User advances / finishes a step | `step_number`, `step_name` | `EventWizard.tsx`, `StepReviewGenerate.tsx` |
 | `wizard_back` | User goes to previous wizard step | `from_step`, `to_step` | `EventWizard.tsx` |

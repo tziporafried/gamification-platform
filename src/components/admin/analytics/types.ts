@@ -74,6 +74,8 @@ export interface AnalyticsDashboardData {
     eventsCreated: number
     eventCreators: number
     leadConversionRate: number | null
+    /** Always site-wide — not scoped by affiliate filter. */
+    videoUsers: number
   }
   video: {
     startedUsers: number
@@ -169,7 +171,7 @@ export interface AnalyticsFetchParams {
   preset: AnalyticsDatePreset
   startDate?: string
   endDate?: string
-  /** Affiliate content codes for the trend series. [] = all tagged links. */
+  /** Affiliate content codes for the trend series. [] = whole site (no filter). */
   utmContents?: string[]
 }
 

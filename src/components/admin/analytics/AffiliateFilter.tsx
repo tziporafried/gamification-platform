@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { KpiCard, formatNumber, formatRate } from './KpiCard'
-import { Filter, UserPlus, Percent, Users, Video, Eye, MessageCircle } from 'lucide-react'
+import { Filter, UserPlus, Percent, Users, Video, Eye } from 'lucide-react'
 
 export interface AffiliateOption {
   code: string
@@ -71,7 +71,7 @@ export function AffiliateFilterBar({
         )}
       </div>
       <p className="text-[11px] text-muted">
-        הסינון משפיע רק על הקוביות ועל גרף המגמה בתוך המסגרת. שאר הדאשבורד נשאר לכל האתר.
+        הסינון מצמצם את המגמה, הסרטון והשאלות במסגרת. הסיכום למעלה נשאר לכל האתר.
       </p>
       <div className="flex flex-wrap gap-2">
         <button
@@ -84,7 +84,7 @@ export function AffiliateFilterBar({
               : 'border-border text-muted hover:border-secondary/50 hover:text-foreground',
           )}
         >
-          כל האפיליאייטים
+          הכל · ללא סינון
         </button>
         {options.map((opt) => {
           const active = selectedSet.has(opt.code)
@@ -134,12 +134,13 @@ export function AffiliateMetricsStrip({
       <p className="text-xs text-muted">
         {filtered
           ? `קוביות לפי האפיליאייטים שנבחרו (${rows.length})`
-          : `קוביות לפי כל האפיליאייטים עם תנועה (${rows.length})`}
+          : 'קוביות לכל האתר · ללא סינון'}
       </p>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <KpiCard
           label="מבקרים"
           value={totals.users}
+          hint={filtered ? undefined : 'סה״כ ייחודיים בטווח'}
           loading={loading}
           accent="secondary"
           icon={<Users size={16} />}
@@ -179,13 +180,6 @@ export function AffiliateMetricsStrip({
           loading={loading}
           accent="primary"
           icon={<Percent size={16} />}
-        />
-        <KpiCard
-          label="לידים"
-          value={totals.leadUsers}
-          loading={loading}
-          accent="tertiary"
-          icon={<MessageCircle size={16} />}
         />
       </div>
     </div>

@@ -58,3 +58,33 @@ export function utmAttributionToParams(utm: UtmAttribution): Record<string, stri
 export function hasUtmAttribution(utm: UtmAttribution): boolean {
   return UTM_PARAM_KEYS.some((key) => Boolean(utm[key]))
 }
+
+function searchParamsFrom(search: string): URLSearchParams {
+  return new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
+}
+
+/** True when the URL is missing any attribution keys we already have. */
+export function searchNeedsUtmPersist(search: string, utm: UtmAttribution): boolean {
+  if (!hasUtmAttribution(utm)) return false
+  const params = searchParamsFrom(search)
+  return UTM_PARAM_KEYS.some((key) => Boolean(utm[key]) && !params.get(key))
+}
+
+/**
+ * Merge persisted UTM into a query string without overwriting params already in the URL.
+ * Preserves unrelated query keys (e.g. OAuth `code`, plan deep-links).
+ */
+export function withPersistedUtmSearch(search: string, utm: UtmAttribution): string {
+  if (!hasUtmAttribution(utm)) {
+    const trimmed = search.startsWith('?') ? search : search ? `?${search}` : ''
+    return trimmed === '?' ? '' : trimmed
+  }
+  const params = searchParamsFrom(search)
+  for (const key of UTM_PARAM_KEYS) {
+    const value = utm[key]
+    if (!value) continue
+    if (!params.get(key)) params.set(key, value)
+  }
+  const qs = params.toString()
+  return qs ? `?${qs}` : ''
+}

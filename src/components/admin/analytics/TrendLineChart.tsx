@@ -89,8 +89,8 @@ const SERIES_BY_KEY = Object.fromEntries(ALL_SERIES.map((s) => [s.key, s])) as R
 >
 
 const SERIES_LABELS: Record<TrendSeriesKey, string> = {
-  visitors: 'משתמשים ייחודיים (GA4)',
-  newUsers: 'משתמשים חדשים (GA4)',
+  visitors: 'מבקרים בדף הבית (ליום)',
+  newUsers: 'משתמשים חדשים (ליום)',
   videoView: 'צפו בסרטון',
   videoComplete: 'סיימו סרטון',
   viewPlans: 'צפו במחירים',

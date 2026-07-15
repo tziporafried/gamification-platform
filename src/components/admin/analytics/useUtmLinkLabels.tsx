@@ -238,6 +238,7 @@ export function UtmShareLinkGenerator({
   createShareLink,
   generating,
   error,
+  compact = false,
 }: {
   onCreated?: (result: { contentCode: string; displayName: string; url: string }) => void
   createShareLink: (
@@ -248,6 +249,8 @@ export function UtmShareLinkGenerator({
   >
   generating?: boolean
   error?: string | null
+  /** Inline row next to date filter — less vertical space */
+  compact?: boolean
 }) {
   const [name, setName] = useState('')
   const [lastUrl, setLastUrl] = useState<string | null>(null)
@@ -292,6 +295,54 @@ export function UtmShareLinkGenerator({
   }
 
   const showError = localError || error
+
+  if (compact) {
+    return (
+      <div className="min-w-0 space-y-1.5">
+        <form
+          onSubmit={(e) => void handleGenerate(e)}
+          className="flex min-w-0 flex-wrap items-center gap-1.5"
+          title="שם → לינק שיתוף עם מזהה אקראי (utm_source=share)"
+        >
+          <span className="shrink-0 text-[11px] font-semibold text-muted">לינק</span>
+          <input
+            id="utm-link-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="שם אפיליאייט"
+            required
+            className={cn(
+              'h-8 min-w-[8rem] flex-1 rounded-lg border border-border bg-surface px-2.5 text-xs text-foreground outline-none',
+              'placeholder:text-muted focus:border-secondary',
+            )}
+          />
+          <Button type="submit" size="xs" loading={busy || generating} className="shrink-0 gap-1">
+            <Link2 size={12} />
+            יצירה
+          </Button>
+          {lastUrl && (
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => void copyAgain()}
+              className="shrink-0 gap-1"
+              title={lastUrl}
+            >
+              {copied ? <CheckCheck size={12} /> : <Copy size={12} />}
+              {lastCode ?? 'העתקה'}
+            </Button>
+          )}
+        </form>
+        {showError && <p className="text-[11px] text-danger">{showError}</p>}
+        {lastUrl && !showError && (
+          <p className="truncate font-mono text-[10px] text-muted" dir="ltr" title={lastUrl}>
+            {lastUrl}
+          </p>
+        )}
+      </div>
+    )
+  }
 
   return (
     <Card className="space-y-3 p-4">

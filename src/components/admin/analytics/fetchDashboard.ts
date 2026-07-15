@@ -70,6 +70,8 @@ function normalizePayload(raw: AnalyticsDashboardData): AnalyticsDashboardData {
     leadConversionRate:
       payload.overview.leadConversionRate ??
       rate(payload.overview.leadUsers ?? 0, payload.overview.homepageUsers ?? 0),
+    // Older deployments: fall back to video section (may be affiliate-scoped after filter).
+    videoUsers: payload.overview.videoUsers ?? payload.video?.startedUsers ?? 0,
   }
 
   payload.video = {

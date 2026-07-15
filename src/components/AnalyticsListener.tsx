@@ -1,13 +1,19 @@
 import { useEffect, useRef } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
+  captureUtmAttribution,
+  getUtmAttribution,
   initAnalytics,
   trackPageView,
   trackWizardExit,
 } from '@/lib/analytics'
+import { searchNeedsUtmPersist, withPersistedUtmSearch } from '@/lib/utmAttribution'
 import { WIZARD_STEPS } from '@/types'
 
 const WIZARD_STEP_RE = /^\/events\/[^/]+\/step\/(\d+)/
+
+/** OAuth callback owns its query string — don't inject UTMs mid-handshake. */
+const SKIP_UTM_URL_PERSIST = /^\/auth\/callback\/?$/
 
 function stepNameFor(stepNumber: number): string {
   return WIZARD_STEPS.find((s) => s.step === stepNumber)?.id ?? `step_${stepNumber}`
@@ -16,6 +22,7 @@ function stepNameFor(stepNumber: number): string {
 /** Loads GA4 (when configured) and sends a page_view on every route change. */
 export function AnalyticsListener() {
   const location = useLocation()
+  const navigate = useNavigate()
   const prevPathRef = useRef(location.pathname)
 
   useEffect(() => {
@@ -23,6 +30,23 @@ export function AnalyticsListener() {
   }, [])
 
   useEffect(() => {
+    // Keep affiliate UTMs visible in the address bar across SPA navigations.
+    captureUtmAttribution(location.search)
+    if (!SKIP_UTM_URL_PERSIST.test(location.pathname)) {
+      const utm = getUtmAttribution()
+      if (searchNeedsUtmPersist(location.search, utm)) {
+        navigate(
+          {
+            pathname: location.pathname,
+            search: withPersistedUtmSearch(location.search, utm),
+            hash: location.hash,
+          },
+          { replace: true },
+        )
+        return
+      }
+    }
+
     const prevPath = prevPathRef.current
     const nextPath = location.pathname
     prevPathRef.current = nextPath
@@ -40,7 +64,7 @@ export function AnalyticsListener() {
 
     const path = `${location.pathname}${location.search}`
     trackPageView(path)
-  }, [location.pathname, location.search])
+  }, [location.pathname, location.search, location.hash, navigate])
 
   return null
 }

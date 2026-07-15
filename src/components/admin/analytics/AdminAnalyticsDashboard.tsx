@@ -34,7 +34,7 @@ import { InsightCards } from './InsightCards'
 import { VideoProgressTrack } from './VideoProgressTrack'
 import { fetchAnalyticsDashboard } from './fetchDashboard'
 import { LinkLabelEditor, useUtmLinkLabels, UtmShareLinkGenerator } from './useUtmLinkLabels'
-import { AffiliateFilterBar, AffiliateMetricsStrip, ratePct } from './AffiliateFilter'
+import { AffiliateFilterBar, ratePct } from './AffiliateFilter'
 import {
   buildAttentionInsights,
   buildFaqInsight,
@@ -116,6 +116,7 @@ export function AdminAnalyticsDashboard() {
 
   const {
     labelFor,
+    displayLabel: linkDisplayLabel,
     saveLabel,
     createShareLink,
     savingCode,
@@ -130,7 +131,7 @@ export function AdminAnalyticsDashboard() {
         preset,
         startDate: preset === 'custom' ? startDate : undefined,
         endDate: preset === 'custom' ? endDate : undefined,
-        // empty = all tagged affiliates for the trend series
+        // empty = whole site (no affiliate filter); non-empty = those content codes only
         utmContents: selectedAffiliates,
       })
       setData(result)
@@ -304,13 +305,13 @@ export function AdminAnalyticsDashboard() {
 
   const affiliatesFiltered = selectedAffiliates.length > 0
 
+
   const trendLooksEmpty = useMemo(() => {
     if (!data || data.timeSeries.unavailable) return false
-    // Trend is affiliate-scoped — only warn when affiliate traffic exists but series is flat.
-    const hasAffiliateSignal =
-      filteredLinkRows.some((r) => r.users > 0) ||
-      (selectedAffiliates.length === 0 && data.utm.taggedVisitors > 0)
-    if (!hasAffiliateSignal) return false
+    const expectTraffic = affiliatesFiltered
+      ? filteredLinkRows.some((r) => r.users > 0)
+      : data.overview.homepageUsers > 0
+    if (!expectTraffic) return false
     const hasTrend = data.timeSeries.days.some(
       (d) =>
         d.visitors > 0 ||
@@ -320,16 +321,16 @@ export function AdminAnalyticsDashboard() {
         d.generateLead > 0,
     )
     return !hasTrend
-  }, [data, filteredLinkRows, selectedAffiliates])
+  }, [data, filteredLinkRows, affiliatesFiltered])
 
   return (
-    <div className="space-y-7">
-      {/* Header — unchanged */}
-      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 shadow-card">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="space-y-4">
+      {/* Header + date filter + compact share-link create */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <SectionHeader
             size="md"
-            icon={<BarChart3 size={20} className="text-secondary" />}
+            icon={<BarChart3 size={18} className="text-secondary" />}
             title="ניתוח נתונים"
             subtitle={`טווח: ${rangeLabel}`}
           />
@@ -344,21 +345,27 @@ export function AdminAnalyticsDashboard() {
             רענון
           </Button>
         </div>
-        <DateRangePicker
-          preset={preset}
-          startDate={startDate}
-          endDate={endDate}
-          onPresetChange={handlePresetChange}
-          onCustomChange={handleCustomChange}
-          disabled={loading}
-        />
+        <div className="flex flex-col gap-2 border-t border-border/70 pt-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
+          <div className="min-w-0 flex-1">
+            <DateRangePicker
+              preset={preset}
+              startDate={startDate}
+              endDate={endDate}
+              onPresetChange={handlePresetChange}
+              onCustomChange={handleCustomChange}
+              disabled={loading}
+            />
+          </div>
+          <div className="min-w-[14rem] shrink-0 border-t border-border/60 pt-2 lg:max-w-sm lg:border-t-0 lg:border-s lg:ps-4 lg:pt-0">
+            <UtmShareLinkGenerator
+              compact
+              createShareLink={createShareLink}
+              generating={!!savingCode}
+              error={linkLabelError}
+            />
+          </div>
+        </div>
       </div>
-
-      <UtmShareLinkGenerator
-        createShareLink={createShareLink}
-        generating={!!savingCode}
-        error={linkLabelError}
-      />
 
       {error && !loading && (
         <Card className="space-y-3 p-5">
@@ -392,66 +399,7 @@ export function AdminAnalyticsDashboard() {
 
       {!error && data && (
         <>
-          {/* Affiliate frame: filter + KPI boxes + trend only */}
-          <section>
-            <Card className="space-y-4 border-2 border-secondary/40 p-5 sm:p-6 shadow-card">
-              <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border pb-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Filter size={18} className="text-secondary" />
-                    <h2 className="text-base font-semibold text-foreground">נתוני אפיליאייטים</h2>
-                  </div>
-                  <p className="mt-1 text-xs text-muted">
-                    המסגרת הזו מסוננת לפי אפיליאייט — הקוביות וגרף המגמה בלבד. כל שאר הדאשבורד
-                    למטה מציג את האתר כולו.
-                  </p>
-                </div>
-                <span className="rounded-full border border-secondary/40 bg-secondary/10 px-2.5 py-1 text-[11px] font-medium text-foreground">
-                  {affiliatesFiltered ? 'מסונן' : 'כל האפיליאייטים'}
-                </span>
-              </div>
-
-              <AffiliateFilterBar
-                options={affiliateOptions}
-                selected={selectedAffiliates}
-                onChange={setSelectedAffiliates}
-              />
-              <AffiliateMetricsStrip
-                rows={filteredLinkRows}
-                loading={loading}
-                filtered={affiliatesFiltered}
-              />
-
-              <div className="border-t border-border pt-4">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp size={16} className="text-secondary" />
-                    <h3 className="text-sm font-semibold text-foreground">מגמה לפי אפיליאייט</h3>
-                  </div>
-                  <p className="text-[11px] text-muted">
-                    {affiliatesFiltered
-                      ? 'מסונן לפי הבחירה למעלה'
-                      : 'כל התנועה שמגיעה מלינקי אפיליאייט'}
-                  </p>
-                </div>
-                {trendLooksEmpty && (
-                  <div className="mb-4 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
-                    מגמת האפיליאייט ריקה. אם יש תנועה באתר אבל לא כאן — ייתכן שעדיין אין כניסות
-                    מלינקים מסומנים בטווח, או שצריך לדפלוי מחדש את{' '}
-                    <code className="text-xs">ga4-dashboard</code>.
-                  </div>
-                )}
-                <TrendLineChart
-                  days={data.timeSeries.days}
-                  loading={loading}
-                  unavailable={data.timeSeries.unavailable}
-                  height={420}
-                />
-              </div>
-            </Card>
-          </section>
-
-          {/* Compact KPI strip */}
+          {/* Site-wide quick summary — above affiliate filter */}
           <section className="space-y-3">
             <SectionHeader
               icon={<Users size={16} className="text-secondary" />}
@@ -468,11 +416,11 @@ export function AdminAnalyticsDashboard() {
               <KpiCard
                 loading={loading}
                 label="צפו בסרטון"
-                value={data.video.startedUsers}
+                value={data.overview.videoUsers}
                 hint={
                   data.overview.homepageUsers > 0
                     ? formatRate(
-                        calcStepRate(data.overview.homepageUsers, data.video.startedUsers),
+                        calcStepRate(data.overview.homepageUsers, data.overview.videoUsers),
                       )
                     : undefined
                 }
@@ -548,6 +496,114 @@ export function AdminAnalyticsDashboard() {
             )}
           </section>
 
+          {/* Affiliate frame: filter + trend + video + FAQ */}
+          <section>
+            <Card className="space-y-3 border-2 border-secondary/40 p-4 shadow-card">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Filter size={16} className="text-secondary" />
+                  <h2 className="text-sm font-semibold text-foreground">מגמה וסינון</h2>
+                  <span className="rounded-full border border-secondary/40 bg-secondary/10 px-2 py-0.5 text-[10px] font-medium text-foreground">
+                    {affiliatesFiltered ? 'מסונן לפי אפיליאייט' : 'כל האתר'}
+                  </span>
+                </div>
+              </div>
+
+              <AffiliateFilterBar
+                options={affiliateOptions}
+                selected={selectedAffiliates}
+                onChange={setSelectedAffiliates}
+              />
+
+              <div className="border-t border-border pt-3">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp size={14} className="text-secondary" />
+                    <h3 className="text-sm font-semibold text-foreground">מגמה לאורך זמן</h3>
+                  </div>
+                  <p className="text-[11px] text-muted">
+                    {affiliatesFiltered
+                      ? 'מסונן לפי האפיליאייטים שנבחרו'
+                      : 'כל האתר · ללא סינון'}
+                  </p>
+                </div>
+                {trendLooksEmpty && (
+                  <div className="mb-4 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
+                    המגמה ריקה למרות שיש תנועה. ייתכן שצריך לדפלוי מחדש את{' '}
+                    <code className="text-xs">ga4-dashboard</code>.
+                  </div>
+                )}
+                <TrendLineChart
+                  days={data.timeSeries.days}
+                  loading={loading}
+                  unavailable={data.timeSeries.unavailable}
+                  height={360}
+                />
+              </div>
+
+              <div className="grid gap-4 border-t border-border pt-3 lg:grid-cols-2 lg:items-start">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Video size={14} className="text-secondary" />
+                    <h3 className="text-sm font-semibold text-foreground">ביצועי הסרטון</h3>
+                  </div>
+                  <div className="rounded-xl border border-border bg-surface-elevated/40 p-3 sm:p-4">
+                    <h4 className="mb-3 text-xs font-semibold text-muted">פיצול צפייה</h4>
+                    <VideoProgressTrack
+                      loading={loading}
+                      milestones={videoMilestones}
+                      baseUsers={data.video.startedUsers}
+                      startedUsers={data.video.startedUsers}
+                      completedUsers={data.video.completedUsers}
+                      reached25Users={data.video.reached25Users}
+                      reached50Users={data.video.reached50Users}
+                      reached75Users={data.video.reached75Users}
+                      unavailable={data.video.milestonesUnavailable}
+                      unavailableNote="אבני דרך 25% / 50% / 75% עדיין לא זמינות ב-GA4 (יש לרשום את progress_percent כ-Event-scoped Custom Dimension). מוצג כרגע סיימו מול לא סיימו."
+                      insight={videoInsight}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <HelpCircle size={14} className="text-secondary" />
+                    <h3 className="text-sm font-semibold text-foreground">שאלות נפוצות</h3>
+                  </div>
+                  <div className="space-y-3 rounded-xl border border-border bg-surface-elevated/40 p-3 sm:p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xs text-muted">פתחו שאלות</span>
+                        <span className="text-lg font-bold tabular-nums text-foreground">
+                          {loading ? '—' : formatNumber(data.homepageInterest.faqUsers)}
+                        </span>
+                      </div>
+                      {faqQuestions.length > 7 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllFaq((v) => !v)}
+                          className="text-xs font-medium text-secondary hover:underline"
+                        >
+                          {showAllFaq ? 'הצג פחות' : 'הצג את כל השאלות'}
+                        </button>
+                      )}
+                    </div>
+                    {faqInsight && (
+                      <p className="rounded-lg border border-border bg-surface px-3 py-2 text-xs text-foreground">
+                        {faqInsight}
+                      </p>
+                    )}
+                    <FaqBarChart
+                      loading={loading}
+                      unavailable={data.homepageInterest.questionsUnavailable}
+                      items={visibleFaq.map((q) => ({ question: q.question, users: q.users }))}
+                    />
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </section>
+
           {insights.length > 0 && (
             <section className="space-y-2">
               <SectionHeader
@@ -558,66 +614,6 @@ export function AdminAnalyticsDashboard() {
             </section>
           )}
 
-          {/* Video */}
-          <section className="space-y-3">
-            <SectionHeader
-              icon={<Video size={16} className="text-secondary" />}
-              title="ביצועי הסרטון"
-            />
-            <Card className="p-5">
-              <h3 className="mb-4 text-sm font-semibold text-foreground">פיצול צפייה</h3>
-              <VideoProgressTrack
-                loading={loading}
-                milestones={videoMilestones}
-                baseUsers={data.video.startedUsers}
-                startedUsers={data.video.startedUsers}
-                completedUsers={data.video.completedUsers}
-                reached25Users={data.video.reached25Users}
-                reached50Users={data.video.reached50Users}
-                reached75Users={data.video.reached75Users}
-                unavailable={data.video.milestonesUnavailable}
-                unavailableNote="אבני דרך 25% / 50% / 75% עדיין לא זמינות ב-GA4 (יש לרשום את progress_percent כ-Event-scoped Custom Dimension). מוצג כרגע סיימו מול לא סיימו."
-                insight={videoInsight}
-              />
-            </Card>
-          </section>
-
-          {/* FAQ */}
-          <section className="space-y-3">
-            <SectionHeader
-              icon={<HelpCircle size={16} className="text-secondary" />}
-              title="שאלות נפוצות"
-            />
-            <Card className="space-y-4 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs text-muted">פתחו שאלות</span>
-                  <span className="text-lg font-bold tabular-nums text-foreground">
-                    {loading ? '—' : formatNumber(data.homepageInterest.faqUsers)}
-                  </span>
-                </div>
-                {faqQuestions.length > 7 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllFaq((v) => !v)}
-                    className="text-xs font-medium text-secondary hover:underline"
-                  >
-                    {showAllFaq ? 'הצג פחות' : 'הצג את כל השאלות'}
-                  </button>
-                )}
-              </div>
-              {faqInsight && (
-                <p className="rounded-lg border border-border bg-surface-elevated px-3 py-2 text-xs text-foreground">
-                  {faqInsight}
-                </p>
-              )}
-              <FaqBarChart
-                loading={loading}
-                unavailable={data.homepageInterest.questionsUnavailable}
-                items={visibleFaq.map((q) => ({ question: q.question, users: q.users }))}
-              />
-            </Card>
-          </section>
 
           {/* CTA + Traffic */}
           <section className="space-y-3">
@@ -656,30 +652,78 @@ export function AdminAnalyticsDashboard() {
                 />
               </Card>
             </div>
-
-            <Card className="p-5">
-              <h3 className="mb-4 text-sm font-semibold text-foreground">מקורות תנועה</h3>
-              <SimpleDonut
-                loading={loading}
-                unavailable={data.trafficSources.unavailable}
-                unavailableTitle="מקורות תנועה לא זמינים"
-                unavailableDescription="לא ניתן לטעון את התפלגות מקורות התנועה כרגע."
-                emptyTitle="אין נתוני מקורות"
-                emptyDescription="בטווח שנבחר לא זוהו מקורות תנועה."
-                slices={toDonutSlices(data.trafficSources.items)}
-                centerValue={formatNumber(data.trafficSources.totalUsers || data.overview.homepageUsers)}
-                centerLabel="מבקרים"
-                showLegendPercent
-                size="lg"
-              />
-            </Card>
           </section>
 
-          {/* UTM / shared-link attribution */}
+          {/* Traffic sources + link performance side by side */}
           <section className="space-y-3">
             <SectionHeader
               icon={<Link2 size={16} className="text-secondary" />}
-              title="לינקים ומקורות שיתוף"
+              title="מקורות תנועה וביצועי לינקים"
+            />
+            <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+              <Card className="p-4 sm:p-5">
+                <h3 className="mb-1 text-sm font-semibold text-foreground">מקורות תנועה</h3>
+                <p className="mb-3 text-[11px] text-muted">כל האתר (GA sessionSource)</p>
+                <SimpleDonut
+                  loading={loading}
+                  unavailable={data.trafficSources.unavailable}
+                  unavailableTitle="מקורות תנועה לא זמינים"
+                  unavailableDescription="לא ניתן לטעון את התפלגות מקורות התנועה כרגע."
+                  emptyTitle="אין נתוני מקורות"
+                  emptyDescription="בטווח שנבחר לא זוהו מקורות תנועה."
+                  slices={toDonutSlices(data.trafficSources.items)}
+                  centerValue={formatNumber(
+                    data.trafficSources.totalUsers || data.overview.homepageUsers,
+                  )}
+                  centerLabel="מבקרים"
+                  showLegendPercent
+                />
+              </Card>
+
+              <Card className="p-4 sm:p-5">
+                <h3 className="mb-1 text-sm font-semibold text-foreground">ביצועי לינקים</h3>
+                <p className="mb-3 text-[11px] text-muted">לינקים מסומנים (utm_content) · לפי מבקרים</p>
+                {data.utm.unavailable ? (
+                  <EmptyState
+                    compact
+                    icon={<Link2 size={22} />}
+                    title="אנליטיקת לינקים עדיין לא זמינה"
+                    description="יש לרשום ב-GA4 את utm_source ו-utm_content כ-Event-scoped Custom Dimensions."
+                  />
+                ) : linkDetailRows.length === 0 ? (
+                  <EmptyState
+                    compact
+                    icon={<Link2 size={22} />}
+                    title="אין לינקים עם תנועה"
+                    description="צרו לינק בראש העמוד ושתפו אותו."
+                  />
+                ) : (
+                  <RankedBarChart
+                    loading={loading}
+                    valueLabel="מבקרים"
+                    items={linkDetailRows
+                      .filter((r) => r.users > 0)
+                      .map((r) => ({
+                        label: r.source
+                          ? `${linkDisplayLabel(r.content)}\u00A0·\u00A0${utmSourceLabel(r.source)}`
+                          : linkDisplayLabel(r.content),
+                        value: r.users,
+                      }))
+                      .sort((a, b) => b.value - a.value)}
+                    emptyTitle="אין לינקים עם תנועה"
+                    emptyDescription="בטווח שנבחר אין מזהי לינק."
+                    color="var(--color-accent)"
+                  />
+                )}
+              </Card>
+            </div>
+          </section>
+
+          {/* UTM / shared-link attribution — detail table */}
+          <section className="space-y-3">
+            <SectionHeader
+              icon={<Link2 size={16} className="text-secondary" />}
+              title="לינקים מסומנים — פירוט"
             />
 
             {data.utm.unavailable ? (
@@ -1026,7 +1070,7 @@ export function AdminAnalyticsDashboard() {
                   compact
                   icon={<Package size={20} />}
                   title="אופן יצירה עדיין לא זמין"
-                  description="פירוט מאפס / מתבנית יתרענן כש-creation_method יהיה זמין."
+                  description="פירוט מאפס / מתבנית יתרענן כש-creation_method או method יהיו זמינים ב-GA4."
                 />
               ) : (
                 <>
@@ -1035,7 +1079,7 @@ export function AdminAnalyticsDashboard() {
                     loading={loading}
                     slices={[
                       {
-                        label: 'מאפס',
+                        label: 'חדש / מאפס',
                         value: data.eventCreation.scratchCount ?? 0,
                         color: 'var(--color-primary)',
                       },
@@ -1047,8 +1091,16 @@ export function AdminAnalyticsDashboard() {
                     ]}
                     centerLabel="אירועים"
                     showLegendPercent
-                    emptyTitle="אין נתוני יצירה"
-                    emptyDescription="עדיין לא נוצרו אירועים בטווח שנבחר."
+                    emptyTitle={
+                      data.eventCreation.eventCount > 0
+                        ? 'אין פירוט אופן יצירה'
+                        : 'אין נתוני יצירה'
+                    }
+                    emptyDescription={
+                      data.eventCreation.eventCount > 0
+                        ? `נוצרו ${formatNumber(data.eventCreation.eventCount)} אירועים, אך חסר פירוט מאפס/מתבנית בטווח.`
+                        : 'עדיין לא נוצרו אירועים בטווח שנבחר.'
+                    }
                   />
                 </>
               )}

@@ -27,9 +27,9 @@ interface RequestBody {
   endDate?: string
   preset?: DatePreset
   /**
-   * When present (including []), time series is scoped to affiliate/link content codes.
-   * [] = any set utm_content / sessionManualAdContent
-   * ['nh','rs'] = only those codes
+   * Affiliate content codes for trend + video + FAQ frame.
+   * [] / omitted = whole site (no UTM filter)
+   * ['nh','rs'] = only those affiliate codes
    */
   utmContents?: string[]
 }
@@ -108,6 +108,8 @@ interface DashboardPayload {
     eventsCreated: number
     eventCreators: number
     leadConversionRate: number | null
+    /** Always site-wide (not affiliate-scoped) — for quick summary KPI. */
+    videoUsers: number
   }
   video: {
     startedUsers: number
@@ -693,17 +695,97 @@ function normalizeUtmContents(raw: unknown): string[] {
 }
 
 /**
- * Filter to tagged affiliate traffic.
- * empty codes → any non-(not set) content; non-empty → exact code list.
+ * Filter to specific affiliate content codes.
+ * Caller must not invoke this when codes is empty — empty means no UTM filter (whole site).
  */
 function utmContentDimFilter(fieldName: string, codes: string[]) {
-  if (codes.length === 0) return notSetFilter(fieldName)
   return {
     filter: {
       fieldName,
       inListFilter: { values: codes },
     },
   }
+}
+
+function eventNameExactFilter(value: string) {
+  return {
+    filter: {
+      fieldName: 'eventName',
+      stringFilter: { matchType: 'EXACT' as const, value },
+    },
+  }
+}
+
+function eventNameInFilter(values: string[]) {
+  return {
+    filter: {
+      fieldName: 'eventName',
+      inListFilter: { values },
+    },
+  }
+}
+
+function andDimFilters(...expressions: Record<string, unknown>[]) {
+  return { andGroup: { expressions } }
+}
+
+/** Max totalUsers for a named event across customEvent/session reports. */
+function maxEventUsersFromReports(eventName: string, ...reports: Ga4Report[]): number {
+  let maxUsers = 0
+  for (const report of reports) {
+    if (report.error) continue
+    for (const row of report.rows ?? []) {
+      if ((row.dimensionValues?.[0]?.value ?? '') !== eventName) continue
+      maxUsers = Math.max(maxUsers, Number(row.metricValues?.[0]?.value ?? 0))
+    }
+  }
+  return maxUsers
+}
+
+function maxSingleMetricUsers(...reports: Ga4Report[]): number {
+  let maxUsers = 0
+  for (const report of reports) {
+    if (report.error) continue
+    const row = report.rows?.[0]
+    if (!row) continue
+    maxUsers = Math.max(maxUsers, Number(row.metricValues?.[0]?.value ?? 0))
+  }
+  return maxUsers
+}
+
+function mergeProgressUsersByPercent(...reports: Ga4Report[]): Map<string, number> {
+  const map = new Map<string, number>()
+  for (const report of reports) {
+    if (report.error) continue
+    for (const row of report.rows ?? []) {
+      const key = String(row.dimensionValues?.[0]?.value ?? '').replace(/\.0$/, '')
+      const users = Number(row.metricValues?.[0]?.value ?? 0)
+      map.set(key, Math.max(map.get(key) ?? 0, users))
+    }
+  }
+  return map
+}
+
+function mergeFaqQuestionRows(...reports: Ga4Report[]): QuestionRow[] {
+  const map = new Map<string, { users: number; opens: number }>()
+  for (const report of reports) {
+    if (report.error) continue
+    for (const row of report.rows ?? []) {
+      const question = row.dimensionValues?.[0]?.value || '(ללא טקסט)'
+      if (!question || question === '(not set)') continue
+      const users = Number(row.metricValues?.[0]?.value ?? 0)
+      const opens = Number(row.metricValues?.[1]?.value ?? 0)
+      const prev = map.get(question)
+      if (!prev) map.set(question, { users, opens })
+      else {
+        prev.users = Math.max(prev.users, users)
+        prev.opens = Math.max(prev.opens, opens)
+      }
+    }
+  }
+  return [...map.entries()]
+    .map(([question, m]) => ({ question, users: m.users, opens: m.opens }))
+    .sort((a, b) => b.users - a.users)
 }
 
 /**
@@ -1084,6 +1166,20 @@ Deno.serve(async (req) => {
       limit: 10,
     })
 
+    // Wizard picker: scratch vs template (param `method` on event_start_method)
+    const eventStartMethodPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'customEvent:method' }],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: { matchType: 'EXACT', value: 'event_start_method' },
+        },
+      },
+      limit: 10,
+    })
+
     const leadBySourcePromise = runReport(accessToken, propertyId, {
       dateRanges,
       dimensions: [{ name: 'customEvent:contact_source' }],
@@ -1170,69 +1266,212 @@ Deno.serve(async (req) => {
       limit: 50,
     })
 
-    // Daily traffic/events scoped to affiliate content (customEvent + session fallbacks)
+    // Daily traffic/events — whole site when no affiliate filter; else UTM-scoped (session + customEvent)
     const affiliateContentCustom = 'customEvent:utm_content'
     const affiliateContentSession = 'sessionManualAdContent'
+    const affiliateFilterActive = affiliateContents.length > 0
 
-    const timeSeriesTrafficCustomPromise = runReport(accessToken, propertyId, {
-      dateRanges,
-      dimensions: [{ name: 'date' }],
-      metrics: [{ name: 'totalUsers' }, { name: 'newUsers' }],
-      dimensionFilter: utmContentDimFilter(affiliateContentCustom, affiliateContents),
-      orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
-      limit: 400,
-    })
-
-    const timeSeriesTrafficSessionPromise = runReport(accessToken, propertyId, {
-      dateRanges,
-      dimensions: [{ name: 'date' }],
-      metrics: [{ name: 'totalUsers' }, { name: 'newUsers' }],
-      dimensionFilter: utmContentDimFilter(affiliateContentSession, affiliateContents),
-      orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
-      limit: 400,
-    })
-
-    const timeSeriesEventsCustomPromise = runReport(accessToken, propertyId, {
-      dateRanges,
-      dimensions: [{ name: 'date' }, { name: 'eventName' }],
-      metrics: [{ name: 'totalUsers' }],
-      dimensionFilter: {
-        andGroup: {
-          expressions: [
-            {
-              filter: {
-                fieldName: 'eventName',
-                inListFilter: { values: TIME_SERIES_EVENT_NAMES },
-              },
+    const timeSeriesTrafficCustomPromise = affiliateFilterActive
+      ? runReport(accessToken, propertyId, {
+          dateRanges,
+          dimensions: [{ name: 'date' }],
+          metrics: [{ name: 'totalUsers' }, { name: 'newUsers' }],
+          dimensionFilter: utmContentDimFilter(affiliateContentCustom, affiliateContents),
+          orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
+          limit: 400,
+        })
+      : // Whole site: same definition as overview.homepageUsers (page_view on `/`)
+        runReport(accessToken, propertyId, {
+          dateRanges,
+          dimensions: [{ name: 'date' }],
+          metrics: [{ name: 'totalUsers' }, { name: 'newUsers' }],
+          dimensionFilter: {
+            andGroup: {
+              expressions: [
+                {
+                  filter: {
+                    fieldName: 'eventName',
+                    stringFilter: { matchType: 'EXACT', value: 'page_view' },
+                  },
+                },
+                {
+                  filter: {
+                    fieldName: 'pagePath',
+                    stringFilter: { matchType: 'EXACT', value: '/' },
+                  },
+                },
+              ],
             },
+          },
+          orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
+          limit: 400,
+        })
+
+    const timeSeriesTrafficSessionPromise = affiliateFilterActive
+      ? runReport(accessToken, propertyId, {
+          dateRanges,
+          dimensions: [{ name: 'date' }],
+          metrics: [{ name: 'totalUsers' }, { name: 'newUsers' }],
+          dimensionFilter: utmContentDimFilter(affiliateContentSession, affiliateContents),
+          orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
+          limit: 400,
+        })
+      : Promise.resolve({ rows: [] } as Ga4Report)
+
+    const timeSeriesEventsCustomPromise = affiliateFilterActive
+      ? runReport(accessToken, propertyId, {
+          dateRanges,
+          dimensions: [{ name: 'date' }, { name: 'eventName' }],
+          metrics: [{ name: 'totalUsers' }],
+          dimensionFilter: {
+            andGroup: {
+              expressions: [
+                {
+                  filter: {
+                    fieldName: 'eventName',
+                    inListFilter: { values: TIME_SERIES_EVENT_NAMES },
+                  },
+                },
+                utmContentDimFilter(affiliateContentCustom, affiliateContents),
+              ],
+            },
+          },
+          orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
+          limit: 10000,
+        })
+      : runReport(accessToken, propertyId, {
+          dateRanges,
+          dimensions: [{ name: 'date' }, { name: 'eventName' }],
+          metrics: [{ name: 'totalUsers' }],
+          dimensionFilter: {
+            filter: {
+              fieldName: 'eventName',
+              inListFilter: { values: TIME_SERIES_EVENT_NAMES },
+            },
+          },
+          orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
+          limit: 10000,
+        })
+
+    const timeSeriesEventsSessionPromise = affiliateFilterActive
+      ? runReport(accessToken, propertyId, {
+          dateRanges,
+          dimensions: [{ name: 'date' }, { name: 'eventName' }],
+          metrics: [{ name: 'totalUsers' }],
+          dimensionFilter: {
+            andGroup: {
+              expressions: [
+                {
+                  filter: {
+                    fieldName: 'eventName',
+                    inListFilter: { values: TIME_SERIES_EVENT_NAMES },
+                  },
+                },
+                utmContentDimFilter(affiliateContentSession, affiliateContents),
+              ],
+            },
+          },
+          orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
+          limit: 10000,
+        })
+      : Promise.resolve({ rows: [] } as Ga4Report)
+
+    // Affiliate-scoped video + FAQ (frame content). Empty resolve when no filter.
+    const emptyGa4 = Promise.resolve({ rows: [] } as Ga4Report)
+    const scopedVideoEventsCustomPromise = affiliateFilterActive
+      ? runReport(accessToken, propertyId, {
+          dateRanges,
+          dimensions: [{ name: 'eventName' }],
+          metrics: [{ name: 'totalUsers' }],
+          dimensionFilter: andDimFilters(
+            eventNameInFilter(['video_view', 'video_complete']),
             utmContentDimFilter(affiliateContentCustom, affiliateContents),
-          ],
-        },
-      },
-      orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
-      limit: 10000,
-    })
-
-    const timeSeriesEventsSessionPromise = runReport(accessToken, propertyId, {
-      dateRanges,
-      dimensions: [{ name: 'date' }, { name: 'eventName' }],
-      metrics: [{ name: 'totalUsers' }],
-      dimensionFilter: {
-        andGroup: {
-          expressions: [
-            {
-              filter: {
-                fieldName: 'eventName',
-                inListFilter: { values: TIME_SERIES_EVENT_NAMES },
-              },
-            },
+          ),
+          limit: 10,
+        })
+      : emptyGa4
+    const scopedVideoEventsSessionPromise = affiliateFilterActive
+      ? runReport(accessToken, propertyId, {
+          dateRanges,
+          dimensions: [{ name: 'eventName' }],
+          metrics: [{ name: 'totalUsers' }],
+          dimensionFilter: andDimFilters(
+            eventNameInFilter(['video_view', 'video_complete']),
             utmContentDimFilter(affiliateContentSession, affiliateContents),
-          ],
-        },
-      },
-      orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
-      limit: 10000,
-    })
+          ),
+          limit: 10,
+        })
+      : emptyGa4
+    const scopedVideoProgressCustomPromise = affiliateFilterActive
+      ? runReport(accessToken, propertyId, {
+          dateRanges,
+          dimensions: [{ name: 'customEvent:progress_percent' }],
+          metrics: [{ name: 'totalUsers' }],
+          dimensionFilter: andDimFilters(
+            eventNameExactFilter('video_progress'),
+            utmContentDimFilter(affiliateContentCustom, affiliateContents),
+          ),
+          limit: 10,
+        })
+      : emptyGa4
+    const scopedVideoProgressSessionPromise = affiliateFilterActive
+      ? runReport(accessToken, propertyId, {
+          dateRanges,
+          dimensions: [{ name: 'customEvent:progress_percent' }],
+          metrics: [{ name: 'totalUsers' }],
+          dimensionFilter: andDimFilters(
+            eventNameExactFilter('video_progress'),
+            utmContentDimFilter(affiliateContentSession, affiliateContents),
+          ),
+          limit: 10,
+        })
+      : emptyGa4
+    const scopedFaqQuestionsCustomPromise = affiliateFilterActive
+      ? runReport(accessToken, propertyId, {
+          dateRanges,
+          dimensions: [{ name: 'customEvent:question' }],
+          metrics: [{ name: 'totalUsers' }, { name: 'eventCount' }],
+          dimensionFilter: andDimFilters(
+            eventNameExactFilter('faq_open'),
+            utmContentDimFilter(affiliateContentCustom, affiliateContents),
+          ),
+          orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+          limit: 50,
+        })
+      : emptyGa4
+    const scopedFaqQuestionsSessionPromise = affiliateFilterActive
+      ? runReport(accessToken, propertyId, {
+          dateRanges,
+          dimensions: [{ name: 'customEvent:question' }],
+          metrics: [{ name: 'totalUsers' }, { name: 'eventCount' }],
+          dimensionFilter: andDimFilters(
+            eventNameExactFilter('faq_open'),
+            utmContentDimFilter(affiliateContentSession, affiliateContents),
+          ),
+          orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+          limit: 50,
+        })
+      : emptyGa4
+    const scopedFaqOpenCustomPromise = affiliateFilterActive
+      ? runReport(accessToken, propertyId, {
+          dateRanges,
+          metrics: [{ name: 'totalUsers' }],
+          dimensionFilter: andDimFilters(
+            eventNameExactFilter('faq_open'),
+            utmContentDimFilter(affiliateContentCustom, affiliateContents),
+          ),
+        })
+      : emptyGa4
+    const scopedFaqOpenSessionPromise = affiliateFilterActive
+      ? runReport(accessToken, propertyId, {
+          dateRanges,
+          metrics: [{ name: 'totalUsers' }],
+          dimensionFilter: andDimFilters(
+            eventNameExactFilter('faq_open'),
+            utmContentDimFilter(affiliateContentSession, affiliateContents),
+          ),
+        })
+      : emptyGa4
 
     // Acquisition / session source distribution
     const trafficSourcesPromise = runReport(accessToken, propertyId, {
@@ -1458,6 +1697,7 @@ Deno.serve(async (req) => {
       ctaByName,
       ctaByLocation,
       creationMethod,
+      eventStartMethod,
       leadBySource,
       contactOpenBySource,
       selectPlanByName,
@@ -1468,6 +1708,14 @@ Deno.serve(async (req) => {
       timeSeriesTrafficSessionReport,
       timeSeriesEventsCustomReport,
       timeSeriesEventsSessionReport,
+      scopedVideoEventsCustom,
+      scopedVideoEventsSession,
+      scopedVideoProgressCustom,
+      scopedVideoProgressSession,
+      scopedFaqQuestionsCustom,
+      scopedFaqQuestionsSession,
+      scopedFaqOpenCustom,
+      scopedFaqOpenSession,
       trafficSourcesReport,
       utmSourceReport,
       utmMediumReport,
@@ -1491,6 +1739,7 @@ Deno.serve(async (req) => {
       ctaByNamePromise,
       ctaByLocationPromise,
       creationMethodPromise,
+      eventStartMethodPromise,
       leadBySourcePromise,
       contactOpenBySourcePromise,
       selectPlanByNamePromise,
@@ -1501,6 +1750,14 @@ Deno.serve(async (req) => {
       timeSeriesTrafficSessionPromise,
       timeSeriesEventsCustomPromise,
       timeSeriesEventsSessionPromise,
+      scopedVideoEventsCustomPromise,
+      scopedVideoEventsSessionPromise,
+      scopedVideoProgressCustomPromise,
+      scopedVideoProgressSessionPromise,
+      scopedFaqQuestionsCustomPromise,
+      scopedFaqQuestionsSessionPromise,
+      scopedFaqOpenCustomPromise,
+      scopedFaqOpenSessionPromise,
       trafficSourcesPromise,
       utmSourcePromise,
       utmMediumPromise,
@@ -1540,8 +1797,9 @@ Deno.serve(async (req) => {
     const homepageUsers = Number(homepage.rows?.[0]?.metricValues?.[0]?.value ?? 0)
     const homepageViews = Number(homepage.rows?.[0]?.metricValues?.[1]?.value ?? 0)
 
-    const videoStarted = getEvent(events, 'video_view').users
-    const videoCompleted = getEvent(events, 'video_complete').users
+    let videoStarted = getEvent(events, 'video_view').users
+    let videoCompleted = getEvent(events, 'video_complete').users
+    const siteWideVideoUsers = videoStarted
     const plansViewed = getEvent(events, 'view_plans').users
     const planSelected = getEvent(events, 'select_plan').users
     const leadUsers = getEvent(events, 'generate_lead').users
@@ -1605,20 +1863,46 @@ Deno.serve(async (req) => {
     let scratchCount: number | null = 0
     let templateCount: number | null = 0
     let methodUnavailable = false
-    if (creationMethod.error) {
-      methodUnavailable = true
-      scratchCount = null
-      templateCount = null
-      console.warn('creation_method unavailable', creationMethod.error.message)
-    } else {
+
+    const startMethodHasRows = !eventStartMethod.error && (eventStartMethod.rows?.length ?? 0) > 0
+    const creationMethodHasRows = !creationMethod.error && (creationMethod.rows?.length ?? 0) > 0
+
+    if (startMethodHasRows) {
+      // Prefer wizard choice (scratch | template) — correct semantic for the donut
+      scratchCount = 0
+      templateCount = 0
+      for (const row of eventStartMethod.rows ?? []) {
+        const key = (row.dimensionValues?.[0]?.value ?? '').trim()
+        const count = Number(row.metricValues?.[0]?.value ?? 0)
+        if (key === 'scratch') scratchCount += count
+        if (key === 'template') templateCount += count
+      }
+    } else if (creationMethodHasRows) {
+      // Fallback: event_created.creation_method — client sends `new` (and rarely scratch/template)
       scratchCount = 0
       templateCount = 0
       for (const row of creationMethod.rows ?? []) {
-        const key = row.dimensionValues?.[0]?.value ?? ''
+        const key = (row.dimensionValues?.[0]?.value ?? '').trim()
         const count = Number(row.metricValues?.[0]?.value ?? 0)
-        if (key === 'scratch') scratchCount = count
-        if (key === 'template') templateCount = count
+        if (key === 'scratch' || key === 'new') scratchCount += count
+        if (key === 'template') templateCount += count
       }
+    } else if (creationMethod.error && eventStartMethod.error) {
+      methodUnavailable = true
+      scratchCount = null
+      templateCount = null
+      console.warn(
+        'creation method breakdown unavailable',
+        creationMethod.error?.message,
+        eventStartMethod.error?.message,
+      )
+    }
+
+    if (eventStartMethod.error && !creationMethod.error) {
+      console.warn('event_start_method by method unavailable', eventStartMethod.error.message)
+    }
+    if (creationMethod.error && !eventStartMethod.error) {
+      console.warn('creation_method on event_created unavailable', creationMethod.error.message)
     }
 
     let leadBySourceRows: NamedMetric[] | null = null
@@ -1688,6 +1972,61 @@ Deno.serve(async (req) => {
         if (key === '75') reached75Users = users
       }
     }
+
+    let faqUsers = getEvent(events, 'faq_open').users
+    if (affiliateFilterActive) {
+      videoStarted = maxEventUsersFromReports(
+        'video_view',
+        scopedVideoEventsCustom,
+        scopedVideoEventsSession,
+      )
+      videoCompleted = maxEventUsersFromReports(
+        'video_complete',
+        scopedVideoEventsCustom,
+        scopedVideoEventsSession,
+      )
+
+      const scopedProgressErrors =
+        !!scopedVideoProgressCustom.error && !!scopedVideoProgressSession.error
+      if (scopedProgressErrors) {
+        milestonesUnavailable = true
+        reached25Users = null
+        reached50Users = null
+        reached75Users = null
+        console.warn(
+          'affiliate-scoped video_progress unavailable',
+          scopedVideoProgressCustom.error?.message,
+          scopedVideoProgressSession.error?.message,
+        )
+      } else {
+        milestonesUnavailable = false
+        const progressMap = mergeProgressUsersByPercent(
+          scopedVideoProgressCustom,
+          scopedVideoProgressSession,
+        )
+        reached25Users = progressMap.get('25') ?? 0
+        reached50Users = progressMap.get('50') ?? 0
+        reached75Users = progressMap.get('75') ?? 0
+      }
+
+      const scopedFaqErrors =
+        !!scopedFaqQuestionsCustom.error && !!scopedFaqQuestionsSession.error
+      if (scopedFaqErrors) {
+        questionsUnavailable = true
+        questions = null
+        console.warn(
+          'affiliate-scoped FAQ questions unavailable',
+          scopedFaqQuestionsCustom.error?.message,
+          scopedFaqQuestionsSession.error?.message,
+        )
+      } else {
+        questionsUnavailable = false
+        questions = mergeFaqQuestionRows(scopedFaqQuestionsCustom, scopedFaqQuestionsSession)
+      }
+
+      faqUsers = maxSingleMetricUsers(scopedFaqOpenCustom, scopedFaqOpenSession)
+    }
+
 
     let byNameAndLocation: CtaMatrixRow[] | null = null
     let byNameAndLocationUnavailable = false
@@ -1770,7 +2109,7 @@ Deno.serve(async (req) => {
         console.warn(
           'affiliate time series empty despite homepage traffic',
           `range=${startDate}..${endDate}`,
-          `affiliateContents=${affiliateContents.length ? affiliateContents.join(',') : '(all tagged)'}`,
+          `affiliateContents=${affiliateContents.length ? affiliateContents.join(',') : '(whole site)'}`,
           `trafficRows=${mergedTrafficRows.length}`,
           `eventRows=${mergedEventRows.length}`,
         )
@@ -2044,6 +2383,7 @@ Deno.serve(async (req) => {
         eventsCreated: eventCreated.count,
         eventCreators: eventCreated.users,
         leadConversionRate: rate(leadUsers, homepageUsers),
+        videoUsers: siteWideVideoUsers,
       },
       video: {
         startedUsers: videoStarted,
@@ -2055,7 +2395,7 @@ Deno.serve(async (req) => {
         milestonesUnavailable,
       },
       homepageInterest: {
-        faqUsers: getEvent(events, 'faq_open').users,
+        faqUsers,
         questions,
         questionsUnavailable,
       },
