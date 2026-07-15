@@ -39,10 +39,13 @@ export function AffiliateFilterBar({
   options,
   selected,
   onChange,
+  hint = 'הסינון מצמצם את המגמה, הסרטון והשאלות במסגרת. הסיכום למעלה נשאר לכל האתר.',
 }: {
   options: AffiliateOption[]
   selected: string[]
   onChange: (codes: string[]) => void
+  /** Pass null to hide the hint line. */
+  hint?: string | null
 }) {
   if (options.length === 0) return null
 
@@ -70,9 +73,7 @@ export function AffiliateFilterBar({
           </Button>
         )}
       </div>
-      <p className="text-[11px] text-muted">
-        הסינון מצמצם את המגמה, הסרטון והשאלות במסגרת. הסיכום למעלה נשאר לכל האתר.
-      </p>
+      {hint && <p className="text-[11px] text-muted">{hint}</p>}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
