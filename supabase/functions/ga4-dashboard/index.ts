@@ -45,6 +45,14 @@ interface QuestionRow {
   opens: number
 }
 
+interface TimeSeriesDay {
+  date: string
+  visitors: number
+  videoView: number
+  viewPlans: number
+  generateLead: number
+}
+
 interface DashboardPayload {
   overview: {
     homepageUsers: number
@@ -120,6 +128,15 @@ interface DashboardPayload {
     opensBySource: NamedMetric[] | null
     opensBySourceUnavailable: boolean
   }
+  timeSeries: {
+    days: TimeSeriesDay[]
+    unavailable: boolean
+  }
+  trafficSources: {
+    items: NamedMetric[] | null
+    totalUsers: number
+    unavailable: boolean
+  }
   meta: {
     startDate: string
     endDate: string
@@ -128,24 +145,25 @@ interface DashboardPayload {
 
 const CTA_NAME_LABELS: Record<string, string> = {
   create_event: 'יצירת אירוע',
-  start_now: 'התחלה עכשיו',
-  view_pricing: 'צפייה במחירים / הפעלה',
+  start_now: 'מתחילים לשחק',
+  view_pricing: 'צפייה במחירים',
   view_activation_options: 'אפשרויות הפעלה',
   login: 'התחברות',
   contact_us: 'יצירת קשר',
-  open_scanner: 'פתיחת סריקה',
+  open_scanner: 'פתיחת מסך סריקה',
   open_leaderboard: 'פתיחת לוח שיאים',
 }
 
 const CTA_NAME_ALLOW = new Set(Object.keys(CTA_NAME_LABELS))
 
 const CTA_LOCATION_LABELS: Record<string, string> = {
-  header: 'כותרת עליונה',
+  header: 'תפריט עליון',
   after_video: 'אחרי הסרטון',
-  pricing: 'אזור המחירים / FAQ',
+  pricing: 'מחירים',
   footer: 'תחתית הדף',
+  upgrade_modal: 'חלון שדרוג',
   floating: 'כפתור צף',
-  faq: 'שאלות נפוצות',
+  faq: 'אזור השאלות',
   events: 'האירועים שלי',
   wizard: 'אשף הקמה',
   control: 'מרכז בקרה (צור קשר)',
@@ -153,7 +171,7 @@ const CTA_LOCATION_LABELS: Record<string, string> = {
   wizard_trial_badge: 'באדג׳ באשף',
   trial_scan_limit_modal: 'מודל סיום התנסות',
   plan_limit_modal: 'מודל מגבלת תוכנית',
-  control_center: 'מרכז בקרה (הפעלה)',
+  control_center: 'מרכז הבקרה',
 }
 
 const PLAN_NAME_LABELS: Record<string, string> = {
@@ -395,6 +413,111 @@ function mapAllowListedRows(
     })
     .filter((r) => r.key && r.key !== '(not set)' && allow.has(r.key))
     .map(({ label, users }) => ({ label, users }))
+    .sort((a, b) => b.users - a.users)
+}
+
+function formatGa4Date(ymd: string): string {
+  if (/^\d{8}$/.test(ymd)) {
+    return `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`
+  }
+  return ymd
+}
+
+function eachDateInclusive(startDate: string, endDate: string): string[] {
+  const out: string[] = []
+  const cur = new Date(`${startDate}T00:00:00Z`)
+  const end = new Date(`${endDate}T00:00:00Z`)
+  while (cur <= end) {
+    out.push(cur.toISOString().slice(0, 10))
+    cur.setUTCDate(cur.getUTCDate() + 1)
+  }
+  return out
+}
+
+function buildTimeSeriesDays(
+  startDate: string,
+  endDate: string,
+  visitorRows: Ga4Row[] | undefined,
+  eventRows: Ga4Row[] | undefined,
+): TimeSeriesDay[] {
+  const byDate = new Map<string, TimeSeriesDay>()
+  for (const date of eachDateInclusive(startDate, endDate)) {
+    byDate.set(date, {
+      date,
+      visitors: 0,
+      videoView: 0,
+      viewPlans: 0,
+      generateLead: 0,
+    })
+  }
+
+  for (const row of visitorRows ?? []) {
+    const date = formatGa4Date(row.dimensionValues?.[0]?.value ?? '')
+    const day = byDate.get(date)
+    if (!day) continue
+    day.visitors = Number(row.metricValues?.[0]?.value ?? 0)
+  }
+
+  for (const row of eventRows ?? []) {
+    const date = formatGa4Date(row.dimensionValues?.[0]?.value ?? '')
+    const eventName = row.dimensionValues?.[1]?.value ?? ''
+    const day = byDate.get(date)
+    if (!day) continue
+    const users = Number(row.metricValues?.[0]?.value ?? 0)
+    if (eventName === 'video_view') day.videoView = users
+    if (eventName === 'view_plans') day.viewPlans = users
+    if (eventName === 'generate_lead') day.generateLead = users
+  }
+
+  return [...byDate.values()]
+}
+
+const CAMPAIGN_SOURCE_LABELS: Record<string, string> = {
+  facebook: 'Facebook',
+  fb: 'Facebook',
+  meta: 'Meta',
+  instagram: 'Instagram',
+  ig: 'Instagram',
+  linkedin: 'LinkedIn',
+  twitter: 'X / Twitter',
+  x: 'X / Twitter',
+  tiktok: 'TikTok',
+  youtube: 'YouTube',
+  newsletter: 'ניוזלטר',
+  email: 'אימייל',
+  whatsapp: 'WhatsApp',
+}
+
+function categorizeTrafficSource(raw: string): string {
+  const source = raw.trim()
+  const lower = source.toLowerCase()
+  if (!source || lower === '(not set)' || lower === 'not set') return 'אחר'
+  if (lower === '(direct)' || lower === 'direct') return 'ישיר'
+  if (lower.includes('google')) return 'Google'
+  if (CAMPAIGN_SOURCE_LABELS[lower]) return CAMPAIGN_SOURCE_LABELS[lower]
+  // Bare domains without known campaign mapping → referral bucket
+  if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(source) && !source.includes(' ')) {
+    return 'הפניה מאתר אחר'
+  }
+  // Preserve meaningful named / UTM campaign sources
+  if (source.length <= 40 && !/^\(/.test(source)) {
+    return source
+  }
+  return 'אחר'
+}
+
+function groupTrafficSources(rows: Ga4Row[] | undefined): NamedMetric[] {
+  const buckets = new Map<string, number>()
+  for (const row of rows ?? []) {
+    const raw = row.dimensionValues?.[0]?.value ?? ''
+    const users = Number(row.metricValues?.[0]?.value ?? 0)
+    if (users <= 0) continue
+    const label = categorizeTrafficSource(raw)
+    buckets.set(label, (buckets.get(label) ?? 0) + users)
+  }
+  return [...buckets.entries()]
+    .map(([label, users]) => ({ label, users }))
+    .filter((r) => r.users > 0)
     .sort((a, b) => b.users - a.users)
 }
 
@@ -655,6 +778,57 @@ Deno.serve(async (req) => {
       limit: 50,
     })
 
+    // Daily unique users for homepage visitors (page_view on /)
+    const timeSeriesVisitorsPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'date' }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'eventName',
+                stringFilter: { matchType: 'EXACT', value: 'page_view' },
+              },
+            },
+            {
+              filter: {
+                fieldName: 'pagePath',
+                stringFilter: { matchType: 'EXACT', value: '/' },
+              },
+            },
+          ],
+        },
+      },
+      orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
+      limit: 400,
+    })
+
+    // Daily unique users for key events
+    const timeSeriesEventsPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'date' }, { name: 'eventName' }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: { values: ['video_view', 'view_plans', 'generate_lead'] },
+        },
+      },
+      orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
+      limit: 10000,
+    })
+
+    // Acquisition / session source distribution
+    const trafficSourcesPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'sessionSource' }],
+      metrics: [{ name: 'totalUsers' }],
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 50,
+    })
+
     const [
       core,
       homepage,
@@ -668,6 +842,9 @@ Deno.serve(async (req) => {
       activationBySource,
       videoProgress,
       ctaMatrix,
+      timeSeriesVisitors,
+      timeSeriesEvents,
+      trafficSourcesReport,
     ] = await Promise.all([
       corePromise,
       homepagePromise,
@@ -681,6 +858,9 @@ Deno.serve(async (req) => {
       activationBySourcePromise,
       videoProgressPromise,
       ctaMatrixPromise,
+      timeSeriesVisitorsPromise,
+      timeSeriesEventsPromise,
+      trafficSourcesPromise,
     ])
 
     if (core.error) {
@@ -881,6 +1061,47 @@ Deno.serve(async (req) => {
         .sort((a, b) => b.users - a.users)
     }
 
+    let timeSeriesDays: TimeSeriesDay[] = eachDateInclusive(startDate, endDate).map((date) => ({
+      date,
+      visitors: 0,
+      videoView: 0,
+      viewPlans: 0,
+      generateLead: 0,
+    }))
+    let timeSeriesUnavailable = false
+    if (timeSeriesVisitors.error && timeSeriesEvents.error) {
+      timeSeriesUnavailable = true
+      console.warn(
+        'time series unavailable',
+        timeSeriesVisitors.error?.message,
+        timeSeriesEvents.error?.message,
+      )
+    } else {
+      if (timeSeriesVisitors.error) {
+        console.warn('time series visitors unavailable', timeSeriesVisitors.error.message)
+      }
+      if (timeSeriesEvents.error) {
+        console.warn('time series events unavailable', timeSeriesEvents.error.message)
+      }
+      timeSeriesDays = buildTimeSeriesDays(
+        startDate,
+        endDate,
+        timeSeriesVisitors.error ? [] : timeSeriesVisitors.rows,
+        timeSeriesEvents.error ? [] : timeSeriesEvents.rows,
+      )
+    }
+
+    let trafficItems: NamedMetric[] | null = null
+    let trafficTotalUsers = 0
+    let trafficUnavailable = false
+    if (trafficSourcesReport.error) {
+      trafficUnavailable = true
+      console.warn('traffic sources unavailable', trafficSourcesReport.error.message)
+    } else {
+      trafficItems = groupTrafficSources(trafficSourcesReport.rows)
+      trafficTotalUsers = trafficItems.reduce((sum, r) => sum + r.users, 0)
+    }
+
     const contactOpenUsers = getEvent(events, 'contact_form_open').users
     const activationViewed = getEvent(events, 'activation_options_viewed').users
     const activationClicked = getEvent(events, 'activation_options_clicked').users
@@ -961,6 +1182,15 @@ Deno.serve(async (req) => {
         bySourceUnavailable,
         opensBySource: contactOpensBySourceRows,
         opensBySourceUnavailable,
+      },
+      timeSeries: {
+        days: timeSeriesDays,
+        unavailable: timeSeriesUnavailable,
+      },
+      trafficSources: {
+        items: trafficItems,
+        totalUsers: trafficTotalUsers,
+        unavailable: trafficUnavailable,
       },
       meta: { startDate, endDate },
     }

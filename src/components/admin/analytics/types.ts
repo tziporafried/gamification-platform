@@ -17,6 +17,14 @@ export interface AnalyticsQuestionRow {
   opens: number
 }
 
+export interface AnalyticsTimeSeriesDay {
+  date: string
+  visitors: number
+  videoView: number
+  viewPlans: number
+  generateLead: number
+}
+
 export interface AnalyticsDashboardData {
   overview: {
     homepageUsers: number
@@ -91,6 +99,15 @@ export interface AnalyticsDashboardData {
     bySourceUnavailable: boolean
     opensBySource: AnalyticsNamedMetric[] | null
     opensBySourceUnavailable: boolean
+  }
+  timeSeries: {
+    days: AnalyticsTimeSeriesDay[]
+    unavailable: boolean
+  }
+  trafficSources: {
+    items: AnalyticsNamedMetric[] | null
+    totalUsers: number
+    unavailable: boolean
   }
   meta: {
     startDate: string

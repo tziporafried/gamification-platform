@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Route,
   Sparkles,
+  TrendingUp,
   Users,
   Video,
 } from 'lucide-react'
@@ -23,8 +24,10 @@ import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { DateRangePicker } from './DateRangePicker'
 import { KpiCard, formatNumber, formatRate } from './KpiCard'
-import { SummaryFunnel } from './SummaryFunnel'
-import { HorizontalBars } from './HorizontalBars'
+import { FunnelChart } from './FunnelChart'
+import { TrendLineChart } from './TrendLineChart'
+import { FaqBarChart } from './FaqBarChart'
+import { RankedBarChart } from './RankedBarChart'
 import { SimpleDonut } from './SimpleDonut'
 import { InsightCards } from './InsightCards'
 import { VideoProgressTrack } from './VideoProgressTrack'
@@ -40,6 +43,19 @@ import {
   AnalyticsDatePreset,
   AnalyticsFetchError,
 } from './types'
+
+const CHART_COLORS = [
+  'var(--color-secondary)',
+  'var(--color-primary)',
+  'var(--color-tertiary)',
+  'var(--color-accent)',
+  'var(--color-warning)',
+  'var(--color-success)',
+  'var(--color-muted)',
+]
+
+const INTEREST_INFO =
+  'השלבים מציגים השוואה בין קהלי הפעולות בתקופה הנבחרת ואינם בהכרח מסלול רציף של אותו משתמש.'
 
 function todayYmd() {
   return new Date().toISOString().slice(0, 10)
@@ -64,6 +80,16 @@ function calcStepRate(from: number, to: number): number | null {
   return Math.round((to / from) * 1000) / 10
 }
 
+function toDonutSlices(items: { label: string; users: number }[] | null | undefined) {
+  return (items ?? [])
+    .filter((i) => i.users > 0)
+    .map((item, i) => ({
+      label: item.label,
+      value: item.users,
+      color: CHART_COLORS[i % CHART_COLORS.length],
+    }))
+}
+
 export function AdminAnalyticsDashboard() {
   const [preset, setPreset] = useState<AnalyticsDatePreset>('7d')
   const [startDate, setStartDate] = useState(() => daysAgoYmd(6))
@@ -73,7 +99,7 @@ export function AdminAnalyticsDashboard() {
   const [error, setError] = useState<AnalyticsFetchError | null>(null)
   const [showAllFaq, setShowAllFaq] = useState(false)
   const [showExtraOverview, setShowExtraOverview] = useState(false)
-  const [showPlansDetails, setShowPlansDetails] = useState(false)
+  const [showActivationDetails, setShowActivationDetails] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -128,7 +154,7 @@ export function AdminAnalyticsDashboard() {
 
   const videoMilestones = useMemo(() => {
     if (!data) return []
-    const steps = [
+    return [
       { label: 'התחילו', users: data.video.startedUsers },
       ...(data.video.milestonesUnavailable
         ? []
@@ -139,7 +165,6 @@ export function AdminAnalyticsDashboard() {
           ]),
       { label: 'סיימו', users: data.video.completedUsers },
     ]
-    return steps
   }, [data])
 
   const videoInsight = useMemo(
@@ -158,14 +183,22 @@ export function AdminAnalyticsDashboard() {
   )
 
   const faqQuestions = data?.homepageInterest.questions ?? []
-  const visibleFaq = showAllFaq ? faqQuestions : faqQuestions.slice(0, 5)
+  const visibleFaq = showAllFaq ? faqQuestions : faqQuestions.slice(0, 7)
 
-  const topCta = data?.ctas.byName?.[0] ?? null
-  const topCtaLocation = data?.ctas.byLocation?.[0] ?? null
+  const contactSourceUnavailable =
+    data?.contact.bySourceUnavailable && data?.contact.opensBySourceUnavailable
+
+  const loginCompletion = data
+    ? calcStepRate(data.login.startedUsers, data.login.successfulUsers)
+    : null
+
+  const eventCreationCompletion = data
+    ? calcStepRate(data.eventCreation.startUsers, data.eventCreation.creatorUsers)
+    : null
 
   return (
-    <div className="space-y-8">
-      {/* 1. Date filter */}
+    <div className="space-y-7">
+      {/* Header — unchanged */}
       <div className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 shadow-card">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <SectionHeader
@@ -227,62 +260,13 @@ export function AdminAnalyticsDashboard() {
 
       {!error && data && (
         <>
-          {/* 2. Attention required */}
+          {/* 4 primary KPIs */}
           <section className="space-y-3">
-            <SectionHeader
-              icon={<AlertTriangle size={16} className="text-warning" />}
-              title="דורש תשומת לב"
-            />
-            <InsightCards insights={insights} loading={loading} />
-          </section>
-
-          {/* 3. Primary conversion journey */}
-          <section className="space-y-4">
-            <SectionHeader
-              icon={<Route size={16} className="text-secondary" />}
-              title="מסלול ההמרה"
-              subtitle="סקירת קהלים לפי שלבים בטווח — לא מסלול רציף ברמת משתמש"
-            />
-            <Card className="p-5">
-              <SummaryFunnel
-                loading={loading}
-                note="כל שלב מציג משתמשים ייחודיים שביצעו את הפעולה בטווח. אחוז ההמרה הוא יחס בין גודל הקהלים — לא הוכחה שכל משתמש עבר בכל השלבים."
-                steps={[
-                  { label: 'מבקרים', value: data.overview.homepageUsers },
-                  {
-                    label: 'צפו בסרטון',
-                    value: data.video.startedUsers,
-                    stepRate: calcStepRate(data.overview.homepageUsers, data.video.startedUsers),
-                  },
-                  {
-                    label: 'צפו במחירים',
-                    value: data.overview.pricingUsers,
-                    stepRate: calcStepRate(data.video.startedUsers, data.overview.pricingUsers),
-                  },
-                  {
-                    label: 'פתחו טופס',
-                    value: data.contact.openUsers,
-                    stepRate: calcStepRate(data.overview.pricingUsers, data.contact.openUsers),
-                  },
-                  {
-                    label: 'השאירו פרטים',
-                    value: data.overview.leadUsers,
-                    stepRate: calcStepRate(data.contact.openUsers, data.overview.leadUsers),
-                  },
-                ]}
-                overallRate={data.overview.leadConversionRate}
-                overallLabel="המרת מבקר לליד"
-              />
-            </Card>
-          </section>
-
-          {/* 4. General overview */}
-          <section className="space-y-4">
             <SectionHeader
               icon={<Users size={16} className="text-secondary" />}
               title="סקירה כללית"
             />
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <KpiCard
                 loading={loading}
                 label="מבקרים ייחודיים"
@@ -294,6 +278,13 @@ export function AdminAnalyticsDashboard() {
                 loading={loading}
                 label="צפו בסרטון"
                 value={data.video.startedUsers}
+                hint={
+                  data.overview.homepageUsers > 0
+                    ? formatRate(
+                        calcStepRate(data.overview.homepageUsers, data.video.startedUsers),
+                      )
+                    : undefined
+                }
                 icon={<Video size={16} />}
                 accent="secondary"
               />
@@ -301,6 +292,13 @@ export function AdminAnalyticsDashboard() {
                 loading={loading}
                 label="צפו במחירים"
                 value={data.overview.pricingUsers}
+                hint={
+                  data.overview.homepageUsers > 0
+                    ? formatRate(
+                        calcStepRate(data.overview.homepageUsers, data.overview.pricingUsers),
+                      )
+                    : undefined
+                }
                 icon={<Sparkles size={16} />}
                 accent="tertiary"
               />
@@ -308,22 +306,13 @@ export function AdminAnalyticsDashboard() {
                 loading={loading}
                 label="לידים"
                 value={data.overview.leadUsers}
+                hint={
+                  data.overview.leadConversionRate !== null
+                    ? formatRate(data.overview.leadConversionRate)
+                    : undefined
+                }
                 icon={<MessageCircle size={16} />}
                 accent="primary"
-              />
-              <KpiCard
-                loading={loading}
-                label="שיעור המרה לליד"
-                value={formatRate(data.overview.leadConversionRate)}
-                accent="secondary"
-              />
-              <KpiCard
-                loading={loading}
-                label="יצרו אירוע"
-                value={data.overview.eventCreators}
-                hint="משתמשים ייחודיים"
-                icon={<Package size={16} />}
-                accent="tertiary"
               />
             </div>
 
@@ -341,7 +330,7 @@ export function AdminAnalyticsDashboard() {
                   loading={loading}
                   label="צפיות בדף הבית"
                   value={data.overview.homepageViews}
-                  hint="ספירת צפיות (לא משתמשים)"
+                  hint="ספירת צפיות"
                   accent="muted"
                 />
                 <KpiCard
@@ -352,9 +341,9 @@ export function AdminAnalyticsDashboard() {
                 />
                 <KpiCard
                   loading={loading}
-                  label="אירועים שנוצרו"
-                  value={data.overview.eventsCreated}
-                  hint="ספירת אירועים"
+                  label="יצרו אירוע"
+                  value={data.overview.eventCreators}
+                  hint="משתמשים ייחודיים"
                   accent="muted"
                 />
                 <KpiCard
@@ -368,218 +357,247 @@ export function AdminAnalyticsDashboard() {
             )}
           </section>
 
-          {/* 5. Video performance */}
-          <section className="space-y-4">
+          {insights.length > 0 && (
+            <section className="space-y-2">
+              <SectionHeader
+                icon={<AlertTriangle size={14} className="text-warning" />}
+                title="דורש תשומת לב"
+              />
+              <InsightCards insights={insights} loading={loading} />
+            </section>
+          )}
+
+          {/* Hero: interest path + trend */}
+          <section className="grid gap-4 lg:grid-cols-5">
+            <Card className="space-y-1 p-5 lg:col-span-3">
+              <div className="mb-1 flex items-center gap-2">
+                <Route size={16} className="text-secondary" />
+                <h2 className="text-sm font-semibold text-foreground">מסלול ההתעניינות</h2>
+              </div>
+              <FunnelChart
+                loading={loading}
+                infoTooltip={INTEREST_INFO}
+                steps={[
+                  { label: 'מבקרים', value: data.overview.homepageUsers },
+                  { label: 'צפו בסרטון', value: data.video.startedUsers },
+                  { label: 'צפו במחירים', value: data.overview.pricingUsers },
+                  { label: 'פתחו טופס', value: data.contact.openUsers },
+                  { label: 'השאירו פרטים', value: data.overview.leadUsers },
+                ]}
+                overallRate={data.overview.leadConversionRate}
+                overallLabel="המרה ממבקר לליד"
+              />
+            </Card>
+
+            <Card className="p-5 lg:col-span-2">
+              <div className="mb-3 flex items-center gap-2">
+                <TrendingUp size={16} className="text-secondary" />
+                <h2 className="text-sm font-semibold text-foreground">מגמה לאורך זמן</h2>
+              </div>
+              <TrendLineChart
+                days={data.timeSeries.days}
+                loading={loading}
+                unavailable={data.timeSeries.unavailable}
+              />
+            </Card>
+          </section>
+
+          {/* Video */}
+          <section className="space-y-3">
             <SectionHeader
               icon={<Video size={16} className="text-secondary" />}
               title="ביצועי הסרטון"
             />
-            <Card className="space-y-4 p-5">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <p className="text-xs text-muted">שיעור השלמה</p>
-                  <p className="text-3xl font-bold tabular-nums text-foreground">
-                    {loading ? '—' : formatRate(data.video.completionRate)}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card className="p-5">
+                <h3 className="mb-4 text-sm font-semibold text-foreground">מסלול הצפייה</h3>
+                <VideoProgressTrack
+                  loading={loading}
+                  milestones={videoMilestones}
+                  baseUsers={data.video.startedUsers}
+                  unavailable={data.video.milestonesUnavailable}
+                  unavailableNote="אבני דרך 25% / 50% / 75% עדיין לא זמינות לדיווח. מוצגים התחלה וסיום בלבד."
+                />
+              </Card>
+              <Card className="flex flex-col justify-center p-5">
+                <h3 className="mb-4 text-sm font-semibold text-foreground">שיעור השלמה</h3>
+                <SimpleDonut
+                  loading={loading}
+                  size="lg"
+                  slices={[
+                    {
+                      label: 'השלימו',
+                      value: data.video.completedUsers,
+                      color: 'var(--color-secondary)',
+                    },
+                    {
+                      label: 'לא השלימו',
+                      value: Math.max(
+                        0,
+                        data.video.startedUsers - data.video.completedUsers,
+                      ),
+                      color: 'var(--color-border)',
+                    },
+                  ]}
+                  centerValue={formatRate(data.video.completionRate)}
+                  centerLabel="השלימו את הסרטון"
+                  emptyTitle="אין צפיות"
+                  emptyDescription="בטווח שנבחר אף משתמש לא התחיל לצפות בסרטון."
+                />
+                {videoInsight && (
+                  <p
+                    className={`mt-4 rounded-lg border px-3 py-2 text-xs ${
+                      videoInsight.kind === 'positive'
+                        ? 'border-success/30 bg-success/5'
+                        : 'border-warning/30 bg-warning/5'
+                    }`}
+                  >
+                    {videoInsight.text}
                   </p>
+                )}
+              </Card>
+            </div>
+          </section>
+
+          {/* FAQ */}
+          <section className="space-y-3">
+            <SectionHeader
+              icon={<HelpCircle size={16} className="text-secondary" />}
+              title="שאלות נפוצות"
+            />
+            <Card className="space-y-4 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs text-muted">פתחו שאלות</span>
+                  <span className="text-lg font-bold tabular-nums text-foreground">
+                    {loading ? '—' : formatNumber(data.homepageInterest.faqUsers)}
+                  </span>
                 </div>
-                <p className="text-xs text-muted">
-                  {formatNumber(data.video.startedUsers)} התחילו ·{' '}
-                  {formatNumber(data.video.completedUsers)} סיימו
-                </p>
+                {faqQuestions.length > 7 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllFaq((v) => !v)}
+                    className="text-xs font-medium text-secondary hover:underline"
+                  >
+                    {showAllFaq ? 'הצג פחות' : 'הצג את כל השאלות'}
+                  </button>
+                )}
               </div>
-              <VideoProgressTrack
+              {faqInsight && (
+                <p className="rounded-lg border border-border bg-surface-elevated px-3 py-2 text-xs text-foreground">
+                  {faqInsight}
+                </p>
+              )}
+              <FaqBarChart
                 loading={loading}
-                milestones={videoMilestones}
-                insight={videoInsight}
-                unavailable={data.video.milestonesUnavailable}
-                unavailableNote="אבני דרך 25% / 50% / 75% עדיין לא זמינות לדיווח (ייתכן שחסר מימד מותאם). מוצגים התחלה וסיום בלבד."
+                unavailable={data.homepageInterest.questionsUnavailable}
+                items={visibleFaq.map((q) => ({ question: q.question, users: q.users }))}
               />
             </Card>
           </section>
 
-          {/* 6. Homepage interest */}
-          <section className="space-y-4">
+          {/* CTA + Traffic */}
+          <section className="space-y-3">
             <SectionHeader
-              icon={<HelpCircle size={16} className="text-secondary" />}
-              title="עניין בדף הבית"
+              icon={<MousePointerClick size={16} className="text-secondary" />}
+              title="לחיצות CTA ומקורות"
             />
-
-            <div className="grid gap-4 lg:grid-cols-5">
-              <KpiCard
-                loading={loading}
-                label="פתחו שאלות נפוצות"
-                value={data.homepageInterest.faqUsers}
-                hint="משתמשים ייחודיים"
-                className="lg:col-span-1"
-                accent="secondary"
-              />
-              <Card className="space-y-4 p-5 lg:col-span-4">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-foreground">שאלות מובילות</h3>
-                  {faqQuestions.length > 5 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowAllFaq((v) => !v)}
-                      className="text-xs font-medium text-secondary hover:underline"
-                    >
-                      {showAllFaq ? 'הצג פחות' : 'הצג את כל השאלות'}
-                    </button>
-                  )}
-                </div>
-                {faqInsight && (
-                  <p className="rounded-lg border border-border bg-surface-elevated px-3 py-2 text-xs text-foreground">
-                    {faqInsight}
-                  </p>
-                )}
-                <HorizontalBars
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card className="p-5">
+                <h3 className="mb-4 text-sm font-semibold text-foreground">סוגי פעולה</h3>
+                <SimpleDonut
                   loading={loading}
-                  unavailable={data.homepageInterest.questionsUnavailable}
-                  unavailableDescription="פירוט השאלות עדיין לא זמין לדיווח. שאר הדשבורד ממשיך לעבוד."
-                  items={visibleFaq.map((q, i) => ({
-                    label: `${i + 1}. ${q.question}`,
-                    value: q.users,
+                  unavailable={data.ctas.byNameUnavailable}
+                  unavailableDescription="פירוט לפי סוג CTA עדיין לא זמין."
+                  emptyTitle="אין לחיצות CTA"
+                  emptyDescription="בטווח שנבחר לא נרשמו לחיצות."
+                  slices={toDonutSlices(data.ctas.byName)}
+                  centerValue={formatNumber(data.ctas.totalUsers)}
+                  centerLabel="לחיצות CTA"
+                  showLegendPercent
+                />
+              </Card>
+              <Card className="p-5">
+                <h3 className="mb-4 text-sm font-semibold text-foreground">מיקום הפעולה</h3>
+                <RankedBarChart
+                  loading={loading}
+                  unavailable={data.ctas.byLocationUnavailable}
+                  unavailableDescription="פירוט לפי מיקום עדיין לא זמין."
+                  emptyTitle="אין לחיצות לפי מיקום"
+                  emptyDescription="בטווח שנבחר לא נרשמו לחיצות עם מיקום."
+                  items={(data.ctas.byLocation ?? []).map((r) => ({
+                    label: r.label,
+                    value: r.users,
                   }))}
-                  emptyTitle="אין פתיחות FAQ"
-                  emptyDescription="בטווח שנבחר אף משתמש לא פתח שאלות נפוצות."
+                  color="var(--color-primary)"
                 />
               </Card>
             </div>
 
-            <Card className="space-y-4 p-5">
-              <SectionHeader
-                icon={<MousePointerClick size={14} className="text-secondary" />}
-                title="לחיצות CTA"
+            <Card className="p-5">
+              <h3 className="mb-4 text-sm font-semibold text-foreground">מקורות תנועה</h3>
+              <SimpleDonut
+                loading={loading}
+                unavailable={data.trafficSources.unavailable}
+                unavailableTitle="מקורות תנועה לא זמינים"
+                unavailableDescription="לא ניתן לטעון את התפלגות מקורות התנועה כרגע."
+                emptyTitle="אין נתוני מקורות"
+                emptyDescription="בטווח שנבחר לא זוהו מקורות תנועה."
+                slices={toDonutSlices(data.trafficSources.items)}
+                centerValue={formatNumber(data.trafficSources.totalUsers || data.overview.homepageUsers)}
+                centerLabel="מבקרים"
+                showLegendPercent
+                size="lg"
               />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-border bg-surface-elevated p-4">
-                  <p className="text-xs text-muted">CTA מוביל</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {loading ? '—' : topCta?.label ?? 'אין נתונים'}
-                  </p>
-                  {topCta && (
-                    <p className="mt-1 text-lg font-bold tabular-nums text-foreground">
-                      {formatNumber(topCta.users)}
-                    </p>
-                  )}
-                </div>
-                <div className="rounded-xl border border-border bg-surface-elevated p-4">
-                  <p className="text-xs text-muted">מיקום מוביל</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {loading ? '—' : topCtaLocation?.label ?? 'אין נתונים'}
-                  </p>
-                  {topCtaLocation && (
-                    <p className="mt-1 text-lg font-bold tabular-nums text-foreground">
-                      {formatNumber(topCtaLocation.users)}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-foreground">
-                  CTA לפי מיקום
-                </h3>
-                {data.ctas.byNameAndLocationUnavailable ? (
-                  <EmptyState
-                    compact
-                    icon={<BarChart3 size={22} />}
-                    title="פירוט משולב עדיין לא זמין"
-                    description="לא ניתן לטעון את הטבלה המשולבת. מציגים דירוגים נפרדים כגיבוי."
-                  />
-                ) : !(data.ctas.byNameAndLocation?.length) ? (
-                  <EmptyState
-                    compact
-                    icon={<BarChart3 size={22} />}
-                    title="אין לחיצות CTA"
-                    description="בטווח שנבחר לא נרשמו לחיצות."
-                  />
-                ) : (
-                  <div className="overflow-x-auto rounded-xl border border-border">
-                    <table className="w-full min-w-[320px] text-sm">
-                      <thead>
-                        <tr className="border-b border-border bg-surface-elevated text-right text-xs text-muted">
-                          <th className="px-3 py-2 font-medium">CTA</th>
-                          <th className="px-3 py-2 font-medium">מיקום</th>
-                          <th className="px-3 py-2 font-medium">משתמשים ייחודיים</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(data.ctas.byNameAndLocation ?? []).slice(0, 12).map((row) => (
-                          <tr
-                            key={`${row.name}-${row.location}`}
-                            className="border-b border-border/70 last:border-0"
-                          >
-                            <td className="px-3 py-2 font-medium text-foreground">{row.name}</td>
-                            <td className="px-3 py-2 text-muted">{row.location}</td>
-                            <td className="px-3 py-2 tabular-nums text-foreground">
-                              {formatNumber(row.users)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {(data.ctas.byNameAndLocationUnavailable ||
-                  !data.ctas.byNameAndLocation?.length) && (
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <div>
-                      <h4 className="mb-2 text-xs font-semibold text-muted">לפי סוג</h4>
-                      <HorizontalBars
-                        loading={loading}
-                        unavailable={data.ctas.byNameUnavailable}
-                        items={(data.ctas.byName ?? []).map((r) => ({
-                          label: r.label,
-                          value: r.users,
-                        }))}
-                      />
-                    </div>
-                    <div>
-                      <h4 className="mb-2 text-xs font-semibold text-muted">לפי מיקום</h4>
-                      <HorizontalBars
-                        loading={loading}
-                        unavailable={data.ctas.byLocationUnavailable}
-                        items={(data.ctas.byLocation ?? []).map((r) => ({
-                          label: r.label,
-                          value: r.users,
-                        }))}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
             </Card>
           </section>
 
-          {/* 7. Plans and contact */}
-          <section className="space-y-4">
+          {/* Plans + contact progression */}
+          <section className="space-y-3">
             <SectionHeader
               icon={<MessageCircle size={16} className="text-secondary" />}
               title="מחירים ויצירת קשר"
-              subtitle="השוואת קהלי שלבים בטווח — לא funnel רציף ברמת משתמש"
             />
-            <Card className="space-y-4 p-5">
-              <SummaryFunnel
-                loading={loading}
-                steps={[
-                  { label: 'ראו מחירים', value: data.productInterest.plansViewedUsers },
-                  {
-                    label: 'פתחו טופס',
-                    value: data.contact.openUsers,
-                    stepRate: data.productInterest.formOpenRate,
-                  },
-                  {
-                    label: 'שלחו פרטים',
-                    value: data.contact.leadUsers,
-                    stepRate: data.contact.conversionRate,
-                  },
-                ]}
-                overallRate={data.productInterest.plansToLeadRate}
-                overallLabel="המרה ממחירים לליד"
-              />
+            <Card className="p-5">
+              <div className="grid gap-6 lg:grid-cols-5">
+                <div className="lg:col-span-3">
+                  <FunnelChart
+                    loading={loading}
+                    infoTooltip={INTEREST_INFO}
+                    steps={[
+                      { label: 'ראו מחירים', value: data.productInterest.plansViewedUsers },
+                      { label: 'פתחו טופס', value: data.contact.openUsers },
+                      { label: 'השאירו פרטים', value: data.contact.leadUsers },
+                    ]}
+                  />
+                </div>
+                <div className="flex flex-col justify-center lg:col-span-2">
+                  <SimpleDonut
+                    loading={loading}
+                    slices={[
+                      {
+                        label: 'לידים',
+                        value: data.productInterest.leadUsers,
+                        color: 'var(--color-secondary)',
+                      },
+                      {
+                        label: 'לא הפכו לליד',
+                        value: Math.max(
+                          0,
+                          data.productInterest.plansViewedUsers - data.productInterest.leadUsers,
+                        ),
+                        color: 'var(--color-border)',
+                      },
+                    ]}
+                    centerValue={formatRate(data.productInterest.plansToLeadRate)}
+                    centerLabel="המרה ממחירים לליד"
+                    emptyTitle="אין צפיות במחירים"
+                    emptyDescription="בטווח שנבחר אין נתונים."
+                  />
+                </div>
+              </div>
               {plansDropInsight && (
-                <p className="rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-foreground">
+                <p className="mt-4 rounded-lg border border-border bg-surface-elevated px-3 py-2 text-xs text-foreground">
                   {plansDropInsight}
                 </p>
               )}
@@ -587,174 +605,232 @@ export function AdminAnalyticsDashboard() {
 
             <button
               type="button"
-              onClick={() => setShowPlansDetails((v) => !v)}
+              onClick={() => setShowActivationDetails((v) => !v)}
               className="flex items-center gap-1.5 text-xs font-medium text-muted transition-colors hover:text-foreground"
             >
-              {showPlansDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              פירוט מסלולים ומקורות
+              {showActivationDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              אפשרויות הפעלה ומסלולים
             </button>
-            {showPlansDetails && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-                  <KpiCard
+            {showActivationDetails && (
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card className="p-5">
+                  <h3 className="mb-3 text-sm font-semibold text-foreground">בחירת מסלול</h3>
+                  <p className="mb-3 text-xs text-muted">
+                    בחרו מסלול: {formatNumber(data.productInterest.planSelectedUsers)} · הופעלו
+                    מניסיון: {formatNumber(data.productInterest.trialActivatedUsers)}
+                  </p>
+                  <RankedBarChart
                     loading={loading}
-                    label="בחרו מסלול"
-                    value={data.productInterest.planSelectedUsers}
-                    accent="secondary"
+                    unavailable={data.productInterest.byPlanUnavailable}
+                    unavailableDescription="פירוט לפי תוכנית עדיין לא זמין."
+                    items={(data.productInterest.byPlan ?? []).map((r) => ({
+                      label: r.label,
+                      value: r.users,
+                    }))}
+                    emptyTitle="אין בחירות מסלול"
+                    emptyDescription="בטווח שנבחר אף משתמש לא בחר מסלול."
+                    color="var(--color-tertiary)"
                   />
-                  <KpiCard
+                </Card>
+                <Card className="p-5">
+                  <h3 className="mb-3 text-sm font-semibold text-foreground">מקורות הפעלה</h3>
+                  <RankedBarChart
                     loading={loading}
-                    label="צפייה מהפעלת ניסיון"
-                    value={data.productInterest.activationOptionsViewedUsers}
-                    accent="muted"
+                    unavailable={data.productInterest.activationBySourceUnavailable}
+                    unavailableDescription="פירוט מקורות הפעלה עדיין לא זמין."
+                    items={(data.productInterest.activationBySource ?? []).map((r) => ({
+                      label: r.label,
+                      value: r.users,
+                    }))}
+                    emptyTitle="אין נתוני הפעלה"
+                    emptyDescription="בטווח שנבחר אין צפיות באפשרויות הפעלה."
+                    color="var(--color-accent)"
                   />
-                  <KpiCard
-                    loading={loading}
-                    label="הופעלו מניסיון"
-                    value={data.productInterest.trialActivatedUsers}
-                    accent="tertiary"
-                  />
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Card className="p-5">
-                    <h3 className="mb-4 text-sm font-semibold text-foreground">
-                      בחירת מסלול לפי תוכנית
-                    </h3>
-                    <HorizontalBars
-                      loading={loading}
-                      unavailable={data.productInterest.byPlanUnavailable}
-                      unavailableDescription="פירוט לפי תוכנית עדיין לא זמין."
-                      items={(data.productInterest.byPlan ?? []).map((r) => ({
-                        label: r.label,
-                        value: r.users,
-                      }))}
-                      emptyTitle="אין בחירות מסלול"
-                      emptyDescription="בטווח שנבחר אף משתמש לא בחר מסלול."
-                    />
-                  </Card>
-                  <Card className="p-5">
-                    <h3 className="mb-4 text-sm font-semibold text-foreground">
-                      לידים לפי מקור פנייה
-                    </h3>
-                    <HorizontalBars
-                      loading={loading}
-                      unavailable={data.contact.bySourceUnavailable}
-                      unavailableDescription="פירוט מקורות עדיין לא זמין."
-                      items={(data.contact.bySource ?? []).map((r) => ({
-                        label: r.label,
-                        value: r.users,
-                      }))}
-                      emptyTitle="אין לידים עם מקור"
-                      emptyDescription="בטווח שנבחר לא נשלחו פניות עם מקור מזוהה."
-                    />
-                  </Card>
-                </div>
+                </Card>
               </div>
             )}
           </section>
 
-          {/* 8. Product usage — visually separate */}
-          <section className="space-y-4 rounded-2xl border border-dashed border-border bg-surface-elevated/40 p-5">
+          {/* Contact source breakdowns only */}
+          <section className="space-y-3">
             <SectionHeader
-              icon={<Package size={16} className="text-secondary" />}
-              title="שימוש במוצר"
-              subtitle="מסלול אימוץ נפרד ממשפך הלידים השיווקי"
+              icon={<MessageCircle size={16} className="text-secondary" />}
+              title="יצירת קשר — לפי מקור"
+            />
+            {contactSourceUnavailable ? (
+              <Card className="p-5">
+                <EmptyState
+                  compact
+                  icon={<MessageCircle size={22} />}
+                  title="פירוט לפי מקור עדיין לא זמין"
+                  description="כש-contact_source יהיה זמין ב-GA4, יוצגו כאן פתיחות טופס ולידים לפי מקור."
+                />
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card className="p-5">
+                  <h3 className="mb-4 text-sm font-semibold text-foreground">
+                    פתיחות טופס לפי מקור
+                  </h3>
+                  <SimpleDonut
+                    loading={loading}
+                    unavailable={data.contact.opensBySourceUnavailable}
+                    unavailableDescription="פירוט פתיחות לפי מקור עדיין לא זמין."
+                    slices={toDonutSlices(data.contact.opensBySource)}
+                    centerLabel="פתיחות"
+                    showLegendPercent
+                    emptyTitle="אין פתיחות עם מקור"
+                    emptyDescription="בטווח שנבחר לא נפתחו טפסים עם מקור מזוהה."
+                  />
+                </Card>
+                <Card className="p-5">
+                  <h3 className="mb-4 text-sm font-semibold text-foreground">לידים לפי מקור</h3>
+                  <SimpleDonut
+                    loading={loading}
+                    unavailable={data.contact.bySourceUnavailable}
+                    unavailableDescription="פירוט לידים לפי מקור עדיין לא זמין."
+                    slices={toDonutSlices(data.contact.bySource)}
+                    centerLabel="לידים"
+                    showLegendPercent
+                    emptyTitle="אין לידים עם מקור"
+                    emptyDescription="בטווח שנבחר לא נשלחו פניות עם מקור מזוהה."
+                  />
+                </Card>
+              </div>
+            )}
+          </section>
+
+          {/* Product usage divider */}
+          <div className="relative py-2">
+            <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-border" />
+            <div className="relative mx-auto flex w-fit flex-col items-center gap-1 rounded-full border border-border bg-surface px-5 py-2 shadow-card">
+              <div className="flex items-center gap-2">
+                <Package size={16} className="text-secondary" />
+                <span className="text-sm font-semibold text-foreground">שימוש במוצר</span>
+              </div>
+              <p className="text-[11px] text-muted">מה קורה אחרי שמבקרים נכנסים למערכת</p>
+            </div>
+          </div>
+
+          {/* Login funnel */}
+          <section className="space-y-3">
+            <SectionHeader
+              icon={<LogIn size={16} className="text-secondary" />}
+              title="התחברות"
             />
             <Card className="p-5">
-              <SummaryFunnel
-                loading={loading}
-                note="מסלול אימוץ לפי משתמשים ייחודיים בטווח. נרשמים מוצגים בנפרד בכרטיסיות למטה (אין איחוד ייחודי בין התחברות להרשמה בנתונים הזמינים)."
-                steps={[
-                  {
-                    label: 'התחברו',
-                    value: data.login.successfulUsers,
-                  },
-                  {
-                    label: 'התחילו יצירת אירוע',
-                    value: data.eventCreation.startUsers,
-                    stepRate: calcStepRate(
-                      data.login.successfulUsers,
-                      data.eventCreation.startUsers,
-                    ),
-                  },
-                  {
-                    label: 'יצרו אירוע',
-                    value: data.eventCreation.creatorUsers,
-                    stepRate: calcStepRate(
-                      data.eventCreation.startUsers,
-                      data.eventCreation.creatorUsers,
-                    ),
-                  },
-                ]}
-              />
-              <p className="mt-3 text-xs text-muted">
-                נרשמו בטווח: {loading ? '—' : formatNumber(data.login.signUpUsers)} משתמשים ייחודיים
-              </p>
+              <div className="grid gap-6 lg:grid-cols-5">
+                <div className="lg:col-span-3">
+                  <FunnelChart
+                    loading={loading}
+                    compact
+                    steps={[
+                      { label: 'ראו מסך התחברות', value: data.login.viewedUsers },
+                      { label: 'התחילו התחברות', value: data.login.startedUsers },
+                      { label: 'התחברו בהצלחה', value: data.login.successfulUsers },
+                    ]}
+                  />
+                </div>
+                <div className="flex flex-col justify-center lg:col-span-2">
+                  <SimpleDonut
+                    loading={loading}
+                    slices={[
+                      {
+                        label: 'השלימו',
+                        value: data.login.successfulUsers,
+                        color: 'var(--color-secondary)',
+                      },
+                      {
+                        label: 'לא השלימו',
+                        value: Math.max(0, data.login.startedUsers - data.login.successfulUsers),
+                        color: 'var(--color-border)',
+                      },
+                    ]}
+                    centerValue={formatRate(loginCompletion)}
+                    centerLabel="השלימו התחברות"
+                    emptyTitle="אין ניסיונות התחברות"
+                    emptyDescription="בטווח שנבחר אין נתוני התחברות."
+                  />
+                </div>
+              </div>
+              {(data.login.errorCount > 0 || data.login.signUpUsers > 0) && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {data.login.errorCount > 0 && (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-warning/40 bg-warning/5 px-3 py-1.5 text-xs font-medium text-foreground">
+                      <AlertTriangle size={12} className="text-warning" />
+                      {formatNumber(data.login.errorCount)} שגיאות התחברות
+                    </span>
+                  )}
+                  {data.login.signUpUsers > 0 && (
+                    <span className="inline-flex items-center rounded-lg border border-border bg-surface-elevated px-3 py-1.5 text-xs text-muted">
+                      נרשמו: {formatNumber(data.login.signUpUsers)} משתמשים ייחודיים
+                    </span>
+                  )}
+                </div>
+              )}
             </Card>
+          </section>
 
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <KpiCard
-                loading={loading}
-                label="הגיעו למסך התחברות"
-                value={data.login.viewedUsers}
-                icon={<LogIn size={16} />}
-                accent="muted"
-              />
-              <KpiCard
-                loading={loading}
-                label="התחברו בהצלחה"
-                value={data.login.successfulUsers}
-                accent="primary"
-              />
-              <KpiCard
-                loading={loading}
-                label="נרשמו"
-                value={data.login.signUpUsers}
-                accent="secondary"
-              />
-              <KpiCard
-                loading={loading}
-                label="שגיאות התחברות"
-                value={data.login.errorCount}
-                hint="ספירת אירועים"
-                accent="muted"
-              />
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <KpiCard
-                loading={loading}
-                label="אירועים שנוצרו"
-                value={data.eventCreation.eventCount}
-                hint="ספירת אירועים"
-                accent="primary"
-              />
-              <KpiCard
-                loading={loading}
-                label="משתמשים שיצרו אירוע"
-                value={data.eventCreation.creatorUsers}
-                accent="secondary"
-              />
-            </div>
-
+          {/* Event creation funnel */}
+          <section className="space-y-3">
+            <SectionHeader
+              icon={<Package size={16} className="text-secondary" />}
+              title="יצירת אירוע"
+            />
             <Card className="p-5">
-              <h3 className="mb-4 text-sm font-semibold text-foreground">לפי שיטת יצירה</h3>
-              <SimpleDonut
-                loading={loading}
-                unavailable={data.eventCreation.methodUnavailable}
-                slices={[
-                  {
-                    label: 'מאפס',
-                    value: data.eventCreation.scratchCount ?? 0,
-                    color: 'var(--color-primary)',
-                  },
-                  {
-                    label: 'מתבנית',
-                    value: data.eventCreation.templateCount ?? 0,
-                    color: 'var(--color-secondary)',
-                  },
-                ]}
-              />
+              <div className="grid gap-6 lg:grid-cols-5">
+                <div className="lg:col-span-3">
+                  <FunnelChart
+                    loading={loading}
+                    compact
+                    steps={[
+                      { label: 'התחילו יצירת אירוע', value: data.eventCreation.startUsers },
+                      { label: 'יצרו אירוע', value: data.eventCreation.creatorUsers },
+                    ]}
+                    overallRate={eventCreationCompletion}
+                    overallLabel="השלימו יצירת אירוע"
+                  />
+                </div>
+                <div className="flex flex-col justify-center gap-4 lg:col-span-2">
+                  <p className="text-xs text-muted">
+                    סה״כ אירועים שנוצרו:{' '}
+                    <span className="font-semibold tabular-nums text-foreground">
+                      {formatNumber(data.eventCreation.eventCount)}
+                    </span>
+                  </p>
+                  {data.eventCreation.methodUnavailable ? (
+                    <EmptyState
+                      compact
+                      icon={<Package size={20} />}
+                      title="אופן יצירה עדיין לא זמין"
+                      description="פירוט מאפס / מתבנית יתרענן כש-creation_method יהיה זמין."
+                    />
+                  ) : (
+                    <>
+                      <h3 className="text-sm font-semibold text-foreground">אופן יצירת אירוע</h3>
+                      <SimpleDonut
+                        loading={loading}
+                        slices={[
+                          {
+                            label: 'מאפס',
+                            value: data.eventCreation.scratchCount ?? 0,
+                            color: 'var(--color-primary)',
+                          },
+                          {
+                            label: 'מתבנית',
+                            value: data.eventCreation.templateCount ?? 0,
+                            color: 'var(--color-secondary)',
+                          },
+                        ]}
+                        centerLabel="אירועים"
+                        showLegendPercent
+                        emptyTitle="אין נתוני יצירה"
+                        emptyDescription="עדיין לא נוצרו אירועים בטווח שנבחר."
+                      />
+                    </>
+                  )}
+                </div>
+              </div>
             </Card>
           </section>
         </>

@@ -160,6 +160,25 @@ function normalizePayload(raw: AnalyticsDashboardData): AnalyticsDashboardData {
     payload.eventCreation.startUsers ??= 0
   }
 
+  if (!payload.timeSeries) {
+    payload.timeSeries = { days: [], unavailable: true }
+  } else {
+    payload.timeSeries.days ??= []
+    payload.timeSeries.unavailable ??= false
+  }
+
+  if (!payload.trafficSources) {
+    payload.trafficSources = {
+      items: null,
+      totalUsers: 0,
+      unavailable: true,
+    }
+  } else {
+    payload.trafficSources.items ??= null
+    payload.trafficSources.totalUsers ??= 0
+    payload.trafficSources.unavailable ??= false
+  }
+
   return payload
 }
 

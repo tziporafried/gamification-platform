@@ -58,3 +58,11 @@ Presets: `today` | `7d` | `14d` | `28d` | `custom`
 9. Lead / contact open by `contact_source` — soft-fail
 10. Select plan by `plan_name` — soft-fail
 11. Activation options by `source` — soft-fail
+12. Daily time series — homepage visitors by `date` + events (`video_view`, `view_plans`, `generate_lead`) by `date`×`eventName`
+13. Traffic sources by `sessionSource` (grouped into ישיר / Google / הפניה / קמפיינים / אחר) — soft-fail
+
+## Response extras
+
+- `timeSeries.days[]` — `{ date, visitors, videoView, viewPlans, generateLead }`
+- `trafficSources.items[]` — `{ label, users }` + `totalUsers`
+

@@ -122,10 +122,10 @@ export function buildVideoDropInsight(milestones: {
   if (first.users <= 0) return null
 
   const completionRate = rate(last.users, first.users)
-  if (completionRate !== null && completionRate >= 60) {
+  if (completionRate !== null && completionRate >= 70) {
     return {
       kind: 'positive',
-      text: `${formatRate(completionRate)} מהמתחילים מסיימים לצפות`,
+      text: 'שיעור השלמה גבוה',
     }
   }
 
@@ -138,7 +138,8 @@ export function buildVideoDropInsight(milestones: {
     const drop = dropPct(prev.users, curr.users)
     if (drop !== null && drop > maxDrop) {
       maxDrop = drop
-      maxDropText = `הנפילה הגדולה ביותר: ${prev.label} → ${curr.label} · ${formatRate(drop)} נטישה`
+      // RTL natural order: later milestone ← earlier · drop%
+      maxDropText = `הירידה הגדולה ביותר: ${curr.label} ← ${prev.label} · ${formatRate(drop)}`
     }
   }
 
@@ -151,43 +152,32 @@ export function buildPlansContactDropInsight(data: AnalyticsDashboardData): stri
   const formOpen = data.contact.openUsers
   const leads = data.contact.leadUsers
 
-  type Gap = { from: string; to: string; fromN: number; toN: number; drop: number }
+  type Gap = { text: string; drop: number }
   const gaps: Gap[] = []
 
   if (plans >= 3 && formOpen <= plans) {
     const drop = dropPct(plans, formOpen)
-    if (drop !== null) {
+    if (drop !== null && drop >= 15) {
       gaps.push({
-        from: 'ראו מחירים',
-        to: 'פתחו טופס',
-        fromN: plans,
-        toN: formOpen,
         drop,
+        text: `${formatNumber(formOpen)} מתוך ${formatNumber(plans)} מצופי המחירים פתחו טופס`,
       })
     }
   }
 
   if (formOpen >= 3 && leads <= formOpen) {
     const drop = dropPct(formOpen, leads)
-    if (drop !== null) {
+    if (drop !== null && drop >= 15) {
       gaps.push({
-        from: 'פתחו טופס',
-        to: 'שלחו פרטים',
-        fromN: formOpen,
-        toN: leads,
         drop,
+        text: `רק ${formatNumber(leads)} מתוך ${formatNumber(formOpen)} שפתחו טופס השאירו פרטים`,
       })
     }
   }
 
   if (!gaps.length) return null
   gaps.sort((a, b) => b.drop - a.drop)
-  const g = gaps[0]
-  if (g.drop < 15) return null
-
-  // Prefer comparison wording (cohorts are independent in the date range).
-  const diff = g.fromN - g.toN
-  return `${formatNumber(diff)} הפרש בין 「${g.from}」 (${formatNumber(g.fromN)}) ל־「${g.to}」 (${formatNumber(g.toN)}) · ${formatRate(g.drop)}`
+  return gaps[0].text
 }
 
 export { rate as calcRate }

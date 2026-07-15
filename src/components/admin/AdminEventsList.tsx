@@ -23,6 +23,7 @@ interface AdminEventRow {
   participants: number
   tasks: number
   rewards: number
+  scans: number
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -112,6 +113,7 @@ export function AdminEventsList() {
           participants: counts?.participants ?? 0,
           tasks: counts?.tasks ?? 0,
           rewards: counts?.rewards ?? 0,
+          scans: playMeta[row.id]?.totalScans ?? 0,
         }
       }),
     )
@@ -148,7 +150,7 @@ export function AdminEventsList() {
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-sm">
+            <table className="w-full min-w-[840px] text-sm">
               <thead>
                 <tr className="border-b border-game-border bg-white/[0.02] text-xs text-muted">
                   <th className="px-4 py-3 text-right font-medium">שם האירוע</th>
@@ -159,6 +161,7 @@ export function AdminEventsList() {
                   <th className="px-4 py-3 text-center font-medium">משתתפים</th>
                   <th className="px-4 py-3 text-center font-medium">משימות</th>
                   <th className="px-4 py-3 text-center font-medium">פרסים</th>
+                  <th className="px-4 py-3 text-center font-medium">מספר סריקות</th>
                   <th className="px-4 py-3 text-right font-medium">נוצר</th>
                 </tr>
               </thead>
@@ -210,6 +213,7 @@ export function AdminEventsList() {
                     <td className="px-4 py-3 text-center tabular-nums text-muted">{event.participants}</td>
                     <td className="px-4 py-3 text-center tabular-nums text-muted">{event.tasks}</td>
                     <td className="px-4 py-3 text-center tabular-nums text-muted">{event.rewards}</td>
+                    <td className="px-4 py-3 text-center tabular-nums text-muted">{event.scans}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-muted">
                       {new Date(event.created_at).toLocaleDateString('he-IL')}
                     </td>
