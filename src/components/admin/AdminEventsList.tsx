@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { Calendar, Eye, Loader2 } from 'lucide-react'
+import { Calendar, Eye } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
 import { Card } from '@/components/ui/Card'
@@ -219,24 +218,7 @@ export function AdminEventsList() {
               {preview.owner_email ? ` · ${preview.owner_email}` : ''}
             </div>
             <div className="min-h-0 flex-1">
-              <MemoryRouter
-                key={preview.id}
-                initialEntries={[`/events/${preview.id}/step/1`]}
-              >
-                <Routes>
-                  <Route path="/events/:id" element={<EventWizard embedded />} />
-                  <Route path="/events/:id/step/:step" element={<EventWizard embedded />} />
-                  <Route
-                    path="*"
-                    element={
-                      <div className="flex h-full items-center justify-center gap-2 text-sm text-muted">
-                        <Loader2 size={16} className="animate-spin" />
-                        טוען…
-                      </div>
-                    }
-                  />
-                </Routes>
-              </MemoryRouter>
+              <EventWizard key={preview.id} embedded eventId={preview.id} />
             </div>
           </div>
         )}

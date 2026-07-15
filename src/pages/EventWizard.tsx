@@ -40,20 +40,25 @@ function stepNameFor(stepNumber: number): string {
 interface EventWizardProps {
   /** Render inside a modal/panel without redirecting away on missing events. */
   embedded?: boolean
+  /** Required when embedded: drives the wizard without a nested Router. */
+  eventId?: string
 }
 
-export function EventWizard({ embedded = false }: EventWizardProps) {
-  const { id, step: stepParam } = useParams<{ id: string; step?: string }>()
+export function EventWizard({ embedded = false, eventId: eventIdProp }: EventWizardProps) {
+  const { id: paramId, step: stepParam } = useParams<{ id: string; step?: string }>()
   const navigate = useNavigate()
   const { isSuperAdmin } = useAuth()
+  const id = embedded ? eventIdProp : paramId
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [embeddedStep, setEmbeddedStep] = useState(1)
 
   const currentStep = useMemo(() => {
+    if (embedded) return embeddedStep
     const n = parseInt(stepParam ?? '', 10)
     return Number.isFinite(n) && n >= 1 && n <= 6 ? n : 1
-  }, [stepParam])
+  }, [embedded, embeddedStep, stepParam])
 
   const [visitedSteps, setVisitedSteps] = useState<Set<number>>(() => new Set([currentStep]))
   const [startMethod, setStartMethod] = useState<'scratch' | 'template' | null>(null)
@@ -172,17 +177,31 @@ export function EventWizard({ embedded = false }: EventWizardProps) {
   ])
 
   useEffect(() => {
+    if (embedded) return
     if (!id || loading || !event || stepParam || isTemplateMode) return
     const { lastStep } = getWizardPrefs(id)
     navigate(`/events/${id}/step/${lastStep}`, { replace: true })
-  }, [id, loading, event, stepParam, navigate, isTemplateMode])
+  }, [id, loading, event, stepParam, navigate, isTemplateMode, embedded])
+
+  // Initialize local step once when the embedded wizard finishes loading an event.
+  useEffect(() => {
+    if (!embedded || !id || loading || !event) return
+    const { lastStep } = getWizardPrefs(id)
+    const step = normalizeWizardStep(lastStep, false)
+    setEmbeddedStep(step)
+    setVisitedSteps(new Set([step]))
+  }, [embedded, id, loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const goToStep = useCallback((s: number) => {
     const normalized = normalizeWizardStep(s, isTemplateMode)
     const clamped = Math.max(1, Math.min(6, normalized))
     if (id) setWizardPrefs(id, { lastStep: clamped })
+    if (embedded) {
+      setEmbeddedStep(clamped)
+      return
+    }
     navigate(`/events/${id}/step/${clamped}`, { replace: true })
-  }, [id, navigate, isTemplateMode])
+  }, [id, navigate, isTemplateMode, embedded])
 
   const goNext = useCallback(() => {
     trackWizardStepComplete(currentStep, stepNameFor(currentStep))
