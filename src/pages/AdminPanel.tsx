@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2, BarChart3, Calendar, Wallet } from 'lucide-react'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2, BarChart3, Calendar, Wallet, ScanLine } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
@@ -16,13 +16,14 @@ import { TemplateAdminList } from '@/components/admin/TemplateAdminList'
 import { AdminAnalyticsDashboard } from '@/components/admin/analytics/AdminAnalyticsDashboard'
 import { AdminEventsList } from '@/components/admin/AdminEventsList'
 import { AdminFinancePanel } from '@/components/admin/AdminFinancePanel'
+import { AdminScannersPanel } from '@/components/admin/AdminScannersPanel'
 import { EventDetailsModal } from '@/components/admin/EventDetailsModal'
 import { TrialActivationResetModal } from '@/components/TrialActivationResetModal'
 import { trackTrialActivated, trackTrialDataReset } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 import type { UserPlan } from '@/types'
 
-type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates' | 'analytics' | 'events' | 'finance'
+type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates' | 'analytics' | 'events' | 'finance' | 'scanners'
 
 const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
   { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },
@@ -30,6 +31,7 @@ const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
   { id: 'customers', label: 'לקוחות', icon: Users },
   { id: 'events', label: 'אירועים', icon: Calendar },
   { id: 'upgrade-requests', label: 'פניות הפעלה', icon: MessageSquare },
+  { id: 'scanners', label: 'סורקים', icon: ScanLine },
   { id: 'finance', label: 'הכנסות והוצאות', icon: Wallet },
   { id: 'analytics', label: 'אנליטיקות', icon: BarChart3 },
 ]
@@ -370,7 +372,7 @@ export function AdminPanel() {
   }
 
   return (
-    <main className={cn('mx-auto px-4 py-6', tab === 'analytics' || tab === 'events' ? 'max-w-6xl' : 'max-w-5xl')}>
+    <main className={cn('mx-auto px-4 py-6', tab === 'analytics' || tab === 'events' || tab === 'scanners' ? 'max-w-6xl' : 'max-w-5xl')}>
       <Tabs
         tabs={TABS.map(({ id, label, icon: Icon }) => ({
           id,
@@ -398,6 +400,8 @@ export function AdminPanel() {
       {tab === 'events' && <AdminEventsList />}
 
       {tab === 'finance' && <AdminFinancePanel />}
+
+      {tab === 'scanners' && <AdminScannersPanel />}
 
       {tab === 'customers' && (
         loadingUsers ? (

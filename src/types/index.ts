@@ -282,6 +282,34 @@ export interface AdminFinanceEntry {
   updated_at: string;
 }
 
+export type ScannerStatus = 'active' | 'maintenance' | 'retired';
+
+export interface Scanner {
+  id: string;
+  name: string;
+  code: string;
+  status: ScannerStatus;
+  notes: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScannerBooking {
+  id: string;
+  scanner_id: string;
+  start_date: string;
+  end_date: string;
+  customer_name: string;
+  customer_phone: string | null;
+  customer_email: string | null;
+  event_id: string | null;
+  notes: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const WIZARD_STEPS: { id: WizardStepId; label: string; step: number }[] = [
   { id: 'details', label: 'פרטי הפעילות', step: 1 },
   { id: 'groups', label: 'חלוקה לקבוצות', step: 2 },
