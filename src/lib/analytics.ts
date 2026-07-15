@@ -16,16 +16,16 @@ declare global {
   }
 }
 
+import {
+  normalizeUtmAttribution,
+  readUtmFromSearch,
+  utmAttributionToParams,
+  type UtmAttribution,
+} from '@/lib/utmAttribution'
+
 type AnalyticsParams = Record<string, string | number | boolean | undefined>
 
-export interface UtmAttribution {
-  utm_source?: string
-  utm_medium?: string
-  utm_campaign?: string
-  utm_content?: string
-}
-
-const UTM_PARAM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'] as const
+export type { UtmAttribution }
 
 function isEnabled() {
   return Boolean(MEASUREMENT_ID && typeof window !== 'undefined')
@@ -59,29 +59,6 @@ export function getLandingReferrer(): string {
   }
 }
 
-/** Strip empty / obvious PII-like values; keep short attribution tokens only. */
-function sanitizeUtmValue(raw: string | null): string | undefined {
-  if (!raw) return undefined
-  const trimmed = raw.trim().slice(0, 100)
-  if (!trimmed) return undefined
-  if (/@/.test(trimmed) || /^\+?\d{7,}$/.test(trimmed)) return undefined
-  return trimmed
-}
-
-function readUtmFromSearch(search: string): UtmAttribution | null {
-  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
-  const next: UtmAttribution = {}
-  let found = false
-  for (const key of UTM_PARAM_KEYS) {
-    const value = sanitizeUtmValue(params.get(key))
-    if (value) {
-      next[key] = value
-      found = true
-    }
-  }
-  return found ? next : null
-}
-
 /**
  * Persist first-touch-style UTM attribution for the browser session.
  * - Captures when at least one UTM param is present in the URL
@@ -104,26 +81,14 @@ export function getUtmAttribution(): UtmAttribution {
   try {
     const raw = sessionStorage.getItem(UTM_ATTRIBUTION_KEY)
     if (!raw) return {}
-    const parsed = JSON.parse(raw) as UtmAttribution
-    if (!parsed || typeof parsed !== 'object') return {}
-    const out: UtmAttribution = {}
-    for (const key of UTM_PARAM_KEYS) {
-      const value = sanitizeUtmValue(typeof parsed[key] === 'string' ? parsed[key]! : null)
-      if (value) out[key] = value
-    }
-    return out
+    return normalizeUtmAttribution(JSON.parse(raw))
   } catch {
     return {}
   }
 }
 
 function getUtmAttributionParams(): AnalyticsParams {
-  const utm = getUtmAttribution()
-  const params: AnalyticsParams = {}
-  for (const key of UTM_PARAM_KEYS) {
-    if (utm[key]) params[key] = utm[key]
-  }
-  return params
+  return utmAttributionToParams(getUtmAttribution())
 }
 
 export function initAnalytics() {

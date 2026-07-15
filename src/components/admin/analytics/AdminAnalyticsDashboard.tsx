@@ -60,6 +60,7 @@ const INTEREST_INFO =
 
 const UTM_SOURCE_LABELS: Record<string, string> = {
   personal_share: 'שיתוף אישי',
+  share: 'שיתוף',
 }
 
 function utmSourceLabel(source: string): string {
@@ -205,6 +206,24 @@ export function AdminAnalyticsDashboard() {
     ? calcStepRate(data.eventCreation.startUsers, data.eventCreation.creatorUsers)
     : null
 
+  const trendLooksEmpty = useMemo(() => {
+    if (!data || data.timeSeries.unavailable) return false
+    const hasOverview =
+      data.overview.homepageUsers > 0 ||
+      data.overview.leadUsers > 0 ||
+      data.video.startedUsers > 0
+    if (!hasOverview) return false
+    const hasTrend = data.timeSeries.days.some(
+      (d) =>
+        d.visitors > 0 ||
+        d.newUsers > 0 ||
+        d.videoView > 0 ||
+        d.viewPlans > 0 ||
+        d.generateLead > 0,
+    )
+    return !hasTrend
+  }, [data])
+
   return (
     <div className="space-y-7">
       {/* Header — unchanged */}
@@ -279,6 +298,13 @@ export function AdminAnalyticsDashboard() {
                 </div>
                 <p className="text-xs text-muted">המבט המרכזי על הביצועים בטווח שנבחר</p>
               </div>
+              {trendLooksEmpty && (
+                <div className="mb-4 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
+                  נתוני המגמה היומית ריקים למרות שיש תנועה בטווח. ייתכן ש-Edge Function{' '}
+                  <code className="text-xs">ga4-dashboard</code> לא עודכן — הריצו:{' '}
+                  <code className="text-xs">supabase functions deploy ga4-dashboard</code>
+                </div>
+              )}
               <TrendLineChart
                 days={data.timeSeries.days}
                 loading={loading}
@@ -580,10 +606,7 @@ export function AdminAnalyticsDashboard() {
                   compact
                   icon={<Link2 size={22} />}
                   title="אנליטיקת לינקים מסומנים עדיין לא זמינה"
-                  description={`יש לרשום ב-GA4 כמימדים מותאמים (Event-scoped Custom Dimensions) את הפרמטרים: ${(data.utm.unavailableParams.length
-                    ? data.utm.unavailableParams
-                    : ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content']
-                  ).join(', ')}`}
+                  description={`יש לרשום ב-GA4 כ-Event-scoped Custom Dimensions לפחות את utm_source ו-utm_content. פרמטרים אופציונליים (utm_medium, utm_campaign) אינם נדרשים ללינקים קצרים.`}
                 />
               </Card>
             ) : data.utm.taggedVisitors <= 0 ? (
@@ -658,12 +681,20 @@ export function AdminAnalyticsDashboard() {
                       emptyTitle="אין לינקים מסומנים"
                       emptyDescription="בטווח שנבחר אין מזהי לינק."
                       valueLabel="מבקרים"
-                      items={(data.utm.linkPerformance ?? data.utm.contentBreakdown ?? [])
-                        .map((r) => ({
-                          label: r.content,
-                          value: r.users,
-                        }))
-                        .sort((a, b) => b.value - a.value)}
+                      items={
+                        data.utm.linkPerformance && data.utm.linkPerformance.length > 0
+                          ? data.utm.linkPerformance
+                              .map((r) => ({
+                                label: r.source
+                                  ? `${r.content} · ${utmSourceLabel(r.source)}`
+                                  : r.content,
+                                value: r.users,
+                              }))
+                              .sort((a, b) => b.value - a.value)
+                          : (data.utm.contentBreakdown ?? [])
+                              .map((r) => ({ label: r.content, value: r.users }))
+                              .sort((a, b) => b.value - a.value)
+                      }
                       color="var(--color-accent)"
                     />
                     <p className="mt-2 text-[11px] text-muted">מזהה לינק · ממוין לפי מבקרים</p>
@@ -679,10 +710,11 @@ export function AdminAnalyticsDashboard() {
                       </p>
                     </div>
                     <div className="overflow-x-auto">
-                      <table className="w-full min-w-[520px] text-sm" dir="rtl">
+                      <table className="w-full min-w-[560px] text-sm" dir="rtl">
                         <thead>
                           <tr className="border-b border-border bg-white/[0.02] text-xs text-muted">
                             <th className="px-4 py-2.5 text-right font-medium">לינק</th>
+                            <th className="px-4 py-2.5 text-right font-medium">מקור</th>
                             <th className="px-4 py-2.5 text-center font-medium">מבקרים</th>
                             <th className="px-4 py-2.5 text-center font-medium">צפו בסרטון</th>
                             <th className="px-4 py-2.5 text-center font-medium">ראו מחירים</th>
@@ -709,6 +741,9 @@ export function AdminAnalyticsDashboard() {
                                 >
                                   <td className="px-4 py-2.5 font-medium text-foreground">
                                     {row.content}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-muted">
+                                    {row.source ? utmSourceLabel(row.source) : '—'}
                                   </td>
                                   <td className="px-4 py-2.5 text-center tabular-nums text-muted">
                                     {formatNumber(row.users)}

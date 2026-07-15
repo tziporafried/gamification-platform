@@ -39,6 +39,11 @@ export interface AnalyticsUtmSourceRow {
   users: number
 }
 
+export interface AnalyticsUtmMediumRow {
+  medium: string
+  users: number
+}
+
 export interface AnalyticsUtmCampaignRow {
   campaign: string
   users: number
@@ -51,6 +56,7 @@ export interface AnalyticsUtmContentRow {
 
 export interface AnalyticsLinkPerformanceRow {
   content: string
+  source: string | null
   users: number
   videoViewUsers: number
   plansViewUsers: number
@@ -144,6 +150,7 @@ export interface AnalyticsDashboardData {
   utm: {
     taggedVisitors: number
     sourceBreakdown: AnalyticsUtmSourceRow[] | null
+    mediumBreakdown: AnalyticsUtmMediumRow[] | null
     campaignBreakdown: AnalyticsUtmCampaignRow[] | null
     contentBreakdown: AnalyticsUtmContentRow[] | null
     linkPerformance: AnalyticsLinkPerformanceRow[] | null
@@ -153,6 +160,7 @@ export interface AnalyticsDashboardData {
   meta: {
     startDate: string
     endDate: string
+    timeSeriesWarnings?: string[]
   }
 }
 

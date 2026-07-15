@@ -167,19 +167,19 @@ function normalizePayload(raw: AnalyticsDashboardData): AnalyticsDashboardData {
     payload.timeSeries.unavailable ??= false
     payload.timeSeries.days = payload.timeSeries.days.map((day) => ({
       ...day,
-      visitors: day.visitors ?? 0,
-      newUsers: day.newUsers ?? 0,
-      videoView: day.videoView ?? 0,
-      videoComplete: day.videoComplete ?? 0,
-      viewPlans: day.viewPlans ?? 0,
-      selectPlan: day.selectPlan ?? 0,
-      contactFormOpen: day.contactFormOpen ?? 0,
-      generateLead: day.generateLead ?? 0,
-      ctaClick: day.ctaClick ?? 0,
-      faqOpen: day.faqOpen ?? 0,
-      loginView: day.loginView ?? 0,
-      signUp: day.signUp ?? 0,
-      eventCreated: day.eventCreated ?? 0,
+      visitors: Number(day.visitors ?? 0),
+      newUsers: Number(day.newUsers ?? 0),
+      videoView: Number(day.videoView ?? 0),
+      videoComplete: Number(day.videoComplete ?? 0),
+      viewPlans: Number(day.viewPlans ?? 0),
+      selectPlan: Number(day.selectPlan ?? 0),
+      contactFormOpen: Number(day.contactFormOpen ?? 0),
+      generateLead: Number(day.generateLead ?? 0),
+      ctaClick: Number(day.ctaClick ?? 0),
+      faqOpen: Number(day.faqOpen ?? 0),
+      loginView: Number(day.loginView ?? 0),
+      signUp: Number(day.signUp ?? 0),
+      eventCreated: Number(day.eventCreated ?? 0),
     }))
   }
 
@@ -199,20 +199,26 @@ function normalizePayload(raw: AnalyticsDashboardData): AnalyticsDashboardData {
     payload.utm = {
       taggedVisitors: 0,
       sourceBreakdown: null,
+      mediumBreakdown: null,
       campaignBreakdown: null,
       contentBreakdown: null,
       linkPerformance: null,
       unavailable: true,
-      unavailableParams: ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'],
+      unavailableParams: ['utm_source', 'utm_content'],
     }
   } else {
     payload.utm.taggedVisitors ??= 0
     payload.utm.sourceBreakdown ??= null
+    payload.utm.mediumBreakdown ??= null
     payload.utm.campaignBreakdown ??= null
     payload.utm.contentBreakdown ??= null
     payload.utm.linkPerformance ??= null
     payload.utm.unavailable ??= false
     payload.utm.unavailableParams ??= []
+    payload.utm.linkPerformance = payload.utm.linkPerformance?.map((row) => ({
+      ...row,
+      source: row.source ?? null,
+    })) ?? null
   }
 
   return payload

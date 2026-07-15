@@ -89,8 +89,8 @@ const SERIES_BY_KEY = Object.fromEntries(ALL_SERIES.map((s) => [s.key, s])) as R
 >
 
 const SERIES_LABELS: Record<TrendSeriesKey, string> = {
-  visitors: 'מבקרים ייחודיים',
-  newUsers: 'משתמשים חדשים',
+  visitors: 'משתמשים ייחודיים (GA4)',
+  newUsers: 'משתמשים חדשים (GA4)',
   videoView: 'צפו בסרטון',
   videoComplete: 'סיימו סרטון',
   viewPlans: 'צפו במחירים',
@@ -104,7 +104,7 @@ const SERIES_LABELS: Record<TrendSeriesKey, string> = {
   eventCreated: 'יצירת אירוע',
 }
 
-const DEFAULT_SELECTED: TrendSeriesKey[] = ['visitors', 'newUsers', 'generateLead']
+const DEFAULT_SELECTED: TrendSeriesKey[] = ['visitors', 'generateLead', 'viewPlans']
 
 interface TrendLineChartProps {
   days: AnalyticsTimeSeriesDay[]
