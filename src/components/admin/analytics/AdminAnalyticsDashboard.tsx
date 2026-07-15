@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
   HelpCircle,
+  Link2,
   LogIn,
   MessageCircle,
   MousePointerClick,
@@ -56,6 +57,14 @@ const CHART_COLORS = [
 
 const INTEREST_INFO =
   'השלבים מציגים השוואה בין קהלי הפעולות בתקופה הנבחרת ואינם בהכרח מסלול רציף של אותו משתמש.'
+
+const UTM_SOURCE_LABELS: Record<string, string> = {
+  personal_share: 'שיתוף אישי',
+}
+
+function utmSourceLabel(source: string): string {
+  return UTM_SOURCE_LABELS[source] ?? source
+}
 
 function todayYmd() {
   return new Date().toISOString().slice(0, 10)
@@ -550,6 +559,179 @@ export function AdminAnalyticsDashboard() {
                 size="lg"
               />
             </Card>
+          </section>
+
+          {/* UTM / shared-link attribution */}
+          <section className="space-y-3">
+            <SectionHeader
+              icon={<Link2 size={16} className="text-secondary" />}
+              title="לינקים ומקורות שיתוף"
+            />
+            {data.utm.unavailable ? (
+              <Card className="p-5">
+                <EmptyState
+                  compact
+                  icon={<Link2 size={22} />}
+                  title="אנליטיקת לינקים מסומנים עדיין לא זמינה"
+                  description={`יש לרשום ב-GA4 כמימדים מותאמים (Event-scoped Custom Dimensions) את הפרמטרים: ${(data.utm.unavailableParams.length
+                    ? data.utm.unavailableParams
+                    : ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content']
+                  ).join(', ')}`}
+                />
+              </Card>
+            ) : data.utm.taggedVisitors <= 0 ? (
+              <Card className="p-5">
+                <EmptyState
+                  compact
+                  icon={<Link2 size={22} />}
+                  title="עדיין אין כניסות מלינקים מסומנים בתקופה שנבחרה"
+                  description="כשמישהו ייכנס עם פרמטרי UTM, הנתונים יופיעו כאן."
+                />
+              </Card>
+            ) : (
+              <>
+                {data.utm.unavailableParams.length > 0 && (
+                  <Card className="border-warning/30 bg-warning/5 p-4">
+                    <p className="text-xs text-foreground">
+                      חלק ממימדי ה-UTM עדיין לא זמינים ב-GA4. יש לרשום כ-Event-scoped Custom
+                      Dimensions:{' '}
+                      <span className="font-mono text-[11px]">
+                        {data.utm.unavailableParams.join(', ')}
+                      </span>
+                    </p>
+                  </Card>
+                )}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <KpiCard
+                    label="מבקרים מלינקים מסומנים"
+                    value={data.utm.taggedVisitors}
+                    hint={
+                      data.overview.homepageUsers > 0
+                        ? `${formatRate(
+                            Math.round(
+                              (data.utm.taggedVisitors / data.overview.homepageUsers) * 1000,
+                            ) / 10,
+                          )} מכלל המבקרים`
+                        : undefined
+                    }
+                    loading={loading}
+                    accent="secondary"
+                    icon={<Link2 size={16} />}
+                  />
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <Card className="p-5">
+                    <h3 className="mb-4 text-sm font-semibold text-foreground">מקורות שיתוף</h3>
+                    <SimpleDonut
+                      loading={loading}
+                      unavailable={data.utm.sourceBreakdown === null}
+                      unavailableTitle="מימד מקור שיתוף לא זמין"
+                      unavailableDescription="יש לרשום ב-GA4 את הפרמטר utm_source כ-Event-scoped Custom Dimension."
+                      emptyTitle="אין מקורות שיתוף"
+                      emptyDescription="בטווח שנבחר אין מבקרים עם מקור מסומן."
+                      slices={toDonutSlices(
+                        (data.utm.sourceBreakdown ?? []).map((r) => ({
+                          label: utmSourceLabel(r.source),
+                          users: r.users,
+                        })),
+                      )}
+                      centerValue={formatNumber(data.utm.taggedVisitors)}
+                      centerLabel="מבקרים מסומנים"
+                      showLegendPercent
+                    />
+                  </Card>
+
+                  <Card className="p-5">
+                    <h3 className="mb-4 text-sm font-semibold text-foreground">ביצועי לינקים</h3>
+                    <RankedBarChart
+                      loading={loading}
+                      unavailable={data.utm.linkPerformance === null && data.utm.contentBreakdown === null}
+                      unavailableDescription="יש לרשום ב-GA4 את הפרמטר utm_content כ-Event-scoped Custom Dimension."
+                      emptyTitle="אין לינקים מסומנים"
+                      emptyDescription="בטווח שנבחר אין מזהי לינק."
+                      valueLabel="מבקרים"
+                      items={(data.utm.linkPerformance ?? data.utm.contentBreakdown ?? [])
+                        .map((r) => ({
+                          label: r.content,
+                          value: r.users,
+                        }))
+                        .sort((a, b) => b.value - a.value)}
+                      color="var(--color-accent)"
+                    />
+                    <p className="mt-2 text-[11px] text-muted">מזהה לינק · ממוין לפי מבקרים</p>
+                  </Card>
+                </div>
+
+                {data.utm.linkPerformance && data.utm.linkPerformance.length > 0 && (
+                  <Card className="overflow-hidden p-0">
+                    <div className="border-b border-border px-5 py-3">
+                      <h3 className="text-sm font-semibold text-foreground">ביצועי לינקים — פירוט</h3>
+                      <p className="mt-0.5 text-[11px] text-muted">
+                        שיוך לפי הקשר הכניסה המסומן — לא בהכרח סיבתיות ישירה
+                      </p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[520px] text-sm" dir="rtl">
+                        <thead>
+                          <tr className="border-b border-border bg-white/[0.02] text-xs text-muted">
+                            <th className="px-4 py-2.5 text-right font-medium">לינק</th>
+                            <th className="px-4 py-2.5 text-center font-medium">מבקרים</th>
+                            <th className="px-4 py-2.5 text-center font-medium">צפו בסרטון</th>
+                            <th className="px-4 py-2.5 text-center font-medium">ראו מחירים</th>
+                            <th className="px-4 py-2.5 text-center font-medium">לידים</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/60">
+                          {data.utm.linkPerformance
+                            .slice()
+                            .sort((a, b) => b.users - a.users)
+                            .map((row) => {
+                              const hasLead = row.leadUsers > 0
+                              return (
+                                <tr
+                                  key={row.content}
+                                  style={
+                                    hasLead
+                                      ? {
+                                          background:
+                                            'color-mix(in srgb, var(--color-accent) 12%, transparent)',
+                                        }
+                                      : undefined
+                                  }
+                                >
+                                  <td className="px-4 py-2.5 font-medium text-foreground">
+                                    {row.content}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center tabular-nums text-muted">
+                                    {formatNumber(row.users)}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center tabular-nums text-muted">
+                                    {formatNumber(row.videoViewUsers)}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center tabular-nums text-muted">
+                                    {formatNumber(row.plansViewUsers)}
+                                  </td>
+                                  <td
+                                    className="px-4 py-2.5 text-center tabular-nums"
+                                    style={
+                                      hasLead
+                                        ? { color: 'var(--color-accent)', fontWeight: 600 }
+                                        : { color: 'var(--color-muted)' }
+                                    }
+                                  >
+                                    {formatNumber(row.leadUsers)}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
+                )}
+              </>
+            )}
           </section>
 
           {/* Plans + contact progression */}

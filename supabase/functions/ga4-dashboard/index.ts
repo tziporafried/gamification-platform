@@ -53,6 +53,29 @@ interface TimeSeriesDay {
   generateLead: number
 }
 
+interface UtmSourceRow {
+  source: string
+  users: number
+}
+
+interface UtmCampaignRow {
+  campaign: string
+  users: number
+}
+
+interface UtmContentRow {
+  content: string
+  users: number
+}
+
+interface LinkPerformanceRow {
+  content: string
+  users: number
+  videoViewUsers: number
+  plansViewUsers: number
+  leadUsers: number
+}
+
 interface DashboardPayload {
   overview: {
     homepageUsers: number
@@ -136,6 +159,15 @@ interface DashboardPayload {
     items: NamedMetric[] | null
     totalUsers: number
     unavailable: boolean
+  }
+  utm: {
+    taggedVisitors: number
+    sourceBreakdown: UtmSourceRow[] | null
+    campaignBreakdown: UtmCampaignRow[] | null
+    contentBreakdown: UtmContentRow[] | null
+    linkPerformance: LinkPerformanceRow[] | null
+    unavailable: boolean
+    unavailableParams: string[]
   }
   meta: {
     startDate: string
@@ -521,6 +553,52 @@ function groupTrafficSources(rows: Ga4Row[] | undefined): NamedMetric[] {
     .sort((a, b) => b.users - a.users)
 }
 
+const UTM_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'] as const
+
+function isUnsetDimension(value: string): boolean {
+  const lower = value.trim().toLowerCase()
+  return !value || lower === '(not set)' || lower === 'not set' || lower === '(none)'
+}
+
+function mapUtmDimensionRows(rows: Ga4Row[] | undefined): { key: string; users: number }[] {
+  return (rows ?? [])
+    .map((row) => ({
+      key: (row.dimensionValues?.[0]?.value ?? '').trim(),
+      users: Number(row.metricValues?.[0]?.value ?? 0),
+    }))
+    .filter((r) => r.users > 0 && !isUnsetDimension(r.key))
+    .sort((a, b) => b.users - a.users)
+}
+
+function dimensionUnavailableParam(param: string, message?: string): string | null {
+  if (message) {
+    const match = message.match(/customEvent:([a-zA-Z0-9_]+)/)
+    if (match?.[1]) return match[1]
+    const utmMatch = message.match(/utm_[a-z_]+/i)
+    if (utmMatch) return utmMatch[0].toLowerCase()
+  }
+  return param || null
+}
+
+function notSetFilter(fieldName: string) {
+  return {
+    notExpression: {
+      filter: {
+        fieldName,
+        stringFilter: { matchType: 'EXACT' as const, value: '(not set)' },
+      },
+    },
+  }
+}
+
+function usersByKey(rows: Ga4Row[] | undefined): Map<string, number> {
+  const map = new Map<string, number>()
+  for (const row of mapUtmDimensionRows(rows)) {
+    map.set(row.key, row.users)
+  }
+  return map
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -829,6 +907,84 @@ Deno.serve(async (req) => {
       limit: 50,
     })
 
+    // UTM — unique users with any tagged attribution param set
+    const utmTaggedVisitorsPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        orGroup: {
+          expressions: UTM_PARAMS.map((param) => notSetFilter(`customEvent:${param}`)),
+        },
+      },
+      limit: 1,
+    })
+
+    const utmSourcePromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'customEvent:utm_source' }],
+      metrics: [{ name: 'totalUsers' }],
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 50,
+    })
+
+    const utmCampaignPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'customEvent:utm_campaign' }],
+      metrics: [{ name: 'totalUsers' }],
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 50,
+    })
+
+    const utmContentPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'customEvent:utm_content' }],
+      metrics: [{ name: 'totalUsers' }],
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 50,
+    })
+
+    const utmContentVideoPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'customEvent:utm_content' }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: { matchType: 'EXACT', value: 'video_view' },
+        },
+      },
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 50,
+    })
+
+    const utmContentPlansPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'customEvent:utm_content' }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: { matchType: 'EXACT', value: 'view_plans' },
+        },
+      },
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 50,
+    })
+
+    const utmContentLeadsPromise = runReport(accessToken, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'customEvent:utm_content' }],
+      metrics: [{ name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: { matchType: 'EXACT', value: 'generate_lead' },
+        },
+      },
+      orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+      limit: 50,
+    })
+
     const [
       core,
       homepage,
@@ -845,6 +1001,13 @@ Deno.serve(async (req) => {
       timeSeriesVisitors,
       timeSeriesEvents,
       trafficSourcesReport,
+      utmTaggedVisitors,
+      utmSourceReport,
+      utmCampaignReport,
+      utmContentReport,
+      utmContentVideoReport,
+      utmContentPlansReport,
+      utmContentLeadsReport,
     ] = await Promise.all([
       corePromise,
       homepagePromise,
@@ -861,6 +1024,13 @@ Deno.serve(async (req) => {
       timeSeriesVisitorsPromise,
       timeSeriesEventsPromise,
       trafficSourcesPromise,
+      utmTaggedVisitorsPromise,
+      utmSourcePromise,
+      utmCampaignPromise,
+      utmContentPromise,
+      utmContentVideoPromise,
+      utmContentPlansPromise,
+      utmContentLeadsPromise,
     ])
 
     if (core.error) {
@@ -1102,6 +1272,108 @@ Deno.serve(async (req) => {
       trafficTotalUsers = trafficItems.reduce((sum, r) => sum + r.users, 0)
     }
 
+    const utmUnavailableParams: string[] = []
+
+    let taggedVisitors = 0
+    if (utmTaggedVisitors.error) {
+      console.warn('utm tagged visitors unavailable', utmTaggedVisitors.error.message)
+      const identified = dimensionUnavailableParam('', utmTaggedVisitors.error.message)
+      if (identified && UTM_PARAMS.includes(identified as (typeof UTM_PARAMS)[number])) {
+        if (!utmUnavailableParams.includes(identified)) utmUnavailableParams.push(identified)
+      }
+    } else {
+      taggedVisitors = Number(utmTaggedVisitors.rows?.[0]?.metricValues?.[0]?.value ?? 0)
+    }
+
+    let sourceBreakdown: UtmSourceRow[] | null = null
+    if (utmSourceReport.error) {
+      const param = dimensionUnavailableParam('utm_source', utmSourceReport.error.message)
+      if (param && !utmUnavailableParams.includes(param)) utmUnavailableParams.push(param)
+      console.warn('utm_source breakdown unavailable', utmSourceReport.error.message)
+    } else {
+      sourceBreakdown = mapUtmDimensionRows(utmSourceReport.rows).map(({ key, users }) => ({
+        source: key,
+        users,
+      }))
+    }
+
+    let campaignBreakdown: UtmCampaignRow[] | null = null
+    if (utmCampaignReport.error) {
+      const param = dimensionUnavailableParam('utm_campaign', utmCampaignReport.error.message)
+      if (param && !utmUnavailableParams.includes(param)) utmUnavailableParams.push(param)
+      console.warn('utm_campaign breakdown unavailable', utmCampaignReport.error.message)
+    } else {
+      campaignBreakdown = mapUtmDimensionRows(utmCampaignReport.rows).map(({ key, users }) => ({
+        campaign: key,
+        users,
+      }))
+    }
+
+    let contentBreakdown: UtmContentRow[] | null = null
+    if (utmContentReport.error) {
+      const param = dimensionUnavailableParam('utm_content', utmContentReport.error.message)
+      if (param && !utmUnavailableParams.includes(param)) utmUnavailableParams.push(param)
+      console.warn('utm_content breakdown unavailable', utmContentReport.error.message)
+    } else {
+      contentBreakdown = mapUtmDimensionRows(utmContentReport.rows).map(({ key, users }) => ({
+        content: key,
+        users,
+      }))
+    }
+
+    let linkPerformance: LinkPerformanceRow[] | null = null
+    if (utmContentVideoReport.error) {
+      const param = dimensionUnavailableParam('utm_content', utmContentVideoReport.error.message)
+      if (param && !utmUnavailableParams.includes(param)) utmUnavailableParams.push(param)
+      console.warn('utm_content × video_view unavailable', utmContentVideoReport.error.message)
+    }
+    if (utmContentPlansReport.error) {
+      const param = dimensionUnavailableParam('utm_content', utmContentPlansReport.error.message)
+      if (param && !utmUnavailableParams.includes(param)) utmUnavailableParams.push(param)
+      console.warn('utm_content × view_plans unavailable', utmContentPlansReport.error.message)
+    }
+    if (utmContentLeadsReport.error) {
+      const param = dimensionUnavailableParam('utm_content', utmContentLeadsReport.error.message)
+      if (param && !utmUnavailableParams.includes(param)) utmUnavailableParams.push(param)
+      console.warn('utm_content × generate_lead unavailable', utmContentLeadsReport.error.message)
+    }
+
+    if (!utmContentReport.error) {
+      const videoByContent = utmContentVideoReport.error
+        ? new Map<string, number>()
+        : usersByKey(utmContentVideoReport.rows)
+      const plansByContent = utmContentPlansReport.error
+        ? new Map<string, number>()
+        : usersByKey(utmContentPlansReport.rows)
+      const leadsByContent = utmContentLeadsReport.error
+        ? new Map<string, number>()
+        : usersByKey(utmContentLeadsReport.rows)
+
+      linkPerformance = mapUtmDimensionRows(utmContentReport.rows).map(({ key, users }) => ({
+        content: key,
+        users,
+        videoViewUsers: videoByContent.get(key) ?? 0,
+        plansViewUsers: plansByContent.get(key) ?? 0,
+        leadUsers: leadsByContent.get(key) ?? 0,
+      }))
+    }
+
+    // Fallback tagged visitors from available breakdowns when the combined filter fails.
+    if (taggedVisitors <= 0) {
+      if (sourceBreakdown && sourceBreakdown.length > 0) {
+        taggedVisitors = sourceBreakdown.reduce((sum, r) => sum + r.users, 0)
+      } else if (contentBreakdown && contentBreakdown.length > 0) {
+        taggedVisitors = contentBreakdown.reduce((sum, r) => sum + r.users, 0)
+      }
+    }
+
+    // Section unavailable only when we cannot load either primary breakdown.
+    const utmUnavailable = Boolean(utmSourceReport.error) && Boolean(utmContentReport.error)
+
+    if (utmUnavailable && utmUnavailableParams.length === 0) {
+      utmUnavailableParams.push('utm_source', 'utm_medium', 'utm_campaign', 'utm_content')
+    }
+
     const contactOpenUsers = getEvent(events, 'contact_form_open').users
     const activationViewed = getEvent(events, 'activation_options_viewed').users
     const activationClicked = getEvent(events, 'activation_options_clicked').users
@@ -1191,6 +1463,15 @@ Deno.serve(async (req) => {
         items: trafficItems,
         totalUsers: trafficTotalUsers,
         unavailable: trafficUnavailable,
+      },
+      utm: {
+        taggedVisitors: utmUnavailable ? 0 : taggedVisitors,
+        sourceBreakdown: utmUnavailable ? null : sourceBreakdown,
+        campaignBreakdown: utmUnavailable ? null : campaignBreakdown,
+        contentBreakdown: utmUnavailable ? null : contentBreakdown,
+        linkPerformance: utmUnavailable ? null : linkPerformance,
+        unavailable: utmUnavailable,
+        unavailableParams: [...new Set(utmUnavailableParams)],
       },
       meta: { startDate, endDate },
     }

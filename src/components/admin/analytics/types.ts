@@ -25,6 +25,29 @@ export interface AnalyticsTimeSeriesDay {
   generateLead: number
 }
 
+export interface AnalyticsUtmSourceRow {
+  source: string
+  users: number
+}
+
+export interface AnalyticsUtmCampaignRow {
+  campaign: string
+  users: number
+}
+
+export interface AnalyticsUtmContentRow {
+  content: string
+  users: number
+}
+
+export interface AnalyticsLinkPerformanceRow {
+  content: string
+  users: number
+  videoViewUsers: number
+  plansViewUsers: number
+  leadUsers: number
+}
+
 export interface AnalyticsDashboardData {
   overview: {
     homepageUsers: number
@@ -108,6 +131,15 @@ export interface AnalyticsDashboardData {
     items: AnalyticsNamedMetric[] | null
     totalUsers: number
     unavailable: boolean
+  }
+  utm: {
+    taggedVisitors: number
+    sourceBreakdown: AnalyticsUtmSourceRow[] | null
+    campaignBreakdown: AnalyticsUtmCampaignRow[] | null
+    contentBreakdown: AnalyticsUtmContentRow[] | null
+    linkPerformance: AnalyticsLinkPerformanceRow[] | null
+    unavailable: boolean
+    unavailableParams: string[]
   }
   meta: {
     startDate: string

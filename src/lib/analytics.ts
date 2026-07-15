@@ -3,6 +3,7 @@ const MEASUREMENT_ID =
 
 const LANDING_REFERRER_KEY = 'gamify_landing_referrer'
 const PENDING_AUTH_METHOD_KEY = 'gamify_pending_auth_method'
+const UTM_ATTRIBUTION_KEY = 'gamify_utm_attribution'
 
 /** Dedupe window to absorb React StrictMode double-effects / rapid remounts. */
 const DEDUPE_WINDOW_MS = 800
@@ -16,6 +17,15 @@ declare global {
 }
 
 type AnalyticsParams = Record<string, string | number | boolean | undefined>
+
+export interface UtmAttribution {
+  utm_source?: string
+  utm_medium?: string
+  utm_campaign?: string
+  utm_content?: string
+}
+
+const UTM_PARAM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'] as const
 
 function isEnabled() {
   return Boolean(MEASUREMENT_ID && typeof window !== 'undefined')
@@ -49,10 +59,78 @@ export function getLandingReferrer(): string {
   }
 }
 
+/** Strip empty / obvious PII-like values; keep short attribution tokens only. */
+function sanitizeUtmValue(raw: string | null): string | undefined {
+  if (!raw) return undefined
+  const trimmed = raw.trim().slice(0, 100)
+  if (!trimmed) return undefined
+  if (/@/.test(trimmed) || /^\+?\d{7,}$/.test(trimmed)) return undefined
+  return trimmed
+}
+
+function readUtmFromSearch(search: string): UtmAttribution | null {
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
+  const next: UtmAttribution = {}
+  let found = false
+  for (const key of UTM_PARAM_KEYS) {
+    const value = sanitizeUtmValue(params.get(key))
+    if (value) {
+      next[key] = value
+      found = true
+    }
+  }
+  return found ? next : null
+}
+
+/**
+ * Persist first-touch-style UTM attribution for the browser session.
+ * - Captures when at least one UTM param is present in the URL
+ * - Updates when the visitor enters via a new tagged URL
+ * - Does not clear on SPA navigations that omit UTMs
+ */
+export function captureUtmAttribution(search = typeof window !== 'undefined' ? window.location.search : '') {
+  if (typeof window === 'undefined') return
+  const fromUrl = readUtmFromSearch(search)
+  if (!fromUrl) return
+  try {
+    sessionStorage.setItem(UTM_ATTRIBUTION_KEY, JSON.stringify(fromUrl))
+  } catch {
+    /* private mode / blocked storage */
+  }
+}
+
+export function getUtmAttribution(): UtmAttribution {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = sessionStorage.getItem(UTM_ATTRIBUTION_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as UtmAttribution
+    if (!parsed || typeof parsed !== 'object') return {}
+    const out: UtmAttribution = {}
+    for (const key of UTM_PARAM_KEYS) {
+      const value = sanitizeUtmValue(typeof parsed[key] === 'string' ? parsed[key]! : null)
+      if (value) out[key] = value
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+function getUtmAttributionParams(): AnalyticsParams {
+  const utm = getUtmAttribution()
+  const params: AnalyticsParams = {}
+  for (const key of UTM_PARAM_KEYS) {
+    if (utm[key]) params[key] = utm[key]
+  }
+  return params
+}
+
 export function initAnalytics() {
   if (!isEnabled() || typeof window === 'undefined') return
 
   captureLandingReferrer()
+  captureUtmAttribution()
 
   // gtag may already be loaded from index.html
   if (window.gtag) return
@@ -74,9 +152,10 @@ export function initAnalytics() {
   })
 }
 
-/** Track SPA route as a page view, including landing referrer. */
+/** Track SPA route as a page view, including landing referrer + UTM attribution. */
 export function trackPageView(path: string) {
   if (!isEnabled() || !window.gtag) return
+  captureUtmAttribution()
   if (shouldSkipDedupe(`page_view:${path}`)) return
 
   window.gtag('event', 'page_view', {
@@ -85,13 +164,17 @@ export function trackPageView(path: string) {
     page_location: window.location.href,
     page_referrer: document.referrer || undefined,
     landing_referrer: getLandingReferrer(),
+    ...getUtmAttributionParams(),
   })
 }
 
-/** Generic GA4 event helper. */
+/** Generic GA4 event helper — attaches persisted UTM attribution when present. */
 export function trackEvent(eventName: string, params?: AnalyticsParams) {
   if (!isEnabled() || !window.gtag) return
-  window.gtag('event', eventName, params)
+  window.gtag('event', eventName, {
+    ...getUtmAttributionParams(),
+    ...params,
+  })
 }
 
 function trackEventDeduped(dedupeKey: string, eventName: string, params?: AnalyticsParams) {
@@ -263,6 +346,11 @@ export function trackFaqOpen(question: string, questionIndex: number) {
     question,
     question_index: questionIndex,
   })
+}
+
+/** Landing section entered viewport (once per session key / remount window). */
+export function trackHowItWorksView() {
+  trackEventDeduped('how_it_works_view', 'how_it_works_view')
 }
 
 export function trackWizardStepView(stepNumber: number, stepName: string) {

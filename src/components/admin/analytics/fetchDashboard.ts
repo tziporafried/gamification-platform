@@ -179,6 +179,26 @@ function normalizePayload(raw: AnalyticsDashboardData): AnalyticsDashboardData {
     payload.trafficSources.unavailable ??= false
   }
 
+  if (!payload.utm) {
+    payload.utm = {
+      taggedVisitors: 0,
+      sourceBreakdown: null,
+      campaignBreakdown: null,
+      contentBreakdown: null,
+      linkPerformance: null,
+      unavailable: true,
+      unavailableParams: ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'],
+    }
+  } else {
+    payload.utm.taggedVisitors ??= 0
+    payload.utm.sourceBreakdown ??= null
+    payload.utm.campaignBreakdown ??= null
+    payload.utm.contentBreakdown ??= null
+    payload.utm.linkPerformance ??= null
+    payload.utm.unavailable ??= false
+    payload.utm.unavailableParams ??= []
+  }
+
   return payload
 }
 

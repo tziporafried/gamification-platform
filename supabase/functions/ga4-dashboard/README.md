@@ -60,9 +60,11 @@ Presets: `today` | `7d` | `14d` | `28d` | `custom`
 11. Activation options by `source` — soft-fail
 12. Daily time series — homepage visitors by `date` + events (`video_view`, `view_plans`, `generate_lead`) by `date`×`eventName`
 13. Traffic sources by `sessionSource` (grouped into ישיר / Google / הפניה / קמפיינים / אחר) — soft-fail
+14. UTM tagged visitors + `utm_source` / `utm_campaign` / `utm_content` breakdowns + link performance (video / plans / leads by `utm_content`) — soft-fail; returns `unavailableParams` when Custom Dimensions are missing
 
 ## Response extras
 
 - `timeSeries.days[]` — `{ date, visitors, videoView, viewPlans, generateLead }`
 - `trafficSources.items[]` — `{ label, users }` + `totalUsers`
+- `utm` — `{ taggedVisitors, sourceBreakdown, campaignBreakdown, contentBreakdown, linkPerformance, unavailable, unavailableParams }`
 
