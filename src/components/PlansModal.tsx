@@ -1,23 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Check, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/contexts/AuthContext'
 import {
   trackSelectPlan,
   trackViewPlans,
   trackActivationOptionsViewed,
   trackContactFormOpen,
-  trackEventCreationStart,
-  trackEventCreated,
-  trackAppError,
   type ActivationOptionsSource,
 } from '@/lib/analytics'
 import { ContactForm } from '@/components/ContactForm'
 import type { ContactIntent } from '@/lib/contact'
-import { setPendingActivation } from '@/lib/contact'
 import type { PlansOption } from '@/contexts/PlansModalContext'
 
 type Option = PlansOption
@@ -63,31 +57,23 @@ export function PlansModal({
   source = null,
   initialPlan = null,
 }: PlansModalProps) {
-  const navigate = useNavigate()
-  const { user } = useAuth()
-
   const [selectedOption, setSelectedOption] = useState<Option | null>(null)
   const [formVisible, setFormVisible] = useState(false)
   const [currentPlan, setCurrentPlan] = useState<string | null>(null)
   const [eventName, setEventName] = useState<string | null>(null)
-  const [creatingEvent, setCreatingEvent] = useState(false)
-  const [createError, setCreateError] = useState('')
 
   const formSectionRef = useRef<HTMLDivElement>(null)
   const shouldScrollOnSelectRef = useRef(false)
   const sessionKeyRef = useRef(0)
   const restoredPlanRef = useRef(false)
-  const autoCreateStartedRef = useRef(false)
+
   // Reset local UI each time the modal opens with a new context.
   useEffect(() => {
     if (!isOpen) return
     sessionKeyRef.current += 1
     restoredPlanRef.current = false
-    autoCreateStartedRef.current = false
     setSelectedOption(null)
     setFormVisible(false)
-    setCreateError('')
-    setCreatingEvent(false)
     shouldScrollOnSelectRef.current = false
   }, [isOpen, eventId, source, initialPlan])
 
@@ -144,18 +130,8 @@ export function PlansModal({
     }
     restoredPlanRef.current = true
     setSelectedOption(initialPlan)
-    if (initialPlan === 'independent' && !eventId) return
     setFormVisible(true)
-  }, [isOpen, initialPlan, eventId])
-
-  // After login / return with plan=independent and no event — create event and open wizard.
-  useEffect(() => {
-    if (!isOpen || autoCreateStartedRef.current) return
-    if (initialPlan !== 'independent' || eventId || !user) return
-    autoCreateStartedRef.current = true
-    void ensureEventThenWizard('independent')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialPlan, eventId, user])
+  }, [isOpen, initialPlan])
 
   useEffect(() => {
     if (!formVisible || !selectedOption || !shouldScrollOnSelectRef.current) return
@@ -167,7 +143,8 @@ export function PlansModal({
     })
   }, [formVisible, selectedOption])
 
-  function showLeadForm(option: Option) {
+  function openFormFor(option: Option) {
+    shouldScrollOnSelectRef.current = true
     setSelectedOption(option)
     setFormVisible(true)
     trackSelectPlan(option, Boolean(eventId))
@@ -175,58 +152,6 @@ export function PlansModal({
       contact_source: option === 'organizations' ? 'custom_solution' : option,
       cta_location: 'pricing',
     })
-  }
-
-  async function ensureEventThenWizard(option: Option) {
-    if (!user) {
-      setPendingActivation({ plan: option, source: 'plans' })
-      const returnTo = `/plans?plan=${option}`
-      onClose()
-      navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`)
-      return
-    }
-
-    setCreatingEvent(true)
-    setCreateError('')
-    setPendingActivation({ plan: option, source: 'plans' })
-    trackEventCreationStart()
-
-    const slug = `event-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-    const { data, error: insertError } = await supabase
-      .from('events')
-      .insert({
-        owner_admin_id: user.id,
-        name: '',
-        slug,
-        status: 'editing',
-      })
-      .select()
-      .single()
-
-    setCreatingEvent(false)
-
-    if (insertError || !data) {
-      trackAppError('event_creation', 'insert_failed')
-      setCreateError('שגיאה ביצירת אירוע. נסו שנית.')
-      return
-    }
-
-    trackEventCreated('new')
-    onClose()
-    navigate(`/events/${data.id}/step/1`)
-  }
-
-  function openFormFor(option: Option) {
-    shouldScrollOnSelectRef.current = true
-    showLeadForm(option)
-  }
-
-  function handleChoose(option: Option) {
-    if (option === 'independent' && !eventId) {
-      void ensureEventThenWizard(option)
-      return
-    }
-    openFormFor(option)
   }
 
   const title = eventName
@@ -246,8 +171,6 @@ export function PlansModal({
         <p className="mb-6 text-center text-sm leading-relaxed text-muted">
           בחרו את האפשרות שמתאימה לאירוע שלכם.
         </p>
-        {createError && <p className="mb-4 text-center text-sm text-danger">{createError}</p>}
-        {creatingEvent && <p className="mb-4 text-center text-sm text-muted">יוצרים אירוע...</p>}
 
         <div className="mb-8 grid grid-cols-1 items-stretch gap-5 lg:grid-cols-3">
           <OptionCard
@@ -287,8 +210,8 @@ export function PlansModal({
               variant={selectedOption === 'independent' && formVisible ? 'gradient' : 'outline'}
               size="md"
               className="w-full font-medium"
-              onClick={() => handleChoose('independent')}
-              disabled={currentPlan === 'independent' || creatingEvent}
+              onClick={() => openFormFor('independent')}
+              disabled={currentPlan === 'independent'}
             >
               {currentPlan === 'independent' ? 'המסלול הנוכחי שלכם' : 'אני מעוניין במשחק עצמאי'}
             </Button>
@@ -330,8 +253,7 @@ export function PlansModal({
                 variant="gradient"
                 size="md"
                 className="w-full font-medium"
-                onClick={() => handleChoose('full')}
-                disabled={creatingEvent}
+                onClick={() => openFormFor('full')}
               >
                 אני מעוניין בחוויה המלאה
               </Button>
@@ -358,8 +280,7 @@ export function PlansModal({
               variant={selectedOption === 'organizations' && formVisible ? 'gradient' : 'outline'}
               size="md"
               className="w-full font-medium"
-              onClick={() => handleChoose('organizations')}
-              disabled={creatingEvent}
+              onClick={() => openFormFor('organizations')}
             >
               אני מעוניין בפתרון מותאם
             </Button>
