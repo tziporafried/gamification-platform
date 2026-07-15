@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Pencil, Check, X } from 'lucide-react'
+import { Pencil, Check, X, Link2, Copy, CheckCheck, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Card } from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
 
 export interface UtmLinkLabel {
@@ -10,8 +13,30 @@ export interface UtmLinkLabel {
   display_name: string
 }
 
+/** Ambiguous-free charset for short opaque ids (no 0/o/1/l/i). */
+const CODE_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'
+
 function normalizeCode(code: string): string {
   return code.trim().toLowerCase()
+}
+
+function randomCode(length: number): string {
+  const bytes = new Uint8Array(length)
+  crypto.getRandomValues(bytes)
+  let out = ''
+  for (let i = 0; i < length; i++) {
+    out += CODE_ALPHABET[bytes[i]! % CODE_ALPHABET.length]
+  }
+  return out
+}
+
+export function buildShareHomeUrl(contentCode: string): string {
+  const origin =
+    typeof window !== 'undefined' ? window.location.origin : 'https://example.com'
+  const url = new URL('/', origin)
+  url.searchParams.set('utm_source', 'share')
+  url.searchParams.set('utm_content', normalizeCode(contentCode))
+  return url.toString()
 }
 
 /** Load + save shared link code → display name maps (super-admin RLS). */
@@ -28,6 +53,7 @@ export function useUtmLinkLabels() {
     const { data, error: fetchError } = await supabase
       .from('utm_link_labels')
       .select('id, content_code, display_name')
+      .order('updated_at', { ascending: false })
 
     if (fetchError) {
       setError(fetchError.message)
@@ -60,6 +86,23 @@ export function useUtmLinkLabels() {
     (code: string): string => labelFor(code) ?? code,
     [labelFor],
   )
+
+  const allocateUniqueCode = useCallback(async (taken: Set<string>): Promise<string> => {
+    for (const len of [2, 3, 4]) {
+      for (let attempt = 0; attempt < 40; attempt++) {
+        const code = randomCode(len)
+        if (taken.has(code)) continue
+        const { data } = await supabase
+          .from('utm_link_labels')
+          .select('id')
+          .eq('content_code', code)
+          .maybeSingle()
+        if (!data) return code
+        taken.add(code)
+      }
+    }
+    return `x${Date.now().toString(36).slice(-5)}`
+  }, [])
 
   async function saveLabel(contentCode: string, displayName: string) {
     if (!user) return { ok: false as const, error: 'יש להתחבר' }
@@ -121,6 +164,62 @@ export function useUtmLinkLabels() {
     return { ok: true as const }
   }
 
+  /**
+   * Create an opaque share link for a human name and persist the mapping immediately
+   * (before any GA4 events arrive).
+   */
+  async function createShareLink(displayName: string) {
+    if (!user) return { ok: false as const, error: 'יש להתחבר' }
+    const name = displayName.trim()
+    if (!name) return { ok: false as const, error: 'יש להקליד שם ללינק' }
+
+    setError(null)
+    const taken = new Set(Object.keys(labelsByCode))
+    const code = await allocateUniqueCode(taken)
+    setSavingCode(code)
+
+    const { error: insertError } = await supabase.from('utm_link_labels').insert({
+      content_code: code,
+      display_name: name,
+      created_by: user.id,
+    })
+
+    setSavingCode(null)
+    if (insertError) {
+      if (insertError.code === '23505') {
+        const retryCode = await allocateUniqueCode(new Set([...taken, code]))
+        setSavingCode(retryCode)
+        const { error: retryError } = await supabase.from('utm_link_labels').insert({
+          content_code: retryCode,
+          display_name: name,
+          created_by: user.id,
+        })
+        setSavingCode(null)
+        if (retryError) {
+          setError(retryError.message)
+          return { ok: false as const, error: retryError.message }
+        }
+        setLabelsByCode((prev) => ({ ...prev, [retryCode]: name }))
+        return {
+          ok: true as const,
+          contentCode: retryCode,
+          displayName: name,
+          url: buildShareHomeUrl(retryCode),
+        }
+      }
+      setError(insertError.message)
+      return { ok: false as const, error: insertError.message }
+    }
+
+    setLabelsByCode((prev) => ({ ...prev, [code]: name }))
+    return {
+      ok: true as const,
+      contentCode: code,
+      displayName: name,
+      url: buildShareHomeUrl(code),
+    }
+  }
+
   return {
     labelsByCode,
     loading,
@@ -129,8 +228,119 @@ export function useUtmLinkLabels() {
     labelFor,
     displayLabel,
     saveLabel,
+    createShareLink,
     reload,
   }
+}
+
+export function UtmShareLinkGenerator({
+  onCreated,
+  createShareLink,
+  generating,
+  error,
+}: {
+  onCreated?: (result: { contentCode: string; displayName: string; url: string }) => void
+  createShareLink: (
+    displayName: string,
+  ) => Promise<
+    | { ok: true; contentCode: string; displayName: string; url: string }
+    | { ok: false; error: string }
+  >
+  generating?: boolean
+  error?: string | null
+}) {
+  const [name, setName] = useState('')
+  const [lastUrl, setLastUrl] = useState<string | null>(null)
+  const [lastCode, setLastCode] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [localError, setLocalError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function handleGenerate(e: React.FormEvent) {
+    e.preventDefault()
+    setLocalError(null)
+    setCopied(false)
+    setBusy(true)
+    const result = await createShareLink(name)
+    setBusy(false)
+    if (!result.ok) {
+      setLocalError(result.error)
+      return
+    }
+    setLastUrl(result.url)
+    setLastCode(result.contentCode)
+    setName('')
+    onCreated?.(result)
+    try {
+      await navigator.clipboard.writeText(result.url)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      /* clipboard may be blocked */
+    }
+  }
+
+  async function copyAgain() {
+    if (!lastUrl) return
+    try {
+      await navigator.clipboard.writeText(lastUrl)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setLocalError('לא ניתן להעתיק — העתיקו ידנית מהשדה')
+    }
+  }
+
+  const showError = localError || error
+
+  return (
+    <Card className="space-y-3 p-4">
+      <div className="flex items-center gap-2">
+        <Sparkles size={16} className="text-secondary" />
+        <h3 className="text-sm font-semibold text-foreground">יצירת לינק שיתוף</h3>
+      </div>
+      <p className="text-[11px] text-muted">
+        מקלידים שם (למשל שם איש קשר) — המערכת יוצרת מזהה לא מזוהה, שומרת את המיפוי מיד, ומעתיקה
+        לינק לדף הבית עם <span className="font-mono">utm_source=share</span>
+      </p>
+      <form
+        onSubmit={(e) => void handleGenerate(e)}
+        className="flex flex-col gap-2 sm:flex-row sm:items-end"
+      >
+        <div className="min-w-0 flex-1">
+          <Input
+            id="utm-link-name"
+            label="שם ללינק"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="למשל: רותי שיף"
+            required
+          />
+        </div>
+        <Button type="submit" loading={busy || generating} className="shrink-0 sm:mb-0.5">
+          <Link2 size={14} className="ml-1" />
+          יצירת לינק
+        </Button>
+      </form>
+      {showError && <p className="text-xs text-danger">{showError}</p>}
+      {lastUrl && (
+        <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface-elevated/50 p-3 sm:flex-row sm:items-center">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-muted">
+              מזהה: <span className="font-mono text-foreground">{lastCode}</span>
+            </p>
+            <p className="mt-0.5 truncate font-mono text-xs text-foreground" dir="ltr">
+              {lastUrl}
+            </p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => void copyAgain()}>
+            {copied ? <CheckCheck size={14} className="ml-1" /> : <Copy size={14} className="ml-1" />}
+            {copied ? 'הועתק' : 'העתקה'}
+          </Button>
+        </div>
+      )}
+    </Card>
+  )
 }
 
 export function LinkLabelEditor({

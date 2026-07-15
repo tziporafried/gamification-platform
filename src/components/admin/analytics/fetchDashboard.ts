@@ -218,6 +218,10 @@ function normalizePayload(raw: AnalyticsDashboardData): AnalyticsDashboardData {
     payload.utm.linkPerformance = payload.utm.linkPerformance?.map((row) => ({
       ...row,
       source: row.source ?? null,
+      newUsers: row.newUsers ?? 0,
+      videoViewUsers: row.videoViewUsers ?? 0,
+      plansViewUsers: row.plansViewUsers ?? 0,
+      leadUsers: row.leadUsers ?? 0,
     })) ?? null
   }
 

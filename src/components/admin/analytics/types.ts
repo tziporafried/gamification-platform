@@ -58,6 +58,7 @@ export interface AnalyticsLinkPerformanceRow {
   content: string
   source: string | null
   users: number
+  newUsers: number
   videoViewUsers: number
   plansViewUsers: number
   leadUsers: number

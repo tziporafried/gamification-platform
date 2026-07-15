@@ -86,6 +86,7 @@ interface LinkPerformanceRow {
   content: string
   source: string | null
   users: number
+  newUsers: number
   videoViewUsers: number
   plansViewUsers: number
   leadUsers: number
@@ -629,11 +630,14 @@ function isUnsetDimension(value: string): boolean {
   return !value || lower === '(not set)' || lower === 'not set' || lower === '(none)'
 }
 
-function mapUtmDimensionRows(rows: Ga4Row[] | undefined): { key: string; users: number }[] {
+function mapUtmDimensionRows(
+  rows: Ga4Row[] | undefined,
+): { key: string; users: number; newUsers: number }[] {
   return (rows ?? [])
     .map((row) => ({
       key: (row.dimensionValues?.[0]?.value ?? '').trim(),
       users: Number(row.metricValues?.[0]?.value ?? 0),
+      newUsers: Number(row.metricValues?.[1]?.value ?? 0),
     }))
     .filter((r) => r.users > 0 && !isUnsetDimension(r.key))
     .sort((a, b) => b.users - a.users)
@@ -697,7 +701,7 @@ function utmDimensionReport(
   return runReport(accessToken, propertyId, {
     dateRanges,
     dimensions: [{ name: fieldName }],
-    metrics: [{ name: 'totalUsers' }],
+    metrics: [{ name: 'totalUsers' }, { name: 'newUsers' }],
     dimensionFilter: notSetFilter(fieldName),
     orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
     limit: 50,
@@ -1707,14 +1711,17 @@ Deno.serve(async (req) => {
       const plansByContent = plansReport.error ? new Map<string, number>() : usersByKey(plansReport.rows)
       const leadsByContent = leadsReport.error ? new Map<string, number>() : usersByKey(leadsReport.rows)
 
-      linkPerformance = mapUtmDimensionRows(contentRowsForPerf.rows).map(({ key, users }) => ({
-        content: key,
-        source: sourceByContent.get(key) ?? null,
-        users,
-        videoViewUsers: videoByContent.get(key) ?? 0,
-        plansViewUsers: plansByContent.get(key) ?? 0,
-        leadUsers: leadsByContent.get(key) ?? 0,
-      }))
+      linkPerformance = mapUtmDimensionRows(contentRowsForPerf.rows).map(
+        ({ key, users, newUsers }) => ({
+          content: key,
+          source: sourceByContent.get(key) ?? null,
+          users,
+          newUsers,
+          videoViewUsers: videoByContent.get(key) ?? 0,
+          plansViewUsers: plansByContent.get(key) ?? 0,
+          leadUsers: leadsByContent.get(key) ?? 0,
+        }),
+      )
     }
 
     // Reconcile KPI with visible breakdowns — never show 46 tagged with empty charts
