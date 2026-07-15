@@ -348,6 +348,11 @@ export function trackFaqOpen(question: string, questionIndex: number) {
   })
 }
 
+/** Homepage FAQ: user expanded the full question list. */
+export function trackFaqShowAll() {
+  trackEvent('faq_show_all')
+}
+
 /** Landing section entered viewport (once per session key / remount window). */
 export function trackHowItWorksView() {
   trackEventDeduped('how_it_works_view', 'how_it_works_view')
