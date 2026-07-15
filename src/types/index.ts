@@ -268,6 +268,20 @@ export interface DevTodoWithAssignee extends DevTodo {
   assignee?: { display_name: string | null; email: string; avatar_url: string | null };
 }
 
+export type FinanceEntryType = 'income' | 'expense';
+
+export interface AdminFinanceEntry {
+  id: string;
+  entry_type: FinanceEntryType;
+  amount: number;
+  description: string;
+  entry_date: string;
+  admin_user_id: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const WIZARD_STEPS: { id: WizardStepId; label: string; step: number }[] = [
   { id: 'details', label: 'פרטי הפעילות', step: 1 },
   { id: 'groups', label: 'חלוקה לקבוצות', step: 2 },
