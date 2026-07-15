@@ -1,6 +1,7 @@
 import { WizardProgress } from './WizardProgress'
 import { WizardChromeContext, useWizardIntroTracking } from './WizardChromeContext'
 import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
+import { cn } from '@/lib/utils'
 import type { WizardState, Event } from '@/types'
 
 interface WizardLayoutProps {
@@ -10,6 +11,8 @@ interface WizardLayoutProps {
   onStepClick: (step: number) => void
   hiddenSteps?: number[]
   headerSuffix?: string
+  /** Embed in a modal/panel — skip global header chrome and fill parent height. */
+  embedded?: boolean
   children: React.ReactNode
 }
 
@@ -20,10 +23,12 @@ export function WizardLayout({
   onStepClick,
   hiddenSteps,
   headerSuffix,
+  embedded = false,
   children,
 }: WizardLayoutProps) {
   useEventHeaderBreadcrumb(event.name, headerSuffix, event.plan, event.id, {
     showTrialBadge: true,
+    enabled: !embedded,
   })
   const { hasIntroPlayed, markIntroPlayed } = useWizardIntroTracking()
 
@@ -38,8 +43,16 @@ export function WizardLayout({
         markIntroPlayed,
       }}
     >
-      <div className="flex flex-col" style={{ height: 'calc(100vh - 56px)' }}>
-        <div className="hidden sm:block shrink-0 pb-[var(--wizard-chrome-gap-top)] pt-2">
+      <div
+        className="flex flex-col"
+        style={embedded ? { height: '100%' } : { height: 'calc(100vh - 56px)' }}
+      >
+        <div
+          className={cn(
+            'shrink-0 pb-[var(--wizard-chrome-gap-top)] pt-2',
+            embedded ? 'block' : 'hidden sm:block',
+          )}
+        >
           <div className="mx-auto w-full max-w-3xl px-4 md:min-w-[42rem]">
             <WizardProgress
               currentStep={currentStep}

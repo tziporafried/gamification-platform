@@ -147,6 +147,11 @@ export function AdminAnalyticsDashboard() {
               חסרים: {error.missing.join(', ')}
             </p>
           )}
+          {error.detail && error.message !== error.detail && (
+            <p className="break-words rounded-lg bg-surface-elevated px-3 py-2 font-mono text-xs text-muted">
+              {error.detail}
+            </p>
+          )}
           <Button variant="outline" size="sm" onClick={() => void load()}>
             נסו שוב
           </Button>

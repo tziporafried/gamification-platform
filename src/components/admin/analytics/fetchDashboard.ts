@@ -6,11 +6,14 @@ import {
   type AnalyticsFetchErrorCode,
 } from './types'
 
-async function readErrorBody(error: unknown): Promise<{
+type ErrorBody = {
   error?: string
   code?: string
   missing?: string[]
-} | null> {
+  detail?: string
+}
+
+async function readErrorBody(error: unknown): Promise<ErrorBody | null> {
   const ctx = (error as { context?: Response })?.context
   if (!ctx || typeof ctx.json !== 'function') return null
   try {
@@ -20,10 +23,21 @@ async function readErrorBody(error: unknown): Promise<{
   }
 }
 
-function throwFromBody(
-  body: { error?: string; code?: string; missing?: string[] } | null,
-  fallbackMessage: string,
-): never {
+function humanizeGa4Detail(detail?: string): string | undefined {
+  if (!detail) return undefined
+  if (/SERVICE_DISABLED|has not been used|is disabled/i.test(detail)) {
+    return 'יש להפעיל את Google Analytics Data API בפרויקט Google Cloud של ה-service account.'
+  }
+  if (/permission|does not have|insufficient|User does not have/i.test(detail)) {
+    return 'ל-service account אין הרשאת Viewer על ה-property ב-GA4 (Property access management).'
+  }
+  if (/not found|property/i.test(detail) && /404|INVALID_ARGUMENT/i.test(detail)) {
+    return 'ייתכן ש-GA4_PROPERTY_ID שגוי (צריך Property ID מספרי, לא G-...).'
+  }
+  return detail
+}
+
+function throwFromBody(body: ErrorBody | null, fallbackMessage: string): never {
   if (body?.code === 'GA4_NOT_CONFIGURED') {
     throw new AnalyticsFetchError(
       'חיבור GA4 עדיין לא הוגדר בשרת',
@@ -31,10 +45,13 @@ function throwFromBody(
       body.missing,
     )
   }
+  const code = (body?.code as AnalyticsFetchErrorCode) || 'UNKNOWN'
+  const detailHint = humanizeGa4Detail(body?.detail)
   throw new AnalyticsFetchError(
-    body?.error || fallbackMessage,
-    (body?.code as AnalyticsFetchErrorCode) || 'UNKNOWN',
+    detailHint || body?.error || fallbackMessage,
+    code,
     body?.missing,
+    body?.detail,
   )
 }
 
@@ -63,10 +80,7 @@ export async function fetchAnalyticsDashboard(
   }
 
   if (data && typeof data === 'object' && 'error' in data && !('overview' in data)) {
-    throwFromBody(
-      data as { error?: string; code?: string; missing?: string[] },
-      'שגיאה בטעינת אנליטיקות',
-    )
+    throwFromBody(data as ErrorBody, 'שגיאה בטעינת אנליטיקות')
   }
 
   if (!data || typeof data !== 'object' || !('overview' in data)) {

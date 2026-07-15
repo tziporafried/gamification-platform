@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2, BarChart3 } from 'lucide-react'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2, BarChart3, Calendar } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
@@ -14,17 +14,19 @@ import { AdminStatusPill } from '@/components/ui/StatusBadge'
 import { DevTodoList } from '@/components/dev-todos/DevTodoList'
 import { TemplateAdminList } from '@/components/admin/TemplateAdminList'
 import { AdminAnalyticsDashboard } from '@/components/admin/analytics/AdminAnalyticsDashboard'
+import { AdminEventsList } from '@/components/admin/AdminEventsList'
 import { TrialActivationResetModal } from '@/components/TrialActivationResetModal'
 import { trackTrialActivated, trackTrialDataReset } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 import type { UserPlan } from '@/types'
 
-type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates' | 'analytics'
+type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates' | 'analytics' | 'events'
 
 const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
   { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },
   { id: 'templates', label: 'תבניות', icon: Sparkles },
   { id: 'customers', label: 'לקוחות', icon: Users },
+  { id: 'events', label: 'אירועים', icon: Calendar },
   { id: 'upgrade-requests', label: 'פניות הפעלה', icon: MessageSquare },
   { id: 'analytics', label: 'אנליטיקות', icon: BarChart3 },
 ]
@@ -364,7 +366,7 @@ export function AdminPanel() {
   }
 
   return (
-    <main className={cn('mx-auto px-4 py-6', tab === 'analytics' ? 'max-w-6xl' : 'max-w-5xl')}>
+    <main className={cn('mx-auto px-4 py-6', tab === 'analytics' || tab === 'events' ? 'max-w-6xl' : 'max-w-5xl')}>
       <Tabs
         tabs={TABS.map(({ id, label, icon: Icon }) => ({
           id,
@@ -388,6 +390,8 @@ export function AdminPanel() {
       {tab === 'todos' && <DevTodoList />}
 
       {tab === 'templates' && <TemplateAdminList />}
+
+      {tab === 'events' && <AdminEventsList />}
 
       {tab === 'customers' && (
         loadingUsers ? (

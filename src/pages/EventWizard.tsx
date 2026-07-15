@@ -37,12 +37,18 @@ function stepNameFor(stepNumber: number): string {
   return WIZARD_STEPS.find((s) => s.step === stepNumber)?.id ?? `step_${stepNumber}`
 }
 
-export function EventWizard() {
+interface EventWizardProps {
+  /** Render inside a modal/panel without redirecting away on missing events. */
+  embedded?: boolean
+}
+
+export function EventWizard({ embedded = false }: EventWizardProps) {
   const { id, step: stepParam } = useParams<{ id: string; step?: string }>()
   const navigate = useNavigate()
   const { isSuperAdmin } = useAuth()
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
 
   const currentStep = useMemo(() => {
     const n = parseInt(stepParam ?? '', 10)
@@ -97,6 +103,7 @@ export function EventWizard() {
   useEffect(() => {
     async function fetchEvent() {
       if (!id) return
+      setNotFound(false)
       const { data } = await supabase
         .from('events')
         .select('*')
@@ -105,6 +112,11 @@ export function EventWizard() {
         .single()
 
       if (!data) {
+        if (embedded) {
+          setNotFound(true)
+          setLoading(false)
+          return
+        }
         navigate('/events', { replace: true })
         return
       }
@@ -112,7 +124,7 @@ export function EventWizard() {
       setLoading(false)
     }
     fetchEvent()
-  }, [id, navigate]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id, navigate, embedded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setDraftSynced(false)
@@ -212,7 +224,27 @@ export function EventWizard() {
     }
   }
 
-  if (loading || templateLoading || !event) return <FullPageLoader />
+  if (loading || templateLoading) {
+    if (embedded) {
+      return (
+        <div className="flex h-full items-center justify-center text-muted">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        </div>
+      )
+    }
+    return <FullPageLoader />
+  }
+
+  if (notFound || !event) {
+    if (embedded) {
+      return (
+        <div className="flex h-full items-center justify-center p-8 text-sm text-muted">
+          האירוע לא נמצא או הועבר לארכיון
+        </div>
+      )
+    }
+    return <FullPageLoader />
+  }
 
   const isTrial = !isSuperAdmin && event.plan === 'free'
 
@@ -224,6 +256,7 @@ export function EventWizard() {
       onStepClick={goToStep}
       hiddenSteps={isTemplateMode ? [...TEMPLATE_SKIP_STEPS] : undefined}
       headerSuffix={isTemplateMode ? 'עריכת תבנית' : undefined}
+      embedded={embedded}
     >
       <WizardStepPanel active={currentStep === 1}>
         <StepEventDetails

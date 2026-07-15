@@ -99,11 +99,18 @@ export type AnalyticsFetchErrorCode =
 export class AnalyticsFetchError extends Error {
   code: AnalyticsFetchErrorCode
   missing?: string[]
+  detail?: string
 
-  constructor(message: string, code: AnalyticsFetchErrorCode, missing?: string[]) {
+  constructor(
+    message: string,
+    code: AnalyticsFetchErrorCode,
+    missing?: string[],
+    detail?: string,
+  ) {
     super(message)
     this.name = 'AnalyticsFetchError'
     this.code = code
     this.missing = missing
+    this.detail = detail
   }
 }
