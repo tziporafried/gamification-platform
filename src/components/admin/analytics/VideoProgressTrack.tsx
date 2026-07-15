@@ -1,4 +1,5 @@
 import { formatNumber, formatRate } from './KpiCard'
+import { SimpleDonut } from './SimpleDonut'
 import { cn } from '@/lib/utils'
 
 export interface ProgressMilestone {
@@ -14,6 +15,11 @@ interface VideoProgressTrackProps {
   unavailableNote?: string
   /** Base for relative % — typically video starters */
   baseUsers?: number
+  startedUsers?: number
+  completedUsers?: number
+  reached25Users?: number | null
+  reached50Users?: number | null
+  reached75Users?: number | null
 }
 
 function relativeToBase(users: number, base: number): number | null {
@@ -21,112 +27,137 @@ function relativeToBase(users: number, base: number): number | null {
   return Math.round((users / base) * 1000) / 10
 }
 
-function calcStepRate(from: number, to: number): number | null {
-  if (from <= 0) return null
-  return Math.round((to / from) * 1000) / 10
+const SLICE_COLORS = [
+  'var(--color-secondary)',
+  'var(--color-primary)',
+  'var(--color-tertiary)',
+  'var(--color-accent)',
+  'var(--color-muted)',
+]
+
+/**
+ * Build non-overlapping drop-off buckets from cumulative milestone counts.
+ * Pie must not double-count users across stages.
+ */
+export function buildVideoDropoffSlices(params: {
+  started: number
+  completed: number
+  reached25: number | null
+  reached50: number | null
+  reached75: number | null
+  milestonesAvailable: boolean
+}): { label: string; value: number; color: string }[] {
+  const started = Math.max(0, params.started)
+  const completed = Math.min(started, Math.max(0, params.completed))
+
+  if (!params.milestonesAvailable || started <= 0) {
+    const dropped = Math.max(0, started - completed)
+    return [
+      { label: 'סיימו', value: completed, color: SLICE_COLORS[0]! },
+      { label: 'לא סיימו', value: dropped, color: SLICE_COLORS[4]! },
+    ].filter((s) => s.value > 0)
+  }
+
+  // Cumulative — clamp so each stage ≤ previous (GA sampling can break order)
+  let p75 = params.reached75
+  let p50 = params.reached50
+  let p25 = params.reached25
+
+  p75 = p75 == null ? completed : Math.min(started, Math.max(completed, p75))
+  p50 = p50 == null ? p75 : Math.min(started, Math.max(p75, p50))
+  p25 = p25 == null ? p50 : Math.min(started, Math.max(p50, p25))
+
+  const slices = [
+    { label: 'סיימו', value: completed, color: SLICE_COLORS[0]! },
+    { label: 'הגיעו ל־75% ולא סיימו', value: Math.max(0, p75 - completed), color: SLICE_COLORS[1]! },
+    { label: 'נעצרו בין 50%–75%', value: Math.max(0, p50 - p75), color: SLICE_COLORS[2]! },
+    { label: 'נעצרו בין 25%–50%', value: Math.max(0, p25 - p50), color: SLICE_COLORS[3]! },
+    { label: 'יצאו לפני 25%', value: Math.max(0, started - p25), color: SLICE_COLORS[4]! },
+  ]
+
+  return slices.filter((s) => s.value > 0)
 }
 
 export function VideoProgressTrack({
-  milestones,
   loading,
   insight,
   unavailable,
   unavailableNote,
   baseUsers,
+  startedUsers,
+  completedUsers,
+  reached25Users,
+  reached50Users,
+  reached75Users,
 }: VideoProgressTrackProps) {
-  if (loading) {
-    return <div className="h-40 animate-pulse rounded-xl bg-surface-elevated" />
-  }
+  const started = startedUsers ?? baseUsers ?? 0
+  const completed = completedUsers ?? 0
+  const completionRate = relativeToBase(completed, started)
 
-  if (!milestones.length) {
-    return <p className="text-sm text-muted">אין נתוני צפייה בטווח שנבחר.</p>
-  }
-
-  const base = baseUsers ?? milestones[0]?.users ?? 0
-  const last = milestones[milestones.length - 1]
-  const completionRate = relativeToBase(last.users, base)
+  const slices = buildVideoDropoffSlices({
+    started,
+    completed,
+    reached25: reached25Users ?? null,
+    reached50: reached50Users ?? null,
+    reached75: reached75Users ?? null,
+    milestonesAvailable: !unavailable,
+  })
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {unavailable && unavailableNote && (
         <p className="rounded-lg border border-border bg-surface-elevated px-3 py-2 text-xs text-muted">
           {unavailableNote}
         </p>
       )}
 
-      {/* Scrubber-style milestone track */}
-      <div className="overflow-x-auto">
-        <div
-          className="relative mx-auto px-1 pt-1"
-          style={{ minWidth: `${Math.max(milestones.length * 5.5, 18)}rem` }}
-        >
-          <div
-            className="absolute inset-x-8 top-[1.125rem] h-1.5 rounded-full"
-            style={{
-              background:
-                'color-mix(in srgb, var(--color-secondary) 45%, var(--color-border))',
-            }}
-            aria-hidden
-          />
+      <SimpleDonut
+        loading={loading}
+        slices={slices}
+        size="lg"
+        showLegendPercent
+        centerLabel="השלמה"
+        centerValue={completionRate === null ? null : formatRate(completionRate)}
+        emptyTitle="אין נתוני צפייה"
+        emptyDescription="בטווח שנבחר אין צפיות בסרטון."
+      />
 
-          <ol
-            className="relative grid gap-2"
-            style={{ gridTemplateColumns: `repeat(${milestones.length}, minmax(0, 1fr))` }}
-          >
-            {milestones.map((m, i) => {
-              const ofBase = relativeToBase(m.users, base)
-              const fromPrev =
-                i > 0 ? calcStepRate(milestones[i - 1].users, m.users) : null
-              const isFirst = i === 0
-              const isLast = i === milestones.length - 1
-
-              return (
-                <li key={m.label} className="flex flex-col items-center text-center">
-                  <div
-                    className={cn(
-                      'relative z-10 flex h-9 w-9 items-center justify-center rounded-full border-2 text-xs font-bold shadow-sm',
-                      isLast
-                        ? 'border-secondary bg-secondary text-secondary-foreground'
-                        : isFirst
-                          ? 'border-secondary bg-secondary text-secondary-foreground'
-                          : 'border-secondary bg-surface text-foreground',
-                    )}
-                  >
-                    {isLast ? '✓' : i + 1}
-                  </div>
-
-                  <p className="mt-3 text-xs font-semibold text-foreground">{m.label}</p>
-                  <p className="mt-1 text-xl font-bold tabular-nums text-foreground">
-                    {formatNumber(m.users)}
-                  </p>
-                  {ofBase !== null && (
-                    <p className="mt-0.5 text-[11px] tabular-nums text-muted">
-                      {formatRate(ofBase)} מהמתחילים
-                    </p>
-                  )}
-                  {fromPrev !== null && (
-                    <p className="mt-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums text-muted"
-                      style={{
-                        background:
-                          'color-mix(in srgb, var(--color-muted) 10%, transparent)',
-                      }}
-                    >
-                      {formatRate(fromPrev)} מהקודם
-                    </p>
-                  )}
-                </li>
-              )
-            })}
-          </ol>
-        </div>
-      </div>
-
-      {completionRate !== null && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-elevated/60 px-4 py-3">
-          <p className="text-xs text-muted">השלימו את הסרטון</p>
-          <p className="text-lg font-bold tabular-nums text-foreground">
-            {formatRate(completionRate)}
-          </p>
+      {!loading && started > 0 && (
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted">
+          <span>
+            התחילו:{' '}
+            <span className="font-semibold tabular-nums text-foreground">
+              {formatNumber(started)}
+            </span>
+          </span>
+          <span>
+            סיימו:{' '}
+            <span className="font-semibold tabular-nums text-foreground">
+              {formatNumber(completed)}
+            </span>
+          </span>
+          {!unavailable && (
+            <>
+              <span>
+                25%:{' '}
+                <span className="font-semibold tabular-nums text-foreground">
+                  {formatNumber(reached25Users ?? 0)}
+                </span>
+              </span>
+              <span>
+                50%:{' '}
+                <span className="font-semibold tabular-nums text-foreground">
+                  {formatNumber(reached50Users ?? 0)}
+                </span>
+              </span>
+              <span>
+                75%:{' '}
+                <span className="font-semibold tabular-nums text-foreground">
+                  {formatNumber(reached75Users ?? 0)}
+                </span>
+              </span>
+            </>
+          )}
         </div>
       )}
 

@@ -706,17 +706,83 @@ function utmContentDimFilter(fieldName: string, codes: string[]) {
   }
 }
 
-function reportMetricSum(report: Ga4Report, metricIndex = 0): number {
-  if (report.error) return -1
-  let sum = 0
-  for (const row of report.rows ?? []) {
-    sum += Number(row.metricValues?.[metricIndex]?.value ?? 0)
+/**
+ * Merge session + customEvent affiliate traffic by date (max per day).
+ * Picking only one source independently from events caused "video without visitors".
+ */
+function mergeTrafficRowsByDate(...reports: Ga4Report[]): Ga4Row[] {
+  const byDate = new Map<string, { visitors: number; newUsers: number }>()
+  for (const report of reports) {
+    if (report.error) continue
+    for (const row of report.rows ?? []) {
+      const date = formatGa4Date(row.dimensionValues?.[0]?.value ?? '')
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
+      const visitors = coerceMetric(row.metricValues?.[0]?.value)
+      const newUsers = coerceMetric(row.metricValues?.[1]?.value)
+      const prev = byDate.get(date)
+      if (!prev) {
+        byDate.set(date, { visitors, newUsers })
+      } else {
+        prev.visitors = Math.max(prev.visitors, visitors)
+        prev.newUsers = Math.max(prev.newUsers, newUsers)
+      }
+    }
   }
-  return sum
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, m]) => ({
+      dimensionValues: [{ value: date }],
+      metricValues: [{ value: String(m.visitors) }, { value: String(m.newUsers) }],
+    }))
 }
 
-function preferGa4Report(primary: Ga4Report, fallback: Ga4Report): Ga4Report {
-  return reportMetricSum(primary) >= reportMetricSum(fallback) ? primary : fallback
+/** Merge session + customEvent event rows by date×eventName (max users). */
+function mergeEventRowsByDateEvent(...reports: Ga4Report[]): Ga4Row[] {
+  const byKey = new Map<string, number>()
+  for (const report of reports) {
+    if (report.error) continue
+    for (const row of report.rows ?? []) {
+      const date = formatGa4Date(row.dimensionValues?.[0]?.value ?? '')
+      const eventName = row.dimensionValues?.[1]?.value ?? ''
+      if (!date || !eventName || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
+      const key = `${date}\t${eventName}`
+      const users = coerceMetric(row.metricValues?.[0]?.value)
+      byKey.set(key, Math.max(byKey.get(key) ?? 0, users))
+    }
+  }
+  return [...byKey.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, users]) => {
+      const [date, eventName] = key.split('\t')
+      return {
+        dimensionValues: [{ value: date }, { value: eventName }],
+        metricValues: [{ value: String(users) }],
+      }
+    })
+}
+
+/**
+ * Anyone who engaged (video / plans / lead / …) is a visitor that day.
+ * Prevents charts showing engagement above traffic when attribution scopes differ.
+ */
+function reconcileVisitorsWithEngagement(days: TimeSeriesDay[]): TimeSeriesDay[] {
+  return days.map((day) => {
+    const engaged = Math.max(
+      day.videoView,
+      day.videoComplete,
+      day.viewPlans,
+      day.selectPlan,
+      day.contactFormOpen,
+      day.generateLead,
+      day.ctaClick,
+      day.faqOpen,
+      day.loginView,
+      day.signUp,
+      day.eventCreated,
+    )
+    if (engaged <= day.visitors) return day
+    return { ...day, visitors: engaged }
+  })
 }
 
 function usersByKey(rows: Ga4Row[] | undefined): Map<string, number> {
@@ -1655,36 +1721,49 @@ Deno.serve(async (req) => {
     let timeSeriesUnavailable = false
     const timeSeriesWarnings: string[] = []
 
-    const timeSeriesTraffic = preferGa4Report(
-      timeSeriesTrafficSessionReport,
-      timeSeriesTrafficCustomReport,
-    )
-    const timeSeriesEvents = preferGa4Report(
-      timeSeriesEventsSessionReport,
-      timeSeriesEventsCustomReport,
-    )
+    const trafficSessionOk = !timeSeriesTrafficSessionReport.error
+    const trafficCustomOk = !timeSeriesTrafficCustomReport.error
+    const eventsSessionOk = !timeSeriesEventsSessionReport.error
+    const eventsCustomOk = !timeSeriesEventsCustomReport.error
 
-    if (timeSeriesTraffic.error && timeSeriesEvents.error) {
+    if (!trafficSessionOk && !trafficCustomOk && !eventsSessionOk && !eventsCustomOk) {
       timeSeriesUnavailable = true
       console.warn(
         'time series unavailable',
-        timeSeriesTraffic.error?.message,
-        timeSeriesEvents.error?.message,
+        timeSeriesTrafficSessionReport.error?.message,
+        timeSeriesTrafficCustomReport.error?.message,
+        timeSeriesEventsSessionReport.error?.message,
+        timeSeriesEventsCustomReport.error?.message,
       )
     } else {
-      if (timeSeriesTraffic.error) {
+      if (!trafficSessionOk && !trafficCustomOk) {
         timeSeriesWarnings.push('traffic')
-        console.warn('time series traffic unavailable', timeSeriesTraffic.error.message)
+        console.warn(
+          'time series traffic unavailable',
+          timeSeriesTrafficSessionReport.error?.message,
+          timeSeriesTrafficCustomReport.error?.message,
+        )
       }
-      if (timeSeriesEvents.error) {
+      if (!eventsSessionOk && !eventsCustomOk) {
         timeSeriesWarnings.push('events')
-        console.warn('time series events unavailable', timeSeriesEvents.error.message)
+        console.warn(
+          'time series events unavailable',
+          timeSeriesEventsSessionReport.error?.message,
+          timeSeriesEventsCustomReport.error?.message,
+        )
       }
-      timeSeriesDays = buildTimeSeriesDays(
-        startDate,
-        endDate,
-        timeSeriesTraffic.error ? [] : timeSeriesTraffic.rows,
-        timeSeriesEvents.error ? [] : timeSeriesEvents.rows,
+
+      const mergedTrafficRows = mergeTrafficRowsByDate(
+        timeSeriesTrafficSessionReport,
+        timeSeriesTrafficCustomReport,
+      )
+      const mergedEventRows = mergeEventRowsByDateEvent(
+        timeSeriesEventsSessionReport,
+        timeSeriesEventsCustomReport,
+      )
+
+      timeSeriesDays = reconcileVisitorsWithEngagement(
+        buildTimeSeriesDays(startDate, endDate, mergedTrafficRows, mergedEventRows),
       )
 
       if (!timeSeriesHasSignal(timeSeriesDays) && homepageUsers > 0) {
@@ -1692,8 +1771,8 @@ Deno.serve(async (req) => {
           'affiliate time series empty despite homepage traffic',
           `range=${startDate}..${endDate}`,
           `affiliateContents=${affiliateContents.length ? affiliateContents.join(',') : '(all tagged)'}`,
-          `trafficRows=${timeSeriesTraffic.rows?.length ?? 0}`,
-          `eventRows=${timeSeriesEvents.rows?.length ?? 0}`,
+          `trafficRows=${mergedTrafficRows.length}`,
+          `eventRows=${mergedEventRows.length}`,
         )
         timeSeriesWarnings.push('empty_despite_traffic')
       }

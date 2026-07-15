@@ -565,13 +565,18 @@ export function AdminAnalyticsDashboard() {
               title="ביצועי הסרטון"
             />
             <Card className="p-5">
-              <h3 className="mb-4 text-sm font-semibold text-foreground">מסלול הצפייה</h3>
+              <h3 className="mb-4 text-sm font-semibold text-foreground">פיצול צפייה</h3>
               <VideoProgressTrack
                 loading={loading}
                 milestones={videoMilestones}
                 baseUsers={data.video.startedUsers}
+                startedUsers={data.video.startedUsers}
+                completedUsers={data.video.completedUsers}
+                reached25Users={data.video.reached25Users}
+                reached50Users={data.video.reached50Users}
+                reached75Users={data.video.reached75Users}
                 unavailable={data.video.milestonesUnavailable}
-                unavailableNote="אבני דרך 25% / 50% / 75% עדיין לא זמינות לדיווח. מוצגים התחלה וסיום בלבד."
+                unavailableNote="אבני דרך 25% / 50% / 75% עדיין לא זמינות ב-GA4 (יש לרשום את progress_percent כ-Event-scoped Custom Dimension). מוצג כרגע סיימו מול לא סיימו."
                 insight={videoInsight}
               />
             </Card>

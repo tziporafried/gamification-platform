@@ -200,7 +200,7 @@ export function TrendLineChart({
 
   if (!hasMultipleDays) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-2">
         <SeriesSelector selected={selected} onToggle={toggleSeries} onSelectGroup={selectGroup} />
         <EmptyState
           compact
@@ -213,11 +213,8 @@ export function TrendLineChart({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <SeriesSelector selected={selected} onToggle={toggleSeries} onSelectGroup={selectGroup} />
-      <p className="text-[11px] text-muted">
-        בחרו כמה מדדים במקביל · לחצו על שם קבוצה כדי להדליק/לכבות את כולה
-      </p>
       <div className="w-full" style={{ height }} dir="ltr">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
@@ -288,44 +285,48 @@ function SeriesSelector({
   onSelectGroup: (group: SeriesGroup) => void
 }) {
   return (
-    <div className="space-y-3">
-      {SERIES_GROUPS.map((group) => {
+    <div
+      className="flex flex-wrap items-center gap-x-2 gap-y-1.5"
+      title="בחרו כמה מדדים · לחיצה על שם קבוצה מדליקה/מכבה את כולה"
+    >
+      {SERIES_GROUPS.map((group, gi) => {
         const allOn = group.series.every((s) => selected.includes(s.key))
         return (
-          <div key={group.id} className="space-y-1.5">
+          <div key={group.id} className="flex flex-wrap items-center gap-1">
+            {gi > 0 && (
+              <span className="mx-0.5 hidden h-3 w-px bg-border sm:inline-block" aria-hidden />
+            )}
             <button
               type="button"
               onClick={() => onSelectGroup(group)}
-              className={`text-[11px] font-semibold transition-colors ${
+              className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
                 allOn ? 'text-secondary' : 'text-muted hover:text-foreground'
               }`}
             >
               {group.label}
             </button>
-            <div className="flex flex-wrap gap-1.5">
-              {group.series.map((s) => {
-                const active = selected.includes(s.key)
-                return (
-                  <button
-                    key={s.key}
-                    type="button"
-                    onClick={() => onToggle(s.key)}
-                    aria-pressed={active}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
-                      active
-                        ? 'bg-secondary text-secondary-foreground'
-                        : 'bg-surface-elevated text-muted hover:text-foreground'
-                    }`}
-                  >
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ background: s.color }}
-                    />
-                    {s.label}
-                  </button>
-                )
-              })}
-            </div>
+            {group.series.map((s) => {
+              const active = selected.includes(s.key)
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => onToggle(s.key)}
+                  aria-pressed={active}
+                  className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-tight transition-colors ${
+                    active
+                      ? 'bg-secondary text-secondary-foreground'
+                      : 'bg-surface-elevated text-muted hover:text-foreground'
+                  }`}
+                >
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ background: s.color }}
+                  />
+                  {s.label}
+                </button>
+              )
+            })}
           </div>
         )
       })}
