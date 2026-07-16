@@ -163,10 +163,12 @@ function normalizePayload(raw: AnalyticsDashboardData): AnalyticsDashboardData {
   }
 
   if (!payload.timeSeries) {
-    payload.timeSeries = { days: [], unavailable: true }
+    payload.timeSeries = { days: [], unavailable: true, granularity: 'day' }
   } else {
     payload.timeSeries.days ??= []
     payload.timeSeries.unavailable ??= false
+    payload.timeSeries.granularity ??=
+      payload.timeSeries.days.some((d) => String(d.date).includes('T')) ? 'hour' : 'day'
     payload.timeSeries.days = payload.timeSeries.days.map((day) => ({
       ...day,
       visitors: Number(day.visitors ?? 0),

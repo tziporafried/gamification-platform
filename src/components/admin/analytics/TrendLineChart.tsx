@@ -88,7 +88,7 @@ const SERIES_BY_KEY = Object.fromEntries(ALL_SERIES.map((s) => [s.key, s])) as R
   SeriesDef
 >
 
-const SERIES_LABELS: Record<TrendSeriesKey, string> = {
+const SERIES_LABELS_DAY: Record<TrendSeriesKey, string> = {
   visitors: 'מבקרים בדף הבית (ליום)',
   newUsers: 'משתמשים חדשים (ליום)',
   videoView: 'צפו בסרטון',
@@ -104,6 +104,12 @@ const SERIES_LABELS: Record<TrendSeriesKey, string> = {
   eventCreated: 'יצירת אירוע',
 }
 
+const SERIES_LABELS_HOUR: Record<TrendSeriesKey, string> = {
+  ...SERIES_LABELS_DAY,
+  visitors: 'מבקרים בדף הבית (לשעה)',
+  newUsers: 'משתמשים חדשים (לשעה)',
+}
+
 const DEFAULT_SELECTED: TrendSeriesKey[] = ['visitors', 'generateLead', 'viewPlans']
 
 interface TrendLineChartProps {
@@ -112,9 +118,17 @@ interface TrendLineChartProps {
   unavailable?: boolean
   /** Chart height in px — hero dashboard uses a larger value */
   height?: number
+  granularity?: 'day' | 'hour'
+}
+
+function isHourBucket(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:00$/.test(value)
 }
 
 function formatShortDate(ymd: string): string {
+  if (isHourBucket(ymd)) {
+    return `${ymd.slice(11, 13)}:00`
+  }
   const [, m, d] = ymd.split('-')
   if (!m || !d) return ymd
   return `${Number(d)}.${Number(m)}`
@@ -122,6 +136,14 @@ function formatShortDate(ymd: string): string {
 
 function formatFullDate(ymd: string): string {
   try {
+    if (isHourBucket(ymd)) {
+      const hour = ymd.slice(11, 13)
+      const dayLabel = new Intl.DateTimeFormat('he-IL', {
+        day: 'numeric',
+        month: 'short',
+      }).format(new Date(`${ymd.slice(0, 10)}T12:00:00`))
+      return `${dayLabel} · ${hour}:00`
+    }
     return new Intl.DateTimeFormat('he-IL', {
       day: 'numeric',
       month: 'short',
@@ -141,8 +163,11 @@ export function TrendLineChart({
   loading,
   unavailable,
   height = 420,
+  granularity = 'day',
 }: TrendLineChartProps) {
   const [selected, setSelected] = useState<TrendSeriesKey[]>(DEFAULT_SELECTED)
+  const hourly = granularity === 'hour' || days.some((d) => isHourBucket(d.date))
+  const seriesLabels = hourly ? SERIES_LABELS_HOUR : SERIES_LABELS_DAY
 
   const chartData = useMemo(
     () =>
@@ -159,7 +184,7 @@ export function TrendLineChart({
     [days],
   )
 
-  const hasMultipleDays = days.length > 1
+  const hasEnoughPoints = days.length > 1
 
   function toggleSeries(key: TrendSeriesKey) {
     setSelected((prev) => {
@@ -193,20 +218,24 @@ export function TrendLineChart({
         compact
         icon={<TrendingUp size={22} />}
         title="מגמה לא זמינה"
-        description="לא ניתן לטעון את נתוני המגמה היומית כרגע."
+        description="לא ניתן לטעון את נתוני המגמה כרגע."
       />
     )
   }
 
-  if (!hasMultipleDays) {
+  if (!hasEnoughPoints) {
     return (
       <div className="space-y-2">
-        <SeriesSelector selected={selected} onToggle={toggleSeries} onSelectGroup={selectGroup} />
+        <SeriesSelector
+          selected={selected}
+          onToggle={toggleSeries}
+          onSelectGroup={selectGroup}
+        />
         <EmptyState
           compact
           icon={<TrendingUp size={22} />}
-          title="אין מספיק ימים להצגת מגמה"
-          description="בחרו טווח של יותר מיום אחד כדי לראות שינוי לאורך זמן."
+          title="אין מספיק נקודות להצגת מגמה"
+          description="בחרו טווח של יותר מיום אחד, או יום בודד לפיצול שעתי."
         />
       </div>
     )
@@ -214,7 +243,14 @@ export function TrendLineChart({
 
   return (
     <div className="space-y-2">
-      <SeriesSelector selected={selected} onToggle={toggleSeries} onSelectGroup={selectGroup} />
+      <SeriesSelector
+        selected={selected}
+        onToggle={toggleSeries}
+        onSelectGroup={selectGroup}
+      />
+      {hourly && (
+        <p className="text-[11px] text-muted">פיצול לפי שעה · 24 שעות ביום שנבחר</p>
+      )}
       <div className="w-full" style={{ height }} dir="ltr">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
@@ -224,7 +260,8 @@ export function TrendLineChart({
               tick={{ fill: 'var(--color-muted)', fontSize: 12 }}
               axisLine={false}
               tickLine={false}
-              minTickGap={24}
+              minTickGap={hourly ? 8 : 24}
+              interval={hourly ? 1 : 'preserveStartEnd'}
             />
             <YAxis
               tick={{ fill: 'var(--color-muted)', fontSize: 12 }}
@@ -247,14 +284,14 @@ export function TrendLineChart({
               }}
               formatter={(value: number, name: string) => [
                 formatNumber(value),
-                SERIES_LABELS[name as TrendSeriesKey] ?? name,
+                seriesLabels[name as TrendSeriesKey] ?? name,
               ]}
             />
             <Legend
               verticalAlign="top"
               align="center"
               wrapperStyle={{ direction: 'rtl', fontSize: 12, paddingBottom: 10 }}
-              formatter={(value: string) => SERIES_LABELS[value as TrendSeriesKey] ?? value}
+              formatter={(value: string) => seriesLabels[value as TrendSeriesKey] ?? value}
             />
             {selected.map((key) => (
               <Line
@@ -264,7 +301,7 @@ export function TrendLineChart({
                 name={key}
                 stroke={SERIES_BY_KEY[key].color}
                 strokeWidth={2.75}
-                dot={{ r: 3.5, fill: SERIES_BY_KEY[key].color, strokeWidth: 0 }}
+                dot={{ r: hourly ? 2.5 : 3.5, fill: SERIES_BY_KEY[key].color, strokeWidth: 0 }}
                 activeDot={{ r: 6 }}
               />
             ))}

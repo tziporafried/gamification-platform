@@ -78,16 +78,33 @@ function asAffiliateAttr(raw: unknown): Record<string, string> | null {
   return Object.keys(out).length ? out : null
 }
 
-/** Sentinel for profiles with attribution but no utm_content (still filterable). */
+/** Sentinel for profiles with attribution but no usable affiliate code. */
 const AFFILIATE_NO_CONTENT = '__no_content__'
 
-/** Prefer utm_content (share-link code). Analytics filters by content only. */
+/** Generic utm_source values that are not affiliate codes. */
+const GENERIC_UTM_SOURCES = new Set(['share', 'personal_share', 'direct', '(direct)'])
+
+/**
+ * Affiliate code for filter/display: prefer utm_content, else utm_source
+ * when it looks like a mistaken short code (e.g. ?utm_source=bt).
+ */
 function affiliateFilterCode(attr: unknown): string | null {
   const parsed = asAffiliateAttr(attr)
   if (!parsed) return null
-  const content = parsed.utm_content?.trim()
-  if (content) return content.toLowerCase()
-  return AFFILIATE_NO_CONTENT
+  const content = parsed.utm_content?.trim().toLowerCase()
+  if (content) return content
+  const source = parsed.utm_source?.trim().toLowerCase()
+  if (source && !GENERIC_UTM_SOURCES.has(source)) return source
+  if (Object.keys(parsed).length > 0) return AFFILIATE_NO_CONTENT
+  return null
+}
+
+function affiliateMatchedViaSourceOnly(attr: unknown): boolean {
+  const parsed = asAffiliateAttr(attr)
+  if (!parsed?.utm_source?.trim()) return false
+  if (parsed.utm_content?.trim()) return false
+  const source = parsed.utm_source.trim().toLowerCase()
+  return !GENERIC_UTM_SOURCES.has(source)
 }
 
 function affiliateLabel(attr: unknown, labelFor: (code: string) => string | null): string | null {
@@ -98,7 +115,10 @@ function affiliateLabel(attr: unknown, labelFor: (code: string) => string | null
     if (parsed?.utm_source) return `מקור: ${parsed.utm_source}`
     return 'אפיליאייט (ללא קוד לינק)'
   }
-  return labelFor(code) ?? code
+  const name = labelFor(code) ?? code
+  // Flag malformed links (?utm_source=CODE without utm_content)
+  if (affiliateMatchedViaSourceOnly(attr)) return `${name} (מ־source)`
+  return name
 }
 
 interface AdminEventRow {
@@ -175,7 +195,7 @@ export function AdminPanel() {
   const { tab: tabParam } = useParams<{ tab: string }>()
   const navigate = useNavigate()
   const { user: currentUser } = useAuth()
-  const { labelFor, labelsByCode } = useUtmLinkLabels()
+  const { labelFor } = useUtmLinkLabels()
   const tab: AdminTab = isAdminTab(tabParam) ? tabParam : DEFAULT_ADMIN_TAB
   const [users, setUsers] = useState<AdminUser[]>([])
   const [requests, setRequests] = useState<UpgradeRequest[]>([])
@@ -274,12 +294,9 @@ export function AdminPanel() {
       if (!code) continue
       counts.set(code, (counts.get(code) ?? 0) + 1)
     }
-    // Keep every configured share-link code in the filter (even with 0 customers),
-    // so the bar does not disappear when nobody has utm_content yet.
-    for (const code of Object.keys(labelsByCode)) {
-      if (!counts.has(code)) counts.set(code, 0)
-    }
+    // Only codes with at least one customer — skip unused labeled links.
     return [...counts.entries()]
+      .filter(([, count]) => count > 0)
       .sort((a, b) => {
         if (a[0] === AFFILIATE_NO_CONTENT) return 1
         if (b[0] === AFFILIATE_NO_CONTENT) return -1
@@ -295,7 +312,7 @@ export function AdminPanel() {
             ? `ללא קוד לינק (${count})`
             : labelFor(code) ?? code,
       }))
-  }, [users, labelFor, labelsByCode])
+  }, [users, labelFor])
 
   const filteredUsers = useMemo(() => {
     if (selectedAffiliates.length === 0) return users
@@ -531,7 +548,7 @@ export function AdminPanel() {
                 options={affiliateOptions}
                 selected={selectedAffiliates}
                 onChange={setSelectedAffiliates}
-                hint="לפי קוד לינק השיתוף (utm_content) שנשמר בפרופיל, כולל לינקים שהוגדרו באנליטיקות."
+                hint="לפי utm_content, או utm_source אם אין content (לינקים ישנים/שגויים כמו ?utm_source=bt)."
               />
             </div>
           )}
@@ -586,9 +603,11 @@ export function AdminPanel() {
                           <p
                             className="text-xs text-brand-400 mt-0.5 truncate"
                             title={
-                              contentCode
-                                ? `אפיליאייט · ${contentCode}`
-                                : 'אפיליאייט נשמר בלי utm_content (קוד לינק)'
+                              contentCode && contentCode !== AFFILIATE_NO_CONTENT
+                                ? affiliateMatchedViaSourceOnly(user.affiliate_attribution)
+                                  ? `שויך דרך utm_source=${contentCode} (בלי utm_content)`
+                                  : `אפיליאייט · utm_content=${contentCode}`
+                                : 'אפיליאייט נשמר בלי קוד לינק מזוהה'
                             }
                           >
                             אפיליאייט: {affiliate}

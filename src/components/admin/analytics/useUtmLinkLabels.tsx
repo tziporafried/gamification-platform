@@ -233,6 +233,149 @@ export function useUtmLinkLabels() {
   }
 }
 
+/** Name a content code you already used in a manual share URL (utm_content). */
+export function UtmNameExistingCode({
+  saveLabel,
+  saving,
+  error,
+  onSaved,
+  compact = false,
+}: {
+  saveLabel: (
+    contentCode: string,
+    displayName: string,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>
+  saving?: boolean
+  error?: string | null
+  onSaved?: (result: { contentCode: string; displayName: string }) => void
+  compact?: boolean
+}) {
+  const [code, setCode] = useState('')
+  const [name, setName] = useState('')
+  const [localError, setLocalError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [savedHint, setSavedHint] = useState<string | null>(null)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLocalError(null)
+    setSavedHint(null)
+    const normalized = normalizeCode(code)
+    const trimmedName = name.trim()
+    if (!normalized) {
+      setLocalError('יש להקליד את קוד הלינק (utm_content)')
+      return
+    }
+    if (!/^[a-z0-9_-]{1,40}$/i.test(normalized)) {
+      setLocalError('קוד לא תקין — רק אותיות, ספרות, - ו-_')
+      return
+    }
+    if (!trimmedName) {
+      setLocalError('יש להקליד שם לתצוגה')
+      return
+    }
+    setBusy(true)
+    const result = await saveLabel(normalized, trimmedName)
+    setBusy(false)
+    if (!result.ok) {
+      setLocalError(result.error)
+      return
+    }
+    setSavedHint(`${trimmedName} · ${normalized}`)
+    setCode('')
+    setName('')
+    onSaved?.({ contentCode: normalized, displayName: trimmedName })
+    window.setTimeout(() => setSavedHint(null), 3000)
+  }
+
+  const showError = localError || error
+
+  if (compact) {
+    return (
+      <div className="min-w-0 space-y-1.5">
+        <form
+          onSubmit={(e) => void handleSubmit(e)}
+          className="flex min-w-0 flex-wrap items-center gap-1.5"
+          title="קוד לינק קיים → שם לתצוגה באדמין"
+        >
+          <span className="shrink-0 text-[11px] font-semibold text-muted">שם לקוד</span>
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="קוד"
+            dir="ltr"
+            className={cn(
+              'h-8 w-[4.5rem] shrink-0 rounded-lg border border-border bg-surface px-2 text-xs text-foreground outline-none',
+              'placeholder:text-muted focus:border-secondary font-mono',
+            )}
+          />
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="שם לתצוגה"
+            className={cn(
+              'h-8 min-w-[7rem] flex-1 rounded-lg border border-border bg-surface px-2.5 text-xs text-foreground outline-none',
+              'placeholder:text-muted focus:border-secondary',
+            )}
+          />
+          <Button type="submit" size="xs" loading={busy || saving} className="shrink-0 gap-1">
+            <Pencil size={12} />
+            שמירה
+          </Button>
+        </form>
+        {showError && <p className="text-[11px] text-danger">{showError}</p>}
+        {savedHint && !showError && (
+          <p className="text-[11px] text-success">נשמר: {savedHint}</p>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <Card className="space-y-3 p-4">
+      <div className="flex items-center gap-2">
+        <Pencil size={16} className="text-secondary" />
+        <h3 className="text-sm font-semibold text-foreground">שם ללינק שיצרתם בעצמכם</h3>
+      </div>
+      <p className="text-[11px] text-muted">
+        אם כבר יש לכם לינק עם <span className="font-mono">utm_content</span> — הקלידו את הקוד ואת
+        השם שיוצג באדמין.
+      </p>
+      <form
+        onSubmit={(e) => void handleSubmit(e)}
+        className="flex flex-col gap-2 sm:flex-row sm:items-end"
+      >
+        <div className="w-full sm:w-28">
+          <Input
+            id="utm-existing-code"
+            label="קוד הלינק"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="bt"
+            dir="ltr"
+            className="font-mono"
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <Input
+            id="utm-existing-name"
+            label="שם לתצוגה"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="למשל: רותי שיף"
+          />
+        </div>
+        <Button type="submit" loading={busy || saving} className="shrink-0 sm:mb-0.5">
+          <Pencil size={14} className="ml-1" />
+          שמירת שם
+        </Button>
+      </form>
+      {showError && <p className="text-xs text-danger">{showError}</p>}
+      {savedHint && !showError && <p className="text-xs text-success">נשמר: {savedHint}</p>}
+    </Card>
+  )
+}
+
 export function UtmShareLinkGenerator({
   onCreated,
   createShareLink,

@@ -4,7 +4,6 @@ import { WizardDeleteButton } from '@/components/wizard/WizardDeleteButton'
 import { cn } from '@/lib/utils'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
 import { TaskLimitSelect } from './TaskLimitSelect'
-import { Tooltip, useIsTruncated } from '@/components/ui/Tooltip'
 import { ACTION_CARD_GRADIENT, getActionIcon, getActionIconMotion, getActionIconPlacement } from '@/lib/actionTiers'
 import { theme } from '@/lib/theme'
 import { toLimitDbValues, toLimitMode, getDailyTimeWindow, isSameLimitDbValues, type DailyTimeWindow, type LimitMode } from '@/lib/taskLimit'
@@ -35,7 +34,6 @@ export const ActionRow = memo(function ActionRow({
   const [points, setPoints] = useState(action.points.toString())
   const [saving, setSaving] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
-  const nameTextRef = useRef<HTMLParagraphElement>(null)
   const pointsRef = useRef<HTMLInputElement>(null)
 
   const [limitMode, setLimitMode] = useState<LimitMode>(toLimitMode(action))
@@ -53,7 +51,6 @@ export const ActionRow = memo(function ActionRow({
   const pointsLabel = `${pointsNum < 0 ? '−' : ''}${Math.abs(pointsNum).toLocaleString()} נק׳`
   const assignedGroupIds = new Set(localGroups.map(g => g.id))
   const isAllGroups = localGroups.length === 0
-  const isNameTruncated = useIsTruncated(nameTextRef, name)
 
   useEffect(() => { setName(action.name) }, [action.name])
   useEffect(() => { setPoints(action.points.toString()) }, [action.points])
@@ -240,41 +237,32 @@ export const ActionRow = memo(function ActionRow({
         />
 
         <div className="relative z-10 flex flex-col gap-2 py-2 pl-9 pr-3">
-          <Tooltip
-            content={name}
-            hidden={editingName || !isNameTruncated}
-            className="min-w-0"
+          <div
+            className="flex min-w-0 items-start"
+            onClick={() => !editingName && setEditingName(true)}
+            role="button"
+            tabIndex={-1}
           >
-            <div
-              className="flex min-w-0 items-center"
-              onClick={() => !editingName && setEditingName(true)}
-              role="button"
-              tabIndex={-1}
-            >
-              {editingName ? (
-                <input
-                  ref={nameRef}
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyDown={handleNameKey}
-                  onBlur={saveName}
-                  className={cn(
-                    'h-full w-full min-w-0 bg-transparent text-sm font-semibold leading-tight text-white outline-none border-0 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.5)]',
-                    saving && 'opacity-50',
-                  )}
-                  disabled={saving}
-                />
-              ) : (
-                <p
-                  ref={nameTextRef}
-                  className="h-full w-full min-w-0 truncate text-sm font-semibold leading-tight cursor-text hover:text-white/90 transition-colors"
-                >
-                  {name}
-                </p>
-              )}
-            </div>
-          </Tooltip>
+            {editingName ? (
+              <input
+                ref={nameRef}
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={handleNameKey}
+                onBlur={saveName}
+                className={cn(
+                  'w-full min-w-0 bg-transparent text-sm font-semibold leading-snug text-white outline-none border-0 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.5)]',
+                  saving && 'opacity-50',
+                )}
+                disabled={saving}
+              />
+            ) : (
+              <p className="w-full min-w-0 whitespace-normal break-words text-sm font-semibold leading-snug cursor-text hover:text-white/90 transition-colors">
+                {name}
+              </p>
+            )}
+          </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
             <div className="flex shrink-0 items-center">

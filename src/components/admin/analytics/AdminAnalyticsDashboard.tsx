@@ -34,7 +34,7 @@ import { SimpleDonut } from './SimpleDonut'
 import { InsightCards } from './InsightCards'
 import { VideoProgressTrack } from './VideoProgressTrack'
 import { fetchAnalyticsDashboard } from './fetchDashboard'
-import { LinkLabelEditor, useUtmLinkLabels, UtmShareLinkGenerator } from './useUtmLinkLabels'
+import { LinkLabelEditor, useUtmLinkLabels, UtmShareLinkGenerator, UtmNameExistingCode } from './useUtmLinkLabels'
 import { AffiliateFilterBar, ratePct } from './AffiliateFilter'
 import {
   buildAttentionInsights,
@@ -103,18 +103,23 @@ function toDonutSlices(items: { label: string; users: number }[] | null | undefi
     }))
 }
 
-/** Distinct utm_content codes from registered customer first-touch attribution. */
+/** Distinct affiliate codes from customer attribution (utm_content, else non-generic utm_source). */
 function extractCustomerContentCodes(
   rows: { affiliate_attribution: unknown }[] | null,
 ): string[] {
   const codes = new Set<string>()
+  const genericSources = new Set(['share', 'personal_share', 'direct', '(direct)'])
   for (const row of rows ?? []) {
     const raw = row.affiliate_attribution
     if (!raw || typeof raw !== 'object') continue
-    const content = (raw as Record<string, unknown>).utm_content
-    if (typeof content !== 'string') continue
-    const code = content.trim().toLowerCase()
-    if (code) codes.add(code)
+    const record = raw as Record<string, unknown>
+    const content = typeof record.utm_content === 'string' ? record.utm_content.trim().toLowerCase() : ''
+    if (content) {
+      codes.add(content)
+      continue
+    }
+    const source = typeof record.utm_source === 'string' ? record.utm_source.trim().toLowerCase() : ''
+    if (source && !genericSources.has(source)) codes.add(source)
   }
   return [...codes]
 }
@@ -139,7 +144,6 @@ export function AdminAnalyticsDashboard() {
 
   const {
     labelFor,
-    labelsByCode,
     displayLabel: linkDisplayLabel,
     saveLabel,
     createShareLink,
@@ -288,8 +292,8 @@ export function AdminAnalyticsDashboard() {
     : null
 
   /**
-   * All affiliate content codes we know about — for filter + name editing:
-   * GA traffic, registered customers, and admin-created share links.
+   * Affiliate codes with real signal only — GA traffic and/or registered customers.
+   * Unused labeled links (no traffic, no customers) are omitted.
    */
   const linkDetailRows = useMemo(() => {
     const byCode = new Map<
@@ -302,7 +306,7 @@ export function AdminAnalyticsDashboard() {
         videoViewUsers: number
         plansViewUsers: number
         leadUsers: number
-        /** Seen via customers / labels only — no GA signal in range. */
+        /** Seen via customers only — no GA signal in range. */
         noGaTraffic: boolean
       }
     >()
@@ -357,21 +361,6 @@ export function AdminAnalyticsDashboard() {
       })
     }
 
-    // Admin-created share links — always list so names stay editable.
-    for (const code of Object.keys(labelsByCode)) {
-      if (byCode.has(code)) continue
-      byCode.set(code, {
-        content: code,
-        source: 'share',
-        users: 0,
-        newUsers: 0,
-        videoViewUsers: 0,
-        plansViewUsers: 0,
-        leadUsers: 0,
-        noGaTraffic: true,
-      })
-    }
-
     return [...byCode.values()]
       .filter(
         (row) =>
@@ -392,7 +381,7 @@ export function AdminAnalyticsDashboard() {
           'he',
         )
       })
-  }, [data, labelFor, customerContentCodes, labelsByCode])
+  }, [data, labelFor, customerContentCodes])
 
   const affiliateOptions = useMemo(
     () =>
@@ -471,11 +460,17 @@ export function AdminAnalyticsDashboard() {
               disabled={loading}
             />
           </div>
-          <div className="min-w-[14rem] shrink-0 border-t border-border/60 pt-2 lg:max-w-sm lg:border-t-0 lg:border-s lg:ps-4 lg:pt-0">
+          <div className="min-w-[14rem] shrink-0 space-y-3 border-t border-border/60 pt-2 lg:max-w-sm lg:border-t-0 lg:border-s lg:ps-4 lg:pt-0">
             <UtmShareLinkGenerator
               compact
               createShareLink={createShareLink}
               generating={!!savingCode}
+              error={linkLabelError}
+            />
+            <UtmNameExistingCode
+              compact
+              saveLabel={saveLabel}
+              saving={!!savingCode}
               error={linkLabelError}
             />
           </div>
@@ -628,7 +623,7 @@ export function AdminAnalyticsDashboard() {
                 options={affiliateOptions}
                 selected={selectedAffiliates}
                 onChange={setSelectedAffiliates}
-                hint="כולל גם אפיליאייטים עם לקוחות רשומים גם אם אין תנועה ב-GA בטווח. הסיכום למעלה נשאר לכל האתר."
+                hint="סינון לפי utm_content או utm_source (גם לינקים שגויים כמו ?utm_source=bt). הסיכום למעלה נשאר לכל האתר."
               />
 
               <div className="border-t border-border pt-3">
@@ -638,9 +633,13 @@ export function AdminAnalyticsDashboard() {
                     <h3 className="text-sm font-semibold text-foreground">מגמה לאורך זמן</h3>
                   </div>
                   <p className="text-[11px] text-muted">
-                    {affiliatesFiltered
-                      ? 'מסונן לפי האפיליאייטים שנבחרו'
-                      : 'כל האתר · ללא סינון'}
+                    {data.timeSeries.granularity === 'hour'
+                      ? affiliatesFiltered
+                        ? 'פיצול שעתי · מסונן לפי אפיליאייט'
+                        : 'פיצול שעתי · כל האתר'
+                      : affiliatesFiltered
+                        ? 'מסונן לפי האפיליאייטים שנבחרו'
+                        : 'כל האתר · ללא סינון'}
                   </p>
                 </div>
                 {trendLooksEmpty && (
@@ -653,6 +652,7 @@ export function AdminAnalyticsDashboard() {
                   days={data.timeSeries.days}
                   loading={frameBusy}
                   unavailable={data.timeSeries.unavailable}
+                  granularity={data.timeSeries.granularity}
                   height={360}
                 />
               </div>
@@ -864,8 +864,8 @@ export function AdminAnalyticsDashboard() {
                 {data.utm.unavailable && (
                   <Card className="border-warning/30 bg-warning/5 p-4">
                     <p className="text-xs text-foreground">
-                      מדדי תנועה מ-GA4 עדיין לא זמינים, אבל אפשר לערוך כאן שמות לכל הקודים שזוהו
-                      מלקוחות או מלינקים קיימים.
+                      מדדי תנועה מ-GA4 עדיין לא זמינים, אבל אפשר לערוך כאן שמות לקודים שזוהו
+                      מלקוחות רשומים.
                     </p>
                   </Card>
                 )}
@@ -896,8 +896,7 @@ export function AdminAnalyticsDashboard() {
                   <div className="border-b border-border px-5 py-3">
                     <h3 className="text-sm font-semibold text-foreground">ביצועי לינקים — פירוט</h3>
                     <p className="mt-0.5 text-[11px] text-muted">
-                      כולל לינקים מתנועת GA, מלקוחות רשומים, ומלינקים שנוצרו באדמין — גם בלי תנועה
-                      בטווח. קודים בלי שם מופיעים ראשונים לעריכה.
+                      רק לינקים עם תנועת GA או לקוחות רשומים. קודים בלי שם מופיעים ראשונים לעריכה.
                     </p>
                     {linkLabelError && (
                       <p className="mt-2 text-xs text-danger">{linkLabelError}</p>
