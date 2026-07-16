@@ -139,6 +139,7 @@ export function AdminAnalyticsDashboard() {
 
   const {
     labelFor,
+    labelsByCode,
     displayLabel: linkDisplayLabel,
     saveLabel,
     createShareLink,
@@ -286,7 +287,10 @@ export function AdminAnalyticsDashboard() {
     ? calcStepRate(data.eventCreation.startUsers, data.eventCreation.creatorUsers)
     : null
 
-  /** Performance rows + customer attribution codes (even with zero GA traffic). */
+  /**
+   * All affiliate content codes we know about — for filter + name editing:
+   * GA traffic, registered customers, and admin-created share links.
+   */
   const linkDetailRows = useMemo(() => {
     const byCode = new Map<
       string,
@@ -298,7 +302,8 @@ export function AdminAnalyticsDashboard() {
         videoViewUsers: number
         plansViewUsers: number
         leadUsers: number
-        fromCustomersOnly: boolean
+        /** Seen via customers / labels only — no GA signal in range. */
+        noGaTraffic: boolean
       }
     >()
 
@@ -312,7 +317,7 @@ export function AdminAnalyticsDashboard() {
         videoViewUsers: row.videoViewUsers,
         plansViewUsers: row.plansViewUsers,
         leadUsers: row.leadUsers,
-        fromCustomersOnly: false,
+        noGaTraffic: false,
       })
     }
 
@@ -330,14 +335,14 @@ export function AdminAnalyticsDashboard() {
           videoViewUsers: 0,
           plansViewUsers: 0,
           leadUsers: 0,
-          fromCustomersOnly: false,
+          noGaTraffic: false,
         })
       } else if (row.users > existing.users) {
         byCode.set(key, { ...existing, users: row.users })
       }
     }
 
-    // Include codes that have registered customers even when GA shows no traffic.
+    // Codes from registered customers (may have no GA hits in the selected range).
     for (const code of customerContentCodes) {
       if (byCode.has(code)) continue
       byCode.set(code, {
@@ -348,35 +353,59 @@ export function AdminAnalyticsDashboard() {
         videoViewUsers: 0,
         plansViewUsers: 0,
         leadUsers: 0,
-        fromCustomersOnly: true,
+        noGaTraffic: true,
+      })
+    }
+
+    // Admin-created share links — always list so names stay editable.
+    for (const code of Object.keys(labelsByCode)) {
+      if (byCode.has(code)) continue
+      byCode.set(code, {
+        content: code,
+        source: 'share',
+        users: 0,
+        newUsers: 0,
+        videoViewUsers: 0,
+        plansViewUsers: 0,
+        leadUsers: 0,
+        noGaTraffic: true,
       })
     }
 
     return [...byCode.values()]
       .filter(
         (row) =>
-          row.fromCustomersOnly ||
+          row.noGaTraffic ||
           row.users > 0 ||
           row.videoViewUsers > 0 ||
           row.plansViewUsers > 0 ||
           row.leadUsers > 0,
       )
       .sort((a, b) => {
+        // Unnamed codes first — so external affiliates can be labeled quickly.
+        const aNamed = Boolean(labelFor(a.content))
+        const bNamed = Boolean(labelFor(b.content))
+        if (aNamed !== bNamed) return aNamed ? 1 : -1
         if (b.users !== a.users) return b.users - a.users
         return (labelFor(a.content) ?? a.content).localeCompare(
           labelFor(b.content) ?? b.content,
           'he',
         )
       })
-  }, [data, labelFor, customerContentCodes])
+  }, [data, labelFor, customerContentCodes, labelsByCode])
 
   const affiliateOptions = useMemo(
     () =>
       linkDetailRows.map((row) => ({
         code: row.content.trim().toLowerCase(),
         name: labelFor(row.content) ?? row.content,
-        noTraffic: row.fromCustomersOnly,
+        noTraffic: row.noGaTraffic,
       })),
+    [linkDetailRows, labelFor],
+  )
+
+  const unnamedLinkCount = useMemo(
+    () => linkDetailRows.filter((row) => !labelFor(row.content)).length,
     [linkDetailRows, labelFor],
   )
 
@@ -806,34 +835,42 @@ export function AdminAnalyticsDashboard() {
             </div>
           </section>
 
-          {/* UTM / shared-link attribution — detail table */}
+          {/* UTM / shared-link attribution — detail table + name editor */}
           <section className="space-y-3">
             <SectionHeader
               icon={<Link2 size={16} className="text-secondary" />}
               title="לינקים מסומנים — פירוט"
             />
 
-            {data.utm.unavailable ? (
+            {linkDetailRows.length === 0 ? (
               <Card className="p-5">
                 <EmptyState
                   compact
                   icon={<Link2 size={22} />}
-                  title="אנליטיקת לינקים מסומנים עדיין לא זמינה"
-                  description={`יש לרשום ב-GA4 כ-Event-scoped Custom Dimensions לפחות את utm_source ו-utm_content. פרמטרים אופציונליים (utm_medium, utm_campaign) אינם נדרשים ללינקים קצרים.`}
-                />
-              </Card>
-            ) : data.utm.taggedVisitors <= 0 && linkDetailRows.length === 0 ? (
-              <Card className="p-5">
-                <EmptyState
-                  compact
-                  icon={<Link2 size={22} />}
-                  title="עדיין אין כניסות מלינקים מסומנים בתקופה שנבחרה"
-                  description="צרו לינק בראש העמוד ושתפו אותו — כשייכנסו מבקרים הנתונים יופיעו כאן."
+                  title={
+                    data.utm.unavailable
+                      ? 'אנליטיקת לינקים מסומנים עדיין לא זמינה'
+                      : 'עדיין אין לינקים מסומנים'
+                  }
+                  description={
+                    data.utm.unavailable
+                      ? 'יש לרשום ב-GA4 כ-Event-scoped Custom Dimensions לפחות את utm_source ו-utm_content. פרמטרים אופציונליים (utm_medium, utm_campaign) אינם נדרשים ללינקים קצרים.'
+                      : 'צרו לינק בראש העמוד ושתפו אותו — כשייכנסו מבקרים או לקוחות עם utm_content הם יופיעו כאן לעריכת שם.'
+                  }
                 />
               </Card>
             ) : (
               <>
-                {data.utm.unavailableParams.length > 0 && (
+                {data.utm.unavailable && (
+                  <Card className="border-warning/30 bg-warning/5 p-4">
+                    <p className="text-xs text-foreground">
+                      מדדי תנועה מ-GA4 עדיין לא זמינים, אבל אפשר לערוך כאן שמות לכל הקודים שזוהו
+                      מלקוחות או מלינקים קיימים.
+                    </p>
+                  </Card>
+                )}
+
+                {data.utm.unavailableParams.length > 0 && !data.utm.unavailable && (
                   <Card className="border-warning/30 bg-warning/5 p-4">
                     <p className="text-xs text-foreground">
                       חלק ממימדי ה-UTM עדיין לא זמינים ב-GA4. יש לרשום כ-Event-scoped Custom
@@ -845,107 +882,122 @@ export function AdminAnalyticsDashboard() {
                   </Card>
                 )}
 
-                {linkDetailRows.length > 0 && (
-                  <Card className="overflow-hidden p-0">
-                    <div className="border-b border-border px-5 py-3">
-                      <h3 className="text-sm font-semibold text-foreground">ביצועי לינקים — פירוט</h3>
-                      <p className="mt-0.5 text-[11px] text-muted">
-                        כולל משתמשים חדשים ואחוזי המרה. מוצגים רק לינקים עם תנועה בתקופה שנבחרה (לא מושפע מסינון המסגרת למעלה).
-                      </p>
-                      {linkLabelError && (
-                        <p className="mt-2 text-xs text-danger">{linkLabelError}</p>
-                      )}
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[820px] text-sm" dir="rtl">
-                        <thead>
-                          <tr className="border-b border-border bg-white/[0.02] text-xs text-muted">
-                            <th className="px-4 py-2.5 text-right font-medium">לינק</th>
-                            <th className="px-4 py-2.5 text-right font-medium">מקור</th>
-                            <th className="px-4 py-2.5 text-center font-medium">מבקרים</th>
-                            <th className="px-4 py-2.5 text-center font-medium">חדשים</th>
-                            <th className="px-4 py-2.5 text-center font-medium">סרטון</th>
-                            <th className="px-4 py-2.5 text-center font-medium">% סרטון</th>
-                            <th className="px-4 py-2.5 text-center font-medium">מחירים</th>
-                            <th className="px-4 py-2.5 text-center font-medium">% מחירים</th>
-                            <th className="px-4 py-2.5 text-center font-medium">לידים</th>
-                            <th className="px-4 py-2.5 text-center font-medium">% ליד</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/60">
-                          {linkDetailRows.map((row) => {
-                            const hasLead = row.leadUsers > 0
-                            return (
-                              <tr
-                                key={row.content}
-                                style={
-                                  hasLead
+                {unnamedLinkCount > 0 && (
+                  <Card className="border-secondary/30 bg-secondary/5 p-4">
+                    <p className="text-xs text-foreground">
+                      {unnamedLinkCount === 1
+                        ? 'יש קוד אחד בלי שם — בראש הטבלה. לחצו על העיפרון כדי לתת לו שם לתצוגה.'
+                        : `יש ${unnamedLinkCount} קודים בלי שם — הם בראש הטבלה. לחצו על העיפרון כדי לתת שם לתצוגה.`}
+                    </p>
+                  </Card>
+                )}
+
+                <Card className="overflow-hidden p-0">
+                  <div className="border-b border-border px-5 py-3">
+                    <h3 className="text-sm font-semibold text-foreground">ביצועי לינקים — פירוט</h3>
+                    <p className="mt-0.5 text-[11px] text-muted">
+                      כולל לינקים מתנועת GA, מלקוחות רשומים, ומלינקים שנוצרו באדמין — גם בלי תנועה
+                      בטווח. קודים בלי שם מופיעים ראשונים לעריכה.
+                    </p>
+                    {linkLabelError && (
+                      <p className="mt-2 text-xs text-danger">{linkLabelError}</p>
+                    )}
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[820px] text-sm" dir="rtl">
+                      <thead>
+                        <tr className="border-b border-border bg-white/[0.02] text-xs text-muted">
+                          <th className="px-4 py-2.5 text-right font-medium">לינק</th>
+                          <th className="px-4 py-2.5 text-right font-medium">מקור</th>
+                          <th className="px-4 py-2.5 text-center font-medium">מבקרים</th>
+                          <th className="px-4 py-2.5 text-center font-medium">חדשים</th>
+                          <th className="px-4 py-2.5 text-center font-medium">סרטון</th>
+                          <th className="px-4 py-2.5 text-center font-medium">% סרטון</th>
+                          <th className="px-4 py-2.5 text-center font-medium">מחירים</th>
+                          <th className="px-4 py-2.5 text-center font-medium">% מחירים</th>
+                          <th className="px-4 py-2.5 text-center font-medium">לידים</th>
+                          <th className="px-4 py-2.5 text-center font-medium">% ליד</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {linkDetailRows.map((row) => {
+                          const hasLead = row.leadUsers > 0
+                          const needsName = !labelFor(row.content)
+                          return (
+                            <tr
+                              key={row.content}
+                              style={
+                                needsName
+                                  ? {
+                                      background:
+                                        'color-mix(in srgb, var(--color-secondary) 10%, transparent)',
+                                    }
+                                  : hasLead
                                     ? {
                                         background:
                                           'color-mix(in srgb, var(--color-accent) 12%, transparent)',
                                       }
                                     : undefined
+                              }
+                            >
+                              <td className="px-4 py-2.5">
+                                <LinkLabelEditor
+                                  contentCode={row.content}
+                                  displayLabel={labelFor(row.content)}
+                                  saving={savingCode === row.content.trim().toLowerCase()}
+                                  onSave={async (name) => {
+                                    await saveLabel(row.content, name)
+                                  }}
+                                />
+                              </td>
+                              <td className="px-4 py-2.5 text-muted">
+                                {row.source ? utmSourceLabel(row.source) : '—'}
+                              </td>
+                              <td className="px-4 py-2.5 text-center tabular-nums text-muted">
+                                {formatNumber(row.users)}
+                              </td>
+                              <td className="px-4 py-2.5 text-center tabular-nums text-muted">
+                                {formatNumber(row.newUsers)}
+                              </td>
+                              <td className="px-4 py-2.5 text-center tabular-nums text-muted">
+                                {formatNumber(row.videoViewUsers)}
+                              </td>
+                              <td className="px-4 py-2.5 text-center tabular-nums text-muted">
+                                {formatRate(ratePct(row.videoViewUsers, row.users))}
+                              </td>
+                              <td className="px-4 py-2.5 text-center tabular-nums text-muted">
+                                {formatNumber(row.plansViewUsers)}
+                              </td>
+                              <td className="px-4 py-2.5 text-center tabular-nums text-muted">
+                                {formatRate(ratePct(row.plansViewUsers, row.users))}
+                              </td>
+                              <td
+                                className="px-4 py-2.5 text-center tabular-nums"
+                                style={
+                                  hasLead
+                                    ? { color: 'var(--color-accent)', fontWeight: 600 }
+                                    : { color: 'var(--color-muted)' }
                                 }
                               >
-                                <td className="px-4 py-2.5">
-                                  <LinkLabelEditor
-                                    contentCode={row.content}
-                                    displayLabel={labelFor(row.content)}
-                                    saving={savingCode === row.content.trim().toLowerCase()}
-                                    onSave={async (name) => {
-                                      await saveLabel(row.content, name)
-                                    }}
-                                  />
-                                </td>
-                                <td className="px-4 py-2.5 text-muted">
-                                  {row.source ? utmSourceLabel(row.source) : '—'}
-                                </td>
-                                <td className="px-4 py-2.5 text-center tabular-nums text-muted">
-                                  {formatNumber(row.users)}
-                                </td>
-                                <td className="px-4 py-2.5 text-center tabular-nums text-muted">
-                                  {formatNumber(row.newUsers)}
-                                </td>
-                                <td className="px-4 py-2.5 text-center tabular-nums text-muted">
-                                  {formatNumber(row.videoViewUsers)}
-                                </td>
-                                <td className="px-4 py-2.5 text-center tabular-nums text-muted">
-                                  {formatRate(ratePct(row.videoViewUsers, row.users))}
-                                </td>
-                                <td className="px-4 py-2.5 text-center tabular-nums text-muted">
-                                  {formatNumber(row.plansViewUsers)}
-                                </td>
-                                <td className="px-4 py-2.5 text-center tabular-nums text-muted">
-                                  {formatRate(ratePct(row.plansViewUsers, row.users))}
-                                </td>
-                                <td
-                                  className="px-4 py-2.5 text-center tabular-nums"
-                                  style={
-                                    hasLead
-                                      ? { color: 'var(--color-accent)', fontWeight: 600 }
-                                      : { color: 'var(--color-muted)' }
-                                  }
-                                >
-                                  {formatNumber(row.leadUsers)}
-                                </td>
-                                <td
-                                  className="px-4 py-2.5 text-center tabular-nums"
-                                  style={
-                                    hasLead
-                                      ? { color: 'var(--color-accent)', fontWeight: 600 }
-                                      : { color: 'var(--color-muted)' }
-                                  }
-                                >
-                                  {formatRate(ratePct(row.leadUsers, row.users))}
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </Card>
-                )}
+                                {formatNumber(row.leadUsers)}
+                              </td>
+                              <td
+                                className="px-4 py-2.5 text-center tabular-nums"
+                                style={
+                                  hasLead
+                                    ? { color: 'var(--color-accent)', fontWeight: 600 }
+                                    : { color: 'var(--color-muted)' }
+                                }
+                              >
+                                {formatRate(ratePct(row.leadUsers, row.users))}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
               </>
             )}
           </section>

@@ -1,5 +1,4 @@
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/Button'
+import { Select } from '@/components/ui/Select'
 import { KpiCard, formatNumber, formatRate } from './KpiCard'
 import { Filter, UserPlus, Percent, Users, Video, Eye } from 'lucide-react'
 
@@ -51,75 +50,35 @@ export function AffiliateFilterBar({
 }) {
   if (options.length === 0) return null
 
-  const selectedSet = new Set(selected)
-  const allSelected = selected.length === 0
-
-  function toggle(code: string) {
-    if (selectedSet.has(code)) {
-      onChange(selected.filter((c) => c !== code))
-    } else {
-      onChange([...selected, code])
-    }
-  }
+  // Single-select UI; keep string[] in the parent API for compatibility.
+  const value = selected[0] ?? ''
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Filter size={16} className="text-secondary" />
-          <h3 className="text-sm font-semibold text-foreground">סינון לפי אפיליאייט</h3>
-        </div>
-        {!allSelected && (
-          <Button type="button" variant="ghost" size="xs" onClick={() => onChange([])}>
-            נקה סינון
-          </Button>
-        )}
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Filter size={16} className="shrink-0 text-secondary" />
+        <h3 className="text-sm font-semibold text-foreground">סינון לפי אפיליאייט</h3>
       </div>
       {hint && <p className="text-[11px] text-muted">{hint}</p>}
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => onChange([])}
-          className={cn(
-            'rounded-full border px-3 py-1 text-xs transition-colors',
-            allSelected
-              ? 'border-secondary bg-secondary/15 text-foreground'
-              : 'border-border text-muted hover:border-secondary/50 hover:text-foreground',
-          )}
-        >
-          הכל · ללא סינון
-        </button>
-        {options.map((opt) => {
-          const active = selectedSet.has(opt.code)
-          return (
-            <button
-              key={opt.code}
-              type="button"
-              onClick={() => toggle(opt.code)}
-              className={cn(
-                'max-w-full rounded-full border px-3 py-1 text-xs transition-colors',
-                active
-                  ? 'border-secondary bg-secondary/15 text-foreground'
-                  : 'border-border text-muted hover:border-secondary/50 hover:text-foreground',
-              )}
-              title={
-                opt.noTraffic
-                  ? `${opt.code} · יש לקוחות רשומים, בלי תנועה ב-GA בטווח`
-                  : opt.code
-              }
-            >
-              <span className="font-medium">{opt.name}</span>
-              <span className="mx-1 text-muted/60">·</span>
-              <span className="font-mono text-[10px]" dir="ltr">
-                {opt.code}
-              </span>
-              {opt.noTraffic && (
-                <span className="mr-1 text-[10px] text-warning">· לקוחות</span>
-              )}
-            </button>
-          )
-        })}
-      </div>
+      <Select
+        id="affiliate-filter"
+        aria-label="סינון לפי אפיליאייט"
+        value={value}
+        onChange={(e) => {
+          const next = e.target.value
+          onChange(next ? [next] : [])
+        }}
+        className="max-w-md"
+      >
+        <option value="">הכל · ללא סינון</option>
+        {options.map((opt) => (
+          <option key={opt.code} value={opt.code} title={opt.code}>
+            {opt.noTraffic
+              ? `${opt.name} · ${opt.code} (לקוחות, בלי תנועה)`
+              : `${opt.name} · ${opt.code}`}
+          </option>
+        ))}
+      </Select>
     </div>
   )
 }

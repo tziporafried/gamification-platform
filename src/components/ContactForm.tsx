@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { trackGenerateLead, trackAppError } from '@/lib/analytics'
+import { cn } from '@/lib/utils'
 import {
   type ContactIntent,
   type ContactSource,
@@ -113,7 +114,9 @@ export function ContactForm({
   const resolvedAnalyticsName = analyticsPlanName ?? source ?? resolvedLimitType
   const resolvedHeading = heading ?? defaultHeading(intent, hasEvent)
   const resolvedSubmit = submitLabel ?? defaultSubmitLabel(intent, hasEvent)
-  const showEmailField = intent === 'contact'
+  // Same contact fields as the general form — including pricing / plan leads.
+  const showEmailField = true
+  const showDirectContact = true
   const emailRequired = false
 
   async function handleSubmit(e: FormEvent) {
@@ -263,8 +266,15 @@ export function ContactForm({
       )}
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
+        <div
+          className={cn(
+            'grid grid-cols-1 gap-3',
+            showEmailField
+              ? 'sm:grid-cols-[minmax(0,1.1fr)_minmax(7rem,0.75fr)_minmax(0,1.35fr)]'
+              : 'sm:grid-cols-2',
+          )}
+        >
+          <div className="min-w-0">
             <label className="mb-1 block text-xs font-semibold text-muted">שם *</label>
             <input
               value={fullName}
@@ -273,7 +283,7 @@ export function ContactForm({
               className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="mb-1 block text-xs font-semibold text-muted">טלפון *</label>
             <input
               type="tel"
@@ -284,23 +294,22 @@ export function ContactForm({
               className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
             />
           </div>
+          {showEmailField && (
+            <div className="min-w-0">
+              <label className="mb-1 block text-xs font-semibold text-muted">
+                אימייל {emailRequired ? '*' : '(אופציונלי)'}
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@example.com"
+                dir="ltr"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+              />
+            </div>
+          )}
         </div>
-
-        {showEmailField && (
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-muted">
-              אימייל {emailRequired ? '*' : '(אופציונלי)'}
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="email@example.com"
-              dir="ltr"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
-            />
-          </div>
-        )}
 
         {intent === 'organization_lead' && (
           <div>
@@ -315,56 +324,57 @@ export function ContactForm({
         )}
 
         {!compactPlanLead && (intent === 'plan_lead' || intent === 'organization_lead') && (
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-muted">
-              {intent === 'organization_lead' ? 'סוג האירוע / הפעילות' : 'סוג אירוע'}
-            </label>
-            <input
-              value={eventType}
-              onChange={(e) => setEventType(e.target.value)}
-              placeholder="לדוגמה: נופש משפחתי, יום גיבוש, קייטנה"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
-            />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(7.5rem,0.85fr)]">
+            <div className="min-w-0">
+              <label className="mb-1 block text-xs font-semibold text-muted">
+                {intent === 'organization_lead' ? 'סוג האירוע / הפעילות' : 'סוג אירוע'}
+              </label>
+              <input
+                value={eventType}
+                onChange={(e) => setEventType(e.target.value)}
+                placeholder="לדוגמה: נופש משפחתי, יום גיבוש, קייטנה"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+              />
+            </div>
+            <div className="min-w-0">
+              <label className="mb-1 block text-xs font-semibold text-muted">מספר משתתפים משוער</label>
+              <input
+                type="number"
+                min="1"
+                value={participantCount}
+                onChange={(e) => setParticipantCount(e.target.value)}
+                placeholder="50"
+                dir="ltr"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+              />
+            </div>
           </div>
         )}
 
         {!compactPlanLead && intent === 'plan_lead' && (
-          <div className="space-y-2">
-            <label className="mb-1 block text-xs font-semibold text-muted">תאריך אירוע</label>
-            <input
-              type="date"
-              value={eventDate}
-              disabled={dateUndecided}
-              onChange={(e) => setEventDate(e.target.value)}
-              dir="ltr"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary disabled:opacity-50"
-            />
-            <label className="flex items-center gap-2 text-xs text-muted">
-              <input
-                type="checkbox"
-                checked={dateUndecided}
-                onChange={(e) => {
-                  setDateUndecided(e.target.checked)
-                  if (e.target.checked) setEventDate('')
-                }}
-              />
-              עדיין לא נקבע
-            </label>
-          </div>
-        )}
-
-        {!compactPlanLead && (intent === 'plan_lead' || intent === 'organization_lead') && (
           <div>
-            <label className="mb-1 block text-xs font-semibold text-muted">מספר משתתפים משוער</label>
-            <input
-              type="number"
-              min="1"
-              value={participantCount}
-              onChange={(e) => setParticipantCount(e.target.value)}
-              placeholder="50"
-              dir="ltr"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
-            />
+            <label className="mb-1 block text-xs font-semibold text-muted">תאריך אירוע</label>
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="date"
+                value={eventDate}
+                disabled={dateUndecided}
+                onChange={(e) => setEventDate(e.target.value)}
+                dir="ltr"
+                className="w-auto max-w-full shrink-0 rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary disabled:opacity-50"
+              />
+              <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
+                <input
+                  type="checkbox"
+                  checked={dateUndecided}
+                  onChange={(e) => {
+                    setDateUndecided(e.target.checked)
+                    if (e.target.checked) setEventDate('')
+                  }}
+                />
+                עדיין לא נקבע
+              </label>
+            </div>
           </div>
         )}
 
@@ -406,7 +416,7 @@ export function ContactForm({
           {resolvedSubmit}
         </Button>
 
-        {intent === 'contact' && (
+        {showDirectContact && (
           <div className="pt-2 text-center">
             <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm leading-relaxed text-muted">
               <span className="font-semibold text-foreground">מעדיפים לדבר איתנו?</span>
