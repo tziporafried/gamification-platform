@@ -10,13 +10,13 @@ interface EventHeaderBreadcrumbProps {
 
 export function EventHeaderBreadcrumb({ eventName, suffix, trialEventId }: EventHeaderBreadcrumbProps) {
   const navigate = useNavigate()
-  const backPath = suffix === 'עריכת תבנית' ? '/admin' : '/events'
+  const backPath = suffix === 'עריכת תבנית' ? '/admin/templates' : '/events'
   const backLabel = suffix === 'עריכת תבנית' ? 'ניהול מערכת' : 'האירועים שלי'
 
   return (
     <div className="flex items-center gap-2 min-w-0 leading-none">
       <button
-        onClick={() => navigate(backPath, suffix === 'עריכת תבנית' ? { state: { tab: 'templates' } } : undefined)}
+        onClick={() => navigate(backPath)}
         className="shrink-0 text-xs font-medium leading-none text-muted transition-colors hover:text-foreground"
       >
         <span>{backLabel}</span>

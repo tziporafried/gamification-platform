@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2, BarChart3, Calendar, Wallet, ScanLine } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -27,16 +27,23 @@ import type { UserPlan } from '@/types'
 
 type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates' | 'analytics' | 'events' | 'finance' | 'scanners'
 
+const DEFAULT_ADMIN_TAB: AdminTab = 'analytics'
+
+/** Usage-first order; development todos last. */
 const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
-  { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },
-  { id: 'templates', label: 'תבניות', icon: Sparkles },
+  { id: 'analytics', label: 'אנליטיקות', icon: BarChart3 },
+  { id: 'upgrade-requests', label: 'פניות הפעלה', icon: MessageSquare },
   { id: 'customers', label: 'לקוחות', icon: Users },
   { id: 'events', label: 'אירועים', icon: Calendar },
-  { id: 'upgrade-requests', label: 'פניות הפעלה', icon: MessageSquare },
   { id: 'scanners', label: 'סורקים', icon: ScanLine },
   { id: 'finance', label: 'הכנסות והוצאות', icon: Wallet },
-  { id: 'analytics', label: 'אנליטיקות', icon: BarChart3 },
+  { id: 'templates', label: 'תבניות', icon: Sparkles },
+  { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },
 ]
+
+function isAdminTab(value: string | undefined): value is AdminTab {
+  return TABS.some((t) => t.id === value)
+}
 
 interface AdminUser {
   user_id: string
@@ -157,10 +164,11 @@ function formatLastSignIn(iso: string | null) {
 }
 
 export function AdminPanel() {
-  const location = useLocation()
+  const { tab: tabParam } = useParams<{ tab: string }>()
+  const navigate = useNavigate()
   const { user: currentUser } = useAuth()
   const { labelFor } = useUtmLinkLabels()
-  const [tab, setTab] = useState<AdminTab>('todos')
+  const tab: AdminTab = isAdminTab(tabParam) ? tabParam : DEFAULT_ADMIN_TAB
   const [users, setUsers] = useState<AdminUser[]>([])
   const [requests, setRequests] = useState<UpgradeRequest[]>([])
   const [usersLoaded, setUsersLoaded] = useState(false)
@@ -236,14 +244,20 @@ export function AdminPanel() {
   }, [])
 
   useEffect(() => {
-    const requestedTab = (location.state as { tab?: AdminTab } | null)?.tab
-    if (requestedTab) setTab(requestedTab)
-  }, [location.state])
+    if (!isAdminTab(tabParam)) {
+      navigate(`/admin/${DEFAULT_ADMIN_TAB}`, { replace: true })
+    }
+  }, [tabParam, navigate])
 
   useEffect(() => {
     if (tab === 'customers' && !usersLoaded) fetchUsers()
     if (tab === 'upgrade-requests' && !requestsLoaded) fetchRequests()
   }, [tab, usersLoaded, requestsLoaded, fetchUsers, fetchRequests])
+
+  function setTab(next: AdminTab) {
+    if (next === tab) return
+    navigate(`/admin/${next}`)
+  }
 
   const affiliateOptions = useMemo(() => {
     const counts = new Map<string, number>()
