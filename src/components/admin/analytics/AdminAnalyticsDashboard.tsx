@@ -66,8 +66,34 @@ const UTM_SOURCE_LABELS: Record<string, string> = {
   share: 'שיתוף',
 }
 
+/** Sources that are channels, not short affiliate codes. */
+const GENERIC_UTM_SOURCES = new Set([
+  'share',
+  'personal_share',
+  'direct',
+  '(direct)',
+  'google',
+  'bing',
+  'yahoo',
+  'facebook',
+  'instagram',
+  'twitter',
+  'linkedin',
+  '(not set)',
+  'not set',
+  '(none)',
+  'none',
+])
+
 function utmSourceLabel(source: string): string {
   return UTM_SOURCE_LABELS[source] ?? source
+}
+
+/** True when utm_source looks like a short affiliate code (?utm_source=bt). */
+function isAffiliateLikeSource(source: string): boolean {
+  const code = source.trim().toLowerCase()
+  if (!code || GENERIC_UTM_SOURCES.has(code)) return false
+  return /^[a-z0-9_-]{1,12}$/i.test(code)
 }
 
 function todayYmd() {
@@ -300,6 +326,7 @@ export function AdminAnalyticsDashboard() {
 
   /**
    * Affiliate codes with real signal — GA traffic and/or registered customers.
+   * Includes broken links (?utm_source=CODE without utm_content) via sourceBreakdown.
    * Codes that share the same display name are merged into one row.
    */
   const linkDetailRows = useMemo(() => {
@@ -353,12 +380,47 @@ export function AdminAnalyticsDashboard() {
       }
     }
 
+    // Broken / legacy links: ?utm_source=bt (no utm_content) land in sourceBreakdown.
+    for (const row of data?.utm.sourceBreakdown ?? []) {
+      const code = row.source.trim().toLowerCase()
+      if (!isAffiliateLikeSource(code)) continue
+      const known =
+        byCode.has(code) ||
+        Boolean(labelsByCode[code]) ||
+        customerContentCodes.includes(code)
+      // Unknown short codes still count — unnamed affiliates from bad URLs.
+      if (!known && !/^[a-z0-9]{2,4}$/i.test(code)) continue
+
+      const existing = byCode.get(code)
+      if (!existing) {
+        byCode.set(code, {
+          content: code,
+          source: code,
+          users: row.users,
+          newUsers: 0,
+          videoViewUsers: 0,
+          plansViewUsers: 0,
+          leadUsers: 0,
+          noGaTraffic: false,
+        })
+        continue
+      }
+      // Content traffic and source-as-code traffic are separate audiences — sum visitors.
+      existing.users += row.users
+      existing.noGaTraffic = false
+      if (!existing.source || existing.source === 'share') {
+        existing.source = code
+      } else if (existing.source !== code && existing.source !== 'share') {
+        existing.source = null
+      }
+    }
+
     // Codes from registered customers (may have no GA hits in the selected range).
     for (const code of customerContentCodes) {
       if (byCode.has(code)) continue
       byCode.set(code, {
         content: code,
-        source: 'share',
+        source: null,
         users: 0,
         newUsers: 0,
         videoViewUsers: 0,
@@ -439,7 +501,7 @@ export function AdminAnalyticsDashboard() {
           'he',
         )
       })
-  }, [data, labelFor, customerContentCodes])
+  }, [data, labelFor, customerContentCodes, labelsByCode])
 
   const affiliateOptions = useMemo(
     () =>
@@ -850,7 +912,9 @@ export function AdminAnalyticsDashboard() {
 
               <Card className="p-4 sm:p-5">
                 <h3 className="mb-1 text-sm font-semibold text-foreground">ביצועי לינקים</h3>
-                <p className="mb-3 text-[11px] text-muted">לינקים מסומנים (utm_content) · לפי מבקרים</p>
+                <p className="mb-3 text-[11px] text-muted">
+                  לפי utm_content, וגם לינקים ישנים עם utm_source בלבד
+                </p>
                 {data.utm.unavailable ? (
                   <EmptyState
                     compact
@@ -948,8 +1012,7 @@ export function AdminAnalyticsDashboard() {
                   <div className="border-b border-border px-5 py-3">
                     <h3 className="text-sm font-semibold text-foreground">ביצועי לינקים — פירוט</h3>
                     <p className="mt-0.5 text-[11px] text-muted">
-                      רק לינקים עם תנועת GA או לקוחות רשומים. קודים עם אותו שם מאוחדים לשורה אחת.
-                      קודים בלי שם מופיעים ראשונים לעריכה.
+                      כולל גם לינקים ישנים (?utm_source=קוד). קודים עם אותו שם מאוחדים לשורה אחת.
                     </p>
                     {linkLabelError && (
                       <p className="mt-2 text-xs text-danger">{linkLabelError}</p>
