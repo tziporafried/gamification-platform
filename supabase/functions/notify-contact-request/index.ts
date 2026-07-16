@@ -59,17 +59,34 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    // Fetch the contact request
+    // Atomically claim the request before sending anything.
+    //
+    // This endpoint runs with verify_jwt = false, so it is callable by anyone
+    // with no credentials. Without a guard, replaying the same requestId sends
+    // an admin email on every call — unbounded mailbox flooding and Resend quota
+    // burn. Claiming via a conditional UPDATE (rather than select-then-update)
+    // makes the check atomic, so concurrent calls cannot both win the race.
     const { data: request, error: reqError } = await supabase
       .from('contact_upgrade_requests')
-      .select('id, full_name, email, phone, notes, limit_type, created_at')
+      .update({ notified_at: new Date().toISOString() })
       .eq('id', requestId)
-      .single()
+      .is('notified_at', null)
+      .select('id, full_name, email, phone, notes, limit_type, created_at')
+      .maybeSingle()
 
-    if (reqError || !request) {
-      console.error('Request not found', reqError)
-      return new Response(JSON.stringify({ error: 'Request not found' }), {
-        status: 404,
+    if (reqError) {
+      console.error('Failed to claim request', reqError)
+      return new Response(JSON.stringify({ error: 'Failed to claim request' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // No row claimed: the id does not exist, or it was already notified. Both are
+    // reported identically so the endpoint cannot be used to probe which request
+    // ids are real.
+    if (!request) {
+      return new Response(JSON.stringify({ ok: true, sent: 0, note: 'already notified' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -147,8 +164,17 @@ Deno.serve(async (req) => {
     if (!emailRes.ok) {
       const detail = await emailRes.text()
       console.error('Resend error', emailRes.status, detail)
+      // Release the claim so the notification is not lost — a genuine retry from
+      // the admin panel can send it. Replay abuse still costs the attacker a new
+      // row, which is what the claim is there to enforce.
+      await supabase
+        .from('contact_upgrade_requests')
+        .update({ notified_at: null })
+        .eq('id', request.id)
+      // `detail` is upstream provider output and this endpoint is unauthenticated,
+      // so it stays in the logs rather than the response body.
       return new Response(
-        JSON.stringify({ error: 'Email send failed', detail }),
+        JSON.stringify({ error: 'Email send failed' }),
         {
           status: 502,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

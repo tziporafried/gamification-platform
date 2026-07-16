@@ -3274,6 +3274,9 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   }, [showNextReward, refetch])
 
   const logScoreSubmit = useCallback((source: 'qr_scan' | 'manual_entry', result: ScoreSubmitResult) => {
+    // Dev only — this prints participant name and code, which should not land in
+    // an operator's browser console on a shared kiosk machine.
+    if (!import.meta.env.DEV) return
     console.log('[kiosk score submit]', {
       source,
       participantId: result.participantId,

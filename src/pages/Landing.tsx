@@ -22,6 +22,7 @@ import { usePlansModal } from '@/contexts/PlansModalContext'
 import { AtmosphericBackground } from '@/components/layout/AtmosphericBackground'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
 import { FloatingContactButton } from '@/components/layout/FloatingContactButton'
+import { SiteFooter } from '@/components/layout/SiteFooter'
 import { ContactModal } from '@/components/ContactModal'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -663,6 +664,8 @@ export function Landing() {
             </div>
           </motion.section>
         </main>
+
+        <SiteFooter />
       </div>
 
       <FloatingContactButton location="floating" variant="pill" hidden={contactOpen} />

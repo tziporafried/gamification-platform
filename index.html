@@ -12,14 +12,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <title>Gamify PLATFORM</title>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-R9RCTZ6BK5"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-R9RCTZ6BK5', { send_page_view: false });
-    </script>
+    <!--
+      Google tag (gtag.js) is bootstrapped from initAnalytics() in
+      src/lib/analytics.ts, not inline here. Keeping this file free of inline
+      scripts is what lets the CSP in vercel.json drop 'unsafe-inline' from
+      script-src. Do not re-add an inline snippet without updating that header.
+    -->
   </head>
   <body>
     <div id="root"></div>

@@ -16,6 +16,7 @@ import { AdminPanel } from '@/pages/AdminPanel'
 import { EventBySlugControl } from '@/pages/EventBySlug'
 import { AuthCallback } from '@/pages/AuthCallback'
 import { PlansPage } from '@/pages/PlansPage'
+import { TermsPage } from '@/pages/TermsPage'
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
             <Route path="/admin/:tab" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />
             {/* Legacy / deep-link entry — opens plans modal, then leaves /plans */}
             <Route path="/plans" element={<PlansPage />} />
+            <Route path="/terms" element={<TermsPage />} />
 
             {/* Backward compat */}
             <Route path="/dashboard" element={<Navigate to="/events" replace />} />
