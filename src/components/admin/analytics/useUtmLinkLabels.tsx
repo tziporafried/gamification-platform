@@ -20,6 +20,41 @@ function normalizeCode(code: string): string {
   return code.trim().toLowerCase()
 }
 
+function normalizeDisplayName(name: string): string {
+  return name.trim().toLowerCase()
+}
+
+/**
+ * Group key for filters/tables: same display name → same group.
+ * Unnamed codes stay separate (key = the code itself).
+ */
+export function affiliateGroupKey(code: string, label: string | null | undefined): string {
+  const normalized = normalizeCode(code)
+  const name = label?.trim()
+  if (name) return `n:${normalizeDisplayName(name)}`
+  return normalized
+}
+
+/** Expand selected group keys to concrete utm_content / source codes. */
+export function expandAffiliateSelection(
+  selected: string[],
+  labelsByCode: Record<string, string>,
+): string[] {
+  if (selected.length === 0) return []
+  const out = new Set<string>()
+  for (const sel of selected) {
+    if (sel.startsWith('n:')) {
+      const nameKey = sel.slice(2)
+      for (const [code, name] of Object.entries(labelsByCode)) {
+        if (normalizeDisplayName(name) === nameKey) out.add(normalizeCode(code))
+      }
+    } else {
+      out.add(normalizeCode(sel))
+    }
+  }
+  return [...out]
+}
+
 function randomCode(length: number): string {
   const bytes = new Uint8Array(length)
   crypto.getRandomValues(bytes)
@@ -233,148 +268,6 @@ export function useUtmLinkLabels() {
   }
 }
 
-/** Name a content code you already used in a manual share URL (utm_content). */
-export function UtmNameExistingCode({
-  saveLabel,
-  saving,
-  error,
-  onSaved,
-  compact = false,
-}: {
-  saveLabel: (
-    contentCode: string,
-    displayName: string,
-  ) => Promise<{ ok: true } | { ok: false; error: string }>
-  saving?: boolean
-  error?: string | null
-  onSaved?: (result: { contentCode: string; displayName: string }) => void
-  compact?: boolean
-}) {
-  const [code, setCode] = useState('')
-  const [name, setName] = useState('')
-  const [localError, setLocalError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [savedHint, setSavedHint] = useState<string | null>(null)
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLocalError(null)
-    setSavedHint(null)
-    const normalized = normalizeCode(code)
-    const trimmedName = name.trim()
-    if (!normalized) {
-      setLocalError('יש להקליד את קוד הלינק (utm_content)')
-      return
-    }
-    if (!/^[a-z0-9_-]{1,40}$/i.test(normalized)) {
-      setLocalError('קוד לא תקין — רק אותיות, ספרות, - ו-_')
-      return
-    }
-    if (!trimmedName) {
-      setLocalError('יש להקליד שם לתצוגה')
-      return
-    }
-    setBusy(true)
-    const result = await saveLabel(normalized, trimmedName)
-    setBusy(false)
-    if (!result.ok) {
-      setLocalError(result.error)
-      return
-    }
-    setSavedHint(`${trimmedName} · ${normalized}`)
-    setCode('')
-    setName('')
-    onSaved?.({ contentCode: normalized, displayName: trimmedName })
-    window.setTimeout(() => setSavedHint(null), 3000)
-  }
-
-  const showError = localError || error
-
-  if (compact) {
-    return (
-      <div className="min-w-0 space-y-1.5">
-        <form
-          onSubmit={(e) => void handleSubmit(e)}
-          className="flex min-w-0 flex-wrap items-center gap-1.5"
-          title="קוד לינק קיים → שם לתצוגה באדמין"
-        >
-          <span className="shrink-0 text-[11px] font-semibold text-muted">שם לקוד</span>
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="קוד"
-            dir="ltr"
-            className={cn(
-              'h-8 w-[4.5rem] shrink-0 rounded-lg border border-border bg-surface px-2 text-xs text-foreground outline-none',
-              'placeholder:text-muted focus:border-secondary font-mono',
-            )}
-          />
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="שם לתצוגה"
-            className={cn(
-              'h-8 min-w-[7rem] flex-1 rounded-lg border border-border bg-surface px-2.5 text-xs text-foreground outline-none',
-              'placeholder:text-muted focus:border-secondary',
-            )}
-          />
-          <Button type="submit" size="xs" loading={busy || saving} className="shrink-0 gap-1">
-            <Pencil size={12} />
-            שמירה
-          </Button>
-        </form>
-        {showError && <p className="text-[11px] text-danger">{showError}</p>}
-        {savedHint && !showError && (
-          <p className="text-[11px] text-success">נשמר: {savedHint}</p>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <Card className="space-y-3 p-4">
-      <div className="flex items-center gap-2">
-        <Pencil size={16} className="text-secondary" />
-        <h3 className="text-sm font-semibold text-foreground">שם ללינק שיצרתם בעצמכם</h3>
-      </div>
-      <p className="text-[11px] text-muted">
-        אם כבר יש לכם לינק עם <span className="font-mono">utm_content</span> — הקלידו את הקוד ואת
-        השם שיוצג באדמין.
-      </p>
-      <form
-        onSubmit={(e) => void handleSubmit(e)}
-        className="flex flex-col gap-2 sm:flex-row sm:items-end"
-      >
-        <div className="w-full sm:w-28">
-          <Input
-            id="utm-existing-code"
-            label="קוד הלינק"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="bt"
-            dir="ltr"
-            className="font-mono"
-          />
-        </div>
-        <div className="min-w-0 flex-1">
-          <Input
-            id="utm-existing-name"
-            label="שם לתצוגה"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="למשל: רותי שיף"
-          />
-        </div>
-        <Button type="submit" loading={busy || saving} className="shrink-0 sm:mb-0.5">
-          <Pencil size={14} className="ml-1" />
-          שמירת שם
-        </Button>
-      </form>
-      {showError && <p className="text-xs text-danger">{showError}</p>}
-      {savedHint && !showError && <p className="text-xs text-success">נשמר: {savedHint}</p>}
-    </Card>
-  )
-}
 
 export function UtmShareLinkGenerator({
   onCreated,
@@ -539,30 +432,63 @@ export function UtmShareLinkGenerator({
 
 export function LinkLabelEditor({
   contentCode,
+  contentCodes,
   displayLabel,
   saving,
   onSave,
 }: {
   contentCode: string
+  /** When several codes share one name — edit each code separately to split. */
+  contentCodes?: string[]
   displayLabel: string | null
   saving?: boolean
-  onSave: (name: string) => Promise<void>
+  /** Apply display names — same name keeps merge, different names split. */
+  onSave: (updates: { code: string; name: string }[]) => Promise<void>
 }) {
+  const codes = contentCodes?.length ? contentCodes : [contentCode]
+  const isMerged = codes.length > 1
+  const codesLabel = codes.join(', ')
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(displayLabel ?? '')
+  const [draftByCode, setDraftByCode] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    if (!editing) setDraft(displayLabel ?? '')
-  }, [displayLabel, editing])
+    if (!editing) {
+      setDraft(displayLabel ?? '')
+      setDraftByCode(Object.fromEntries(codes.map((c) => [c, displayLabel ?? ''])))
+    }
+  }, [displayLabel, editing, codesLabel])
+
+  function startEdit() {
+    const initial = displayLabel ?? ''
+    setDraft(initial)
+    setDraftByCode(Object.fromEntries(codes.map((c) => [c, initial])))
+    setEditing(true)
+  }
 
   async function commit() {
-    await onSave(draft)
+    if (isMerged) {
+      await onSave(
+        codes.map((code) => ({
+          code,
+          name: (draftByCode[code] ?? '').trim(),
+        })),
+      )
+    } else {
+      await onSave([{ code: codes[0]!, name: draft.trim() }])
+    }
+    setEditing(false)
+  }
+
+  function cancel() {
+    setDraft(displayLabel ?? '')
+    setDraftByCode(Object.fromEntries(codes.map((c) => [c, displayLabel ?? ''])))
     setEditing(false)
   }
 
   if (!editing) {
     return (
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-center gap-1">
         <p className="min-w-0 truncate text-sm text-foreground">
           {displayLabel ? (
             <span className="font-medium">{displayLabel}</span>
@@ -570,18 +496,76 @@ export function LinkLabelEditor({
             <span className="text-muted">ללא שם — לחצו לעריכה</span>
           )}
           <span className="mx-1.5 text-muted/50">·</span>
-          <span className="font-mono text-[11px] text-muted" dir="ltr">
-            {contentCode}
+          <span className="font-mono text-[11px] text-muted" dir="ltr" title={codesLabel}>
+            {codesLabel}
           </span>
         </p>
         <button
           type="button"
-          onClick={() => setEditing(true)}
+          onClick={startEdit}
           className="shrink-0 rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-elevated hover:text-foreground"
-          title="עריכת שם לינק"
+          title={isMerged ? 'עריכה / פיצול שמות' : 'עריכת שם לינק'}
         >
           <Pencil size={14} />
         </button>
+      </div>
+    )
+  }
+
+  if (isMerged) {
+    return (
+      <div className="min-w-[240px] space-y-2 py-0.5">
+        <p className="text-[11px] leading-snug text-muted">
+          שדה לכל קוד. שמות שונים = פיצול · אותו שם = נשאר מאוחד
+        </p>
+        {codes.map((code, index) => (
+          <div key={code} className="flex items-center gap-1.5">
+            <span className="w-14 shrink-0 font-mono text-[11px] text-muted" dir="ltr">
+              {code}
+            </span>
+            <input
+              autoFocus={index === 0}
+              value={draftByCode[code] ?? ''}
+              disabled={saving}
+              onChange={(e) =>
+                setDraftByCode((prev) => ({ ...prev, [code]: e.target.value }))
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void commit()
+                }
+                if (e.key === 'Escape') cancel()
+              }}
+              placeholder={`שם ל־${code}`}
+              className={cn(
+                'w-full min-w-0 rounded-lg border border-border bg-surface px-2 py-1 text-sm text-foreground outline-none',
+                'focus:border-secondary',
+                saving && 'opacity-60',
+              )}
+            />
+          </div>
+        ))}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void commit()}
+            className="shrink-0 rounded-lg p-1.5 text-success hover:bg-surface-elevated"
+            title="שמירה"
+          >
+            <Check size={14} />
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={cancel}
+            className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-surface-elevated hover:text-danger"
+            title="ביטול"
+          >
+            <X size={14} />
+          </button>
+        </div>
       </div>
     )
   }
@@ -598,10 +582,7 @@ export function LinkLabelEditor({
             e.preventDefault()
             void commit()
           }
-          if (e.key === 'Escape') {
-            setDraft(displayLabel ?? '')
-            setEditing(false)
-          }
+          if (e.key === 'Escape') cancel()
         }}
         placeholder="שם אמיתי ללינק"
         className={cn(
@@ -622,10 +603,7 @@ export function LinkLabelEditor({
       <button
         type="button"
         disabled={saving}
-        onClick={() => {
-          setDraft(displayLabel ?? '')
-          setEditing(false)
-        }}
+        onClick={cancel}
         className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-surface-elevated hover:text-danger"
         title="ביטול"
       >

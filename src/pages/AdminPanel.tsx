@@ -15,7 +15,7 @@ import { DevTodoList } from '@/components/dev-todos/DevTodoList'
 import { TemplateAdminList } from '@/components/admin/TemplateAdminList'
 import { AdminAnalyticsDashboard } from '@/components/admin/analytics/AdminAnalyticsDashboard'
 import { AffiliateFilterBar } from '@/components/admin/analytics/AffiliateFilter'
-import { useUtmLinkLabels } from '@/components/admin/analytics/useUtmLinkLabels'
+import { useUtmLinkLabels, affiliateGroupKey, expandAffiliateSelection } from '@/components/admin/analytics/useUtmLinkLabels'
 import { AdminEventsList } from '@/components/admin/AdminEventsList'
 import { AdminFinancePanel } from '@/components/admin/AdminFinancePanel'
 import { AdminScannersPanel } from '@/components/admin/AdminScannersPanel'
@@ -195,7 +195,7 @@ export function AdminPanel() {
   const { tab: tabParam } = useParams<{ tab: string }>()
   const navigate = useNavigate()
   const { user: currentUser } = useAuth()
-  const { labelFor } = useUtmLinkLabels()
+  const { labelFor, labelsByCode } = useUtmLinkLabels()
   const tab: AdminTab = isAdminTab(tabParam) ? tabParam : DEFAULT_ADMIN_TAB
   const [users, setUsers] = useState<AdminUser[]>([])
   const [requests, setRequests] = useState<UpgradeRequest[]>([])
@@ -288,40 +288,59 @@ export function AdminPanel() {
   }
 
   const affiliateOptions = useMemo(() => {
-    const counts = new Map<string, number>()
+    type Group = { count: number; name: string; codes: string[] }
+    const groups = new Map<string, Group>()
     for (const user of users) {
       const code = affiliateFilterCode(user.affiliate_attribution)
       if (!code) continue
-      counts.set(code, (counts.get(code) ?? 0) + 1)
+      const groupKey =
+        code === AFFILIATE_NO_CONTENT ? code : affiliateGroupKey(code, labelFor(code))
+      const existing = groups.get(groupKey)
+      if (existing) {
+        existing.count += 1
+        if (code !== AFFILIATE_NO_CONTENT && !existing.codes.includes(code)) {
+          existing.codes.push(code)
+        }
+        continue
+      }
+      groups.set(groupKey, {
+        count: 1,
+        name:
+          code === AFFILIATE_NO_CONTENT
+            ? 'ללא קוד לינק'
+            : labelFor(code) ?? code,
+        codes: code === AFFILIATE_NO_CONTENT ? [] : [code],
+      })
     }
-    // Only codes with at least one customer — skip unused labeled links.
-    return [...counts.entries()]
-      .filter(([, count]) => count > 0)
+    return [...groups.entries()]
+      .filter(([, g]) => g.count > 0)
       .sort((a, b) => {
         if (a[0] === AFFILIATE_NO_CONTENT) return 1
         if (b[0] === AFFILIATE_NO_CONTENT) return -1
-        if (b[1] !== a[1]) return b[1] - a[1]
-        const nameA = a[0] === AFFILIATE_NO_CONTENT ? '' : (labelFor(a[0]) ?? a[0])
-        const nameB = b[0] === AFFILIATE_NO_CONTENT ? '' : (labelFor(b[0]) ?? b[0])
-        return nameA.localeCompare(nameB, 'he')
+        if (b[1].count !== a[1].count) return b[1].count - a[1].count
+        return a[1].name.localeCompare(b[1].name, 'he')
       })
-      .map(([code, count]) => ({
-        code,
+      .map(([groupKey, g]) => ({
+        code: groupKey,
         name:
-          code === AFFILIATE_NO_CONTENT
-            ? `ללא קוד לינק (${count})`
-            : labelFor(code) ?? code,
+          groupKey === AFFILIATE_NO_CONTENT
+            ? `ללא קוד לינק (${g.count})`
+            : g.name,
+        codes: g.codes.sort((x, y) => x.localeCompare(y)),
       }))
   }, [users, labelFor])
 
   const filteredUsers = useMemo(() => {
     if (selectedAffiliates.length === 0) return users
-    const set = new Set(selectedAffiliates)
+    const codeSet = new Set(expandAffiliateSelection(selectedAffiliates, labelsByCode))
+    const includeNoContent = selectedAffiliates.includes(AFFILIATE_NO_CONTENT)
     return users.filter((user) => {
       const code = affiliateFilterCode(user.affiliate_attribution)
-      return code != null && set.has(code)
+      if (!code) return false
+      if (code === AFFILIATE_NO_CONTENT) return includeNoContent
+      return codeSet.has(code)
     })
-  }, [users, selectedAffiliates])
+  }, [users, selectedAffiliates, labelsByCode])
 
   async function toggleUserEvents(userId: string) {
     if (expandedUsers.has(userId)) {

@@ -34,7 +34,7 @@ import { SimpleDonut } from './SimpleDonut'
 import { InsightCards } from './InsightCards'
 import { VideoProgressTrack } from './VideoProgressTrack'
 import { fetchAnalyticsDashboard } from './fetchDashboard'
-import { LinkLabelEditor, useUtmLinkLabels, UtmShareLinkGenerator, UtmNameExistingCode } from './useUtmLinkLabels'
+import { LinkLabelEditor, useUtmLinkLabels, UtmShareLinkGenerator, affiliateGroupKey, expandAffiliateSelection } from './useUtmLinkLabels'
 import { AffiliateFilterBar, ratePct } from './AffiliateFilter'
 import {
   buildAttentionInsights,
@@ -144,12 +144,16 @@ export function AdminAnalyticsDashboard() {
 
   const {
     labelFor,
+    labelsByCode,
     displayLabel: linkDisplayLabel,
     saveLabel,
     createShareLink,
     savingCode,
     error: linkLabelError,
   } = useUtmLinkLabels()
+
+  const labelsByCodeRef = useRef(labelsByCode)
+  labelsByCodeRef.current = labelsByCode
 
   useEffect(() => {
     let cancelled = false
@@ -181,8 +185,11 @@ export function AdminAnalyticsDashboard() {
           preset,
           startDate: preset === 'custom' ? startDate : undefined,
           endDate: preset === 'custom' ? endDate : undefined,
-          // empty = whole site (no affiliate filter); non-empty = those content codes only
-          utmContents: selectedAffiliatesRef.current,
+          // empty = whole site; non-empty = those content/source codes (expanded from name groups)
+          utmContents: expandAffiliateSelection(
+            selectedAffiliatesRef.current,
+            labelsByCodeRef.current,
+          ),
         })
         setData(result)
         if (mode === 'frame') setError(null)
@@ -292,8 +299,8 @@ export function AdminAnalyticsDashboard() {
     : null
 
   /**
-   * Affiliate codes with real signal only — GA traffic and/or registered customers.
-   * Unused labeled links (no traffic, no customers) are omitted.
+   * Affiliate codes with real signal — GA traffic and/or registered customers.
+   * Codes that share the same display name are merged into one row.
    */
   const linkDetailRows = useMemo(() => {
     const byCode = new Map<
@@ -361,7 +368,59 @@ export function AdminAnalyticsDashboard() {
       })
     }
 
-    return [...byCode.values()]
+    type GroupRow = {
+      content: string
+      codes: string[]
+      groupKey: string
+      source: string | null
+      users: number
+      newUsers: number
+      videoViewUsers: number
+      plansViewUsers: number
+      leadUsers: number
+      noGaTraffic: boolean
+    }
+
+    const byGroup = new Map<string, GroupRow>()
+    for (const row of byCode.values()) {
+      const code = row.content.trim().toLowerCase()
+      const groupKey = affiliateGroupKey(code, labelFor(code))
+      const existing = byGroup.get(groupKey)
+      if (!existing) {
+        byGroup.set(groupKey, {
+          content: code,
+          codes: [code],
+          groupKey,
+          source: row.source,
+          users: row.users,
+          newUsers: row.newUsers,
+          videoViewUsers: row.videoViewUsers,
+          plansViewUsers: row.plansViewUsers,
+          leadUsers: row.leadUsers,
+          noGaTraffic: row.noGaTraffic,
+        })
+        continue
+      }
+      existing.codes.push(code)
+      existing.users += row.users
+      existing.newUsers += row.newUsers
+      existing.videoViewUsers += row.videoViewUsers
+      existing.plansViewUsers += row.plansViewUsers
+      existing.leadUsers += row.leadUsers
+      existing.noGaTraffic = existing.noGaTraffic && row.noGaTraffic
+      if (row.source && existing.source && row.source !== existing.source) {
+        existing.source = null
+      } else if (row.source && !existing.source) {
+        existing.source = row.source
+      }
+    }
+
+    for (const group of byGroup.values()) {
+      group.codes.sort((a, b) => a.localeCompare(b))
+      group.content = group.codes[0]!
+    }
+
+    return [...byGroup.values()]
       .filter(
         (row) =>
           row.noGaTraffic ||
@@ -371,7 +430,6 @@ export function AdminAnalyticsDashboard() {
           row.leadUsers > 0,
       )
       .sort((a, b) => {
-        // Unnamed codes first — so external affiliates can be labeled quickly.
         const aNamed = Boolean(labelFor(a.content))
         const bNamed = Boolean(labelFor(b.content))
         if (aNamed !== bNamed) return aNamed ? 1 : -1
@@ -386,8 +444,9 @@ export function AdminAnalyticsDashboard() {
   const affiliateOptions = useMemo(
     () =>
       linkDetailRows.map((row) => ({
-        code: row.content.trim().toLowerCase(),
+        code: row.groupKey,
         name: labelFor(row.content) ?? row.content,
+        codes: row.codes,
         noTraffic: row.noGaTraffic,
       })),
     [linkDetailRows, labelFor],
@@ -401,7 +460,7 @@ export function AdminAnalyticsDashboard() {
   const filteredLinkRows = useMemo(() => {
     if (selectedAffiliates.length === 0) return linkDetailRows
     const set = new Set(selectedAffiliates)
-    return linkDetailRows.filter((row) => set.has(row.content.trim().toLowerCase()))
+    return linkDetailRows.filter((row) => set.has(row.groupKey))
   }, [linkDetailRows, selectedAffiliates])
 
   const affiliatesFiltered = selectedAffiliates.length > 0
@@ -465,12 +524,6 @@ export function AdminAnalyticsDashboard() {
               compact
               createShareLink={createShareLink}
               generating={!!savingCode}
-              error={linkLabelError}
-            />
-            <UtmNameExistingCode
-              compact
-              saveLabel={saveLabel}
-              saving={!!savingCode}
               error={linkLabelError}
             />
           </div>
@@ -896,7 +949,8 @@ export function AdminAnalyticsDashboard() {
                   <div className="border-b border-border px-5 py-3">
                     <h3 className="text-sm font-semibold text-foreground">ביצועי לינקים — פירוט</h3>
                     <p className="mt-0.5 text-[11px] text-muted">
-                      רק לינקים עם תנועת GA או לקוחות רשומים. קודים בלי שם מופיעים ראשונים לעריכה.
+                      רק לינקים עם תנועת GA או לקוחות רשומים. קודים עם אותו שם מאוחדים לשורה אחת.
+                      קודים בלי שם מופיעים ראשונים לעריכה.
                     </p>
                     {linkLabelError && (
                       <p className="mt-2 text-xs text-danger">{linkLabelError}</p>
@@ -922,9 +976,12 @@ export function AdminAnalyticsDashboard() {
                         {linkDetailRows.map((row) => {
                           const hasLead = row.leadUsers > 0
                           const needsName = !labelFor(row.content)
+                          const anyCodeSaving = row.codes.some(
+                            (c) => savingCode === c.trim().toLowerCase(),
+                          )
                           return (
                             <tr
-                              key={row.content}
+                              key={row.groupKey}
                               style={
                                 needsName
                                   ? {
@@ -942,10 +999,13 @@ export function AdminAnalyticsDashboard() {
                               <td className="px-4 py-2.5">
                                 <LinkLabelEditor
                                   contentCode={row.content}
+                                  contentCodes={row.codes}
                                   displayLabel={labelFor(row.content)}
-                                  saving={savingCode === row.content.trim().toLowerCase()}
-                                  onSave={async (name) => {
-                                    await saveLabel(row.content, name)
+                                  saving={anyCodeSaving}
+                                  onSave={async (updates) => {
+                                    for (const { code, name } of updates) {
+                                      await saveLabel(code, name)
+                                    }
                                   }}
                                 />
                               </td>

@@ -3,8 +3,11 @@ import { KpiCard, formatNumber, formatRate } from './KpiCard'
 import { Filter, UserPlus, Percent, Users, Video, Eye } from 'lucide-react'
 
 export interface AffiliateOption {
+  /** Selection key — group key when named links are merged. */
   code: string
   name: string
+  /** Concrete codes behind a merged name (for display / expansion). */
+  codes?: string[]
   /** Registered customers exist but no GA traffic in the selected range. */
   noTraffic?: boolean
 }
@@ -71,13 +74,24 @@ export function AffiliateFilterBar({
         className="max-w-md"
       >
         <option value="">הכל · ללא סינון</option>
-        {options.map((opt) => (
-          <option key={opt.code} value={opt.code} title={opt.code}>
-            {opt.noTraffic
-              ? `${opt.name} · ${opt.code} (לקוחות, בלי תנועה)`
-              : `${opt.name} · ${opt.code}`}
-          </option>
-        ))}
+        {options.map((opt) => {
+          const codesHint =
+            opt.codes && opt.codes.length > 1
+              ? opt.codes.join(', ')
+              : opt.codes?.[0] ?? (opt.code.startsWith('n:') ? '' : opt.code)
+          const suffix = codesHint ? ` · ${codesHint}` : ''
+          return (
+            <option
+              key={opt.code}
+              value={opt.code}
+              title={codesHint || opt.code}
+            >
+              {opt.noTraffic
+                ? `${opt.name}${suffix} (לקוחות, בלי תנועה)`
+                : `${opt.name}${suffix}`}
+            </option>
+          )
+        })}
       </Select>
     </div>
   )
