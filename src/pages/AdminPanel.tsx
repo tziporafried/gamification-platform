@@ -89,8 +89,12 @@ function affiliateFilterCode(attr: unknown): string | null {
 
 function affiliateLabel(attr: unknown, labelFor: (code: string) => string | null): string | null {
   const code = affiliateFilterCode(attr)
-  if (!code) return null
-  return labelFor(code) ?? code
+  if (code) return labelFor(code) ?? code
+  const parsed = asAffiliateAttr(attr)
+  if (!parsed) return null
+  // Attribution exists but without utm_content — still show so it doesn't look "deleted".
+  if (parsed.utm_source) return `מקור: ${parsed.utm_source}`
+  return 'אפיליאייט (ללא קוד לינק)'
 }
 
 interface AdminEventRow {
@@ -567,7 +571,11 @@ export function AdminPanel() {
                         {affiliate && (
                           <p
                             className="text-xs text-brand-400 mt-0.5 truncate"
-                            title={contentCode ? `אפיליאייט · ${contentCode}` : 'אפיליאייט (first-touch)'}
+                            title={
+                              contentCode
+                                ? `אפיליאייט · ${contentCode}`
+                                : 'אפיליאייט נשמר בלי utm_content (קוד לינק)'
+                            }
                           >
                             אפיליאייט: {affiliate}
                           </p>
