@@ -78,23 +78,27 @@ function asAffiliateAttr(raw: unknown): Record<string, string> | null {
   return Object.keys(out).length ? out : null
 }
 
+/** Sentinel for profiles with attribution but no utm_content (still filterable). */
+const AFFILIATE_NO_CONTENT = '__no_content__'
+
 /** Prefer utm_content (share-link code). Analytics filters by content only. */
 function affiliateFilterCode(attr: unknown): string | null {
   const parsed = asAffiliateAttr(attr)
   if (!parsed) return null
   const content = parsed.utm_content?.trim()
   if (content) return content.toLowerCase()
-  return null
+  return AFFILIATE_NO_CONTENT
 }
 
 function affiliateLabel(attr: unknown, labelFor: (code: string) => string | null): string | null {
   const code = affiliateFilterCode(attr)
-  if (code) return labelFor(code) ?? code
-  const parsed = asAffiliateAttr(attr)
-  if (!parsed) return null
-  // Attribution exists but without utm_content — still show so it doesn't look "deleted".
-  if (parsed.utm_source) return `מקור: ${parsed.utm_source}`
-  return 'אפיליאייט (ללא קוד לינק)'
+  if (!code) return null
+  if (code === AFFILIATE_NO_CONTENT) {
+    const parsed = asAffiliateAttr(attr)
+    if (parsed?.utm_source) return `מקור: ${parsed.utm_source}`
+    return 'אפיליאייט (ללא קוד לינק)'
+  }
+  return labelFor(code) ?? code
 }
 
 interface AdminEventRow {
@@ -171,7 +175,7 @@ export function AdminPanel() {
   const { tab: tabParam } = useParams<{ tab: string }>()
   const navigate = useNavigate()
   const { user: currentUser } = useAuth()
-  const { labelFor } = useUtmLinkLabels()
+  const { labelFor, labelsByCode } = useUtmLinkLabels()
   const tab: AdminTab = isAdminTab(tabParam) ? tabParam : DEFAULT_ADMIN_TAB
   const [users, setUsers] = useState<AdminUser[]>([])
   const [requests, setRequests] = useState<UpgradeRequest[]>([])
@@ -270,18 +274,28 @@ export function AdminPanel() {
       if (!code) continue
       counts.set(code, (counts.get(code) ?? 0) + 1)
     }
+    // Keep every configured share-link code in the filter (even with 0 customers),
+    // so the bar does not disappear when nobody has utm_content yet.
+    for (const code of Object.keys(labelsByCode)) {
+      if (!counts.has(code)) counts.set(code, 0)
+    }
     return [...counts.entries()]
       .sort((a, b) => {
+        if (a[0] === AFFILIATE_NO_CONTENT) return 1
+        if (b[0] === AFFILIATE_NO_CONTENT) return -1
         if (b[1] !== a[1]) return b[1] - a[1]
-        const nameA = labelFor(a[0]) ?? a[0]
-        const nameB = labelFor(b[0]) ?? b[0]
+        const nameA = a[0] === AFFILIATE_NO_CONTENT ? '' : (labelFor(a[0]) ?? a[0])
+        const nameB = b[0] === AFFILIATE_NO_CONTENT ? '' : (labelFor(b[0]) ?? b[0])
         return nameA.localeCompare(nameB, 'he')
       })
-      .map(([code]) => ({
+      .map(([code, count]) => ({
         code,
-        name: labelFor(code) ?? code,
+        name:
+          code === AFFILIATE_NO_CONTENT
+            ? `ללא קוד לינק (${count})`
+            : labelFor(code) ?? code,
       }))
-  }, [users, labelFor])
+  }, [users, labelFor, labelsByCode])
 
   const filteredUsers = useMemo(() => {
     if (selectedAffiliates.length === 0) return users
@@ -517,7 +531,7 @@ export function AdminPanel() {
                 options={affiliateOptions}
                 selected={selectedAffiliates}
                 onChange={setSelectedAffiliates}
-                hint="לפי utm_content שנשמר בפרופיל הלקוח (לינק שיתוף)."
+                hint="לפי קוד לינק השיתוף (utm_content) שנשמר בפרופיל, כולל לינקים שהוגדרו באנליטיקות."
               />
             </div>
           )}
