@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   hasUtmAttribution,
+  mergeUtmAttribution,
   normalizeUtmAttribution,
   readUtmFromSearch,
   searchNeedsUtmPersist,
@@ -53,6 +54,25 @@ test('normalizeUtmAttribution drops empty and absent keys', () => {
 test('hasUtmAttribution is true for one param', () => {
   assert.equal(hasUtmAttribution({ utm_content: 'rs' }), true)
   assert.equal(hasUtmAttribution({}), false)
+})
+
+test('mergeUtmAttribution keeps content when later URL only has source', () => {
+  const merged = mergeUtmAttribution(
+    { utm_source: 'share', utm_content: 'bt' },
+    { utm_source: 'share' },
+  )
+  assert.deepEqual(merged, {
+    utm_source: 'share',
+    utm_content: 'bt',
+  })
+})
+
+test('mergeUtmAttribution overwrites content on new tagged landing', () => {
+  const merged = mergeUtmAttribution(
+    { utm_source: 'share', utm_content: 'bt' },
+    { utm_source: 'share', utm_content: 'cn' },
+  )
+  assert.equal(merged.utm_content, 'cn')
 })
 
 test('withPersistedUtmSearch injects missing affiliate params', () => {

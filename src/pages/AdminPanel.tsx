@@ -71,14 +71,12 @@ function asAffiliateAttr(raw: unknown): Record<string, string> | null {
   return Object.keys(out).length ? out : null
 }
 
-/** Prefer utm_content (share-link code); fall back to utm_source so filter matches display. */
+/** Prefer utm_content (share-link code). Analytics filters by content only. */
 function affiliateFilterCode(attr: unknown): string | null {
   const parsed = asAffiliateAttr(attr)
   if (!parsed) return null
   const content = parsed.utm_content?.trim()
   if (content) return content.toLowerCase()
-  const source = parsed.utm_source?.trim()
-  if (source) return source.toLowerCase()
   return null
 }
 
@@ -501,7 +499,7 @@ export function AdminPanel() {
                 options={affiliateOptions}
                 selected={selectedAffiliates}
                 onChange={setSelectedAffiliates}
-                hint="לפי השם שהוגדר ללינק השיתוף באנליטיקות."
+                hint="לפי utm_content שנשמר בפרופיל הלקוח (לינק שיתוף)."
               />
             </div>
           )}

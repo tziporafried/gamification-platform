@@ -6,6 +6,8 @@ import { Filter, UserPlus, Percent, Users, Video, Eye } from 'lucide-react'
 export interface AffiliateOption {
   code: string
   name: string
+  /** Registered customers exist but no GA traffic in the selected range. */
+  noTraffic?: boolean
 }
 
 export interface AffiliateRowMetrics {
@@ -100,13 +102,20 @@ export function AffiliateFilterBar({
                   ? 'border-secondary bg-secondary/15 text-foreground'
                   : 'border-border text-muted hover:border-secondary/50 hover:text-foreground',
               )}
-              title={opt.code}
+              title={
+                opt.noTraffic
+                  ? `${opt.code} · יש לקוחות רשומים, בלי תנועה ב-GA בטווח`
+                  : opt.code
+              }
             >
               <span className="font-medium">{opt.name}</span>
               <span className="mx-1 text-muted/60">·</span>
               <span className="font-mono text-[10px]" dir="ltr">
                 {opt.code}
               </span>
+              {opt.noTraffic && (
+                <span className="mr-1 text-[10px] text-warning">· לקוחות</span>
+              )}
             </button>
           )
         })}
