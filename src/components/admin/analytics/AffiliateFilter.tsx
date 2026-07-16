@@ -43,13 +43,10 @@ export function AffiliateFilterBar({
   options,
   selected,
   onChange,
-  hint = 'הסינון מצמצם את המגמה, הסרטון והשאלות במסגרת. הסיכום למעלה נשאר לכל האתר.',
 }: {
   options: AffiliateOption[]
   selected: string[]
   onChange: (codes: string[]) => void
-  /** Pass null to hide the hint line. */
-  hint?: string | null
 }) {
   if (options.length === 0) return null
 
@@ -57,42 +54,40 @@ export function AffiliateFilterBar({
   const value = selected[0] ?? ''
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Filter size={16} className="shrink-0 text-secondary" />
-        <h3 className="text-sm font-semibold text-foreground">סינון לפי אפיליאייט</h3>
+    <div className="flex min-w-0 items-center gap-2">
+      <Filter size={16} className="shrink-0 text-secondary" aria-hidden />
+      <h3 className="shrink-0 text-sm font-semibold text-foreground">סינון לפי אפיליאייט</h3>
+      <div className="min-w-0 max-w-md flex-1">
+        <Select
+          id="affiliate-filter"
+          aria-label="סינון לפי אפיליאייט"
+          value={value}
+          onChange={(e) => {
+            const next = e.target.value
+            onChange(next ? [next] : [])
+          }}
+        >
+          <option value="">הכל · ללא סינון</option>
+          {options.map((opt) => {
+            const codesHint =
+              opt.codes && opt.codes.length > 1
+                ? opt.codes.join(', ')
+                : opt.codes?.[0] ?? (opt.code.startsWith('n:') ? '' : opt.code)
+            const suffix = codesHint ? ` · ${codesHint}` : ''
+            return (
+              <option
+                key={opt.code}
+                value={opt.code}
+                title={codesHint || opt.code}
+              >
+                {opt.noTraffic
+                  ? `${opt.name}${suffix} (לקוחות, בלי תנועה)`
+                  : `${opt.name}${suffix}`}
+              </option>
+            )
+          })}
+        </Select>
       </div>
-      {hint && <p className="text-[11px] text-muted">{hint}</p>}
-      <Select
-        id="affiliate-filter"
-        aria-label="סינון לפי אפיליאייט"
-        value={value}
-        onChange={(e) => {
-          const next = e.target.value
-          onChange(next ? [next] : [])
-        }}
-        className="max-w-md"
-      >
-        <option value="">הכל · ללא סינון</option>
-        {options.map((opt) => {
-          const codesHint =
-            opt.codes && opt.codes.length > 1
-              ? opt.codes.join(', ')
-              : opt.codes?.[0] ?? (opt.code.startsWith('n:') ? '' : opt.code)
-          const suffix = codesHint ? ` · ${codesHint}` : ''
-          return (
-            <option
-              key={opt.code}
-              value={opt.code}
-              title={codesHint || opt.code}
-            >
-              {opt.noTraffic
-                ? `${opt.name}${suffix} (לקוחות, בלי תנועה)`
-                : `${opt.name}${suffix}`}
-            </option>
-          )
-        })}
-      </Select>
     </div>
   )
 }

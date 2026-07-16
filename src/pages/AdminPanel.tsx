@@ -99,14 +99,6 @@ function affiliateFilterCode(attr: unknown): string | null {
   return null
 }
 
-function affiliateMatchedViaSourceOnly(attr: unknown): boolean {
-  const parsed = asAffiliateAttr(attr)
-  if (!parsed?.utm_source?.trim()) return false
-  if (parsed.utm_content?.trim()) return false
-  const source = parsed.utm_source.trim().toLowerCase()
-  return !GENERIC_UTM_SOURCES.has(source)
-}
-
 function affiliateLabel(attr: unknown, labelFor: (code: string) => string | null): string | null {
   const code = affiliateFilterCode(attr)
   if (!code) return null
@@ -115,10 +107,7 @@ function affiliateLabel(attr: unknown, labelFor: (code: string) => string | null
     if (parsed?.utm_source) return `מקור: ${parsed.utm_source}`
     return 'אפיליאייט (ללא קוד לינק)'
   }
-  const name = labelFor(code) ?? code
-  // Flag malformed links (?utm_source=CODE without utm_content)
-  if (affiliateMatchedViaSourceOnly(attr)) return `${name} (מ־source)`
-  return name
+  return labelFor(code) ?? code
 }
 
 interface AdminEventRow {
@@ -567,7 +556,6 @@ export function AdminPanel() {
                 options={affiliateOptions}
                 selected={selectedAffiliates}
                 onChange={setSelectedAffiliates}
-                hint="לפי utm_content, או utm_source אם אין content (לינקים ישנים/שגויים כמו ?utm_source=bt)."
               />
             </div>
           )}
@@ -623,9 +611,7 @@ export function AdminPanel() {
                             className="text-xs text-brand-400 mt-0.5 truncate"
                             title={
                               contentCode && contentCode !== AFFILIATE_NO_CONTENT
-                                ? affiliateMatchedViaSourceOnly(user.affiliate_attribution)
-                                  ? `שויך דרך utm_source=${contentCode} (בלי utm_content)`
-                                  : `אפיליאייט · utm_content=${contentCode}`
+                                ? `אפיליאייט · ${contentCode}`
                                 : 'אפיליאייט נשמר בלי קוד לינק מזוהה'
                             }
                           >

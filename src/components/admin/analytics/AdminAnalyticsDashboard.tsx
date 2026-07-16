@@ -676,7 +676,6 @@ export function AdminAnalyticsDashboard() {
                 options={affiliateOptions}
                 selected={selectedAffiliates}
                 onChange={setSelectedAffiliates}
-                hint="סינון לפי utm_content או utm_source (גם לינקים שגויים כמו ?utm_source=bt). הסיכום למעלה נשאר לכל האתר."
               />
 
               <div className="border-t border-border pt-3">
