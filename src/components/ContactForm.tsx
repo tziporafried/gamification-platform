@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react'
-import { CheckCircle } from 'lucide-react'
+import { CheckCircle, Mail, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -10,6 +10,10 @@ import {
   limitTypeForIntent,
   buildContextNotes,
 } from '@/lib/contact'
+
+const CONTACT_EMAIL = 'ourgamify@gmail.com'
+const CONTACT_PHONE = '0556738544'
+const CONTACT_GMAIL_URL = `https://mail.google.com/mail/?view=cm&fs=1&to=${CONTACT_EMAIL}`
 
 export interface ContactFormProps {
   intent?: ContactIntent
@@ -401,6 +405,33 @@ export function ContactForm({
         >
           {resolvedSubmit}
         </Button>
+
+        {intent === 'contact' && (
+          <div className="pt-2 text-center">
+            <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm leading-relaxed text-muted">
+              <span className="font-semibold text-foreground">מעדיפים לדבר איתנו?</span>
+              <a
+                href={CONTACT_GMAIL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                dir="ltr"
+                className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+              >
+                <Mail size={17} strokeWidth={2.25} aria-hidden="true" />
+                {CONTACT_EMAIL}
+              </a>
+              <span className="text-border" aria-hidden="true">|</span>
+              <a
+                href={`tel:${CONTACT_PHONE}`}
+                dir="ltr"
+                className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+              >
+                <Phone size={17} strokeWidth={2.25} aria-hidden="true" />
+                {CONTACT_PHONE}
+              </a>
+            </p>
+          </div>
+        )}
       </form>
     </>
   )

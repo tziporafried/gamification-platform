@@ -12,6 +12,8 @@ import {
   ChevronDown,
   QrCode,
   AppWindow,
+  Mail,
+  Phone,
   type LucideIcon,
 } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
@@ -92,6 +94,10 @@ const PRICING_VALUES: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'qr', label: 'קובץ QR להדפסה', icon: QrCode },
   { id: 'scanner', label: 'סורק לשימוש באירוע', icon: ScanLine },
 ]
+
+const CONTACT_EMAIL = 'ourgamify@gmail.com'
+const CONTACT_PHONE = '0556738544'
+const CONTACT_GMAIL_URL = `https://mail.google.com/mail/?view=cm&fs=1&to=${CONTACT_EMAIL}`
 
 const FAQ_ITEMS: { question: string; answer: ReactNode }[] = [
   {
@@ -621,20 +627,41 @@ export function Landing() {
 
           {/* 8. Contact fallback — after FAQ */}
           <motion.section className="text-center" {...revealProps(motionSafe)}>
-            <div className="mx-auto max-w-md border-t border-border/60 pt-8">
-              <p className="text-sm font-medium leading-[1.7] text-foreground">
+            <div className="mx-auto max-w-xl border-t border-border/60 pt-9">
+              <p className="text-2xl font-black leading-snug text-primary sm:text-[30px]">
                 יש לכם שאלה או אירוע מיוחד?
               </p>
-              <p className="mt-1 text-sm leading-[1.7] text-muted">
+              <p className="mt-2 text-lg font-semibold leading-[1.6] text-foreground sm:text-xl">
                 נשמח לחשוב איתכם יחד.
               </p>
               <button
                 type="button"
                 onClick={() => handleContactClick('footer')}
-                className="mt-4 inline-flex items-center justify-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-primary"
+                className="mt-4 inline-flex items-center justify-center gap-1.5 text-base font-bold text-primary underline-offset-4 transition-colors hover:underline sm:text-lg"
               >
                 דברו איתנו
               </button>
+              <p className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm leading-relaxed text-muted sm:text-base">
+                <a
+                  href={CONTACT_GMAIL_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  dir="ltr"
+                  className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                >
+                  <Mail size={17} strokeWidth={2.25} aria-hidden="true" />
+                  {CONTACT_EMAIL}
+                </a>
+                <span className="text-border" aria-hidden="true">|</span>
+                <a
+                  href={`tel:${CONTACT_PHONE}`}
+                  dir="ltr"
+                  className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                >
+                  <Phone size={17} strokeWidth={2.25} aria-hidden="true" />
+                  {CONTACT_PHONE}
+                </a>
+              </p>
             </div>
           </motion.section>
         </main>
