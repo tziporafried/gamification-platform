@@ -89,12 +89,16 @@ function normalizePayload(raw: AnalyticsDashboardData): AnalyticsDashboardData {
       openUsers: 0,
       leadUsers: payload.overview?.leadUsers ?? 0,
       conversionRate: null,
+      emailClickUsers: 0,
+      phoneClickUsers: 0,
       bySource: null,
       bySourceUnavailable: true,
       opensBySource: null,
       opensBySourceUnavailable: true,
     }
   } else {
+    payload.contact.emailClickUsers ??= 0
+    payload.contact.phoneClickUsers ??= 0
     payload.contact.opensBySource ??= null
     payload.contact.opensBySourceUnavailable ??= true
   }

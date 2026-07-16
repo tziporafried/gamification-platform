@@ -170,6 +170,8 @@ interface DashboardPayload {
     openUsers: number
     leadUsers: number
     conversionRate: number | null
+    emailClickUsers: number
+    phoneClickUsers: number
     bySource: NamedMetric[] | null
     bySourceUnavailable: boolean
     opensBySource: NamedMetric[] | null
@@ -281,6 +283,8 @@ const CORE_EVENTS = [
   'cta_click',
   'select_plan',
   'contact_form_open',
+  'contact_email_click',
+  'contact_phone_click',
   'activation_options_viewed',
   'activation_options_clicked',
   'trial_activated',
@@ -661,6 +665,31 @@ function groupTrafficSources(rows: Ga4Row[] | undefined): NamedMetric[] {
 const UTM_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'] as const
 type UtmParam = (typeof UTM_PARAMS)[number]
 
+/** Channel sources — not short affiliate codes from broken ?utm_source=CODE links. */
+const GENERIC_UTM_SOURCES = new Set([
+  'share',
+  'personal_share',
+  'direct',
+  '(direct)',
+  'google',
+  'bing',
+  'yahoo',
+  'facebook',
+  'instagram',
+  'twitter',
+  'linkedin',
+  '(not set)',
+  'not set',
+  '(none)',
+  'none',
+])
+
+function isAffiliateLikeSource(source: string): boolean {
+  const code = source.trim().toLowerCase()
+  if (!code || GENERIC_UTM_SOURCES.has(code)) return false
+  return /^[a-z0-9_-]{1,12}$/i.test(code)
+}
+
 function isUnsetDimension(value: string): boolean {
   const lower = value.trim().toLowerCase()
   return !value || lower === '(not set)' || lower === 'not set' || lower === '(none)'
@@ -949,6 +978,36 @@ function utmDimensionReport(
   })
 }
 
+/** totalUsers for an event, broken down by a UTM/session dimension. */
+function eventUsersByDimensionReport(
+  accessToken: string,
+  propertyId: string,
+  dateRanges: { startDate: string; endDate: string }[],
+  dimensionField: string,
+  eventName: string,
+) {
+  return runReport(accessToken, propertyId, {
+    dateRanges,
+    dimensions: [{ name: dimensionField }],
+    metrics: [{ name: 'totalUsers' }],
+    dimensionFilter: {
+      andGroup: {
+        expressions: [
+          {
+            filter: {
+              fieldName: 'eventName',
+              stringFilter: { matchType: 'EXACT' as const, value: eventName },
+            },
+          },
+          notSetFilter(dimensionField),
+        ],
+      },
+    },
+    orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+    limit: 50,
+  })
+}
+
 /**
  * Tagged visitors = anyone with utm_source OR utm_content set.
  * Medium/campaign are optional and must not alone define "tagged" for short links.
@@ -1016,7 +1075,8 @@ function mergeContentBreakdowns(
 function mergeUsersByKey(...maps: Map<string, number>[]): Map<string, number> {
   const out = new Map<string, number>()
   for (const map of maps) {
-    for (const [key, users] of map) {
+    for (const [rawKey, users] of map) {
+      const key = rawKey.trim().toLowerCase()
       out.set(key, Math.max(out.get(key) ?? 0, users))
     }
   }
@@ -1029,8 +1089,9 @@ function mergeSourceByContent(
   const out = new Map<string, string>()
   for (const map of maps) {
     for (const [content, source] of map) {
-      if (!out.has(content) && source && !isUnsetDimension(source)) {
-        out.set(content, source)
+      const key = content.trim().toLowerCase()
+      if (!out.has(key) && source && !isUnsetDimension(source)) {
+        out.set(key, source)
       }
     }
   }
@@ -1743,6 +1804,52 @@ Deno.serve(async (req) => {
       limit: 50,
     })
 
+    // Broken links (?utm_source=bt) — funnel by source, not only by content.
+    const sourceFieldForEvents = 'customEvent:utm_source'
+    const sessionSourceField = 'sessionSource'
+    const utmSourceVideoPromise = eventUsersByDimensionReport(
+      accessToken,
+      propertyId,
+      dateRanges,
+      sourceFieldForEvents,
+      'video_view',
+    )
+    const utmSourcePlansPromise = eventUsersByDimensionReport(
+      accessToken,
+      propertyId,
+      dateRanges,
+      sourceFieldForEvents,
+      'view_plans',
+    )
+    const utmSourceLeadsPromise = eventUsersByDimensionReport(
+      accessToken,
+      propertyId,
+      dateRanges,
+      sourceFieldForEvents,
+      'generate_lead',
+    )
+    const sessionSourceVideoPromise = eventUsersByDimensionReport(
+      accessToken,
+      propertyId,
+      dateRanges,
+      sessionSourceField,
+      'video_view',
+    )
+    const sessionSourcePlansPromise = eventUsersByDimensionReport(
+      accessToken,
+      propertyId,
+      dateRanges,
+      sessionSourceField,
+      'view_plans',
+    )
+    const sessionSourceLeadsPromise = eventUsersByDimensionReport(
+      accessToken,
+      propertyId,
+      dateRanges,
+      sessionSourceField,
+      'generate_lead',
+    )
+
     const [
       core,
       homepage,
@@ -1785,6 +1892,12 @@ Deno.serve(async (req) => {
       sessionContentVideoReport,
       sessionContentPlansReport,
       sessionContentLeadsReport,
+      utmSourceVideoReport,
+      utmSourcePlansReport,
+      utmSourceLeadsReport,
+      sessionSourceVideoReport,
+      sessionSourcePlansReport,
+      sessionSourceLeadsReport,
     ] = await Promise.all([
       corePromise,
       homepagePromise,
@@ -1827,6 +1940,12 @@ Deno.serve(async (req) => {
       sessionContentVideoPromise,
       sessionContentPlansPromise,
       sessionContentLeadsPromise,
+      utmSourceVideoPromise,
+      utmSourcePlansPromise,
+      utmSourceLeadsPromise,
+      sessionSourceVideoPromise,
+      sessionSourcePlansPromise,
+      sessionSourceLeadsPromise,
     ])
 
     if (core.error) {
@@ -2329,6 +2448,40 @@ Deno.serve(async (req) => {
     const plansByContent = mergeUsersByKey(customPlansByContent, sessionPlansByContent)
     const leadsByContent = mergeUsersByKey(customLeadsByContent, sessionLeadsByContent)
 
+    const videoBySource = mergeUsersByKey(
+      utmSourceVideoReport.error ? new Map() : usersByKey(utmSourceVideoReport.rows),
+      sessionSourceVideoReport.error ? new Map() : usersByKey(sessionSourceVideoReport.rows),
+    )
+    const plansBySource = mergeUsersByKey(
+      utmSourcePlansReport.error ? new Map() : usersByKey(utmSourcePlansReport.rows),
+      sessionSourcePlansReport.error ? new Map() : usersByKey(sessionSourcePlansReport.rows),
+    )
+    const leadsBySource = mergeUsersByKey(
+      utmSourceLeadsReport.error ? new Map() : usersByKey(utmSourceLeadsReport.rows),
+      sessionSourceLeadsReport.error ? new Map() : usersByKey(sessionSourceLeadsReport.rows),
+    )
+
+    /** Users/newUsers for broken affiliate codes (?utm_source=CODE). */
+    const affiliateSourceStats = new Map<string, { users: number; newUsers: number }>()
+    if (!utmSourceReport.error) {
+      for (const row of mapUtmDimensionRows(utmSourceReport.rows)) {
+        const code = row.key.trim().toLowerCase()
+        if (!isAffiliateLikeSource(code)) continue
+        affiliateSourceStats.set(code, { users: row.users, newUsers: row.newUsers })
+      }
+    }
+    if (!trafficSourcesReport.error) {
+      for (const row of trafficSourcesReport.rows ?? []) {
+        const code = (row.dimensionValues?.[0]?.value ?? '').trim().toLowerCase()
+        if (!isAffiliateLikeSource(code)) continue
+        const users = Number(row.metricValues?.[0]?.value ?? 0)
+        if (users <= 0) continue
+        const prev = affiliateSourceStats.get(code)
+        if (!prev) affiliateSourceStats.set(code, { users, newUsers: 0 })
+        else prev.users = Math.max(prev.users, users)
+      }
+    }
+
     const sourceByContent = mergeSourceByContent(
       utmContentSourceReport.error
         ? new Map<string, string>()
@@ -2359,25 +2512,59 @@ Deno.serve(async (req) => {
     const allContentCodes = new Set<string>([
       ...customUsersByContent.keys(),
       ...sessionUsersByContent.keys(),
-      ...videoByContent.keys(),
-      ...plansByContent.keys(),
-      ...leadsByContent.keys(),
+      ...[...videoByContent.keys()].map((k) => k.toLowerCase()),
+      ...[...plansByContent.keys()].map((k) => k.toLowerCase()),
+      ...[...leadsByContent.keys()].map((k) => k.toLowerCase()),
     ])
 
+    const allLinkCodes = new Set<string>([
+      ...allContentCodes,
+      ...affiliateSourceStats.keys(),
+    ])
+    for (const code of videoBySource.keys()) {
+      if (isAffiliateLikeSource(code)) allLinkCodes.add(code.trim().toLowerCase())
+    }
+    for (const code of plansBySource.keys()) {
+      if (isAffiliateLikeSource(code)) allLinkCodes.add(code.trim().toLowerCase())
+    }
+    for (const code of leadsBySource.keys()) {
+      if (isAffiliateLikeSource(code)) allLinkCodes.add(code.trim().toLowerCase())
+    }
+
+    const sourceMetric = (map: Map<string, number>, code: string) =>
+      isAffiliateLikeSource(code) ? (map.get(code) ?? 0) : 0
+
     let linkPerformance: LinkPerformanceRow[] | null = null
-    if (allContentCodes.size > 0) {
-      linkPerformance = [...allContentCodes]
-        .map((code) => {
+    if (allLinkCodes.size > 0) {
+      linkPerformance = [...allLinkCodes]
+        .map((rawCode) => {
+          const code = rawCode.trim().toLowerCase()
           const custom = customUsersByContent.get(code)
           const session = sessionUsersByContent.get(code)
-          const users = Math.max(custom?.users ?? 0, session?.users ?? 0)
-          const newUsers = Math.max(custom?.newUsers ?? 0, session?.newUsers ?? 0)
-          const videoViewUsers = videoByContent.get(code) ?? 0
-          const plansViewUsers = plansByContent.get(code) ?? 0
-          const leadUsers = leadsByContent.get(code) ?? 0
+          const contentUsers = Math.max(custom?.users ?? 0, session?.users ?? 0)
+          const contentNewUsers = Math.max(custom?.newUsers ?? 0, session?.newUsers ?? 0)
+          const src = affiliateSourceStats.get(code)
+          const sourceUsers = src?.users ?? 0
+          const sourceNewUsers = src?.newUsers ?? 0
+          // Content (good links) and source-as-code (broken) are separate audiences.
+          const users = contentUsers + sourceUsers
+          const newUsers = contentNewUsers + sourceNewUsers
+          const videoViewUsers =
+            (videoByContent.get(code) ?? 0) + sourceMetric(videoBySource, code)
+          const plansViewUsers =
+            (plansByContent.get(code) ?? 0) + sourceMetric(plansBySource, code)
+          const leadUsers =
+            (leadsByContent.get(code) ?? 0) + sourceMetric(leadsBySource, code)
+          const dominantContentSource = sourceByContent.get(code) ?? null
+          const source =
+            contentUsers > 0
+              ? dominantContentSource
+              : sourceUsers > 0
+                ? code
+                : dominantContentSource
           return {
             content: code,
-            source: sourceByContent.get(code) ?? null,
+            source,
             users,
             newUsers,
             videoViewUsers,
@@ -2500,6 +2687,8 @@ Deno.serve(async (req) => {
         openUsers: contactOpenUsers,
         leadUsers,
         conversionRate: rate(leadUsers, contactOpenUsers),
+        emailClickUsers: getEvent(events, 'contact_email_click').users,
+        phoneClickUsers: getEvent(events, 'contact_phone_click').users,
         bySource: leadBySourceRows,
         bySourceUnavailable,
         opensBySource: contactOpensBySourceRows,

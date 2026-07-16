@@ -243,6 +243,20 @@ export function trackContactFormOpen(params: {
   })
 }
 
+/** Click on company email (mailto / Gmail compose) anywhere on the site. */
+export function trackContactEmailClick(params?: { page_path?: string }) {
+  trackEvent('contact_email_click', {
+    page_path: params?.page_path ?? (typeof window !== 'undefined' ? window.location.pathname : undefined),
+  })
+}
+
+/** Click on company phone (tel:) anywhere on the site. */
+export function trackContactPhoneClick(params?: { page_path?: string }) {
+  trackEvent('contact_phone_click', {
+    page_path: params?.page_path ?? (typeof window !== 'undefined' ? window.location.pathname : undefined),
+  })
+}
+
 export function trackVideoView(videoId = 'gamify-tour') {
   trackEvent('video_view', {
     video_id: videoId,

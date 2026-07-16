@@ -7,6 +7,8 @@ import {
   initAnalytics,
   markUtmUrlDisplayInject,
   restoreUtmAttribution,
+  trackContactEmailClick,
+  trackContactPhoneClick,
   trackPageView,
   trackWizardExit,
 } from '@/lib/analytics'
@@ -17,6 +19,46 @@ const WIZARD_STEP_RE = /^\/events\/[^/]+\/step\/(\d+)/
 
 /** OAuth callback owns its query string — don't inject UTMs mid-handshake. */
 const SKIP_UTM_URL_PERSIST = /^\/auth\/callback\/?$/
+
+const COMPANY_EMAIL = 'ourgamify@gmail.com'
+const COMPANY_PHONE_DIGITS = '0556738544'
+
+function digitsOnly(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
+function closestAnchor(target: EventTarget | null): HTMLAnchorElement | null {
+  if (!(target instanceof Element)) return null
+  return target.closest('a')
+}
+
+/** Detect company email / phone link clicks site-wide (mailto, tel, Gmail compose). */
+function classifyContactChannelClick(anchor: HTMLAnchorElement): 'email' | 'phone' | null {
+  const href = (anchor.getAttribute('href') ?? '').trim()
+  if (!href) return null
+  const lower = href.toLowerCase()
+
+  if (lower.startsWith('mailto:')) {
+    const address = lower.slice('mailto:'.length).split('?')[0]?.trim() ?? ''
+    if (address.includes(COMPANY_EMAIL)) return 'email'
+    return null
+  }
+
+  if (lower.includes('mail.google.com') && lower.includes(COMPANY_EMAIL)) {
+    return 'email'
+  }
+
+  if (lower.startsWith('tel:')) {
+    const phone = digitsOnly(lower.slice('tel:'.length))
+    const company = digitsOnly(COMPANY_PHONE_DIGITS)
+    if (phone && (phone === company || phone.endsWith(company) || company.endsWith(phone))) {
+      return 'phone'
+    }
+    return null
+  }
+
+  return null
+}
 
 function stepNameFor(stepNumber: number): string {
   return WIZARD_STEPS.find((s) => s.step === stepNumber)?.id ?? `step_${stepNumber}`
@@ -31,6 +73,21 @@ export function AnalyticsListener() {
 
   useEffect(() => {
     initAnalytics()
+  }, [])
+
+  // Capture company email / phone clicks anywhere (landing, forms, modals, etc.).
+  useEffect(() => {
+    function onClick(event: MouseEvent) {
+      if (event.defaultPrevented) return
+      if (event.button !== 0) return
+      const anchor = closestAnchor(event.target)
+      if (!anchor) return
+      const channel = classifyContactChannelClick(anchor)
+      if (channel === 'email') trackContactEmailClick()
+      else if (channel === 'phone') trackContactPhoneClick()
+    }
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
   }, [])
 
   // Returning users: restore first-touch affiliate from profile into session + URL (homepage etc).

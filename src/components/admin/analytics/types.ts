@@ -136,6 +136,8 @@ export interface AnalyticsDashboardData {
     openUsers: number
     leadUsers: number
     conversionRate: number | null
+    emailClickUsers: number
+    phoneClickUsers: number
     bySource: AnalyticsNamedMetric[] | null
     bySourceUnavailable: boolean
     opensBySource: AnalyticsNamedMetric[] | null

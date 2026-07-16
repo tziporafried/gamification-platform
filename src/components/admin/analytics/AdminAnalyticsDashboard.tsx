@@ -8,9 +8,11 @@ import {
   HelpCircle,
   Link2,
   LogIn,
+  Mail,
   MessageCircle,
   MousePointerClick,
   Package,
+  Phone,
   RefreshCw,
   Sparkles,
   TrendingUp,
@@ -381,38 +383,25 @@ export function AdminAnalyticsDashboard() {
     }
 
     // Broken / legacy links: ?utm_source=bt (no utm_content) land in sourceBreakdown.
+    // Prefer linkPerformance (full funnel) when the backend already merged source metrics.
     for (const row of data?.utm.sourceBreakdown ?? []) {
       const code = row.source.trim().toLowerCase()
       if (!isAffiliateLikeSource(code)) continue
+      if (byCode.has(code)) continue
       const known =
-        byCode.has(code) ||
-        Boolean(labelsByCode[code]) ||
-        customerContentCodes.includes(code)
-      // Unknown short codes still count — unnamed affiliates from bad URLs.
+        Boolean(labelsByCode[code]) || customerContentCodes.includes(code)
       if (!known && !/^[a-z0-9]{2,4}$/i.test(code)) continue
 
-      const existing = byCode.get(code)
-      if (!existing) {
-        byCode.set(code, {
-          content: code,
-          source: code,
-          users: row.users,
-          newUsers: 0,
-          videoViewUsers: 0,
-          plansViewUsers: 0,
-          leadUsers: 0,
-          noGaTraffic: false,
-        })
-        continue
-      }
-      // Content traffic and source-as-code traffic are separate audiences — sum visitors.
-      existing.users += row.users
-      existing.noGaTraffic = false
-      if (!existing.source || existing.source === 'share') {
-        existing.source = code
-      } else if (existing.source !== code && existing.source !== 'share') {
-        existing.source = null
-      }
+      byCode.set(code, {
+        content: code,
+        source: code,
+        users: row.users,
+        newUsers: 0,
+        videoViewUsers: 0,
+        plansViewUsers: 0,
+        leadUsers: 0,
+        noGaTraffic: false,
+      })
     }
 
     // Codes from registered customers (may have no GA hits in the selected range).
@@ -1147,6 +1136,25 @@ export function AdminAnalyticsDashboard() {
                 </p>
               )}
             </Card>
+
+            <div className="grid grid-cols-2 gap-3">
+              <KpiCard
+                loading={loading}
+                label="לחיצות על מייל"
+                value={data.contact.emailClickUsers}
+                hint="ourgamify@gmail.com"
+                icon={<Mail size={16} />}
+                accent="secondary"
+              />
+              <KpiCard
+                loading={loading}
+                label="לחיצות על טלפון"
+                value={data.contact.phoneClickUsers}
+                hint="055-6738544"
+                icon={<Phone size={16} />}
+                accent="tertiary"
+              />
+            </div>
 
             <button
               type="button"
