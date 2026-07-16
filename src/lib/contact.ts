@@ -31,7 +31,6 @@ export type PendingActivation = {
 }
 
 const PENDING_ACTIVATION_KEY = 'gamify_pending_activation'
-const PENDING_CREATE_EVENT_KEY = 'gamify_pending_intent'
 
 export function contactLimitTypeForSource(source: ContactSource): string {
   if (source === 'custom_solution') return 'plan-organizations'
@@ -130,25 +129,5 @@ export function clearPendingActivation(): void {
     sessionStorage.removeItem(PENDING_ACTIVATION_KEY)
   } catch {
     /* ignore */
-  }
-}
-
-export function setPendingCreateEventIntent(): void {
-  try {
-    sessionStorage.setItem(PENDING_CREATE_EVENT_KEY, 'create_event')
-  } catch {
-    /* ignore */
-  }
-}
-
-/** Returns true once if a create-event intent was stored. */
-export function consumePendingCreateEventIntent(): boolean {
-  try {
-    const value = sessionStorage.getItem(PENDING_CREATE_EVENT_KEY)
-    if (value !== 'create_event') return false
-    sessionStorage.removeItem(PENDING_CREATE_EVENT_KEY)
-    return true
-  } catch {
-    return false
   }
 }

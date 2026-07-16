@@ -70,9 +70,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const syncAffiliateForUser = useCallback(async (userId: string) => {
     if (claimedForUserRef.current === userId) return
-    claimedForUserRef.current = userId
+
     await claimSessionAffiliate()
-    await fetchProfile(userId)
+    let next = await fetchProfile(userId)
+
+    // OAuth race: claim can run before user_profiles row exists (UPDATE 0 rows → "already_set").
+    // Retry once so first-touch UTMs are not lost permanently.
+    if (!next?.affiliate_attribution && hasUtmAttribution(getUtmAttribution())) {
+      await new Promise((r) => setTimeout(r, 400))
+      await claimSessionAffiliate()
+      next = await fetchProfile(userId)
+    }
+
+    // Only lock out further attempts after we tried (and optionally retried).
+    claimedForUserRef.current = userId
+    return next
   }, [fetchProfile])
 
   useEffect(() => {

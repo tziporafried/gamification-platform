@@ -88,7 +88,7 @@ export function StepReviewGenerate({
         if (groupType) {
           await syncEventToTemplate(event.id, templateMode.templateId, groupType)
         }
-        navigate('/admin', { state: { tab: 'templates' } })
+        navigate('/admin/templates')
       } catch {
         setSaveError('שגיאה בסיום העריכה. נסו שוב.')
         setSaving(false)

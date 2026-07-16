@@ -3,7 +3,12 @@ const MEASUREMENT_ID =
 
 const LANDING_REFERRER_KEY = 'gamify_landing_referrer'
 const PENDING_AUTH_METHOD_KEY = 'gamify_pending_auth_method'
+/** First-touch / claim + URL display (may include profile restore). */
 const UTM_ATTRIBUTION_KEY = 'gamify_utm_attribution'
+/** This-visit URL capture only — attached to GA events (never profile restore). */
+const UTM_HIT_KEY = 'gamify_utm_hit'
+/** Set when we inject UTMs into the URL for display; next matching capture skips HIT. */
+const UTM_DISPLAY_INJECT_KEY = 'gamify_utm_display_inject'
 
 /** Dedupe window to absorb React StrictMode double-effects / rapid remounts. */
 const DEDUPE_WINDOW_MS = 800
@@ -17,8 +22,10 @@ declare global {
 }
 
 import {
+  mergeUtmAttribution,
   normalizeUtmAttribution,
   readUtmFromSearch,
+  UTM_PARAM_KEYS,
   utmAttributionToParams,
   type UtmAttribution,
 } from '@/lib/utmAttribution'
@@ -59,27 +66,10 @@ export function getLandingReferrer(): string {
   }
 }
 
-/**
- * Persist first-touch-style UTM attribution for the browser session.
- * - Captures when at least one UTM param is present in the URL
- * - Updates when the visitor enters via a new tagged URL
- * - Does not clear on SPA navigations that omit UTMs
- */
-export function captureUtmAttribution(search = typeof window !== 'undefined' ? window.location.search : '') {
-  if (typeof window === 'undefined') return
-  const fromUrl = readUtmFromSearch(search)
-  if (!fromUrl) return
-  try {
-    sessionStorage.setItem(UTM_ATTRIBUTION_KEY, JSON.stringify(fromUrl))
-  } catch {
-    /* private mode / blocked storage */
-  }
-}
-
-export function getUtmAttribution(): UtmAttribution {
+function readStoredUtm(key: string): UtmAttribution {
   if (typeof window === 'undefined') return {}
   try {
-    const raw = sessionStorage.getItem(UTM_ATTRIBUTION_KEY)
+    const raw = sessionStorage.getItem(key)
     if (!raw) return {}
     return normalizeUtmAttribution(JSON.parse(raw))
   } catch {
@@ -87,10 +77,77 @@ export function getUtmAttribution(): UtmAttribution {
   }
 }
 
+function writeStoredUtm(key: string, utm: UtmAttribution) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(utm))
+  } catch {
+    /* private mode / blocked storage */
+  }
+}
+
+/**
+ * Mark the next matching URL UTM capture as display-only (SPA re-inject / profile restore).
+ * Pass the search string about to be written so a later real landing is not suppressed.
+ */
+export function markUtmUrlDisplayInject(injectedSearch: string) {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.setItem(UTM_DISPLAY_INJECT_KEY, injectedSearch)
+  } catch {
+    /* private mode / blocked storage */
+  }
+}
+
+function isDisplayInjectCapture(search: string, fromUrl: UtmAttribution): boolean {
+  try {
+    const pending = sessionStorage.getItem(UTM_DISPLAY_INJECT_KEY)
+    if (pending == null) return false
+    sessionStorage.removeItem(UTM_DISPLAY_INJECT_KEY)
+    const pendingUtm = readUtmFromSearch(pending)
+    if (!pendingUtm) return false
+    // Only suppress when this capture is the inject we just scheduled.
+    if (search === pending) return true
+    return UTM_PARAM_KEYS.every((key) => (pendingUtm[key] ?? '') === (fromUrl[key] ?? ''))
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Persist first-touch-style UTM attribution for the browser session.
+ * - Captures when at least one UTM param is present in the URL
+ * - Merges keys (partial URLs do not wipe existing utm_content)
+ * - Does not clear on SPA navigations that omit UTMs
+ * - GA hit attribution is only updated for real landings (not display injects)
+ */
+export function captureUtmAttribution(search = typeof window !== 'undefined' ? window.location.search : '') {
+  if (typeof window === 'undefined') return
+  const fromUrl = readUtmFromSearch(search)
+  if (!fromUrl) return
+
+  const forClaim = mergeUtmAttribution(getUtmAttribution(), fromUrl)
+  writeStoredUtm(UTM_ATTRIBUTION_KEY, forClaim)
+
+  if (isDisplayInjectCapture(search, fromUrl)) return
+
+  const forHits = mergeUtmAttribution(getUtmHitAttribution(), fromUrl)
+  writeStoredUtm(UTM_HIT_KEY, forHits)
+}
+
+export function getUtmAttribution(): UtmAttribution {
+  return readStoredUtm(UTM_ATTRIBUTION_KEY)
+}
+
+/** This-visit UTMs for GA event params (excludes profile-restored attribution). */
+export function getUtmHitAttribution(): UtmAttribution {
+  return readStoredUtm(UTM_HIT_KEY)
+}
+
 /**
  * Restore first-touch attribution into session storage when the URL/session
  * has none — e.g. returning logged-in user so homepage keeps affiliate UTMs.
  * Does not overwrite an attribution already captured this session.
+ * Does not write GA hit attribution (returning visits must not re-tag acquisition).
  */
 export function restoreUtmAttribution(raw: unknown): UtmAttribution {
   if (typeof window === 'undefined') return {}
@@ -98,16 +155,12 @@ export function restoreUtmAttribution(raw: unknown): UtmAttribution {
   if (!Object.keys(fromProfile).length) return getUtmAttribution()
   const existing = getUtmAttribution()
   if (Object.keys(existing).length) return existing
-  try {
-    sessionStorage.setItem(UTM_ATTRIBUTION_KEY, JSON.stringify(fromProfile))
-  } catch {
-    /* private mode / blocked storage */
-  }
+  writeStoredUtm(UTM_ATTRIBUTION_KEY, fromProfile)
   return fromProfile
 }
 
 function getUtmAttributionParams(): AnalyticsParams {
-  return utmAttributionToParams(getUtmAttribution())
+  return utmAttributionToParams(getUtmHitAttribution())
 }
 
 export function initAnalytics() {
@@ -140,10 +193,12 @@ export function initAnalytics() {
 export function trackPageView(path: string) {
   if (!isEnabled() || !window.gtag) return
   captureUtmAttribution()
-  if (shouldSkipDedupe(`page_view:${path}`)) return
+  // GA homepage reports filter pagePath EXACT '/'; never put query in page_path.
+  const pagePath = path.split('?')[0] || '/'
+  if (shouldSkipDedupe(`page_view:${pagePath}`)) return
 
   window.gtag('event', 'page_view', {
-    page_path: path,
+    page_path: pagePath,
     page_title: document.title,
     page_location: window.location.href,
     page_referrer: document.referrer || undefined,

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2, BarChart3, Calendar, Wallet, ScanLine } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -14,6 +14,8 @@ import { AdminStatusPill } from '@/components/ui/StatusBadge'
 import { DevTodoList } from '@/components/dev-todos/DevTodoList'
 import { TemplateAdminList } from '@/components/admin/TemplateAdminList'
 import { AdminAnalyticsDashboard } from '@/components/admin/analytics/AdminAnalyticsDashboard'
+import { AffiliateFilterBar } from '@/components/admin/analytics/AffiliateFilter'
+import { useUtmLinkLabels } from '@/components/admin/analytics/useUtmLinkLabels'
 import { AdminEventsList } from '@/components/admin/AdminEventsList'
 import { AdminFinancePanel } from '@/components/admin/AdminFinancePanel'
 import { AdminScannersPanel } from '@/components/admin/AdminScannersPanel'
@@ -25,16 +27,23 @@ import type { UserPlan } from '@/types'
 
 type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates' | 'analytics' | 'events' | 'finance' | 'scanners'
 
+const DEFAULT_ADMIN_TAB: AdminTab = 'analytics'
+
+/** Usage-first order; development todos last. */
 const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
-  { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },
-  { id: 'templates', label: 'תבניות', icon: Sparkles },
+  { id: 'analytics', label: 'אנליטיקות', icon: BarChart3 },
+  { id: 'upgrade-requests', label: 'פניות הפעלה', icon: MessageSquare },
   { id: 'customers', label: 'לקוחות', icon: Users },
   { id: 'events', label: 'אירועים', icon: Calendar },
-  { id: 'upgrade-requests', label: 'פניות הפעלה', icon: MessageSquare },
   { id: 'scanners', label: 'סורקים', icon: ScanLine },
   { id: 'finance', label: 'הכנסות והוצאות', icon: Wallet },
-  { id: 'analytics', label: 'אנליטיקות', icon: BarChart3 },
+  { id: 'templates', label: 'תבניות', icon: Sparkles },
+  { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },
 ]
+
+function isAdminTab(value: string | undefined): value is AdminTab {
+  return TABS.some((t) => t.id === value)
+}
 
 interface AdminUser {
   user_id: string
@@ -49,14 +58,43 @@ interface AdminUser {
   affiliate_attribution: Record<string, string> | null
 }
 
-function affiliateLabel(attr: Record<string, string> | null | undefined): string | null {
-  if (!attr) return null
-  const content = attr.utm_content?.trim()
-  const source = attr.utm_source?.trim()
-  if (content && source) return `${content} · ${source}`
-  if (content) return content
-  if (source) return source
+function asAffiliateAttr(raw: unknown): Record<string, string> | null {
+  if (!raw) return null
+  let obj: unknown = raw
+  if (typeof raw === 'string') {
+    try {
+      obj = JSON.parse(raw)
+    } catch {
+      return null
+    }
+  }
+  if (!obj || typeof obj !== 'object') return null
+  const record = obj as Record<string, unknown>
+  const out: Record<string, string> = {}
+  for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'] as const) {
+    const val = record[key]
+    if (typeof val === 'string' && val.trim()) out[key] = val.trim()
+  }
+  return Object.keys(out).length ? out : null
+}
+
+/** Prefer utm_content (share-link code). Analytics filters by content only. */
+function affiliateFilterCode(attr: unknown): string | null {
+  const parsed = asAffiliateAttr(attr)
+  if (!parsed) return null
+  const content = parsed.utm_content?.trim()
+  if (content) return content.toLowerCase()
   return null
+}
+
+function affiliateLabel(attr: unknown, labelFor: (code: string) => string | null): string | null {
+  const code = affiliateFilterCode(attr)
+  if (code) return labelFor(code) ?? code
+  const parsed = asAffiliateAttr(attr)
+  if (!parsed) return null
+  // Attribution exists but without utm_content — still show so it doesn't look "deleted".
+  if (parsed.utm_source) return `מקור: ${parsed.utm_source}`
+  return 'אפיליאייט (ללא קוד לינק)'
 }
 
 interface AdminEventRow {
@@ -130,9 +168,11 @@ function formatLastSignIn(iso: string | null) {
 }
 
 export function AdminPanel() {
-  const location = useLocation()
+  const { tab: tabParam } = useParams<{ tab: string }>()
+  const navigate = useNavigate()
   const { user: currentUser } = useAuth()
-  const [tab, setTab] = useState<AdminTab>('todos')
+  const { labelFor } = useUtmLinkLabels()
+  const tab: AdminTab = isAdminTab(tabParam) ? tabParam : DEFAULT_ADMIN_TAB
   const [users, setUsers] = useState<AdminUser[]>([])
   const [requests, setRequests] = useState<UpgradeRequest[]>([])
   const [usersLoaded, setUsersLoaded] = useState(false)
@@ -142,6 +182,7 @@ export function AdminPanel() {
   const [newRequestCount, setNewRequestCount] = useState(0)
   const [upgradingEventId, setUpgradingEventId] = useState<string | null>(null)
   const [usersError, setUsersError] = useState<string | null>(null)
+  const [selectedAffiliates, setSelectedAffiliates] = useState<string[]>([])
 
   // Per-user event expansion state
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set())
@@ -207,14 +248,49 @@ export function AdminPanel() {
   }, [])
 
   useEffect(() => {
-    const requestedTab = (location.state as { tab?: AdminTab } | null)?.tab
-    if (requestedTab) setTab(requestedTab)
-  }, [location.state])
+    if (!isAdminTab(tabParam)) {
+      navigate(`/admin/${DEFAULT_ADMIN_TAB}`, { replace: true })
+    }
+  }, [tabParam, navigate])
 
   useEffect(() => {
     if (tab === 'customers' && !usersLoaded) fetchUsers()
     if (tab === 'upgrade-requests' && !requestsLoaded) fetchRequests()
   }, [tab, usersLoaded, requestsLoaded, fetchUsers, fetchRequests])
+
+  function setTab(next: AdminTab) {
+    if (next === tab) return
+    navigate(`/admin/${next}`)
+  }
+
+  const affiliateOptions = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const user of users) {
+      const code = affiliateFilterCode(user.affiliate_attribution)
+      if (!code) continue
+      counts.set(code, (counts.get(code) ?? 0) + 1)
+    }
+    return [...counts.entries()]
+      .sort((a, b) => {
+        if (b[1] !== a[1]) return b[1] - a[1]
+        const nameA = labelFor(a[0]) ?? a[0]
+        const nameB = labelFor(b[0]) ?? b[0]
+        return nameA.localeCompare(nameB, 'he')
+      })
+      .map(([code]) => ({
+        code,
+        name: labelFor(code) ?? code,
+      }))
+  }, [users, labelFor])
+
+  const filteredUsers = useMemo(() => {
+    if (selectedAffiliates.length === 0) return users
+    const set = new Set(selectedAffiliates)
+    return users.filter((user) => {
+      const code = affiliateFilterCode(user.affiliate_attribution)
+      return code != null && set.has(code)
+    })
+  }, [users, selectedAffiliates])
 
   async function toggleUserEvents(userId: string) {
     if (expandedUsers.has(userId)) {
@@ -424,18 +500,43 @@ export function AdminPanel() {
               שגיאה בטעינת משתמשים: {usersError}
             </div>
           )}
-          <div className="flex items-center gap-2 mb-6">
-            <Users size={18} className="text-gray-400" />
-            <h2 className="text-sm font-medium text-gray-400">
-              {users.length} משתמשים רשומים
-            </h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Users size={18} className="text-gray-400" />
+              <h2 className="text-sm font-medium text-gray-400">
+                {selectedAffiliates.length > 0
+                  ? `${filteredUsers.length} מתוך ${users.length} משתמשים`
+                  : `${users.length} משתמשים רשומים`}
+              </h2>
+            </div>
           </div>
 
+          {affiliateOptions.length > 0 && (
+            <div className="mb-4 rounded-2xl border border-border bg-surface p-4">
+              <AffiliateFilterBar
+                options={affiliateOptions}
+                selected={selectedAffiliates}
+                onChange={setSelectedAffiliates}
+                hint="לפי utm_content שנשמר בפרופיל הלקוח (לינק שיתוף)."
+              />
+            </div>
+          )}
+
           <div className="space-y-2">
-            {users.map(user => {
+            {filteredUsers.length === 0 ? (
+              <EmptyState
+                compact
+                icon={<Users size={22} />}
+                title="אין לקוחות בסינון הזה"
+                description="נסו לבחור אפיליאייט אחר או לנקות את הסינון."
+              />
+            ) : null}
+            {filteredUsers.map(user => {
               const isExpanded = expandedUsers.has(user.user_id)
               const isLoadingEvents = loadingEventsFor.has(user.user_id)
               const events = userEvents.get(user.user_id) ?? []
+              const contentCode = affiliateFilterCode(user.affiliate_attribution)
+              const affiliate = affiliateLabel(user.affiliate_attribution, labelFor)
 
               return (
                 <Card key={user.user_id} className="overflow-hidden">
@@ -467,9 +568,16 @@ export function AdminPanel() {
                         <p className="text-xs text-muted mt-0.5">
                           כניסה אחרונה: {formatLastSignIn(user.last_sign_in_at)}
                         </p>
-                        {affiliateLabel(user.affiliate_attribution) && (
-                          <p className="text-xs text-brand-400 mt-0.5 truncate" title="אפיליאייט (first-touch)">
-                            אפיליאייט: {affiliateLabel(user.affiliate_attribution)}
+                        {affiliate && (
+                          <p
+                            className="text-xs text-brand-400 mt-0.5 truncate"
+                            title={
+                              contentCode
+                                ? `אפיליאייט · ${contentCode}`
+                                : 'אפיליאייט נשמר בלי utm_content (קוד לינק)'
+                            }
+                          >
+                            אפיליאייט: {affiliate}
                           </p>
                         )}
                       </div>

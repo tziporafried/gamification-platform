@@ -45,6 +45,21 @@ export function normalizeUtmAttribution(raw: unknown): UtmAttribution {
   return out
 }
 
+/**
+ * Merge UTM blobs: keys present in `incoming` overwrite; absent keys keep `base`.
+ * Avoids wiping utm_content when a later URL only carries utm_source.
+ */
+export function mergeUtmAttribution(
+  base: UtmAttribution,
+  incoming: UtmAttribution,
+): UtmAttribution {
+  const out: UtmAttribution = { ...base }
+  for (const key of UTM_PARAM_KEYS) {
+    if (incoming[key]) out[key] = incoming[key]
+  }
+  return out
+}
+
 /** Event params to attach — omits absent UTM keys entirely. */
 export function utmAttributionToParams(utm: UtmAttribution): Record<string, string> {
   const params: Record<string, string> = {}

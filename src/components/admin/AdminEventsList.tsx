@@ -13,6 +13,7 @@ import type { EventStatus, UserPlan } from '@/types'
 interface AdminEventRow {
   id: string
   name: string
+  logo_url: string | null
   plan: UserPlan
   status: EventStatus
   created_at: string
@@ -56,7 +57,7 @@ export function AdminEventsList() {
     const [eventsRes, draftIds] = await Promise.all([
       supabase
         .from('events')
-        .select('id, name, plan, status, created_at, owner_admin_id')
+        .select('id, name, logo_url, plan, status, created_at, owner_admin_id')
         .neq('status', 'archived')
         .order('created_at', { ascending: false }),
       fetchTemplateDraftEventIds(),
@@ -103,6 +104,7 @@ export function AdminEventsList() {
         return {
           id: row.id,
           name: row.name,
+          logo_url: row.logo_url,
           plan: row.plan as UserPlan,
           status: row.status as EventStatus,
           created_at: row.created_at,
@@ -181,11 +183,24 @@ export function AdminEventsList() {
                     className="cursor-pointer hover:bg-white/[0.04]"
                   >
                     <td className="px-4 py-3">
-                      <span className="font-medium text-foreground">
-                        {event.name?.trim() || (
-                          <span className="italic text-muted">ללא שם</span>
-                        )}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-game-border bg-white/[0.04]">
+                          {event.logo_url ? (
+                            <img
+                              src={event.logo_url}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <Calendar size={16} className="text-muted/50" />
+                          )}
+                        </div>
+                        <span className="font-medium text-foreground">
+                          {event.name?.trim() || (
+                            <span className="italic text-muted">ללא שם</span>
+                          )}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="min-w-0">

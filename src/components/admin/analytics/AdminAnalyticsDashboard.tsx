@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   BarChart3,
@@ -23,6 +23,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { supabase } from '@/lib/supabase'
 import { DateRangePicker } from './DateRangePicker'
 import { KpiCard, formatNumber, formatRate } from './KpiCard'
 import { FunnelChart } from './FunnelChart'
@@ -102,17 +103,39 @@ function toDonutSlices(items: { label: string; users: number }[] | null | undefi
     }))
 }
 
+/** Distinct utm_content codes from registered customer first-touch attribution. */
+function extractCustomerContentCodes(
+  rows: { affiliate_attribution: unknown }[] | null,
+): string[] {
+  const codes = new Set<string>()
+  for (const row of rows ?? []) {
+    const raw = row.affiliate_attribution
+    if (!raw || typeof raw !== 'object') continue
+    const content = (raw as Record<string, unknown>).utm_content
+    if (typeof content !== 'string') continue
+    const code = content.trim().toLowerCase()
+    if (code) codes.add(code)
+  }
+  return [...codes]
+}
+
 export function AdminAnalyticsDashboard() {
   const [preset, setPreset] = useState<AnalyticsDatePreset>('7d')
   const [startDate, setStartDate] = useState(() => daysAgoYmd(6))
   const [endDate, setEndDate] = useState(() => todayYmd())
   const [data, setData] = useState<AnalyticsDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  /** Affiliate-filter refetch only — must not flash the site-wide quick summary. */
+  const [frameLoading, setFrameLoading] = useState(false)
   const [error, setError] = useState<AnalyticsFetchError | null>(null)
   const [showAllFaq, setShowAllFaq] = useState(false)
   const [showExtraOverview, setShowExtraOverview] = useState(false)
   const [showActivationDetails, setShowActivationDetails] = useState(false)
   const [selectedAffiliates, setSelectedAffiliates] = useState<string[]>([])
+  const [customerContentCodes, setCustomerContentCodes] = useState<string[]>([])
+  const skipAffiliateReload = useRef(true)
+  const selectedAffiliatesRef = useRef(selectedAffiliates)
+  selectedAffiliatesRef.current = selectedAffiliates
 
   const {
     labelFor,
@@ -123,33 +146,76 @@ export function AdminAnalyticsDashboard() {
     error: linkLabelError,
   } = useUtmLinkLabels()
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await fetchAnalyticsDashboard({
-        preset,
-        startDate: preset === 'custom' ? startDate : undefined,
-        endDate: preset === 'custom' ? endDate : undefined,
-        // empty = whole site (no affiliate filter); non-empty = those content codes only
-        utmContents: selectedAffiliates,
-      })
-      setData(result)
-    } catch (err) {
-      setData(null)
-      if (err instanceof AnalyticsFetchError) {
-        setError(err)
-      } else {
-        setError(new AnalyticsFetchError('שגיאה בטעינת אנליטיקות', 'UNKNOWN'))
-      }
-    } finally {
-      setLoading(false)
-    }
-  }, [preset, startDate, endDate, selectedAffiliates])
-
   useEffect(() => {
-    void load()
+    let cancelled = false
+    void (async () => {
+      const { data: rows, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('affiliate_attribution')
+        .not('affiliate_attribution', 'is', null)
+      if (cancelled || fetchError) return
+      setCustomerContentCodes(
+        extractCustomerContentCodes(rows as { affiliate_attribution: unknown }[]),
+      )
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const load = useCallback(
+    async (mode: 'full' | 'frame' = 'full') => {
+      if (mode === 'full') {
+        setLoading(true)
+        setError(null)
+      } else {
+        setFrameLoading(true)
+      }
+      try {
+        const result = await fetchAnalyticsDashboard({
+          preset,
+          startDate: preset === 'custom' ? startDate : undefined,
+          endDate: preset === 'custom' ? endDate : undefined,
+          // empty = whole site (no affiliate filter); non-empty = those content codes only
+          utmContents: selectedAffiliatesRef.current,
+        })
+        setData(result)
+        if (mode === 'frame') setError(null)
+      } catch (err) {
+        if (mode === 'full') {
+          setData(null)
+        }
+        // On frame refetch failure keep existing data (summary stays visible).
+        if (err instanceof AnalyticsFetchError) {
+          setError(err)
+        } else {
+          setError(new AnalyticsFetchError('שגיאה בטעינת אנליטיקות', 'UNKNOWN'))
+        }
+      } finally {
+        setLoading(false)
+        setFrameLoading(false)
+      }
+    },
+    [preset, startDate, endDate],
+  )
+
+  // Date range / initial load — includes current affiliate selection.
+  useEffect(() => {
+    void load('full')
   }, [load])
+
+  // Affiliate filter — refetch scoped frame only; do not flash site-wide summary.
+  useEffect(() => {
+    if (skipAffiliateReload.current) {
+      skipAffiliateReload.current = false
+      return
+    }
+    void load('frame')
+    // Only when affiliate chips change — not when date-range `load` identity updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedAffiliates only
+  }, [selectedAffiliates])
+
+  const frameBusy = loading || frameLoading
 
   function handlePresetChange(next: AnalyticsDatePreset) {
     setPreset(next)
@@ -220,7 +286,7 @@ export function AdminAnalyticsDashboard() {
     ? calcStepRate(data.eventCreation.startUsers, data.eventCreation.creatorUsers)
     : null
 
-  /** Performance rows + pre-registered labels that have no traffic yet. */
+  /** Performance rows + customer attribution codes (even with zero GA traffic). */
   const linkDetailRows = useMemo(() => {
     const byCode = new Map<
       string,
@@ -232,6 +298,7 @@ export function AdminAnalyticsDashboard() {
         videoViewUsers: number
         plansViewUsers: number
         leadUsers: number
+        fromCustomersOnly: boolean
       }
     >()
 
@@ -245,6 +312,7 @@ export function AdminAnalyticsDashboard() {
         videoViewUsers: row.videoViewUsers,
         plansViewUsers: row.plansViewUsers,
         leadUsers: row.leadUsers,
+        fromCustomersOnly: false,
       })
     }
 
@@ -262,18 +330,32 @@ export function AdminAnalyticsDashboard() {
           videoViewUsers: 0,
           plansViewUsers: 0,
           leadUsers: 0,
+          fromCustomersOnly: false,
         })
       } else if (row.users > existing.users) {
         byCode.set(key, { ...existing, users: row.users })
       }
     }
 
-    // Do not auto-list created links with zero traffic — labels still map names
-    // once GA reports appear for that content code.
+    // Include codes that have registered customers even when GA shows no traffic.
+    for (const code of customerContentCodes) {
+      if (byCode.has(code)) continue
+      byCode.set(code, {
+        content: code,
+        source: 'share',
+        users: 0,
+        newUsers: 0,
+        videoViewUsers: 0,
+        plansViewUsers: 0,
+        leadUsers: 0,
+        fromCustomersOnly: true,
+      })
+    }
 
     return [...byCode.values()]
       .filter(
         (row) =>
+          row.fromCustomersOnly ||
           row.users > 0 ||
           row.videoViewUsers > 0 ||
           row.plansViewUsers > 0 ||
@@ -286,13 +368,14 @@ export function AdminAnalyticsDashboard() {
           'he',
         )
       })
-  }, [data, labelFor])
+  }, [data, labelFor, customerContentCodes])
 
   const affiliateOptions = useMemo(
     () =>
       linkDetailRows.map((row) => ({
         code: row.content.trim().toLowerCase(),
         name: labelFor(row.content) ?? row.content,
+        noTraffic: row.fromCustomersOnly,
       })),
     [linkDetailRows, labelFor],
   )
@@ -337,11 +420,14 @@ export function AdminAnalyticsDashboard() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => void load()}
-            disabled={loading}
+            onClick={() => void load('full')}
+            disabled={loading || frameLoading}
             className="shrink-0 gap-1.5 self-start"
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : undefined} />
+            <RefreshCw
+              size={14}
+              className={loading || frameLoading ? 'animate-spin' : undefined}
+            />
             רענון
           </Button>
         </div>
@@ -384,7 +470,7 @@ export function AdminAnalyticsDashboard() {
               {error.detail}
             </p>
           )}
-          <Button variant="outline" size="sm" onClick={() => void load()}>
+          <Button variant="outline" size="sm" onClick={() => void load('full')}>
             נסו שוב
           </Button>
         </Card>
@@ -513,6 +599,7 @@ export function AdminAnalyticsDashboard() {
                 options={affiliateOptions}
                 selected={selectedAffiliates}
                 onChange={setSelectedAffiliates}
+                hint="כולל גם אפיליאייטים עם לקוחות רשומים גם אם אין תנועה ב-GA בטווח. הסיכום למעלה נשאר לכל האתר."
               />
 
               <div className="border-t border-border pt-3">
@@ -535,7 +622,7 @@ export function AdminAnalyticsDashboard() {
                 )}
                 <TrendLineChart
                   days={data.timeSeries.days}
-                  loading={loading}
+                  loading={frameBusy}
                   unavailable={data.timeSeries.unavailable}
                   height={360}
                 />
@@ -550,7 +637,7 @@ export function AdminAnalyticsDashboard() {
                   <div className="rounded-xl border border-border bg-surface-elevated/40 p-3 sm:p-4">
                     <h4 className="mb-3 text-xs font-semibold text-muted">פיצול צפייה</h4>
                     <VideoProgressTrack
-                      loading={loading}
+                      loading={frameBusy}
                       milestones={videoMilestones}
                       baseUsers={data.video.startedUsers}
                       startedUsers={data.video.startedUsers}
@@ -575,7 +662,7 @@ export function AdminAnalyticsDashboard() {
                       <div className="flex items-baseline gap-2">
                         <span className="text-xs text-muted">פתחו שאלות</span>
                         <span className="text-lg font-bold tabular-nums text-foreground">
-                          {loading ? '—' : formatNumber(data.homepageInterest.faqUsers)}
+                          {frameBusy ? '—' : formatNumber(data.homepageInterest.faqUsers)}
                         </span>
                       </div>
                       {faqQuestions.length > 7 && (
@@ -594,7 +681,7 @@ export function AdminAnalyticsDashboard() {
                       </p>
                     )}
                     <FaqBarChart
-                      loading={loading}
+                      loading={frameBusy}
                       unavailable={data.homepageInterest.questionsUnavailable}
                       items={visibleFaq.map((q) => ({ question: q.question, users: q.users }))}
                     />

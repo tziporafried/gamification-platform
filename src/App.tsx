@@ -37,7 +37,8 @@ export default function App() {
             <Route path="/events/:id/display" element={<ProtectedRoute><EventDisplayPage /></ProtectedRoute>} />
             <Route path="/events/:id/kiosk" element={<ProtectedRoute><EventKioskPage /></ProtectedRoute>} />
             <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell atmosphere="control"><EventBySlugControl /></AppShell></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />
+            <Route path="/admin" element={<Navigate to="/admin/analytics" replace />} />
+            <Route path="/admin/:tab" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />
             {/* Legacy / deep-link entry — opens plans modal, then leaves /plans */}
             <Route path="/plans" element={<PlansPage />} />
 

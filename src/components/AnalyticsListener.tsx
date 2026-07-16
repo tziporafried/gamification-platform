@@ -5,6 +5,7 @@ import {
   captureUtmAttribution,
   getUtmAttribution,
   initAnalytics,
+  markUtmUrlDisplayInject,
   restoreUtmAttribution,
   trackPageView,
   trackWizardExit,
@@ -39,10 +40,12 @@ export function AnalyticsListener() {
     if (SKIP_UTM_URL_PERSIST.test(location.pathname)) return
     const utm = getUtmAttribution()
     if (searchNeedsUtmPersist(location.search, utm)) {
+      const nextSearch = withPersistedUtmSearch(location.search, utm)
+      markUtmUrlDisplayInject(nextSearch)
       navigate(
         {
           pathname: location.pathname,
-          search: withPersistedUtmSearch(location.search, utm),
+          search: nextSearch,
           hash: location.hash,
         },
         { replace: true },
@@ -56,15 +59,18 @@ export function AnalyticsListener() {
     if (!SKIP_UTM_URL_PERSIST.test(location.pathname)) {
       const utm = getUtmAttribution()
       if (searchNeedsUtmPersist(location.search, utm)) {
+        const nextSearch = withPersistedUtmSearch(location.search, utm)
+        markUtmUrlDisplayInject(nextSearch)
         navigate(
           {
             pathname: location.pathname,
-            search: withPersistedUtmSearch(location.search, utm),
+            search: nextSearch,
             hash: location.hash,
           },
           { replace: true },
         )
-        return
+        // Still track this view — do not wait for a second effect (short sessions).
+        // page_path is pathname-only; dedupe absorbs the follow-up after replace.
       }
     }
 
@@ -83,8 +89,7 @@ export function AnalyticsListener() {
       }
     }
 
-    const path = `${location.pathname}${location.search}`
-    trackPageView(path)
+    trackPageView(location.pathname)
   }, [location.pathname, location.search, location.hash, navigate])
 
   return null
