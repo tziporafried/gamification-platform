@@ -138,11 +138,14 @@ export default function middleware(request: Request): Response | undefined {
   return undefined
 }
 
+// The matcher skips hashed build output and image assets: they are not worth an
+// edge invocation each, and a crawler that only fetches them learns nothing.
+// Everything that serves the SPA document still goes through here.
+//
+// Keep comments inside this object as `//` or `/* */`, never `/** */`. A JSDoc
+// block attaches a JSDocComment node to the property and shifts the child
+// indices that Vercel's static config reader relies on, which fails the build
+// with: Unhandled type: "ColonToken".
 export const config = {
-  /**
-   * Skip hashed build output and image assets: they are not worth an edge
-   * invocation each, and a crawler that only fetches them learns nothing.
-   * Everything that serves the SPA document still goes through here.
-   */
   matcher: ['/((?!assets/|.*\\.(?:png|jpg|jpeg|svg|webp|ico|woff2?|map)$).*)'],
 }
