@@ -25,7 +25,7 @@ const corsHeaders = {
 
 const LIMIT_TYPE_LABELS: Record<string, string> = {
   'plan-independent': 'משחק עצמאי',
-  'plan-full': 'חוויה מלאה',
+  'plan-full': 'משחק מלא',
   'plan-organizations': 'פתרון לארגונים',
   homepage_contact: 'פנייה כללית',
   trial_contact: 'פנייה מהתנסות',

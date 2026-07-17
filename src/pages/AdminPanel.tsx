@@ -146,7 +146,7 @@ const LIMIT_LABELS: Record<string, string> = {
   rewards: 'פרסים',
   general: 'כללי',
   'plan-independent': 'משחק עצמאי',
-  'plan-full': 'חוויה מלאה',
+  'plan-full': 'משחק מלא',
   'plan-offline': 'חוויה בלי חיבור לאינטרנט',
   'plan-organizations': 'פתרון לארגונים',
   homepage_contact: 'פנייה כללית (דף הבית)',

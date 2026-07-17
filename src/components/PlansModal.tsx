@@ -372,7 +372,7 @@ export function PlansModal({
                 </div>
                 <p className="mt-1.5 text-xs text-muted">עד 70 משתתפים · יום נוסף ₪15</p>
                 <p className="mt-2.5 text-xs leading-relaxed text-foreground/80">
-                  כל מה שיש בחוויה המלאה — גם במקום בלי אינטרנט.
+                  כל מה שיש במשחק המלא — גם במקום בלי אינטרנט.
                 </p>
               </div>
 

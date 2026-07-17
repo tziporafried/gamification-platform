@@ -238,7 +238,7 @@ const CTA_LOCATION_LABELS: Record<string, string> = {
 
 const PLAN_NAME_LABELS: Record<string, string> = {
   independent: 'משחק עצמאי',
-  full: 'חוויה מלאה',
+  full: 'משחק מלא',
   organizations: 'פתרון לארגונים',
 }
 
@@ -264,7 +264,7 @@ const CONTACT_SOURCE_LABELS: Record<string, string> = {
   trial_contact: 'מצב התנסות',
   custom_solution: 'פתרון מותאם',
   independent: 'משחק עצמאי',
-  full: 'חוויה מלאה',
+  full: 'משחק מלא',
   organizations: 'פתרון לארגונים',
 }
 
