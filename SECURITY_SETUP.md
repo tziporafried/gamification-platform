@@ -121,11 +121,11 @@ requests go browser → Supabase directly.
 3. **Audit RLS on every table.** This is the control that actually protects
    event data, participants and scores.
 
-## Manual step 4 — replace the owner placeholder
+## Manual step 4 — owner name
 
-`OWNER_NAME` in `src/components/layout/SiteFooter.tsx` is `[OWNER NAME]`. It
-renders in the footer and on `/terms`. Replace it with the registered legal
-entity. The terms text is generic boilerplate and is **not legal advice** — have
+`OWNER_NAME` in `src/components/layout/SiteFooter.tsx` is set to `Gamify`. It
+renders in the footer and on `/terms`. Update it if the registered legal
+entity differs. The terms text is generic boilerplate and is **not legal advice** — have
 a lawyer review it before relying on it.
 
 ## Content Security Policy notes

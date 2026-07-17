@@ -1,10 +1,9 @@
 import { Link } from 'react-router-dom'
 
 /**
- * TODO: replace with the registered legal owner / company name once decided.
- * Referenced by the copyright line and the terms page.
+ * Registered / display owner name for copyright and terms.
  */
-export const OWNER_NAME = '[OWNER NAME]'
+export const OWNER_NAME = 'Gamify'
 
 export function SiteFooter() {
   return (
