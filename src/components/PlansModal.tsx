@@ -163,7 +163,7 @@ export function PlansModal({
   }, [isOpen, initialPlan])
 
   useEffect(() => {
-    if (!isOpen || focusPlan !== 'independent' || scrolledToFocusRef.current || initialPlan) return
+    if (!isOpen || !focusPlan || scrolledToFocusRef.current || initialPlan) return
     scrolledToFocusRef.current = true
     const frame = requestAnimationFrame(() => {
       focusedCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })

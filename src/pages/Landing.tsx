@@ -230,6 +230,18 @@ export function Landing() {
     })
   }
 
+  function handleOpenPlansOffline() {
+    trackCtaClick({
+      cta_name: 'view_pricing',
+      cta_location: 'faq_offline',
+      destination: 'plans_modal',
+    })
+    openPlans({
+      focusPlan: 'offline',
+      source: 'faq_offline',
+    })
+  }
+
   function handleCreateEventClick() {
     trackCtaClick({
       cta_name: 'create_event',
@@ -314,15 +326,15 @@ export function Landing() {
       return (
         <div className="space-y-2.5">
           <p>
-            אנחנו עובדים על אפשרות להפעלת Gamify גם ללא חיבור לאינטרנט, ונשמח לשמוע מה
-            אתם צריכים.
+            יש כבר גרסת Gamify שרצה לגמרי בלי חיבור לאינטרנט — קובץ להפעלה מקומית עם
+            כל החוויה המלאה. מתאים למקומות בלי רשת או עם קליטה חלשה.
           </p>
           <button
             type="button"
             className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
-            onClick={() => handleContactClick('faq')}
+            onClick={handleOpenPlansOffline}
           >
-            דברו איתנו
+            למסלול ולמחירים — בלי אינטרנט
           </button>
         </div>
       )
