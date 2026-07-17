@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run build:offline && tsc -b && vite build",
+    "build:offline": "vite build --config vite.offline.config.ts",
     "preview": "vite preview",
-    "test:utm": "npx tsx --test src/lib/utmAttribution.test.ts"
+    "test:utm": "npx tsx --test src/lib/utmAttribution.test.ts",
+    "test:offline": "node --import ./scripts/register-alias.mjs --test src/lib/offline/*.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

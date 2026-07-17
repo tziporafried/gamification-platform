@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { PlansModal } from '@/components/PlansModal'
 
-export type PlansOption = 'independent' | 'full' | 'organizations'
+export type PlansOption = 'independent' | 'full' | 'organizations' | 'offline'
 
 export type OpenPlansOptions = {
   eventId?: string | null

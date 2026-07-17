@@ -4,6 +4,7 @@ export type ContactIntent =
   | 'plan_lead'
   | 'organization_lead'
   | 'plan_independent'
+  | 'plan_offline'
 
 /** Analytics / DB labeling for neutral contact (maps to limit_type). */
 export type ContactSource = 'homepage_contact' | 'trial_contact' | 'custom_solution'
@@ -26,7 +27,7 @@ export type ContactPageSource =
   | 'plans'
 
 export type PendingActivation = {
-  plan: 'independent' | 'full' | 'organizations'
+  plan: 'independent' | 'full' | 'organizations' | 'offline'
   source?: string
 }
 
@@ -47,6 +48,8 @@ export function limitTypeForIntent(intent: ContactIntent, contactSource?: Contac
       return 'plan-organizations'
     case 'plan_independent':
       return 'plan-independent'
+    case 'plan_offline':
+      return 'plan-offline'
   }
 }
 

@@ -53,6 +53,8 @@ function defaultHeading(intent: ContactIntent, hasEvent: boolean): string {
       return 'בואו נתאים את Gamify לארגון שלכם'
     case 'plan_independent':
       return 'מעולה — נחזור אליכם להשלמת ההפעלה'
+    case 'plan_offline':
+      return 'מעולה! נשלח לכם את המשחק שרץ בלי אינטרנט 📴'
   }
 }
 
@@ -66,6 +68,8 @@ function defaultSubmitLabel(intent: ContactIntent, hasEvent: boolean): string {
       return 'דברו איתנו'
     case 'plan_independent':
       return 'שלחו ונחזור להפעלה'
+    case 'plan_offline':
+      return 'שלחו ונחזור אליכם'
   }
 }
 

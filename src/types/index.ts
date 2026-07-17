@@ -1,7 +1,7 @@
 export type EventStatus = 'editing' | 'active' | 'archived';
 
 export type UserRole = 'super_admin' | 'user';
-export type UserPlan = 'free' | 'independent' | 'full' | 'organizations';
+export type UserPlan = 'free' | 'independent' | 'full' | 'organizations' | 'offline';
 
 export interface UserProfile {
   id: string;

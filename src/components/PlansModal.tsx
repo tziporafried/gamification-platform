@@ -21,12 +21,14 @@ const OPTIONS: Record<Option, string> = {
   independent: 'משחק בסיסי',
   full: 'משחק מלא',
   organizations: 'פתרון לארגונים',
+  offline: 'חוויה בלי חיבור לאינטרנט',
 }
 
 const INTENT_FOR_OPTION: Record<Option, ContactIntent> = {
   independent: 'plan_independent',
   full: 'plan_lead',
   organizations: 'organization_lead',
+  offline: 'plan_offline',
 }
 
 const BASIC_INCLUDES = [
@@ -47,6 +49,13 @@ const FULL_INCLUDES = [
 ]
 
 const FULL_SPECIALS = ['מסך סריקה ייעודי', 'סורק לשימוש באירוע']
+
+/** The full plan's extras, plus the one reason to pick offline over it. */
+const OFFLINE_SPECIALS = [
+  'מסך סריקה ייעודי',
+  'סורק לשימוש באירוע',
+  'משחק וסריקה ללא חיבור לאינטרנט',
+]
 
 const ORG_VALUES = ['מספר אירועים', 'התאמה לצרכים שלכם', 'תמחור מותאם']
 
@@ -84,6 +93,7 @@ export function PlansModal({
   const emphasizeBasic = emphasizedPlan === 'independent'
   const emphasizeFull = emphasizedPlan === 'full'
   const emphasizeOrg = emphasizedPlan === 'organizations'
+  const emphasizeOffline = emphasizedPlan === 'offline'
 
   useEffect(() => {
     if (!isOpen) return
@@ -209,7 +219,7 @@ export function PlansModal({
           בחרו איך תרצו לשחק באירוע שלכם.
         </p>
 
-        <div className="mb-8 grid grid-cols-1 items-stretch gap-5 lg:grid-cols-3">
+        <div className="mb-8 grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {/* Basic */}
           <div ref={focusPlan === 'independent' ? focusedCardRef : undefined}>
             <OptionCard
@@ -327,6 +337,77 @@ export function PlansModal({
                 }}
               >
                 אני רוצה משחק מלא
+              </Button>
+            </OptionCard>
+          </div>
+
+          {/* Offline — the full game, delivered as a file that needs no network */}
+          <div ref={focusPlan === 'offline' ? focusedCardRef : undefined}>
+            <OptionCard
+              featured={emphasizeOffline}
+              label="חוויה בלי חיבור לאינטרנט"
+              disabled={currentPlan === 'offline'}
+              onEmphasize={() => emphasizeOnly('offline')}
+            >
+              <div className="mb-4">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <span className="text-lg" aria-hidden="true">📴</span>
+                  <span className="text-base font-bold text-foreground">חוויה בלי חיבור לאינטרנט</span>
+                  {currentPlan === 'offline' && (
+                    <span className="rounded-full border border-border bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                      המסלול הנוכחי
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 flex items-baseline gap-1.5">
+                  <span
+                    className={cn(
+                      'text-3xl font-extrabold leading-none',
+                      emphasizeOffline ? 'text-primary' : 'text-foreground',
+                    )}
+                  >
+                    ₪200
+                  </span>
+                  <span className="text-sm font-medium text-muted">לאירוע</span>
+                </div>
+                <p className="mt-1.5 text-xs text-muted">עד 70 משתתפים · יום נוסף ₪15</p>
+                <p className="mt-2.5 text-xs leading-relaxed text-foreground/80">
+                  כל מה שיש בחוויה המלאה — גם במקום בלי אינטרנט.
+                </p>
+              </div>
+
+              <div className="mb-5 flex-1 space-y-2">
+                {FULL_INCLUDES.map((item) => (
+                  <FeatureRow key={item} text={item} />
+                ))}
+                <div className="mt-1 space-y-1 rounded-lg bg-[color-mix(in_srgb,var(--palette-brand-accent)_6%,transparent)] px-2 py-1.5">
+                  <p className="text-[10px] font-semibold leading-none text-foreground/75">כולל גם:</p>
+                  {OFFLINE_SPECIALS.map((item) => (
+                    <div key={item} className="flex items-center gap-2">
+                      <Check size={13} className="shrink-0 text-success" aria-hidden="true" />
+                      <span className="text-xs font-semibold leading-snug text-foreground">
+                        {item}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-foreground/75">
+                  אחרי התשלום תקבלו את הקובץ עם ההגדרות שהגדרתם, כך שתוכלו להפעיל אותו
+                  מכל מחשב ללא חיבור לאינטרנט.
+                </p>
+              </div>
+
+              <Button
+                variant={emphasizeOffline ? 'gradient' : 'outline'}
+                size="md"
+                className="w-full font-medium"
+                disabled={currentPlan === 'offline'}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  openFormFor('offline')
+                }}
+              >
+                {currentPlan === 'offline' ? 'המסלול הנוכחי שלכם' : 'אני רוצה משחק בלי אינטרנט'}
               </Button>
             </OptionCard>
           </div>

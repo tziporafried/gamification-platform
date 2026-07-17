@@ -6,6 +6,8 @@ interface ToggleSwitchProps {
   disabled?: boolean
   size?: 'sm' | 'md'
   className?: string
+  /** The switch renders no text of its own — name it for screen readers. */
+  'aria-label'?: string
 }
 
 const SIZES = {
@@ -13,7 +15,14 @@ const SIZES = {
   md: { track: 'h-6 w-11', thumb: 'h-4 w-4 top-1', onPos: 'right-1', offPos: 'left-1' },
 }
 
-export function ToggleSwitch({ checked, onChange, disabled = false, size = 'sm', className }: ToggleSwitchProps) {
+export function ToggleSwitch({
+  checked,
+  onChange,
+  disabled = false,
+  size = 'sm',
+  className,
+  'aria-label': ariaLabel,
+}: ToggleSwitchProps) {
   const s = SIZES[size]
 
   return (
@@ -21,6 +30,7 @@ export function ToggleSwitch({ checked, onChange, disabled = false, size = 'sm',
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={ariaLabel}
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
       className={cn(

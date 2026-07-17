@@ -41,6 +41,7 @@ export const ACTIVATION_MODE_LABELS: Record<UserPlan, string> = {
   free: 'התנסות',
   independent: 'משחק עצמאי',
   full: 'חוויה מלאה',
+  offline: 'חוויה בלי חיבור לאינטרנט',
   organizations: 'פתרון לארגונים',
 }
 

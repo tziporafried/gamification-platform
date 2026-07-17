@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2, BarChart3, Calendar, Wallet, ScanLine } from 'lucide-react'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2, BarChart3, Calendar, Wallet, ScanLine, Download } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
+import { exportOfflineGame, OfflineExportError } from '@/lib/offline/exportGame'
 import { Button } from '@/components/ui/Button'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { Tabs } from '@/components/ui/Tabs'
@@ -146,6 +147,7 @@ const LIMIT_LABELS: Record<string, string> = {
   general: 'כללי',
   'plan-independent': 'משחק עצמאי',
   'plan-full': 'חוויה מלאה',
+  'plan-offline': 'חוויה בלי חיבור לאינטרנט',
   'plan-organizations': 'פתרון לארגונים',
   homepage_contact: 'פנייה כללית (דף הבית)',
   trial_contact: 'פנייה כללית (התנסות)',
@@ -154,6 +156,7 @@ const LIMIT_LABELS: Record<string, string> = {
 const LIMIT_TYPE_TO_PLAN: Record<string, string> = {
   'plan-independent': 'independent',
   'plan-full': 'full',
+  'plan-offline': 'offline',
   'plan-organizations': 'organizations',
 }
 
@@ -161,6 +164,7 @@ const PLAN_OPTIONS: { value: UserPlan; label: string; color: string }[] = [
   { value: 'free',          label: 'התנסות',    color: 'text-gray-400' },
   { value: 'independent',   label: 'עצמאי',      color: 'text-blue-400' },
   { value: 'full',          label: 'מלא',        color: 'text-green-400' },
+  { value: 'offline',       label: 'ללא אינטרנט', color: 'text-teal-400' },
   { value: 'organizations', label: 'ארגונים',    color: 'text-amber-400' },
 ]
 
@@ -194,6 +198,8 @@ export function AdminPanel() {
   const [loadingRequests, setLoadingRequests] = useState(false)
   const [newRequestCount, setNewRequestCount] = useState(0)
   const [upgradingEventId, setUpgradingEventId] = useState<string | null>(null)
+  const [exportingRequestId, setExportingRequestId] = useState<string | null>(null)
+  const [offlineExportError, setOfflineExportError] = useState<{ requestId: string; message: string } | null>(null)
   const [usersError, setUsersError] = useState<string | null>(null)
   const [selectedAffiliates, setSelectedAffiliates] = useState<string[]>([])
 
@@ -422,6 +428,23 @@ export function AdminPanel() {
       previousPlan: 'free',
       newPlan: newPlan as UserPlan,
     })
+  }
+
+  // The offline plan has no self-service download — the file is built here and
+  // sent to the customer by hand.
+  async function downloadOfflineGame(requestId: string, eventId: string) {
+    setOfflineExportError(null)
+    setExportingRequestId(requestId)
+    try {
+      await exportOfflineGame(eventId)
+    } catch (err) {
+      setOfflineExportError({
+        requestId,
+        message: err instanceof OfflineExportError ? err.message : 'ההורדה נכשלה. נסו שוב.',
+      })
+    } finally {
+      setExportingRequestId(null)
+    }
   }
 
   async function confirmPendingPlanChange() {
@@ -764,6 +787,25 @@ export function AdminPanel() {
                               הפעל אירוע
                             </Button>
                           )
+                        )}
+                        {req.event_id && req.limit_type === 'plan-offline' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            loading={exportingRequestId === req.id}
+                            onClick={() => downloadOfflineGame(req.id, req.event_id!)}
+                            title="הורידו את קובץ המשחק ושלחו אותו ללקוח"
+                          >
+                            <span className="inline-flex items-center gap-1.5">
+                              <Download size={14} />
+                              הורד קובץ אופליין
+                            </span>
+                          </Button>
+                        )}
+                        {offlineExportError?.requestId === req.id && (
+                          <p role="alert" className="max-w-[13rem] text-end text-xs font-semibold text-danger">
+                            {offlineExportError.message}
+                          </p>
                         )}
                         <button
                           onClick={() => { setDeleteRequestError(null); setDeleteRequestTarget(req) }}
