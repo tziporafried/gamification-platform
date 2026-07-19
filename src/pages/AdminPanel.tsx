@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2, BarChart3, Calendar, Wallet, ScanLine, Download } from 'lucide-react'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
@@ -36,7 +36,7 @@ const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
   { id: 'upgrade-requests', label: 'פניות הפעלה', icon: MessageSquare },
   { id: 'customers', label: 'לקוחות', icon: Users },
   { id: 'events', label: 'אירועים', icon: Calendar },
-  { id: 'scanners', label: 'סורקים', icon: ScanLine },
+  { id: 'scanners', label: 'לוח הזמנות', icon: CalendarDays },
   { id: 'finance', label: 'הכנסות והוצאות', icon: Wallet },
   { id: 'templates', label: 'תבניות', icon: Sparkles },
   { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },

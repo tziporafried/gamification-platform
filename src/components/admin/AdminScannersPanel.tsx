@@ -6,6 +6,7 @@ import {
   Trash2,
   ScanLine,
   CalendarPlus,
+  RotateCcw,
 } from 'lucide-react'
 import {
   addMonths,
@@ -24,6 +25,7 @@ import {
 import { he } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { fetchTemplateDraftEventIds } from '@/lib/templates'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -35,6 +37,13 @@ import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { KpiCard } from '@/components/admin/analytics/KpiCard'
 import { cn } from '@/lib/utils'
 import type { Scanner, ScannerBooking } from '@/types'
+
+type EventOption = {
+  id: string
+  name: string
+  plan: string
+  status: string
+}
 
 const SCANNER_COLORS = [
   'bg-secondary/80',
@@ -92,7 +101,8 @@ function rangesOverlap(
   return aStart <= bEnd && bStart <= aEnd
 }
 
-function colorForScanner(scanners: Scanner[], scannerId: string): string {
+function colorForScanner(scanners: Scanner[], scannerId: string | null): string {
+  if (!scannerId) return 'bg-muted'
   const idx = scanners.findIndex((s) => s.id === scannerId)
   return SCANNER_COLORS[idx >= 0 ? idx % SCANNER_COLORS.length : 0]
 }
@@ -184,8 +194,10 @@ export function AdminScannersPanel() {
   const { user } = useAuth()
   const [scanners, setScanners] = useState<Scanner[]>([])
   const [bookings, setBookings] = useState<ScannerBooking[]>([])
+  const [events, setEvents] = useState<EventOption[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
 
   const [bookingOpen, setBookingOpen] = useState(false)
@@ -193,11 +205,17 @@ export function AdminScannersPanel() {
   const [saving, setSaving] = useState(false)
   const [deleteBookingId, setDeleteBookingId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [resetEventTarget, setResetEventTarget] = useState<{
+    eventId: string
+    eventName: string
+  } | null>(null)
+  const [resetting, setResetting] = useState(false)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [selectedBooking, setSelectedBooking] = useState<ScannerBooking | null>(null)
 
   // booking form
   const [formScannerId, setFormScannerId] = useState('')
+  const [formEventId, setFormEventId] = useState('')
   const [formStart, setFormStart] = useState(todayISO)
   const [formEnd, setFormEnd] = useState(todayISO)
   const [formCustomer, setFormCustomer] = useState('')
@@ -212,7 +230,7 @@ export function AdminScannersPanel() {
 
   useEffect(() => {
     async function fetchData() {
-      const [scannersRes, bookingsRes] = await Promise.all([
+      const [scannersRes, bookingsRes, eventsRes, draftIds] = await Promise.all([
         supabase
           .from('scanners')
           .select('*')
@@ -222,6 +240,12 @@ export function AdminScannersPanel() {
           .from('scanner_bookings')
           .select('*')
           .order('start_date', { ascending: true }),
+        supabase
+          .from('events')
+          .select('id, name, plan, status')
+          .neq('status', 'archived')
+          .order('created_at', { ascending: false }),
+        fetchTemplateDraftEventIds(),
       ])
 
       if (scannersRes.error) setError(scannersRes.error.message)
@@ -229,6 +253,14 @@ export function AdminScannersPanel() {
 
       if (bookingsRes.error) setError(bookingsRes.error.message)
       else setBookings((bookingsRes.data as ScannerBooking[]) ?? [])
+
+      if (eventsRes.error) setError(eventsRes.error.message)
+      else {
+        const draftSet = new Set(draftIds)
+        setEvents(
+          ((eventsRes.data as EventOption[]) ?? []).filter((e) => !draftSet.has(e.id)),
+        )
+      }
 
       setLoading(false)
     }
@@ -254,19 +286,25 @@ export function AdminScannersPanel() {
 
   const todayStats = useMemo(() => {
     const today = new Date()
+    const todayBookings = bookings.filter((b) => bookingCoversDay(b, today))
     const active = activeScanners.filter((s) => s.status === 'active')
     const bookedIds = new Set(
-      bookings
-        .filter((b) => bookingCoversDay(b, today))
-        .map((b) => b.scanner_id),
+      todayBookings.map((b) => b.scanner_id).filter((id): id is string => !!id),
     )
     const bookedToday = active.filter((s) => bookedIds.has(s.id)).length
     return {
+      bookingsToday: todayBookings.length,
       total: active.length,
       booked: bookedToday,
       available: Math.max(0, active.length - bookedToday),
     }
   }, [activeScanners, bookings])
+
+  const eventNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const e of events) map.set(e.id, e.name?.trim() || 'משחק ללא שם')
+    return map
+  }, [events])
 
   const selectedDayBookings = useMemo(() => {
     if (!selectedDay) return []
@@ -284,9 +322,15 @@ export function AdminScannersPanel() {
     [month],
   )
 
-  function scannerLabel(id: string): string {
+  function scannerLabel(id: string | null): string {
+    if (!id) return 'ללא סורק'
     const s = scanners.find((x) => x.id === id)
     return s ? `${s.name} (${s.code})` : 'סורק'
+  }
+
+  function eventLabel(id: string | null): string {
+    if (!id) return 'לא מקושר'
+    return eventNameById.get(id) ?? 'משחק לא נמצא'
   }
 
   function openDayDetail(day: Date) {
@@ -312,10 +356,19 @@ export function AdminScannersPanel() {
     setFormPhone('')
     setFormEmail('')
     setFormNotes('')
-    setFormScannerId(activeScanners[0]?.id ?? '')
+    setFormScannerId('')
+    setFormEventId('')
     setError(null)
     closeDetail()
     setBookingOpen(true)
+  }
+
+  function onFormEventChange(eventId: string) {
+    setFormEventId(eventId)
+    if (!formCustomer.trim() && eventId) {
+      const name = eventNameById.get(eventId)
+      if (name) setFormCustomer(name)
+    }
   }
 
   function openAddScanner() {
@@ -332,12 +385,8 @@ export function AdminScannersPanel() {
     if (!user || saving) return
 
     const customer = formCustomer.trim()
-    if (!formScannerId) {
-      setError('יש לבחור סורק')
-      return
-    }
     if (!customer) {
-      setError('יש להזין שם לקוח')
+      setError('יש להזין שם לקוח / משפחה')
       return
     }
     if (formEnd < formStart) {
@@ -345,14 +394,16 @@ export function AdminScannersPanel() {
       return
     }
 
-    const conflict = bookings.some(
-      (b) =>
-        b.scanner_id === formScannerId &&
-        rangesOverlap(formStart, formEnd, b.start_date, b.end_date),
-    )
-    if (conflict) {
-      setError('הסורק כבר תפוס בתאריכים האלה')
-      return
+    if (formScannerId) {
+      const conflict = bookings.some(
+        (b) =>
+          b.scanner_id === formScannerId &&
+          rangesOverlap(formStart, formEnd, b.start_date, b.end_date),
+      )
+      if (conflict) {
+        setError('הסורק כבר תפוס בתאריכים האלה')
+        return
+      }
     }
 
     setSaving(true)
@@ -361,7 +412,8 @@ export function AdminScannersPanel() {
     const { data, error: insertError } = await supabase
       .from('scanner_bookings')
       .insert({
-        scanner_id: formScannerId,
+        scanner_id: formScannerId || null,
+        event_id: formEventId || null,
         start_date: formStart,
         end_date: formEnd,
         customer_name: customer,
@@ -391,6 +443,25 @@ export function AdminScannersPanel() {
     )
     setSaving(false)
     setBookingOpen(false)
+  }
+
+  async function confirmResetEventScans() {
+    if (!resetEventTarget || resetting) return
+    const { eventId, eventName } = resetEventTarget
+    setResetting(true)
+    setError(null)
+    setSuccessMsg(null)
+    const { data, error: rpcError } = await supabase.rpc('admin_reset_event_scans', {
+      p_event_id: eventId,
+    })
+    setResetting(false)
+    setResetEventTarget(null)
+    if (rpcError) {
+      setError(rpcError.message)
+      return
+    }
+    const deleted = (data as { deleted_transactions?: number } | null)?.deleted_transactions ?? 0
+    setSuccessMsg(`הסריקות אופסו למשחק "${eventName}". נמחקו ${deleted} רשומות ניקוד.`)
   }
 
   async function submitScanner(e: React.FormEvent) {
@@ -456,7 +527,13 @@ export function AdminScannersPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard
+          label="הזמנות היום"
+          value={todayStats.bookingsToday}
+          accent="primary"
+          icon={<CalendarPlus size={18} />}
+        />
         <KpiCard
           label="סורקים פעילים"
           value={todayStats.total}
@@ -464,15 +541,14 @@ export function AdminScannersPanel() {
           icon={<ScanLine size={18} />}
         />
         <KpiCard
-          label="תפוסים היום"
+          label="סורקים תפוסים היום"
           value={todayStats.booked}
           accent="tertiary"
         />
         <KpiCard
-          label="פנויים היום"
+          label="סורקים פנויים היום"
           value={todayStats.available}
           accent="secondary"
-          hint="מכשירי סריקה למסלול מלא"
         />
       </div>
 
@@ -503,7 +579,7 @@ export function AdminScannersPanel() {
             <Plus size={14} className="ml-1" />
             סורק חדש
           </Button>
-          <Button size="sm" onClick={() => openBooking()} disabled={activeScanners.length === 0}>
+          <Button size="sm" onClick={() => openBooking()}>
             <CalendarPlus size={14} className="ml-1" />
             הזמנה חדשה
           </Button>
@@ -667,7 +743,7 @@ export function AdminScannersPanel() {
 
       {/* Resource timeline: scanners × days of month with continuous family bars */}
       <Card className="overflow-x-auto p-4">
-        <h3 className="mb-3 text-sm font-semibold text-foreground">לוח תפוסה לפי סורק</h3>
+        <h3 className="mb-3 text-sm font-semibold text-foreground">לוח תפוסה</h3>
         {activeScanners.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted">אין סורקים עדיין. הוסף סורק חדש.</p>
         ) : (
@@ -689,22 +765,34 @@ export function AdminScannersPanel() {
                 </div>
               ))}
             </div>
-            {activeScanners.map((scanner) => {
-              const scannerBookings = bookings.filter((b) => b.scanner_id === scanner.id)
-              const spans = scannerBookings
+            {[
+              ...activeScanners.map((scanner) => ({
+                key: scanner.id,
+                label: scanner.name,
+                color: colorForScanner(scanners, scanner.id),
+                rowBookings: bookings.filter((b) => b.scanner_id === scanner.id),
+              })),
+              {
+                key: '__none__',
+                label: 'ללא סורק',
+                color: 'bg-muted',
+                rowBookings: bookings.filter((b) => !b.scanner_id),
+              },
+            ].map((row) => {
+              const spans = row.rowBookings
                 .map((booking) => {
                   const span = bookingSpanInDays(booking, daysInMonth)
                   return span ? { booking, ...span } : null
                 })
                 .filter((x): x is { booking: ScannerBooking; start: number; span: number } => x != null)
 
+              if (row.key === '__none__' && spans.length === 0) return null
+
               return (
-                <div key={scanner.id} className="flex items-stretch gap-0.5">
+                <div key={row.key} className="flex items-stretch gap-0.5">
                   <div className="flex w-[132px] shrink-0 items-center gap-1.5 truncate pe-2 text-xs text-foreground">
-                    <span
-                      className={cn('h-2 w-2 shrink-0 rounded-full', colorForScanner(scanners, scanner.id))}
-                    />
-                    <span className="truncate font-medium">{scanner.name}</span>
+                    <span className={cn('h-2 w-2 shrink-0 rounded-full', row.color)} />
+                    <span className="truncate font-medium">{row.label}</span>
                   </div>
                   <div
                     className="grid h-9 min-w-0 flex-1 gap-0.5"
@@ -784,10 +872,21 @@ export function AdminScannersPanel() {
                   key={b.id}
                   booking={b}
                   scannerLabel={scannerLabel(b.scanner_id)}
+                  eventLabel={eventLabel(b.event_id)}
                   onDelete={() => {
                     closeDetail()
                     setDeleteBookingId(b.id)
                   }}
+                  onResetScans={
+                    b.event_id
+                      ? () => {
+                          setResetEventTarget({
+                            eventId: b.event_id!,
+                            eventName: eventLabel(b.event_id),
+                          })
+                        }
+                      : undefined
+                  }
                 />
               ))}
             </div>
@@ -805,11 +904,22 @@ export function AdminScannersPanel() {
           <BookingDetailCard
             booking={selectedBooking}
             scannerLabel={scannerLabel(selectedBooking.scanner_id)}
+            eventLabel={eventLabel(selectedBooking.event_id)}
             onDelete={() => {
               const id = selectedBooking.id
               closeDetail()
               setDeleteBookingId(id)
             }}
+            onResetScans={
+              selectedBooking.event_id
+                ? () => {
+                    setResetEventTarget({
+                      eventId: selectedBooking.event_id!,
+                      eventName: eventLabel(selectedBooking.event_id),
+                    })
+                  }
+                : undefined
+            }
           />
         )}
       </Modal>
@@ -829,6 +939,7 @@ export function AdminScannersPanel() {
                 key={b.id}
                 booking={b}
                 label={scannerLabel(b.scanner_id)}
+                eventLabel={eventLabel(b.event_id)}
                 color={colorForScanner(scanners, b.scanner_id)}
                 onDelete={() => setDeleteBookingId(b.id)}
               />
@@ -840,21 +951,37 @@ export function AdminScannersPanel() {
       {error && !bookingOpen && !scannerOpen && (
         <p className="text-sm text-danger">{error}</p>
       )}
+      {successMsg && !bookingOpen && !scannerOpen && (
+        <p className="text-sm text-success">{successMsg}</p>
+      )}
 
       <Modal
         isOpen={bookingOpen}
         onClose={() => setBookingOpen(false)}
-        title="הזמנת סורק"
+        title="הזמנה חדשה"
         dialogClassName="max-w-md"
       >
         <form onSubmit={submitBooking} className="space-y-3">
           <Select
+            id="booking-event"
+            label="משחק מקושר (אופציונלי)"
+            value={formEventId}
+            onChange={(e) => onFormEventChange(e.target.value)}
+          >
+            <option value="">ללא קישור למשחק</option>
+            {events.map((ev) => (
+              <option key={ev.id} value={ev.id}>
+                {ev.name?.trim() || 'משחק ללא שם'}
+              </option>
+            ))}
+          </Select>
+          <Select
             id="booking-scanner"
-            label="סורק"
+            label="סורק (אופציונלי)"
             value={formScannerId}
             onChange={(e) => setFormScannerId(e.target.value)}
-            required
           >
+            <option value="">ללא סורק</option>
             {activeScanners.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name} ({s.code})
@@ -882,10 +1009,10 @@ export function AdminScannersPanel() {
           </div>
           <Input
             id="booking-customer"
-            label="שם לקוח / אירוע"
+            label="שם לקוח / משפחה"
             value={formCustomer}
             onChange={(e) => setFormCustomer(e.target.value)}
-            placeholder="למשל: אירוע משפחת כהן"
+            placeholder="למשל: משפחת כהן"
             required
           />
           <div className="grid grid-cols-2 gap-3">
@@ -966,9 +1093,23 @@ export function AdminScannersPanel() {
         onClose={() => setDeleteBookingId(null)}
         onConfirm={confirmDeleteBooking}
         title="מחיקת הזמנה"
-        description="למחוק את ההזמנה? הסורק יהיה פנוי שוב בתאריכים האלה."
+        description="למחוק את ההזמנה? אם היה סורק משויך — הוא יהיה פנוי שוב בתאריכים האלה."
         confirmLabel="מחק"
         loading={deleting}
+      />
+
+      <ConfirmModal
+        isOpen={!!resetEventTarget}
+        onClose={() => setResetEventTarget(null)}
+        onConfirm={confirmResetEventScans}
+        title="איפוס סריקות למשחק"
+        description={
+          resetEventTarget
+            ? `לאפס את כל הסריקות, הניקוד והפרסים שנצברו במשחק "${resetEventTarget.eventName}"? פעולה זו לא ניתנת לביטול.`
+            : ''
+        }
+        confirmLabel="אפס סריקות"
+        loading={resetting}
       />
     </div>
   )
@@ -977,11 +1118,13 @@ export function AdminScannersPanel() {
 function BookingRow({
   booking,
   label,
+  eventLabel,
   color,
   onDelete,
 }: {
   booking: ScannerBooking
   label: string
+  eventLabel: string
   color: string
   onDelete: () => void
 }) {
@@ -991,7 +1134,7 @@ function BookingRow({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm text-foreground">{booking.customer_name}</p>
         <p className="mt-0.5 text-[11px] text-muted">
-          {label} · {formatRange(booking.start_date, booking.end_date)}
+          {eventLabel} · {label} · {formatRange(booking.start_date, booking.end_date)}
           {booking.customer_phone ? ` · ${booking.customer_phone}` : ''}
         </p>
       </div>
@@ -1010,14 +1153,19 @@ function BookingRow({
 function BookingDetailCard({
   booking,
   scannerLabel,
+  eventLabel,
   onDelete,
+  onResetScans,
 }: {
   booking: ScannerBooking
   scannerLabel: string
+  eventLabel: string
   onDelete: () => void
+  onResetScans?: () => void
 }) {
   const rows: { label: string; value: string }[] = [
     { label: 'משפחה / לקוח', value: booking.customer_name },
+    { label: 'משחק', value: eventLabel },
     { label: 'סורק', value: scannerLabel },
     { label: 'תאריכים', value: formatRange(booking.start_date, booking.end_date) },
   ]
@@ -1043,7 +1191,13 @@ function BookingDetailCard({
           </div>
         ))}
       </dl>
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        {onResetScans && (
+          <Button type="button" variant="outline" size="sm" onClick={onResetScans}>
+            <RotateCcw size={14} className="ml-1" />
+            איפוס סריקות למשחק
+          </Button>
+        )}
         <Button type="button" variant="outline" size="sm" onClick={onDelete}>
           <Trash2 size={14} className="ml-1" />
           מחק הזמנה

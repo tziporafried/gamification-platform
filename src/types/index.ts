@@ -299,12 +299,14 @@ export interface Scanner {
 
 export interface ScannerBooking {
   id: string;
-  scanner_id: string;
+  /** Null = booking without a physical scanner (calendar / game only). */
+  scanner_id: string | null;
   start_date: string;
   end_date: string;
   customer_name: string;
   customer_phone: string | null;
   customer_email: string | null;
+  /** Linked game event. */
   event_id: string | null;
   notes: string | null;
   created_by: string;
