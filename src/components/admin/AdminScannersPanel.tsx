@@ -1278,59 +1278,61 @@ export function AdminScannersPanel() {
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              id="booking-amount"
-              label="מחיר (₪)"
-              type="number"
-              min={0}
-              step="1"
-              value={formAmount}
-              onChange={(e) => {
-                setAutoPrice(false)
-                setFormAmount(e.target.value)
-              }}
-              placeholder={suggestedPrice != null ? String(suggestedPrice) : 'הזיני מחיר'}
-            />
-            <div className="flex flex-col justify-end gap-1 pb-1 text-[11px] text-muted">
-              {formPackage && suggestedPrice != null ? (
-                <span>
-                  חישוב אוטומטי: {formatPriceIls(suggestedPrice)}
-                  {(formPackage === 'full' || formPackage === 'offline') &&
-                    ` · ${bookingDayCount(formStart, formEnd)} ימים`}
-                  {!autoPrice &&
-                    formAmount.trim() !== '' &&
-                    Number(formAmount) !== suggestedPrice &&
-                    ' · עודכן ידנית'}
-                </span>
-              ) : formPackage === 'organizations' ? (
-                <span>לחבילת ארגונים הזיני מחיר ידנית</span>
-              ) : (
-                <span>המחיר יתווסף אוטומטית כהכנסה</span>
-              )}
-              {suggestedPrice != null && !autoPrice && (
-                <button
-                  type="button"
-                  className="text-start text-secondary hover:underline"
-                  onClick={() => setAutoPrice(true)}
-                >
-                  חשב מחדש לפי חבילה ותאריכים
-                </button>
-              )}
+          <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2" dir="rtl">
+            <div className="space-y-1">
+              <Input
+                id="booking-amount"
+                label="מחיר (₪)"
+                type="number"
+                min={0}
+                step="1"
+                value={formAmount}
+                onChange={(e) => {
+                  setAutoPrice(false)
+                  setFormAmount(e.target.value)
+                }}
+                placeholder={suggestedPrice != null ? String(suggestedPrice) : 'הזיני מחיר'}
+              />
+              <div className="flex flex-col gap-0.5 text-[11px] text-muted">
+                {formPackage && suggestedPrice != null ? (
+                  <span>
+                    חישוב אוטומטי: {formatPriceIls(suggestedPrice)}
+                    {(formPackage === 'full' || formPackage === 'offline') &&
+                      ` · ${bookingDayCount(formStart, formEnd)} ימים`}
+                    {!autoPrice &&
+                      formAmount.trim() !== '' &&
+                      Number(formAmount) !== suggestedPrice &&
+                      ' · עודכן ידנית'}
+                  </span>
+                ) : formPackage === 'organizations' ? (
+                  <span>לחבילת ארגונים הזיני מחיר ידנית</span>
+                ) : (
+                  <span>המחיר יתווסף אוטומטית כהכנסה</span>
+                )}
+                {suggestedPrice != null && !autoPrice && (
+                  <button
+                    type="button"
+                    className="text-start text-secondary hover:underline"
+                    onClick={() => setAutoPrice(true)}
+                  >
+                    חשב מחדש לפי חבילה ותאריכים
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="rounded-xl border border-border bg-surface-elevated/40 px-3 py-2.5">
-            <Checkbox
-              id="booking-paid"
-              label="שולם"
-              checked={formPaid}
-              onChange={(e) => setFormPaid(e.target.checked)}
-            />
-            <p className="mt-1 text-[11px] text-muted">
-              {formPaid
-                ? 'יירשם כהכנסה בלוח הכספים'
-                : 'יירשם כהכנסה עתידית עד שיסומן כשולם'}
-            </p>
+            <div className="rounded-xl border border-border bg-surface-elevated/40 px-3 py-2.5 sm:mt-6">
+              <Checkbox
+                id="booking-paid"
+                label="שולם"
+                checked={formPaid}
+                onChange={(e) => setFormPaid(e.target.checked)}
+              />
+              <p className="mt-1 text-[11px] text-muted">
+                {formPaid
+                  ? 'יירשם כהכנסה בלוח הכספים'
+                  : 'יירשם כהכנסה עתידית עד שיסומן כשולם'}
+              </p>
+            </div>
           </div>
           <Select
             id="booking-event"
