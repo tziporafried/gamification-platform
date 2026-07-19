@@ -134,17 +134,18 @@ The CSP in `vercel.json` is tuned to what the app actually loads:
 
 | Directive | Why |
 | --- | --- |
-| `script-src https://www.googletagmanager.com` | GA4, loaded by `initAnalytics()` |
+| `script-src https://*.googletagmanager.com` | GA4 gtag.js, loaded by `initAnalytics()` |
 | `style-src 'unsafe-inline'` | Tailwind + framer-motion inline styles |
 | `font-src https://fonts.gstatic.com` | Heebo webfont |
-| `connect-src https://*.supabase.co wss://*.supabase.co` | Supabase REST + realtime |
+| `connect-src …supabase… + GA/Google collect hosts` | Supabase + GA4 `g/collect` (incl. regional + `google.com`) |
 | `frame-ancestors 'none'` | app is never embedded — no iframes in the codebase |
 
 `script-src` carries **no `'unsafe-inline'`**. The inline gtag snippet was removed
-from `index.html`; `initAnalytics()` in `src/lib/analytics.ts` already contained an
-identical bootstrap (guarded by `if (window.gtag) return`, so it was dead code) and
-now owns loading gtag.js. Verified in headless Chrome against this exact header:
-the app mounts, the GA tag is injected, and no CSP violations are reported.
+from `index.html`; `initAnalytics()` owns loading gtag.js. The stub must push the
+`arguments` object into `dataLayer` (Google's snippet shape) — pushing a rest-params
+`Array` causes gtag.js to ignore the pre-load queue and drop all hits. Verified in
+headless Chrome against this CSP: the app mounts, the GA tag is injected, and collect
+requests are not CSP-blocked.
 
 A CSP **hash** was deliberately rejected instead. The repo stores `index.html`
 with LF but `core.autocrlf=true` produces CRLF locally, so a hash computed on

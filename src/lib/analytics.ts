@@ -163,24 +163,36 @@ function getUtmAttributionParams(): AnalyticsParams {
   return utmAttributionToParams(getUtmHitAttribution())
 }
 
+let analyticsBootstrapped = false
+
 export function initAnalytics() {
   if (!isEnabled() || typeof window === 'undefined') return
 
   captureLandingReferrer()
   captureUtmAttribution()
 
-  // gtag may already be loaded from index.html
-  if (window.gtag) return
+  window.dataLayer = window.dataLayer || []
+  // Must push the Arguments object (not a rest-params Array). gtag.js reads the
+  // pre-load queue and silently drops plain arrays — which stopped all hits after
+  // the inline index.html snippet was removed in the security CSP change.
+  if (!window.gtag) {
+    window.gtag = function gtag() {
+      // eslint-disable-next-line prefer-rest-params
+      window.dataLayer.push(arguments)
+    }
+  }
+
+  if (analyticsBootstrapped) return
+  analyticsBootstrapped = true
 
   const script = document.createElement('script')
   script.async = true
   script.src = `https://www.googletagmanager.com/gtag/js?id=${MEASUREMENT_ID}`
-  document.head.appendChild(script)
-
-  window.dataLayer = window.dataLayer || []
-  window.gtag = function gtag(...args: unknown[]) {
-    window.dataLayer.push(args)
+  script.onerror = () => {
+    // Allow a later navigation/effect to retry if the script was blocked once.
+    analyticsBootstrapped = false
   }
+  document.head.appendChild(script)
 
   window.gtag('js', new Date())
   window.gtag('config', MEASUREMENT_ID!, {
@@ -191,7 +203,9 @@ export function initAnalytics() {
 
 /** Track SPA route as a page view, including landing referrer + UTM attribution. */
 export function trackPageView(path: string) {
-  if (!isEnabled() || !window.gtag) return
+  if (!isEnabled()) return
+  if (!window.gtag) initAnalytics()
+  if (!window.gtag) return
   captureUtmAttribution()
   // GA homepage reports filter pagePath EXACT '/'; never put query in page_path.
   const pagePath = path.split('?')[0] || '/'
@@ -209,7 +223,9 @@ export function trackPageView(path: string) {
 
 /** Generic GA4 event helper — attaches persisted UTM attribution when present. */
 export function trackEvent(eventName: string, params?: AnalyticsParams) {
-  if (!isEnabled() || !window.gtag) return
+  if (!isEnabled()) return
+  if (!window.gtag) initAnalytics()
+  if (!window.gtag) return
   window.gtag('event', eventName, {
     ...getUtmAttributionParams(),
     ...params,
