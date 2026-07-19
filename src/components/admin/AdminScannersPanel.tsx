@@ -1104,7 +1104,8 @@ export function AdminScannersPanel() {
             ? format(selectedDay, 'EEEE, d בMMMM yyyy', { locale: he })
             : 'פרטי יום'
         }
-        dialogClassName="max-w-lg"
+        dialogClassName="max-w-lg max-h-[min(90vh,44rem)]"
+        contentClassName="overflow-y-auto overscroll-contain"
       >
         <div className="space-y-3">
           <div className="flex justify-end">

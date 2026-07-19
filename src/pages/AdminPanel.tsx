@@ -577,40 +577,42 @@ export function AdminPanel() {
               שגיאה בטעינת משתמשים: {usersError}
             </div>
           )}
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Users size={18} className="text-gray-400" />
-              <h2 className="text-sm font-medium text-gray-400">
-                {customersFiltered
-                  ? `${filteredUsers.length} מתוך ${users.length} משתמשים`
-                  : `${users.length} משתמשים רשומים`}
-              </h2>
-            </div>
-            <div className="relative w-full sm:w-72">
-              <Search
-                size={15}
-                className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted"
-              />
-              <input
-                type="search"
-                value={customerSearch}
-                onChange={(e) => setCustomerSearch(e.target.value)}
-                placeholder="חיפוש לפי שם או אימייל..."
-                aria-label="חיפוש לקוחות לפי שם או אימייל"
-                className="w-full rounded-xl border border-border bg-surface py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand-500"
-              />
-            </div>
+          <div className="mb-4 flex items-center gap-2">
+            <Users size={18} className="text-gray-400" />
+            <h2 className="text-sm font-medium text-gray-400">
+              {customersFiltered
+                ? `${filteredUsers.length} מתוך ${users.length} משתמשים`
+                : `${users.length} משתמשים רשומים`}
+            </h2>
           </div>
 
-          {affiliateOptions.length > 0 && (
-            <div className="mb-4 rounded-2xl border border-border bg-surface p-4">
-              <AffiliateFilterBar
-                options={affiliateOptions}
-                selected={selectedAffiliates}
-                onChange={setSelectedAffiliates}
-              />
+          <div className="mb-4 rounded-2xl border border-border bg-surface p-4">
+            <div className="flex flex-wrap items-center gap-3" dir="rtl">
+              <div className="relative w-full min-w-[14rem] flex-1 sm:max-w-xs sm:flex-none">
+                <Search
+                  size={15}
+                  className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted"
+                />
+                <input
+                  type="search"
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  placeholder="חיפוש לפי שם או אימייל..."
+                  aria-label="חיפוש לקוחות לפי שם או אימייל"
+                  className="w-full rounded-xl border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand-500"
+                />
+              </div>
+              {affiliateOptions.length > 0 && (
+                <div className="min-w-0 flex-1">
+                  <AffiliateFilterBar
+                    options={affiliateOptions}
+                    selected={selectedAffiliates}
+                    onChange={setSelectedAffiliates}
+                  />
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           <div className="space-y-2">
             {filteredUsers.length === 0 ? (
