@@ -65,19 +65,32 @@ export function ControlActionCard({
         )}
 
         <div className="relative flex min-h-[300px] flex-col p-7">
-          <div className="relative flex flex-1 flex-col items-center gap-5 overflow-visible pt-2 text-center">
-            <div className="flex h-[5.5rem] items-center justify-center overflow-visible">
+          <div className="relative flex flex-1 flex-col items-center overflow-visible pt-2 text-center">
+            <div className="flex h-[5.5rem] shrink-0 items-center justify-center overflow-visible">
               {icon}
             </div>
 
-            <div className="flex min-h-[4.75rem] flex-1 flex-col justify-center">
-              <h3 className={cn('text-xl font-black', dimmed ? 'text-neutral-700' : 'text-white')}>{title}</h3>
-              <p className={cn('mt-1.5 text-sm leading-relaxed', dimmed ? 'text-neutral-500' : 'text-white/80')}>
+            {/* Fixed title band so sibling cards share one title baseline. */}
+            <div className="mt-5 flex w-full flex-1 flex-col">
+              <h3
+                className={cn(
+                  'min-h-[3.5rem] text-xl font-black leading-snug',
+                  dimmed ? 'text-neutral-700' : 'text-white',
+                )}
+              >
+                {title}
+              </h3>
+              <p
+                className={cn(
+                  'mt-1.5 min-h-[2.75rem] flex-1 text-sm leading-relaxed',
+                  dimmed ? 'text-neutral-500' : 'text-white/80',
+                )}
+              >
                 {description}
               </p>
             </div>
 
-            <div className="mt-auto w-full pt-1">
+            <div className="mt-5 w-full shrink-0 pt-1">
               <div
                 className={cn(
                   'rounded-xl px-5 py-2.5 text-sm font-bold transition-colors duration-100',

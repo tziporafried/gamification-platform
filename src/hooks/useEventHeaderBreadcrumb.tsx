@@ -27,6 +27,7 @@ export function useEventHeaderBreadcrumb(
       <EventHeaderBreadcrumb
         eventName={eventName}
         suffix={suffix}
+        eventId={eventId}
         trialEventId={showTrialBadge ? eventId : undefined}
       />,
     )

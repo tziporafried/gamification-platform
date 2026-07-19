@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trophy, Crown, ScanLine, Settings } from 'lucide-react'
+import { Trophy, Crown, ScanLine, Settings, Zap } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { ControlActionCard, FloatingActionIcon } from './ControlActionCard'
@@ -70,9 +70,11 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   const cardAnim = useMemo(() => ({
     kioskFloat: Math.random(),
     displayFloat: Math.random(),
+    liveFloat: Math.random(),
     scanLine: -3 * Math.random(),
     borderPulse: -3 * Math.random(),
     crown: -(2.2 + 2.5 * Math.random()),
+    gift: -(2 + 2.2 * Math.random()),
     pulseGlow: -2.5 * Math.random(),
     statsInterval: 2600 + Math.random() * 900,
   }), [])
@@ -187,7 +189,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
 
       <main
         className={cn(
-          'relative z-10 mx-auto flex min-h-full w-full max-w-4xl flex-col justify-center px-4 pt-5',
+          'relative z-10 mx-auto flex min-h-full w-full max-w-6xl flex-col justify-center px-4 pt-5',
           ready && summaryItems.length > 0 ? 'pb-[4.5rem]' : 'pb-5',
         )}
       >
@@ -257,7 +259,12 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
             </div>
           )}
 
-          <div className="grid shrink-0 items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            className={cn(
+              'grid shrink-0 items-stretch gap-4 sm:grid-cols-2',
+              isSuperAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-3',
+            )}
+          >
             <ControlActionCard
               onClick={handleSettings}
               dimmed
@@ -270,6 +277,35 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                 </div>
               }
             />
+
+            {isSuperAdmin && (
+              <ControlActionCard
+                onClick={() => {
+                  trackCtaClick({
+                    cta_name: 'open_live_events',
+                    cta_location: 'control_center',
+                    destination: `/events/${event.id}/live-events`,
+                  })
+                  navigate(`/events/${event.id}/live-events`)
+                }}
+                gradient="gradient-reward-medium"
+                title="הפעלות בזמן אמת"
+                description="הפעילו הגרלות, בונוסים ואירועים מיוחדים במהלך המשחק."
+                cta="פתח ←"
+                decoration={
+                  <motion.div
+                    className="pointer-events-none absolute inset-3 rounded-[1.35rem] border border-white/15"
+                    animate={{ opacity: [0.35, 0.8, 0.35] }}
+                    transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut', delay: cardAnim.gift }}
+                  />
+                }
+                icon={
+                  <FloatingActionIcon phase={cardAnim.liveFloat} pulsePhase={cardAnim.pulseGlow} pulse>
+                    <Zap size={32} className="text-white" strokeWidth={2.25} />
+                  </FloatingActionIcon>
+                }
+              />
+            )}
 
             <ControlActionCard
               onClick={() => handleAction('kiosk')}
