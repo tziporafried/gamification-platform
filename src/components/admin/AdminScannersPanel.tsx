@@ -66,18 +66,18 @@ const SCANNER_COLORS = [
   'bg-danger/70',
 ]
 
-/** Distinct bar colors for families (customer names) on the calendar. */
-const FAMILY_BAR_COLORS = [
-  'bg-secondary text-white',
-  'bg-primary text-white',
-  'bg-tertiary text-white',
-  'bg-success text-white',
-  'bg-warning text-foreground',
-  'bg-accent text-white',
-  'bg-danger text-white',
-  'bg-secondary/70 text-white',
-  'bg-primary/70 text-white',
-  'bg-tertiary/80 text-white',
+/** High-contrast family bar colors (inline styles — reliable on calendar overlays). */
+const FAMILY_BAR_PALETTE = [
+  { bg: '#0f766e', text: '#ffffff' },
+  { bg: '#1d4ed8', text: '#ffffff' },
+  { bg: '#b45309', text: '#ffffff' },
+  { bg: '#be123c', text: '#ffffff' },
+  { bg: '#7c3aed', text: '#ffffff' },
+  { bg: '#047857', text: '#ffffff' },
+  { bg: '#c2410c', text: '#ffffff' },
+  { bg: '#0369a1', text: '#ffffff' },
+  { bg: '#a21caf', text: '#ffffff' },
+  { bg: '#4d7c0f', text: '#ffffff' },
 ]
 
 const WEEKDAY_LABELS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
@@ -124,8 +124,8 @@ function hashString(value: string): number {
   return h
 }
 
-function colorForFamily(customerName: string): string {
-  return FAMILY_BAR_COLORS[hashString(customerName.trim()) % FAMILY_BAR_COLORS.length]
+function colorForFamily(customerName: string): { bg: string; text: string } {
+  return FAMILY_BAR_PALETTE[hashString(customerName.trim()) % FAMILY_BAR_PALETTE.length]
 }
 
 function chunkWeeks(days: Date[]): Date[][] {
@@ -161,7 +161,16 @@ type WeekBar = {
   lane: number
 }
 
-/** Pack overlapping family bars into lanes within a week. */
+function rangesOverlapCols(
+  aStart: number,
+  aSpan: number,
+  bStart: number,
+  bSpan: number,
+): boolean {
+  return aStart < bStart + bSpan && bStart < aStart + aSpan
+}
+
+/** Pack overlapping family bars into separate lanes within a week. */
 function layoutWeekBookings(bookings: ScannerBooking[], week: Date[]): WeekBar[] {
   const items = bookings
     .map((booking) => {
@@ -169,19 +178,25 @@ function layoutWeekBookings(bookings: ScannerBooking[], week: Date[]): WeekBar[]
       return span ? { booking, ...span } : null
     })
     .filter((x): x is { booking: ScannerBooking; start: number; span: number } => x != null)
-    .sort((a, b) => a.start - b.start || b.span - a.span || a.booking.customer_name.localeCompare(b.booking.customer_name, 'he'))
+    .sort(
+      (a, b) =>
+        a.start - b.start ||
+        b.span - a.span ||
+        a.booking.customer_name.localeCompare(b.booking.customer_name, 'he'),
+    )
 
-  const laneEnds: number[] = []
-  return items.map((item) => {
-    let lane = laneEnds.findIndex((end) => end <= item.start)
-    if (lane === -1) {
-      lane = laneEnds.length
-      laneEnds.push(item.start + item.span)
-    } else {
-      laneEnds[lane] = item.start + item.span
-    }
-    return { ...item, lane }
-  })
+  const placed: WeekBar[] = []
+  for (const item of items) {
+    const used = new Set(
+      placed
+        .filter((p) => rangesOverlapCols(item.start, item.span, p.start, p.span))
+        .map((p) => p.lane),
+    )
+    let lane = 0
+    while (used.has(lane)) lane += 1
+    placed.push({ ...item, lane })
+  }
+  return placed
 }
 
 /** Clip a booking to a month day list for the scanner timeline. */
@@ -826,12 +841,16 @@ export function AdminScannersPanel() {
               weekBars.reduce((max, b) => Math.max(max, b.lane + 1), 0),
               1,
             )
-            const bodyMinHeight = 32 + laneCount * 24 + 8
+            const LANE_H = 26
+            const LANE_GAP = 4
+            const HEADER_H = 34
+            const barsBlockH = laneCount * LANE_H + Math.max(0, laneCount - 1) * LANE_GAP
+            const bodyMinHeight = HEADER_H + barsBlockH + 10
 
             return (
               <div
                 key={week[0].toISOString()}
-                className="relative overflow-hidden rounded-xl border border-border"
+                className="relative rounded-xl border border-border"
                 style={{ minHeight: bodyMinHeight }}
               >
                 <div className="grid grid-cols-7" style={{ minHeight: bodyMinHeight }}>
@@ -895,36 +914,38 @@ export function AdminScannersPanel() {
                   })}
                 </div>
 
-                {/* Continuous family bars overlaid across the week cubes */}
+                {/* Continuous family bars — one lane per overlapping booking */}
                 {weekBars.length > 0 && (
                   <div
-                    className="pointer-events-none absolute inset-x-0 bottom-1 top-8 grid gap-x-0 gap-y-0.5 px-0.5"
-                    style={{
-                      gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-                      gridTemplateRows: `repeat(${laneCount}, 22px)`,
-                    }}
+                    className="pointer-events-none absolute inset-x-0 px-0.5"
+                    style={{ top: HEADER_H, height: barsBlockH }}
                   >
                     {weekBars.map((bar) => {
                       const continuesBefore = bar.booking.start_date < dayISO(week[0])
                       const continuesAfter = bar.booking.end_date > dayISO(week[6])
                       const multiDay = bar.booking.start_date !== bar.booking.end_date
+                      const colors = colorForFamily(bar.booking.customer_name)
+                      const colPct = 100 / 7
                       return (
                         <button
-                          key={`${bar.booking.id}-${bar.start}`}
+                          key={bar.booking.id}
                           type="button"
                           onClick={() => openBookingDetail(bar.booking)}
                           title={`${bar.booking.customer_name} · ${formatRange(bar.booking.start_date, bar.booking.end_date)} · ${scannerLabel(bar.booking.scanner_id)}`}
                           className={cn(
-                            'pointer-events-auto z-10 flex items-center overflow-hidden px-1.5 text-start text-[10px] font-semibold leading-none shadow-sm transition-opacity hover:opacity-90',
-                            colorForFamily(bar.booking.customer_name),
+                            'pointer-events-auto absolute z-10 flex items-center overflow-hidden px-1.5 text-start text-[11px] font-semibold leading-none shadow-sm transition-opacity hover:opacity-90',
                             multiDay && continuesBefore && continuesAfter && 'rounded-none',
                             multiDay && continuesBefore && !continuesAfter && 'rounded-e-md rounded-s-none',
                             multiDay && !continuesBefore && continuesAfter && 'rounded-s-md rounded-e-none',
                             (!multiDay || (!continuesBefore && !continuesAfter)) && 'rounded-md',
                           )}
                           style={{
-                            gridColumn: `${bar.start + 1} / span ${bar.span}`,
-                            gridRow: bar.lane + 1,
+                            top: bar.lane * (LANE_H + LANE_GAP),
+                            height: LANE_H,
+                            insetInlineStart: `calc(${bar.start * colPct}% + 2px)`,
+                            width: `calc(${bar.span * colPct}% - 4px)`,
+                            backgroundColor: colors.bg,
+                            color: colors.text,
                           }}
                         >
                           <span className="truncate">{bar.booking.customer_name}</span>
@@ -1019,21 +1040,25 @@ export function AdminScannersPanel() {
                         />
                       )
                     })}
-                    {spans.map(({ booking, start, span }) => (
-                      <button
-                        key={booking.id}
-                        type="button"
-                        onClick={() => openBookingDetail(booking)}
-                        title={`${booking.customer_name} · ${formatRange(booking.start_date, booking.end_date)}`}
-                        className={cn(
-                          'z-10 row-start-1 mx-px flex items-center overflow-hidden rounded-md px-1 text-start text-[10px] font-semibold transition-opacity hover:opacity-90',
-                          colorForFamily(booking.customer_name),
-                        )}
-                        style={{ gridColumn: `${start + 1} / span ${span}` }}
-                      >
-                        <span className="truncate">{booking.customer_name}</span>
-                      </button>
-                    ))}
+                    {spans.map(({ booking, start, span }) => {
+                      const colors = colorForFamily(booking.customer_name)
+                      return (
+                        <button
+                          key={booking.id}
+                          type="button"
+                          onClick={() => openBookingDetail(booking)}
+                          title={`${booking.customer_name} · ${formatRange(booking.start_date, booking.end_date)}`}
+                          className="z-10 row-start-1 mx-px flex items-center overflow-hidden rounded-md px-1 text-start text-[10px] font-semibold transition-opacity hover:opacity-90"
+                          style={{
+                            gridColumn: `${start + 1} / span ${span}`,
+                            backgroundColor: colors.bg,
+                            color: colors.text,
+                          }}
+                        >
+                          <span className="truncate">{booking.customer_name}</span>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               )
@@ -1482,13 +1507,13 @@ function BookingDetailCard({
   if (booking.customer_email) rows.push({ label: 'אימייל', value: booking.customer_email })
   if (booking.notes) rows.push({ label: 'הערות', value: booking.notes })
 
+  const familyColor = colorForFamily(booking.customer_name)
+
   return (
     <div className="space-y-3">
       <div
-        className={cn(
-          'rounded-lg px-3 py-2 text-sm font-semibold',
-          colorForFamily(booking.customer_name),
-        )}
+        className="rounded-lg px-3 py-2 text-sm font-semibold"
+        style={{ backgroundColor: familyColor.bg, color: familyColor.text }}
       >
         {booking.customer_name}
       </div>
