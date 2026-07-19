@@ -454,7 +454,7 @@ export function AdminScannersPanel() {
   function scannerLabel(id: string | null): string {
     if (!id) return 'ללא סורק'
     const s = scanners.find((x) => x.id === id)
-    return s ? `${s.name} (${s.code})` : 'סורק'
+    return s ? s.name : 'סורק'
   }
 
   function eventLabel(id: string | null): string {
@@ -1531,7 +1531,7 @@ export function AdminScannersPanel() {
             <option value="">ללא סורק</option>
             {activeScanners.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name} ({s.code})
+                {s.name}
                 {s.status === 'maintenance' ? ' — תחזוקה' : ''}
               </option>
             ))}
@@ -1770,17 +1770,11 @@ function BookingDetailCard({
       label: 'מחיר',
       value: booking.amount != null ? formatPriceIls(Number(booking.amount)) : '—',
     },
-    { label: 'תשלום', value: booking.is_paid ? 'שולם' : 'לא שולם (הכנסה עתידית)' },
+    { label: 'תשלום', value: booking.is_paid ? 'שולם' : 'לא שולם · הכנסה עתידית' },
     { label: 'משחק', value: eventLabel },
     { label: 'סורק', value: scannerLabel },
     { label: 'תאריכים', value: formatRange(booking.start_date, booking.end_date) },
   ]
-  if (booking.finance_entry_id) {
-    rows.push({
-      label: 'הכנסה',
-      value: booking.is_paid ? 'נרשמה בלוח הכספים' : 'נרשמה כהכנסה עתידית',
-    })
-  }
   if (booking.customer_phone) rows.push({ label: 'טלפון', value: booking.customer_phone })
   if (booking.customer_email) rows.push({ label: 'אימייל', value: booking.customer_email })
   if (booking.notes) rows.push({ label: 'הערות', value: booking.notes })
