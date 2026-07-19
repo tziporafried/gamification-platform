@@ -4,7 +4,6 @@ import {
   ChevronRight,
   Plus,
   Trash2,
-  ScanLine,
   CalendarPlus,
   RotateCcw,
   Pencil,
@@ -46,7 +45,6 @@ import { Modal } from '@/components/ui/Modal'
 import { ModalActions } from '@/components/ui/ModalActions'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
-import { KpiCard } from '@/components/admin/analytics/KpiCard'
 import { cn } from '@/lib/utils'
 import type { BookingPackage, Scanner, ScannerBooking } from '@/types'
 
@@ -316,22 +314,6 @@ export function AdminScannersPanel() {
     const mEnd = format(endOfMonth(month), 'yyyy-MM-dd')
     return bookings.filter((b) => rangesOverlap(b.start_date, b.end_date, mStart, mEnd))
   }, [bookings, month])
-
-  const todayStats = useMemo(() => {
-    const today = new Date()
-    const todayBookings = bookings.filter((b) => bookingCoversDay(b, today))
-    const active = activeScanners.filter((s) => s.status === 'active')
-    const bookedIds = new Set(
-      todayBookings.map((b) => b.scanner_id).filter((id): id is string => !!id),
-    )
-    const bookedToday = active.filter((s) => bookedIds.has(s.id)).length
-    return {
-      bookingsToday: todayBookings.length,
-      total: active.length,
-      booked: bookedToday,
-      available: Math.max(0, active.length - bookedToday),
-    }
-  }, [activeScanners, bookings])
 
   const eventNameById = useMemo(() => {
     const map = new Map<string, string>()
@@ -773,31 +755,6 @@ export function AdminScannersPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label="הזמנות היום"
-          value={todayStats.bookingsToday}
-          accent="primary"
-          icon={<CalendarPlus size={18} />}
-        />
-        <KpiCard
-          label="סורקים פעילים"
-          value={todayStats.total}
-          accent="primary"
-          icon={<ScanLine size={18} />}
-        />
-        <KpiCard
-          label="סורקים תפוסים היום"
-          value={todayStats.booked}
-          accent="tertiary"
-        />
-        <KpiCard
-          label="סורקים פנויים היום"
-          value={todayStats.available}
-          accent="secondary"
-        />
-      </div>
-
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-2">
           {scanners.map((s) => (
