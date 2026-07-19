@@ -314,10 +314,14 @@ export interface ScannerBooking {
   booking_package: BookingPackage | null;
   /** Amount charged (may differ from list price). */
   amount: number | null;
-  /** When false, linked finance row is future_income (not yet received). */
+  /** Amount received so far. Remainder is debt. */
+  amount_paid: number | null;
+  /** True when any payment was recorded (amount_paid > 0). */
   is_paid: boolean;
-  /** Linked income / future_income row in admin_finance_entries. */
+  /** Linked income row for the paid portion. */
   finance_entry_id: string | null;
+  /** Linked future_income row for unpaid remainder (debt), if any. */
+  debt_finance_entry_id: string | null;
   notes: string | null;
   created_by: string;
   created_at: string;

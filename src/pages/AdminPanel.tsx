@@ -11,7 +11,7 @@ import { Tabs } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
-import { AdminStatusPill } from '@/components/ui/StatusBadge'
+import { AdminStatusPill, StatusBadge, STATUS_COLORS, PLAN_BADGE_COLORS } from '@/components/ui/StatusBadge'
 import { DevTodoList } from '@/components/dev-todos/DevTodoList'
 import { TemplateAdminList } from '@/components/admin/TemplateAdminList'
 import { AdminAnalyticsDashboard } from '@/components/admin/analytics/AdminAnalyticsDashboard'
@@ -21,10 +21,10 @@ import { AdminEventsList } from '@/components/admin/AdminEventsList'
 import { AdminFinancePanel } from '@/components/admin/AdminFinancePanel'
 import { AdminScannersPanel } from '@/components/admin/AdminScannersPanel'
 import { EventDetailsModal } from '@/components/admin/EventDetailsModal'
-import { TrialActivationResetModal } from '@/components/TrialActivationResetModal'
-import { trackTrialActivated, trackTrialDataReset } from '@/lib/analytics'
+import { fetchTemplateDraftEventIds } from '@/lib/templates'
+import { fetchEventsPlayMeta } from '@/lib/eventsPlayMeta'
 import { cn } from '@/lib/utils'
-import type { UserPlan } from '@/types'
+import type { EventStatus, UserPlan } from '@/types'
 
 type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates' | 'analytics' | 'events' | 'finance' | 'scanners'
 
@@ -114,9 +114,29 @@ function affiliateLabel(attr: unknown, labelFor: (code: string) => string | null
 interface AdminEventRow {
   event_id: string
   event_name: string
+  logo_url: string | null
   plan: UserPlan
-  status: string
+  status: EventStatus
   created_at: string
+  groups: number
+  participants: number
+  tasks: number
+  rewards: number
+  scans: number
+}
+
+const EVENT_STATUS_LABELS: Record<string, string> = {
+  editing: 'בעריכה',
+  active: 'פעיל',
+  archived: 'בארכיון',
+}
+
+const EVENT_PLAN_LABELS: Record<string, string> = {
+  free: 'התנסות',
+  independent: 'עצמאי',
+  full: 'מלא',
+  offline: 'ללא אינטרנט',
+  organizations: 'ארגונים',
 }
 
 interface UpgradeRequest {
@@ -153,22 +173,6 @@ const LIMIT_LABELS: Record<string, string> = {
   trial_contact: 'פנייה כללית (התנסות)',
 }
 
-const PLAN_OPTIONS: { value: UserPlan; label: string; color: string }[] = [
-  { value: 'free',          label: 'התנסות',    color: 'text-gray-400' },
-  { value: 'independent',   label: 'עצמאי',      color: 'text-blue-400' },
-  { value: 'full',          label: 'מלא',        color: 'text-green-400' },
-  { value: 'offline',       label: 'ללא אינטרנט', color: 'text-teal-400' },
-  { value: 'organizations', label: 'ארגונים',    color: 'text-amber-400' },
-]
-
-function planLabel(plan: UserPlan) {
-  return PLAN_OPTIONS.find(p => p.value === plan)?.label ?? plan
-}
-
-function planColor(plan: UserPlan) {
-  return PLAN_OPTIONS.find(p => p.value === plan)?.color ?? 'text-gray-400'
-}
-
 function formatLastSignIn(iso: string | null) {
   if (!iso) return 'טרם התחבר'
   const d = new Date(iso)
@@ -200,7 +204,6 @@ export function AdminPanel() {
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set())
   const [loadingEventsFor, setLoadingEventsFor] = useState<Set<string>>(new Set())
   const [userEvents, setUserEvents] = useState<Map<string, AdminEventRow[]>>(new Map())
-  const [updatingEventPlanId, setUpdatingEventPlanId] = useState<string | null>(null)
   const [detailEvent, setDetailEvent] = useState<{ id: string; name: string } | null>(null)
 
   // User deletion
@@ -212,15 +215,6 @@ export function AdminPanel() {
   const [deleteRequestTarget, setDeleteRequestTarget] = useState<UpgradeRequest | null>(null)
   const [deletingRequest, setDeletingRequest] = useState(false)
   const [deleteRequestError, setDeleteRequestError] = useState<string | null>(null)
-
-  // Trial → activation confirm (clears trial runtime data once)
-  const [pendingPlanChange, setPendingPlanChange] = useState<{
-    userId: string
-    eventId: string
-    previousPlan: UserPlan
-    newPlan: UserPlan
-  } | null>(null)
-  const [activatingPlan, setActivatingPlan] = useState(false)
 
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true)
@@ -351,74 +345,43 @@ export function AdminPanel() {
     if (userEvents.has(userId)) return
 
     setLoadingEventsFor(prev => new Set(prev).add(userId))
-    const { data } = await supabase.rpc('get_user_events_admin', { p_user_id: userId })
-    if (data) {
-      setUserEvents(prev => new Map(prev).set(userId, data as AdminEventRow[]))
+    const [eventsRes, draftIds] = await Promise.all([
+      supabase
+        .from('events')
+        .select('id, name, logo_url, plan, status, created_at')
+        .eq('owner_admin_id', userId)
+        .neq('status', 'archived')
+        .order('created_at', { ascending: false }),
+      fetchTemplateDraftEventIds(),
+    ])
+
+    if (!eventsRes.error && eventsRes.data) {
+      const draftSet = new Set(draftIds)
+      const rows = eventsRes.data.filter((row) => !draftSet.has(row.id))
+      const playMeta = await fetchEventsPlayMeta(rows.map((row) => row.id))
+      setUserEvents((prev) =>
+        new Map(prev).set(
+          userId,
+          rows.map((row) => {
+            const counts = playMeta[row.id]?.counts
+            return {
+              event_id: row.id,
+              event_name: row.name,
+              logo_url: row.logo_url,
+              plan: row.plan as UserPlan,
+              status: row.status as EventStatus,
+              created_at: row.created_at,
+              groups: counts?.groups ?? 0,
+              participants: counts?.participants ?? 0,
+              tasks: counts?.tasks ?? 0,
+              rewards: counts?.rewards ?? 0,
+              scans: playMeta[row.id]?.totalScans ?? 0,
+            }
+          }),
+        ),
+      )
     }
     setLoadingEventsFor(prev => { const next = new Set(prev); next.delete(userId); return next })
-  }
-
-  async function applyEventPlanChange(
-    eventId: string,
-    newPlan: UserPlan,
-    opts?: { userId?: string },
-  ) {
-    const { data, error } = await supabase.rpc('update_event_plan', {
-      p_event_id: eventId,
-      p_new_plan: newPlan,
-    })
-    if (error) return { ok: false as const, error }
-
-    const result = data as {
-      previous_plan?: string
-      new_plan?: string
-      did_reset?: boolean
-      trial_scans_used?: number
-    } | null
-
-    if (opts?.userId) {
-      setUserEvents(prev => {
-        const events = prev.get(opts.userId!)
-        if (!events) return prev
-        return new Map(prev).set(
-          opts.userId!,
-          events.map(e => e.event_id === eventId ? { ...e, plan: newPlan } : e),
-        )
-      })
-    }
-
-    if (result?.previous_plan === 'free' && result.new_plan && result.new_plan !== 'free') {
-      trackTrialActivated(eventId, result.new_plan, result.trial_scans_used ?? 0)
-      if (result.did_reset) {
-        trackTrialDataReset(eventId)
-      }
-    }
-
-    return { ok: true as const }
-  }
-
-  function requestEventPlanChange(
-    userId: string,
-    eventId: string,
-    previousPlan: UserPlan,
-    newPlan: UserPlan,
-  ) {
-    if (previousPlan === newPlan) return
-    if (previousPlan === 'free' && newPlan !== 'free') {
-      setPendingPlanChange({ userId, eventId, previousPlan, newPlan })
-      return
-    }
-    void (async () => {
-      setUpdatingEventPlanId(eventId)
-      await applyEventPlanChange(eventId, newPlan, { userId })
-      setUpdatingEventPlanId(null)
-    })()
-  }
-
-  async function changeEventPlan(userId: string, eventId: string, newPlan: UserPlan) {
-    const events = userEvents.get(userId)
-    const previousPlan = events?.find(e => e.event_id === eventId)?.plan ?? 'free'
-    requestEventPlanChange(userId, eventId, previousPlan, newPlan)
   }
 
   // The offline plan has no self-service download — the file is built here and
@@ -436,17 +399,6 @@ export function AdminPanel() {
     } finally {
       setExportingRequestId(null)
     }
-  }
-
-  async function confirmPendingPlanChange() {
-    if (!pendingPlanChange) return
-    setActivatingPlan(true)
-    const { userId, eventId, newPlan } = pendingPlanChange
-    setUpdatingEventPlanId(eventId)
-    await applyEventPlanChange(eventId, newPlan, { userId })
-    setUpdatingEventPlanId(null)
-    setActivatingPlan(false)
-    setPendingPlanChange(null)
   }
 
   async function deleteUser() {
@@ -660,42 +612,111 @@ export function AdminPanel() {
                   </div>
 
                   {isExpanded && (
-                    <div className="border-t border-game-border divide-y divide-game-border/50">
-                      {events.length === 0 && !isLoadingEvents ? (
+                    <div className="border-t border-game-border">
+                      {isLoadingEvents ? (
+                        <div className="flex items-center justify-center gap-2 px-4 py-4 text-xs text-muted">
+                          <Loader2 size={14} className="animate-spin" />
+                          טוען אירועים…
+                        </div>
+                      ) : events.length === 0 ? (
                         <p className="px-4 py-3 text-xs text-muted text-center">אין אירועים פעילים</p>
                       ) : (
-                        events.map(ev => (
-                          <div key={ev.event_id} className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-white/[0.02]">
-                            <button
-                              type="button"
-                              onClick={() => setDetailEvent({ id: ev.event_id, name: ev.event_name })}
-                              className="flex-1 truncate text-right text-sm text-foreground hover:text-brand-400 hover:underline transition-colors"
-                            >
-                              {ev.event_name || <span className="text-muted italic">ללא שם</span>}
-                            </button>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className={cn('text-xs font-medium', planColor(ev.plan))}>
-                                {planLabel(ev.plan)}
-                              </span>
-                              <div className="relative">
-                                {updatingEventPlanId === ev.event_id ? (
-                                  <Loader2 size={14} className="animate-spin text-muted" />
-                                ) : (
-                                  <select
-                                    value={ev.plan}
-                                    onChange={e => changeEventPlan(user.user_id, ev.event_id, e.target.value as UserPlan)}
-                                    className="appearance-none bg-white/5 border border-game-border rounded-lg px-2 py-1 text-xs text-foreground cursor-pointer hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                                    dir="rtl"
-                                  >
-                                    {PLAN_OPTIONS.map(p => (
-                                      <option key={p.value} value={p.value}>{p.label}</option>
-                                    ))}
-                                  </select>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))
+                        <div className="overflow-x-auto">
+                          <table className="w-full min-w-[720px] text-sm">
+                            <thead>
+                              <tr className="border-b border-game-border bg-white/[0.02] text-xs text-muted">
+                                <th className="px-4 py-2.5 text-right font-medium">שם האירוע</th>
+                                <th className="px-3 py-2.5 text-right font-medium">תוכנית</th>
+                                <th className="px-3 py-2.5 text-right font-medium">סטטוס</th>
+                                <th className="px-3 py-2.5 text-center font-medium">קבוצות</th>
+                                <th className="px-3 py-2.5 text-center font-medium">משתתפים</th>
+                                <th className="px-3 py-2.5 text-center font-medium">משימות</th>
+                                <th className="px-3 py-2.5 text-center font-medium">פרסים</th>
+                                <th className="px-3 py-2.5 text-center font-medium">סריקות</th>
+                                <th className="px-4 py-2.5 text-right font-medium">נוצר</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-game-border/50">
+                              {events.map((ev) => (
+                                <tr
+                                  key={ev.event_id}
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() =>
+                                    setDetailEvent({
+                                      id: ev.event_id,
+                                      name: ev.event_name?.trim() || 'ללא שם',
+                                    })
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault()
+                                      setDetailEvent({
+                                        id: ev.event_id,
+                                        name: ev.event_name?.trim() || 'ללא שם',
+                                      })
+                                    }
+                                  }}
+                                  className="cursor-pointer hover:bg-white/[0.04]"
+                                >
+                                  <td className="px-4 py-2.5">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-game-border bg-white/[0.04]">
+                                        {ev.logo_url ? (
+                                          <img
+                                            src={ev.logo_url}
+                                            alt=""
+                                            className="h-full w-full object-cover"
+                                          />
+                                        ) : (
+                                          <Calendar size={14} className="text-muted/50" />
+                                        )}
+                                      </div>
+                                      <span className="font-medium text-foreground">
+                                        {ev.event_name?.trim() || (
+                                          <span className="italic text-muted">ללא שם</span>
+                                        )}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <StatusBadge
+                                      label={EVENT_PLAN_LABELS[ev.plan] ?? ev.plan}
+                                      color={PLAN_BADGE_COLORS[ev.plan] ?? 'var(--color-muted)'}
+                                    />
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <StatusBadge
+                                      label={EVENT_STATUS_LABELS[ev.status] ?? ev.status}
+                                      color={
+                                        STATUS_COLORS[ev.status as keyof typeof STATUS_COLORS] ??
+                                        'var(--color-muted)'
+                                      }
+                                    />
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center tabular-nums text-muted">
+                                    {ev.groups}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center tabular-nums text-muted">
+                                    {ev.participants}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center tabular-nums text-muted">
+                                    {ev.tasks}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center tabular-nums text-muted">
+                                    {ev.rewards}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center tabular-nums text-muted">
+                                    {ev.scans}
+                                  </td>
+                                  <td className="px-4 py-2.5 whitespace-nowrap text-muted">
+                                    {new Date(ev.created_at).toLocaleDateString('he-IL')}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       )}
                     </div>
                   )}
@@ -803,13 +824,6 @@ export function AdminPanel() {
           onClose={() => setDetailEvent(null)}
         />
       )}
-
-      <TrialActivationResetModal
-        isOpen={pendingPlanChange !== null}
-        onClose={() => { if (!activatingPlan) setPendingPlanChange(null) }}
-        onContinue={() => void confirmPendingPlanChange()}
-        loading={activatingPlan}
-      />
 
       <ConfirmModal
         isOpen={deleteTarget !== null}

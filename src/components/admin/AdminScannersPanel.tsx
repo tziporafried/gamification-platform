@@ -294,6 +294,7 @@ export function AdminScannersPanel() {
   const [formPackage, setFormPackage] = useState<BookablePackage | ''>('')
   const [formAmount, setFormAmount] = useState('')
   const [formPaid, setFormPaid] = useState(false)
+  const [formAmountPaid, setFormAmountPaid] = useState('')
   const [formStart, setFormStart] = useState(todayISO)
   const [formEnd, setFormEnd] = useState(todayISO)
   const [formCustomer, setFormCustomer] = useState('')
@@ -483,6 +484,8 @@ export function AdminScannersPanel() {
     setAutoPrice(true)
     setEventLinkQuery('')
     setEventLinkOpen(false)
+    setFormAmountPaid('')
+    setFormPaid(false)
   }
 
   function openBooking(day?: Date) {
@@ -502,6 +505,7 @@ export function AdminScannersPanel() {
     setFormPackage('full')
     setFormAmount(String(calculateBookingPrice('full', iso, iso) ?? 150))
     setFormPaid(false)
+    setFormAmountPaid('')
     setError(null)
     closeDetail()
     setBookingOpen(true)
@@ -522,7 +526,9 @@ export function AdminScannersPanel() {
     setEventLinkOpen(false)
     setFormPackage((booking.booking_package as BookablePackage | null) ?? 'full')
     setFormAmount(booking.amount != null ? String(booking.amount) : '')
-    setFormPaid(booking.is_paid ?? false)
+    const paid = booking.amount_paid != null ? Number(booking.amount_paid) : booking.is_paid ? Number(booking.amount ?? 0) : 0
+    setFormPaid(paid > 0 || booking.is_paid)
+    setFormAmountPaid(paid > 0 ? String(paid) : booking.is_paid && booking.amount != null ? String(booking.amount) : '')
     setError(null)
     closeDetail()
     setBookingOpen(true)
@@ -556,76 +562,160 @@ export function AdminScannersPanel() {
     setScannerOpen(true)
   }
 
-  async function syncBookingFinance(options: {
-    existingFinanceId: string | null
-    amount: number | null
-    customer: string
-    pkg: BookablePackage
-    isPaid: boolean
-  }): Promise<{ financeEntryId: string | null; error: string | null }> {
-    const { existingFinanceId, amount, customer, pkg, isPaid } = options
-    const pkgLabel = BOOKING_PACKAGE_LABELS[pkg]
-    const description = `הזמנה: ${customer} · ${pkgLabel} · ${formatRange(formStart, formEnd)}`
-    const entryType = isPaid ? 'income' : 'future_income'
-
-    if (amount != null && amount > 0) {
-      if (existingFinanceId) {
-        const { error: financeError } = await supabase
-          .from('admin_finance_entries')
-          .update({
-            entry_type: entryType,
-            amount,
-            description,
-            entry_date: formStart,
-          })
-          .eq('id', existingFinanceId)
-        if (financeError) {
-          const msg = financeError.message ?? ''
-          return {
-            financeEntryId: null,
-            error:
-              msg.includes('entry_type') || msg.includes('check')
-                ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PAID_FUTURE_INCOME.sql)'
-                : msg,
-          }
-        }
-        return { financeEntryId: existingFinanceId, error: null }
-      }
-
-      if (!user) return { financeEntryId: null, error: 'יש להתחבר מחדש' }
-      const { data: financeRow, error: financeError } = await supabase
+  async function upsertFinanceEntry(options: {
+    existingId: string | null
+    entryType: 'income' | 'future_income'
+    amount: number
+    description: string
+  }): Promise<{ id: string | null; error: string | null; createdNew: boolean }> {
+    const { existingId, entryType, amount, description } = options
+    if (existingId) {
+      const { error: financeError } = await supabase
         .from('admin_finance_entries')
-        .insert({
+        .update({
           entry_type: entryType,
           amount,
           description,
           entry_date: formStart,
-          admin_user_id: null,
-          created_by: user.id,
         })
-        .select('id')
-        .single()
-      if (financeError || !financeRow) {
-        const msg = financeError?.message ?? ''
+        .eq('id', existingId)
+      if (financeError) {
+        const msg = financeError.message ?? ''
         return {
-          financeEntryId: null,
+          id: null,
+          createdNew: false,
           error:
             msg.includes('entry_type') || msg.includes('check')
               ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PAID_FUTURE_INCOME.sql)'
-              : msg || 'שגיאה ביצירת רשומת הכנסה',
+              : msg,
         }
       }
-      return { financeEntryId: financeRow.id as string, error: null }
+      return { id: existingId, error: null, createdNew: false }
     }
 
-    if (existingFinanceId) {
-      const { error: financeError } = await supabase
-        .from('admin_finance_entries')
-        .delete()
-        .eq('id', existingFinanceId)
-      if (financeError) return { financeEntryId: null, error: financeError.message }
+    if (!user) return { id: null, error: 'יש להתחבר מחדש', createdNew: false }
+    const { data: financeRow, error: financeError } = await supabase
+      .from('admin_finance_entries')
+      .insert({
+        entry_type: entryType,
+        amount,
+        description,
+        entry_date: formStart,
+        admin_user_id: null,
+        created_by: user.id,
+      })
+      .select('id')
+      .single()
+    if (financeError || !financeRow) {
+      const msg = financeError?.message ?? ''
+      return {
+        id: null,
+        createdNew: false,
+        error:
+          msg.includes('entry_type') || msg.includes('check')
+            ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PAID_FUTURE_INCOME.sql)'
+            : msg || 'שגיאה ביצירת רשומת הכנסה',
+      }
     }
-    return { financeEntryId: null, error: null }
+    return { id: financeRow.id as string, error: null, createdNew: true }
+  }
+
+  async function deleteFinanceEntry(id: string | null) {
+    if (!id) return null as string | null
+    const { error } = await supabase.from('admin_finance_entries').delete().eq('id', id)
+    return error?.message ?? null
+  }
+
+  async function syncBookingFinance(options: {
+    existingFinanceId: string | null
+    existingDebtFinanceId: string | null
+    amount: number | null
+    amountPaid: number
+    customer: string
+    pkg: BookablePackage
+  }): Promise<{
+    financeEntryId: string | null
+    debtFinanceEntryId: string | null
+    error: string | null
+  }> {
+    const { existingFinanceId, existingDebtFinanceId, amount, amountPaid, customer, pkg } = options
+    const pkgLabel = BOOKING_PACKAGE_LABELS[pkg]
+    const base = `הזמנה: ${customer} · ${pkgLabel} · ${formatRange(formStart, formEnd)}`
+    const total = amount != null && amount > 0 ? amount : 0
+    const paid = Math.min(Math.max(0, amountPaid), total)
+    const debt = Math.max(0, total - paid)
+
+    let financeEntryId: string | null = existingFinanceId
+    let debtFinanceEntryId: string | null = existingDebtFinanceId
+    const createdIds: string[] = []
+
+    if (total <= 0) {
+      const delIncome = await deleteFinanceEntry(existingFinanceId)
+      if (delIncome) return { financeEntryId: null, debtFinanceEntryId: null, error: delIncome }
+      const delDebt = await deleteFinanceEntry(existingDebtFinanceId)
+      if (delDebt) return { financeEntryId: null, debtFinanceEntryId: null, error: delDebt }
+      return { financeEntryId: null, debtFinanceEntryId: null, error: null }
+    }
+
+    if (paid > 0) {
+      const res = await upsertFinanceEntry({
+        existingId: existingFinanceId,
+        entryType: 'income',
+        amount: paid,
+        description: debt > 0 ? `${base} · שולם חלקית` : base,
+      })
+      if (res.error) return { financeEntryId: null, debtFinanceEntryId: null, error: res.error }
+      financeEntryId = res.id
+      if (res.createdNew && res.id) createdIds.push(res.id)
+    } else if (existingFinanceId) {
+      // Unpaid: reuse the main finance row as future_income for the full amount.
+      financeEntryId = existingFinanceId
+    }
+
+    if (paid <= 0) {
+      // Entire amount is debt / future income — keep on finance_entry_id, clear debt row.
+      const res = await upsertFinanceEntry({
+        existingId: financeEntryId,
+        entryType: 'future_income',
+        amount: total,
+        description: base,
+      })
+      if (res.error) {
+        for (const id of createdIds) await deleteFinanceEntry(id)
+        return { financeEntryId: null, debtFinanceEntryId: null, error: res.error }
+      }
+      financeEntryId = res.id
+      if (res.createdNew && res.id) createdIds.push(res.id)
+      const delDebt = await deleteFinanceEntry(existingDebtFinanceId)
+      if (delDebt) {
+        for (const id of createdIds) await deleteFinanceEntry(id)
+        return { financeEntryId: null, debtFinanceEntryId: null, error: delDebt }
+      }
+      return { financeEntryId, debtFinanceEntryId: null, error: null }
+    }
+
+    if (debt > 0) {
+      const res = await upsertFinanceEntry({
+        existingId: existingDebtFinanceId,
+        entryType: 'future_income',
+        amount: debt,
+        description: `${base} · חוב`,
+      })
+      if (res.error) {
+        for (const id of createdIds) await deleteFinanceEntry(id)
+        return { financeEntryId: null, debtFinanceEntryId: null, error: res.error }
+      }
+      debtFinanceEntryId = res.id
+    } else {
+      const delDebt = await deleteFinanceEntry(existingDebtFinanceId)
+      if (delDebt) {
+        for (const id of createdIds) await deleteFinanceEntry(id)
+        return { financeEntryId: null, debtFinanceEntryId: null, error: delDebt }
+      }
+      debtFinanceEntryId = null
+    }
+
+    return { financeEntryId, debtFinanceEntryId, error: null }
   }
 
   async function submitBooking(e: React.FormEvent) {
@@ -653,6 +743,25 @@ export function AdminScannersPanel() {
       return
     }
 
+    const total = amount ?? 0
+    let amountPaid = 0
+    if (formPaid) {
+      const paidRaw = formAmountPaid.trim()
+      if (paidRaw === '') {
+        amountPaid = total
+      } else {
+        amountPaid = Number(paidRaw)
+        if (!Number.isFinite(amountPaid) || amountPaid < 0) {
+          setError('סכום ששולם לא תקין')
+          return
+        }
+        if (total > 0 && amountPaid > total) {
+          setError('סכום ששולם לא יכול להיות גבוה מהמחיר')
+          return
+        }
+      }
+    }
+
     if (formScannerId) {
       const conflict = bookings.some(
         (b) =>
@@ -671,12 +780,18 @@ export function AdminScannersPanel() {
     setSuccessMsg(null)
 
     const existingFinanceId = editingBooking?.finance_entry_id ?? null
-    const { financeEntryId, error: financeSyncError } = await syncBookingFinance({
+    const existingDebtFinanceId = editingBooking?.debt_finance_entry_id ?? null
+    const {
+      financeEntryId,
+      debtFinanceEntryId,
+      error: financeSyncError,
+    } = await syncBookingFinance({
       existingFinanceId,
+      existingDebtFinanceId,
       amount,
+      amountPaid,
       customer,
       pkg: formPackage,
-      isPaid: formPaid,
     })
     if (financeSyncError) {
       setError(financeSyncError)
@@ -689,8 +804,10 @@ export function AdminScannersPanel() {
       event_id: formEventId || null,
       booking_package: formPackage as BookingPackage,
       amount,
-      is_paid: formPaid,
+      amount_paid: amountPaid,
+      is_paid: amountPaid > 0,
       finance_entry_id: financeEntryId,
+      debt_finance_entry_id: debtFinanceEntryId,
       start_date: formStart,
       end_date: formEnd,
       customer_name: customer,
@@ -712,7 +829,10 @@ export function AdminScannersPanel() {
           updateError?.message?.includes('scanner_bookings_no_overlap') ||
             updateError?.message?.includes('exclusion')
             ? 'הסורק כבר תפוס בתאריכים האלה'
-            : updateError?.message ?? 'שגיאה בעדכון',
+            : updateError?.message?.includes('amount_paid') ||
+                updateError?.message?.includes('debt_finance')
+              ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PARTIAL_PAYMENT.sql)'
+              : updateError?.message ?? 'שגיאה בעדכון',
         )
         setSaving(false)
         return
@@ -742,13 +862,18 @@ export function AdminScannersPanel() {
       if (financeEntryId && !existingFinanceId) {
         await supabase.from('admin_finance_entries').delete().eq('id', financeEntryId)
       }
+      if (debtFinanceEntryId && !existingDebtFinanceId) {
+        await supabase.from('admin_finance_entries').delete().eq('id', debtFinanceEntryId)
+      }
       const msg = insertError?.message ?? 'שגיאה בשמירה'
       setError(
         msg.includes('scanner_bookings_no_overlap') || msg.includes('exclusion')
           ? 'הסורק כבר תפוס בתאריכים האלה'
-          : msg.includes('booking_package') || msg.includes('amount') || msg.includes('finance_entry')
-            ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PACKAGE_PRICE.sql)'
-            : msg,
+          : msg.includes('amount_paid') || msg.includes('debt_finance')
+            ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PARTIAL_PAYMENT.sql)'
+            : msg.includes('booking_package') || msg.includes('amount') || msg.includes('finance_entry')
+              ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PACKAGE_PRICE.sql)'
+              : msg,
       )
       setSaving(false)
       return
@@ -761,12 +886,17 @@ export function AdminScannersPanel() {
     )
     setSaving(false)
     closeBookingForm()
-    if (financeEntryId && amount != null) {
-      setSuccessMsg(
-        formPaid
-          ? `ההזמנה נשמרה והוספה הכנסה של ${formatPriceIls(amount)}`
-          : `ההזמנה נשמרה והוספה הכנסה עתידית של ${formatPriceIls(amount)}`,
-      )
+    if (amount != null && amount > 0) {
+      const debt = Math.max(0, amount - amountPaid)
+      if (amountPaid > 0 && debt > 0) {
+        setSuccessMsg(
+          `ההזמנה נשמרה · שולם ${formatPriceIls(amountPaid)} · חוב ${formatPriceIls(debt)}`,
+        )
+      } else if (amountPaid > 0) {
+        setSuccessMsg(`ההזמנה נשמרה והוספה הכנסה של ${formatPriceIls(amountPaid)}`)
+      } else {
+        setSuccessMsg(`ההזמנה נשמרה והוספה הכנסה עתידית של ${formatPriceIls(amount)}`)
+      }
     }
   }
 
@@ -926,6 +1056,7 @@ export function AdminScannersPanel() {
     const prev = bookings
     const target = bookings.find((b) => b.id === deleteBookingId)
     const financeId = target?.finance_entry_id ?? null
+    const debtFinanceId = target?.debt_finance_entry_id ?? null
     setBookings((items) => items.filter((b) => b.id !== deleteBookingId))
     const { error: delError } = await supabase
       .from('scanner_bookings')
@@ -940,6 +1071,9 @@ export function AdminScannersPanel() {
     }
     if (financeId) {
       await supabase.from('admin_finance_entries').delete().eq('id', financeId)
+    }
+    if (debtFinanceId) {
+      await supabase.from('admin_finance_entries').delete().eq('id', debtFinanceId)
     }
     setDeleteBookingId(null)
     setDeleting(false)
@@ -1402,6 +1536,9 @@ export function AdminScannersPanel() {
                   onChange={(e) => {
                     setAutoPrice(false)
                     setFormAmount(e.target.value)
+                    if (formPaid && !formAmountPaid.trim()) {
+                      setFormAmountPaid(e.target.value)
+                    }
                   }}
                   placeholder={suggestedPrice != null ? String(suggestedPrice) : 'הזיני מחיר'}
                 />
@@ -1411,7 +1548,15 @@ export function AdminScannersPanel() {
                   id="booking-paid"
                   label="שולם"
                   checked={formPaid}
-                  onChange={(e) => setFormPaid(e.target.checked)}
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    setFormPaid(checked)
+                    if (checked) {
+                      setFormAmountPaid((prev) => prev.trim() || formAmount)
+                    } else {
+                      setFormAmountPaid('')
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -1441,6 +1586,34 @@ export function AdminScannersPanel() {
                 </button>
               )}
             </div>
+            {formPaid && (
+              <div className="space-y-1 pt-1">
+                <Input
+                  id="booking-amount-paid"
+                  label="כמה שולם (₪)"
+                  type="number"
+                  min={0}
+                  step="1"
+                  value={formAmountPaid}
+                  onChange={(e) => setFormAmountPaid(e.target.value)}
+                  placeholder={formAmount || '0'}
+                />
+                {(() => {
+                  const total = Number(formAmount)
+                  const paid = formAmountPaid.trim() === '' ? total : Number(formAmountPaid)
+                  if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(paid)) return null
+                  const debt = Math.max(0, total - paid)
+                  if (debt <= 0) {
+                    return <p className="text-[11px] text-muted">שולם במלואו</p>
+                  }
+                  return (
+                    <p className="text-[11px] text-muted">
+                      חוב: {formatPriceIls(debt)} · יישמר כהכנסה עתידית
+                    </p>
+                  )
+                })()}
+              </div>
+            )}
           </div>
           <div className="space-y-2">
             <label htmlFor="booking-event-link" className="block text-sm font-medium text-foreground">
@@ -1724,7 +1897,7 @@ export function AdminScannersPanel() {
         onClose={() => setDeleteBookingId(null)}
         onConfirm={confirmDeleteBooking}
         title="מחיקת הזמנה"
-        description="למחוק את ההזמנה? אם נוצרה רשומת הכנסה מקושרת — גם היא תימחק. סורק משויך יהיה פנוי שוב."
+        description="למחוק את ההזמנה? רשומות הכנסה/חוב מקושרות יימחקו גם כן. סורק משויך יהיה פנוי שוב."
         confirmLabel="מחק"
         loading={deleting}
       />
@@ -1770,7 +1943,25 @@ function BookingDetailCard({
       label: 'מחיר',
       value: booking.amount != null ? formatPriceIls(Number(booking.amount)) : '—',
     },
-    { label: 'תשלום', value: booking.is_paid ? 'שולם' : 'לא שולם · הכנסה עתידית' },
+    {
+      label: 'תשלום',
+      value: (() => {
+        const total = booking.amount != null ? Number(booking.amount) : null
+        const paid =
+          booking.amount_paid != null
+            ? Number(booking.amount_paid)
+            : booking.is_paid && total != null
+              ? total
+              : 0
+        if (paid <= 0) return 'לא שולם · הכנסה עתידית'
+        if (total != null && paid < total) {
+          return `שולם ${formatPriceIls(paid)} · חוב ${formatPriceIls(total - paid)}`
+        }
+        return paid > 0 && total != null && paid >= total
+          ? 'שולם במלואו'
+          : `שולם ${formatPriceIls(paid)}`
+      })(),
+    },
     { label: 'משחק', value: eventLabel },
     { label: 'סורק', value: scannerLabel },
     { label: 'תאריכים', value: formatRange(booking.start_date, booking.end_date) },
