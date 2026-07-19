@@ -10,6 +10,7 @@ import {
   Search,
   Download,
   Sparkles,
+  X,
 } from 'lucide-react'
 import {
   addMonths,
@@ -78,6 +79,14 @@ type EventOption = {
 
 function ownerDisplayName(displayName: string | null, email: string) {
   return displayName?.trim() || email.split('@')[0] || email
+}
+
+function eventLinkCustomerLabel(ev: { owner_name: string; owner_email: string }) {
+  return ev.owner_name.trim() || ev.owner_email || 'לקוח'
+}
+
+function eventLinkGameLabel(ev: { name: string }) {
+  return ev.name?.trim() || 'ללא שם'
 }
 
 const SCANNER_COLORS = [
@@ -280,8 +289,8 @@ export function AdminScannersPanel() {
   // booking form
   const [formScannerId, setFormScannerId] = useState('')
   const [formEventId, setFormEventId] = useState('')
-  const [eventOwnerQuery, setEventOwnerQuery] = useState('')
-  const [eventGameQuery, setEventGameQuery] = useState('')
+  const [eventLinkQuery, setEventLinkQuery] = useState('')
+  const [eventLinkOpen, setEventLinkOpen] = useState(false)
   const [formPackage, setFormPackage] = useState<BookablePackage | ''>('')
   const [formAmount, setFormAmount] = useState('')
   const [formPaid, setFormPaid] = useState(false)
@@ -378,12 +387,6 @@ export function AdminScannersPanel() {
     return eachDayOfInterval({ start, end })
   }, [month])
 
-  const monthBookings = useMemo(() => {
-    const mStart = format(startOfMonth(month), 'yyyy-MM-dd')
-    const mEnd = format(endOfMonth(month), 'yyyy-MM-dd')
-    return bookings.filter((b) => rangesOverlap(b.start_date, b.end_date, mStart, mEnd))
-  }, [bookings, month])
-
   const eventNameById = useMemo(() => {
     const map = new Map<string, string>()
     for (const e of events) map.set(e.id, e.name?.trim() || 'משחק ללא שם')
@@ -397,26 +400,19 @@ export function AdminScannersPanel() {
   }, [events])
 
   const filteredLinkEvents = useMemo(() => {
-    const oq = eventOwnerQuery.trim().toLowerCase()
-    const gq = eventGameQuery.trim().toLowerCase()
-    const selected = formEventId ? eventById.get(formEventId) : undefined
+    const q = eventLinkQuery.trim().toLowerCase()
+    const list = q
+      ? events.filter((ev) => {
+          const customer = eventLinkCustomerLabel(ev).toLowerCase()
+          const email = ev.owner_email.toLowerCase()
+          const game = eventLinkGameLabel(ev).toLowerCase()
+          return customer.includes(q) || email.includes(q) || game.includes(q)
+        })
+      : events
+    return list.slice(0, 50)
+  }, [events, eventLinkQuery])
 
-    if (!oq) return selected ? [selected] : []
-
-    const list = events.filter((ev) => {
-      const ownerHit =
-        ev.owner_email.toLowerCase().includes(oq) ||
-        ev.owner_name.toLowerCase().includes(oq)
-      if (!ownerHit) return false
-      if (!gq) return true
-      return (ev.name?.trim() || 'משחק ללא שם').toLowerCase().includes(gq)
-    })
-
-    if (selected && !list.some((ev) => ev.id === selected.id)) {
-      return [selected, ...list]
-    }
-    return list
-  }, [events, eventOwnerQuery, eventGameQuery, formEventId, eventById])
+  const selectedLinkEvent = formEventId ? eventById.get(formEventId) ?? null : null
 
   const suggestedPrice = useMemo(() => {
     if (!formPackage) return null
@@ -485,8 +481,8 @@ export function AdminScannersPanel() {
     setBookingOpen(false)
     setEditingBookingId(null)
     setAutoPrice(true)
-    setEventOwnerQuery('')
-    setEventGameQuery('')
+    setEventLinkQuery('')
+    setEventLinkOpen(false)
   }
 
   function openBooking(day?: Date) {
@@ -501,8 +497,8 @@ export function AdminScannersPanel() {
     setFormNotes('')
     setFormScannerId('')
     setFormEventId('')
-    setEventOwnerQuery('')
-    setEventGameQuery('')
+    setEventLinkQuery('')
+    setEventLinkOpen(false)
     setFormPackage('full')
     setFormAmount(String(calculateBookingPrice('full', iso, iso) ?? 150))
     setFormPaid(false)
@@ -522,13 +518,8 @@ export function AdminScannersPanel() {
     setFormNotes(booking.notes ?? '')
     setFormScannerId(booking.scanner_id ?? '')
     setFormEventId(booking.event_id ?? '')
-    const linked = booking.event_id ? eventById.get(booking.event_id) : undefined
-    setEventOwnerQuery(
-      linked
-        ? linked.owner_email || linked.owner_name
-        : booking.customer_email?.trim() || booking.customer_name || '',
-    )
-    setEventGameQuery('')
+    setEventLinkQuery('')
+    setEventLinkOpen(false)
     setFormPackage((booking.booking_package as BookablePackage | null) ?? 'full')
     setFormAmount(booking.amount != null ? String(booking.amount) : '')
     setFormPaid(booking.is_paid ?? false)
@@ -542,13 +533,18 @@ export function AdminScannersPanel() {
     return BOOKING_PACKAGE_LABELS[pkg as BookablePackage] ?? pkg
   }
 
-  function onFormEventChange(eventId: string) {
-    setFormEventId(eventId)
-    if (!eventId) return
-    const ev = eventById.get(eventId)
-    if (!ev) return
+  function selectLinkedEvent(ev: EventOption) {
+    setFormEventId(ev.id)
+    setEventLinkQuery('')
+    setEventLinkOpen(false)
     if (!formCustomer.trim()) setFormCustomer(ev.owner_name)
     if (!formEmail.trim() && ev.owner_email) setFormEmail(ev.owner_email)
+  }
+
+  function clearLinkedEvent() {
+    setFormEventId('')
+    setEventLinkQuery('')
+    setEventLinkOpen(false)
   }
 
   function openAddScanner() {
@@ -1326,33 +1322,6 @@ export function AdminScannersPanel() {
         )}
       </Modal>
 
-      <div>
-        <h3 className="mb-3 text-sm font-semibold text-foreground">
-          הזמנות בחודש ({monthBookings.length})
-        </h3>
-        {monthBookings.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border py-10 text-center text-sm text-muted">
-            אין הזמנות בחודש זה
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            {monthBookings.map((b) => (
-              <BookingRow
-                key={b.id}
-                booking={b}
-                label={scannerLabel(b.scanner_id)}
-                eventLabel={eventLabel(b.event_id)}
-                packageLabel={packageLabel(b.booking_package)}
-                color={colorForScanner(scanners, b.scanner_id)}
-                onEdit={() => openEditBooking(b)}
-                onDelete={() => setDeleteBookingId(b.id)}
-                onEventActions={b.event_id ? () => openEventActions(b) : undefined}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
       {error && !bookingOpen && !scannerOpen && !eventActionsBooking && (
         <p className="text-sm text-danger">{error}</p>
       )}
@@ -1476,74 +1445,84 @@ export function AdminScannersPanel() {
               </p>
             </div>
           </div>
-          <div className="space-y-2 rounded-xl border border-border bg-surface-elevated/30 p-3">
-            <p className="text-sm font-medium text-foreground">משחק מקושר (אופציונלי)</p>
-            <div className="relative">
-              <Search
-                size={15}
-                className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted"
-              />
-              <input
-                type="search"
-                value={eventOwnerQuery}
-                onChange={(e) => {
-                  setEventOwnerQuery(e.target.value)
-                  if (formEventId) {
-                    const selected = eventById.get(formEventId)
-                    const q = e.target.value.trim().toLowerCase()
-                    if (
-                      selected &&
-                      q &&
-                      !selected.owner_email.toLowerCase().includes(q) &&
-                      !selected.owner_name.toLowerCase().includes(q)
-                    ) {
-                      setFormEventId('')
-                    }
-                  }
-                }}
-                placeholder="חיפוש לקוח לפי שם או אימייל..."
-                aria-label="חיפוש לקוח לשיוך משחק"
-                className="w-full rounded-xl border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand-500"
-              />
-            </div>
-            <div className="relative">
-              <Search
-                size={15}
-                className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted"
-              />
-              <input
-                type="search"
-                value={eventGameQuery}
-                onChange={(e) => setEventGameQuery(e.target.value)}
-                placeholder="חיפוש משחק לפי שם..."
-                aria-label="חיפוש משחק לשיוך"
-                disabled={!eventOwnerQuery.trim() && !formEventId}
-                className="w-full rounded-xl border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-50"
-              />
-            </div>
-            <Select
-              id="booking-event"
-              aria-label="בחירת משחק מקושר"
-              value={formEventId}
-              onChange={(e) => onFormEventChange(e.target.value)}
-              disabled={!eventOwnerQuery.trim() && !formEventId}
-            >
-              <option value="">ללא קישור למשחק</option>
-              {filteredLinkEvents.map((ev) => (
-                <option key={ev.id} value={ev.id}>
-                  {(ev.name?.trim() || 'משחק ללא שם')}
-                  {' · '}
-                  {ev.owner_name}
-                  {ev.owner_email ? ` · ${ev.owner_email}` : ''}
-                </option>
-              ))}
-            </Select>
-            {!eventOwnerQuery.trim() && !formEventId ? (
-              <p className="text-[11px] text-muted">הקלידי שם או אימייל כדי לראות משחקים לשייך.</p>
-            ) : filteredLinkEvents.length === 0 ? (
-              <p className="text-[11px] text-muted">לא נמצאו משחקים לחיפוש הזה.</p>
+          <div className="space-y-2">
+            <label htmlFor="booking-event-link" className="block text-sm font-medium text-foreground">
+              משחק מקושר (אופציונלי)
+            </label>
+            {selectedLinkEvent ? (
+              <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-elevated/40 px-3 py-2">
+                <div className="min-w-0 flex-1 text-sm text-foreground">
+                  <span className="font-medium">{eventLinkCustomerLabel(selectedLinkEvent)}</span>
+                  <span className="text-muted"> · </span>
+                  <span>{eventLinkGameLabel(selectedLinkEvent)}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearLinkedEvent}
+                  className="shrink-0 rounded-lg p-1 text-muted hover:bg-surface hover:text-foreground"
+                  title="הסר קישור למשחק"
+                  aria-label="הסר קישור למשחק"
+                >
+                  <X size={15} />
+                </button>
+              </div>
             ) : (
-              <p className="text-[11px] text-muted">{filteredLinkEvents.length} משחקים תואמים</p>
+              <div className="relative">
+                <Search
+                  size={15}
+                  className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted"
+                />
+                <input
+                  id="booking-event-link"
+                  type="search"
+                  value={eventLinkQuery}
+                  onChange={(e) => {
+                    setEventLinkQuery(e.target.value)
+                    setEventLinkOpen(true)
+                  }}
+                  onFocus={() => setEventLinkOpen(true)}
+                  onBlur={() => {
+                    // Allow click on an option before closing.
+                    window.setTimeout(() => setEventLinkOpen(false), 150)
+                  }}
+                  placeholder="חיפוש לפי לקוח, אימייל או שם נופש..."
+                  aria-label="חיפוש משחק מקושר"
+                  autoComplete="off"
+                  className="w-full rounded-xl border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand-500"
+                />
+                {eventLinkOpen && (
+                  <ul
+                    className="absolute inset-x-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-xl border border-border bg-modal py-1 shadow-lg"
+                    role="listbox"
+                  >
+                    {filteredLinkEvents.length === 0 ? (
+                      <li className="px-3 py-2 text-xs text-muted">לא נמצאו תוצאות</li>
+                    ) : (
+                      filteredLinkEvents.map((ev) => (
+                        <li key={ev.id}>
+                          <button
+                            type="button"
+                            role="option"
+                            className="flex w-full flex-col items-stretch gap-0.5 px-3 py-2 text-start hover:bg-surface-elevated"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => selectLinkedEvent(ev)}
+                          >
+                            <span className="truncate text-sm font-medium text-foreground">
+                              {eventLinkCustomerLabel(ev)}
+                            </span>
+                            <span className="truncate text-xs text-muted">
+                              {eventLinkGameLabel(ev)}
+                              {ev.owner_email && ev.owner_name.trim()
+                                ? ` · ${ev.owner_email}`
+                                : ''}
+                            </span>
+                          </button>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                )}
+              </div>
             )}
           </div>
           <Select
@@ -1766,70 +1745,6 @@ export function AdminScannersPanel() {
         confirmLabel="אפס סריקות"
         loading={resetting}
       />
-    </div>
-  )
-}
-
-function BookingRow({
-  booking,
-  label,
-  eventLabel,
-  packageLabel,
-  color,
-  onEdit,
-  onDelete,
-  onEventActions,
-}: {
-  booking: ScannerBooking
-  label: string
-  eventLabel: string
-  packageLabel: string
-  color: string
-  onEdit: () => void
-  onDelete: () => void
-  onEventActions?: () => void
-}) {
-  return (
-    <div className="group/row flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 transition-all hover:border-secondary/40">
-      <span className={cn('h-8 w-1.5 shrink-0 rounded-full', color)} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm text-foreground">{booking.customer_name}</p>
-        <p className="mt-0.5 text-[11px] text-muted">
-          {packageLabel}
-          {booking.amount != null ? ` · ${formatPriceIls(Number(booking.amount))}` : ''}
-          {' · '}
-          {booking.is_paid ? 'שולם' : 'לא שולם'}
-          {' · '}
-          {eventLabel} · {label} · {formatRange(booking.start_date, booking.end_date)}
-          {booking.customer_phone ? ` · ${booking.customer_phone}` : ''}
-        </p>
-      </div>
-      {onEventActions && (
-        <button
-          type="button"
-          onClick={onEventActions}
-          className="shrink-0 rounded-lg p-1 text-muted opacity-0 transition-all hover:bg-surface-elevated hover:text-foreground group-hover/row:opacity-100"
-          title="פעולות על האירוע"
-        >
-          <Sparkles size={14} />
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={onEdit}
-        className="shrink-0 rounded-lg p-1 text-muted opacity-0 transition-all hover:bg-surface-elevated hover:text-foreground group-hover/row:opacity-100"
-        title="עריכה"
-      >
-        <Pencil size={14} />
-      </button>
-      <button
-        type="button"
-        onClick={onDelete}
-        className="shrink-0 rounded-lg p-1 text-muted opacity-0 transition-all hover:bg-surface-elevated hover:text-danger group-hover/row:opacity-100"
-        title="מחיקה"
-      >
-        <Trash2 size={14} />
-      </button>
     </div>
   )
 }
