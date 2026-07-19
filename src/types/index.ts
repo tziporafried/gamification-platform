@@ -278,7 +278,7 @@ export interface DevTodoWithAssignee extends DevTodo {
   assignee?: { display_name: string | null; email: string; avatar_url: string | null };
 }
 
-export type FinanceEntryType = 'income' | 'expense';
+export type FinanceEntryType = 'income' | 'expense' | 'future_income';
 
 export interface AdminFinanceEntry {
   id: string;
@@ -305,15 +305,31 @@ export interface Scanner {
   updated_at: string;
 }
 
+export type BookingPackage = 'independent' | 'full' | 'offline' | 'organizations';
+
 export interface ScannerBooking {
   id: string;
-  scanner_id: string;
+  /** Null = booking without a physical scanner (calendar / game only). */
+  scanner_id: string | null;
   start_date: string;
   end_date: string;
   customer_name: string;
   customer_phone: string | null;
   customer_email: string | null;
+  /** Linked game event. */
   event_id: string | null;
+  /** Commercial package for this booking. */
+  booking_package: BookingPackage | null;
+  /** Amount charged (may differ from list price). */
+  amount: number | null;
+  /** Amount received so far. Remainder is debt. */
+  amount_paid: number | null;
+  /** True when any payment was recorded (amount_paid > 0). */
+  is_paid: boolean;
+  /** Linked income row for the paid portion. */
+  finance_entry_id: string | null;
+  /** Linked future_income row for unpaid remainder (debt), if any. */
+  debt_finance_entry_id: string | null;
   notes: string | null;
   created_by: string;
   created_at: string;

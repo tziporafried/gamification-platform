@@ -123,7 +123,8 @@ export function Modal({
         className={cn(
           // Default max-w-md only when callers don't override width — `cn` does not
           // tailwind-merge, so a hard-coded max-w-md would beat dialogClassName.
-          'relative z-10 flex w-full flex-col overflow-hidden rounded-2xl border border-border bg-modal shadow-modal animate-scale-in focus:outline-none motion-reduce:animate-none',
+          // Cap height so long content scrolls inside the body instead of clipping.
+          'relative z-10 flex w-full max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden rounded-2xl border border-border bg-modal shadow-modal animate-scale-in focus:outline-none motion-reduce:animate-none',
           dialogClassName ?? 'max-w-md',
         )}
       >
@@ -143,7 +144,14 @@ export function Modal({
             </svg>
           </button>
         </div>
-        <div className={cn('min-h-0 flex-1 bg-modal px-6 py-4', contentClassName)}>{children}</div>
+        <div
+          className={cn(
+            'min-h-0 flex-1 overflow-y-auto overscroll-contain bg-modal px-6 py-4',
+            contentClassName,
+          )}
+        >
+          {children}
+        </div>
       </div>
     </div>,
     document.body,

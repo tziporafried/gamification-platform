@@ -157,8 +157,9 @@ BEGIN
       STRING_AGG(e.name, ', ' ORDER BY e.created_at DESC)
         FILTER (WHERE e.name IS NOT NULL AND TRIM(e.name) != '') AS names
     FROM events e
+    WHERE e.status != 'archived'
     GROUP BY owner_admin_id
   ) ev ON ev.owner_admin_id = up.id
   ORDER BY up.created_at DESC;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;

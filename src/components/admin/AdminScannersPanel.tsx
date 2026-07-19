@@ -4,8 +4,13 @@ import {
   ChevronRight,
   Plus,
   Trash2,
-  ScanLine,
   CalendarPlus,
+  RotateCcw,
+  Pencil,
+  Search,
+  Download,
+  Sparkles,
+  X,
 } from 'lucide-react'
 import {
   addMonths,
@@ -24,17 +29,65 @@ import {
 import { he } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { fetchTemplateDraftEventIds } from '@/lib/templates'
+import {
+  BOOKABLE_PACKAGES,
+  BOOKING_PACKAGE_LABELS,
+  EXTRA_DAY_PRICE,
+  PLAN_BASE_PRICES,
+  bookingDayCount,
+  calculateBookingPrice,
+  formatPriceIls,
+  type BookablePackage,
+} from '@/lib/planPrices'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Checkbox } from '@/components/ui/Checkbox'
 import { Select } from '@/components/ui/Select'
 import { Modal } from '@/components/ui/Modal'
 import { ModalActions } from '@/components/ui/ModalActions'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
-import { KpiCard } from '@/components/admin/analytics/KpiCard'
+import { TrialActivationResetModal } from '@/components/TrialActivationResetModal'
+import { exportOfflineGame, OfflineExportError } from '@/lib/offline/exportGame'
+import { trackTrialActivated, trackTrialDataReset } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
-import type { Scanner, ScannerBooking } from '@/types'
+import type { BookingPackage, Scanner, ScannerBooking, UserPlan } from '@/types'
+
+const EVENT_PLAN_OPTIONS: { value: UserPlan; label: string }[] = [
+  { value: 'free', label: 'התנסות' },
+  { value: 'independent', label: 'עצמאי' },
+  { value: 'full', label: 'מלא' },
+  { value: 'offline', label: 'ללא אינטרנט' },
+  { value: 'organizations', label: 'ארגונים' },
+]
+
+function eventPlanLabel(plan: string | undefined): string {
+  return EVENT_PLAN_OPTIONS.find((p) => p.value === plan)?.label ?? plan ?? '—'
+}
+
+type EventOption = {
+  id: string
+  name: string
+  plan: string
+  status: string
+  owner_admin_id: string
+  owner_name: string
+  owner_email: string
+}
+
+function ownerDisplayName(displayName: string | null, email: string) {
+  return displayName?.trim() || email.split('@')[0] || email
+}
+
+function eventLinkCustomerLabel(ev: { owner_name: string; owner_email: string }) {
+  return ev.owner_name.trim() || ev.owner_email || 'לקוח'
+}
+
+function eventLinkGameLabel(ev: { name: string }) {
+  return ev.name?.trim() || 'ללא שם'
+}
 
 const SCANNER_COLORS = [
   'bg-secondary/80',
@@ -44,6 +97,20 @@ const SCANNER_COLORS = [
   'bg-warning/80',
   'bg-accent/80',
   'bg-danger/70',
+]
+
+/** High-contrast family bar colors (inline styles — reliable on calendar overlays). */
+const FAMILY_BAR_PALETTE = [
+  { bg: '#0f766e', text: '#ffffff' },
+  { bg: '#1d4ed8', text: '#ffffff' },
+  { bg: '#b45309', text: '#ffffff' },
+  { bg: '#be123c', text: '#ffffff' },
+  { bg: '#7c3aed', text: '#ffffff' },
+  { bg: '#047857', text: '#ffffff' },
+  { bg: '#c2410c', text: '#ffffff' },
+  { bg: '#0369a1', text: '#ffffff' },
+  { bg: '#a21caf', text: '#ffffff' },
+  { bg: '#4d7c0f', text: '#ffffff' },
 ]
 
 const WEEKDAY_LABELS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
@@ -78,28 +145,156 @@ function rangesOverlap(
   return aStart <= bEnd && bStart <= aEnd
 }
 
-function colorForScanner(scanners: Scanner[], scannerId: string): string {
+function colorForScanner(scanners: Scanner[], scannerId: string | null): string {
+  if (!scannerId) return 'bg-muted'
   const idx = scanners.findIndex((s) => s.id === scannerId)
   return SCANNER_COLORS[idx >= 0 ? idx % SCANNER_COLORS.length : 0]
+}
+
+function hashString(value: string): number {
+  let h = 0
+  for (let i = 0; i < value.length; i++) h = (h * 31 + value.charCodeAt(i)) >>> 0
+  return h
+}
+
+function colorForFamily(customerName: string): { bg: string; text: string } {
+  return FAMILY_BAR_PALETTE[hashString(customerName.trim()) % FAMILY_BAR_PALETTE.length]
+}
+
+function chunkWeeks(days: Date[]): Date[][] {
+  const weeks: Date[][] = []
+  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7))
+  return weeks
+}
+
+function dayISO(day: Date): string {
+  return format(day, 'yyyy-MM-dd')
+}
+
+/** Clip a booking into a week row and return 0-based start column + span. */
+function bookingSpanInWeek(
+  booking: ScannerBooking,
+  week: Date[],
+): { start: number; span: number } | null {
+  const wStart = dayISO(week[0])
+  const wEnd = dayISO(week[6])
+  if (booking.end_date < wStart || booking.start_date > wEnd) return null
+  const clipStart = booking.start_date < wStart ? wStart : booking.start_date
+  const clipEnd = booking.end_date > wEnd ? wEnd : booking.end_date
+  const start = week.findIndex((d) => dayISO(d) === clipStart)
+  const end = week.findIndex((d) => dayISO(d) === clipEnd)
+  if (start < 0 || end < 0) return null
+  return { start, span: end - start + 1 }
+}
+
+type WeekBar = {
+  booking: ScannerBooking
+  start: number
+  span: number
+  lane: number
+}
+
+function rangesOverlapCols(
+  aStart: number,
+  aSpan: number,
+  bStart: number,
+  bSpan: number,
+): boolean {
+  return aStart < bStart + bSpan && bStart < aStart + aSpan
+}
+
+/** Pack overlapping family bars into separate lanes within a week. */
+function layoutWeekBookings(bookings: ScannerBooking[], week: Date[]): WeekBar[] {
+  const items = bookings
+    .map((booking) => {
+      const span = bookingSpanInWeek(booking, week)
+      return span ? { booking, ...span } : null
+    })
+    .filter((x): x is { booking: ScannerBooking; start: number; span: number } => x != null)
+    .sort(
+      (a, b) =>
+        a.start - b.start ||
+        b.span - a.span ||
+        a.booking.customer_name.localeCompare(b.booking.customer_name, 'he'),
+    )
+
+  const placed: WeekBar[] = []
+  for (const item of items) {
+    const used = new Set(
+      placed
+        .filter((p) => rangesOverlapCols(item.start, item.span, p.start, p.span))
+        .map((p) => p.lane),
+    )
+    let lane = 0
+    while (used.has(lane)) lane += 1
+    placed.push({ ...item, lane })
+  }
+  return placed
+}
+
+/** Clip a booking to a month day list for the scanner timeline. */
+function bookingSpanInDays(
+  booking: ScannerBooking,
+  days: Date[],
+): { start: number; span: number } | null {
+  if (days.length === 0) return null
+  const dStart = dayISO(days[0])
+  const dEnd = dayISO(days[days.length - 1])
+  if (booking.end_date < dStart || booking.start_date > dEnd) return null
+  const clipStart = booking.start_date < dStart ? dStart : booking.start_date
+  const clipEnd = booking.end_date > dEnd ? dEnd : booking.end_date
+  const start = days.findIndex((d) => dayISO(d) === clipStart)
+  const end = days.findIndex((d) => dayISO(d) === clipEnd)
+  if (start < 0 || end < 0) return null
+  return { start, span: end - start + 1 }
 }
 
 export function AdminScannersPanel() {
   const { user } = useAuth()
   const [scanners, setScanners] = useState<Scanner[]>([])
   const [bookings, setBookings] = useState<ScannerBooking[]>([])
+  const [events, setEvents] = useState<EventOption[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
 
   const [bookingOpen, setBookingOpen] = useState(false)
+  const [editingBookingId, setEditingBookingId] = useState<string | null>(null)
+  /** When true, package/date changes recalculate the amount field. */
+  const [autoPrice, setAutoPrice] = useState(true)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleteBookingId, setDeleteBookingId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [resetEventTarget, setResetEventTarget] = useState<{
+    eventId: string
+    eventName: string
+  } | null>(null)
+  const [resetting, setResetting] = useState(false)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+  const [selectedBooking, setSelectedBooking] = useState<ScannerBooking | null>(null)
+  const [eventActionsBooking, setEventActionsBooking] = useState<ScannerBooking | null>(null)
+  const [updatingEventPlan, setUpdatingEventPlan] = useState(false)
+  const [exportingOffline, setExportingOffline] = useState(false)
+  const [offlineExportError, setOfflineExportError] = useState<string | null>(null)
+  const [eventActionError, setEventActionError] = useState<string | null>(null)
+  const [pendingPlanChange, setPendingPlanChange] = useState<{
+    eventId: string
+    previousPlan: UserPlan
+    newPlan: UserPlan
+  } | null>(null)
+  const [activatingPlan, setActivatingPlan] = useState(false)
 
   // booking form
   const [formScannerId, setFormScannerId] = useState('')
+  const [formEventId, setFormEventId] = useState('')
+  const [eventLinkQuery, setEventLinkQuery] = useState('')
+  const [eventLinkOpen, setEventLinkOpen] = useState(false)
+  const [formPackage, setFormPackage] = useState<BookablePackage | ''>('')
+  const [formAmount, setFormAmount] = useState('')
+  const [formPaid, setFormPaid] = useState(false)
+  const [formAmountPaid, setFormAmountPaid] = useState('')
   const [formStart, setFormStart] = useState(todayISO)
   const [formEnd, setFormEnd] = useState(todayISO)
   const [formCustomer, setFormCustomer] = useState('')
@@ -114,7 +309,7 @@ export function AdminScannersPanel() {
 
   useEffect(() => {
     async function fetchData() {
-      const [scannersRes, bookingsRes] = await Promise.all([
+      const [scannersRes, bookingsRes, eventsRes, draftIds] = await Promise.all([
         supabase
           .from('scanners')
           .select('*')
@@ -124,6 +319,12 @@ export function AdminScannersPanel() {
           .from('scanner_bookings')
           .select('*')
           .order('start_date', { ascending: true }),
+        supabase
+          .from('events')
+          .select('id, name, plan, status, owner_admin_id')
+          .neq('status', 'archived')
+          .order('created_at', { ascending: false }),
+        fetchTemplateDraftEventIds(),
       ])
 
       if (scannersRes.error) setError(scannersRes.error.message)
@@ -131,6 +332,45 @@ export function AdminScannersPanel() {
 
       if (bookingsRes.error) setError(bookingsRes.error.message)
       else setBookings((bookingsRes.data as ScannerBooking[]) ?? [])
+
+      if (eventsRes.error) {
+        setError(eventsRes.error.message)
+        setEvents([])
+      } else {
+        const draftSet = new Set(draftIds)
+        const rows = ((eventsRes.data as Array<{
+          id: string
+          name: string
+          plan: string
+          status: string
+          owner_admin_id: string
+        }>) ?? []).filter((e) => !draftSet.has(e.id))
+        const ownerIds = [...new Set(rows.map((r) => r.owner_admin_id))]
+        const { data: profiles } = ownerIds.length
+          ? await supabase
+              .from('user_profiles')
+              .select('id, display_name, email')
+              .in('id', ownerIds)
+          : { data: [] as { id: string; display_name: string | null; email: string }[] }
+        const profileMap = new Map(
+          (profiles ?? []).map((p) => [p.id, p]),
+        )
+        setEvents(
+          rows.map((row) => {
+            const profile = profileMap.get(row.owner_admin_id)
+            const email = profile?.email ?? ''
+            return {
+              id: row.id,
+              name: row.name,
+              plan: row.plan,
+              status: row.status,
+              owner_admin_id: row.owner_admin_id,
+              owner_name: profile ? ownerDisplayName(profile.display_name, email) : 'משתמש לא ידוע',
+              owner_email: email,
+            }
+          }),
+        )
+      }
 
       setLoading(false)
     }
@@ -148,49 +388,169 @@ export function AdminScannersPanel() {
     return eachDayOfInterval({ start, end })
   }, [month])
 
-  const monthBookings = useMemo(() => {
-    const mStart = format(startOfMonth(month), 'yyyy-MM-dd')
-    const mEnd = format(endOfMonth(month), 'yyyy-MM-dd')
-    return bookings.filter((b) => rangesOverlap(b.start_date, b.end_date, mStart, mEnd))
-  }, [bookings, month])
+  const eventNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const e of events) map.set(e.id, e.name?.trim() || 'משחק ללא שם')
+    return map
+  }, [events])
 
-  const todayStats = useMemo(() => {
-    const today = new Date()
-    const active = activeScanners.filter((s) => s.status === 'active')
-    const bookedIds = new Set(
-      bookings
-        .filter((b) => bookingCoversDay(b, today))
-        .map((b) => b.scanner_id),
-    )
-    const bookedToday = active.filter((s) => bookedIds.has(s.id)).length
-    return {
-      total: active.length,
-      booked: bookedToday,
-      available: Math.max(0, active.length - bookedToday),
+  const eventById = useMemo(() => {
+    const map = new Map<string, EventOption>()
+    for (const e of events) map.set(e.id, e)
+    return map
+  }, [events])
+
+  const filteredLinkEvents = useMemo(() => {
+    const q = eventLinkQuery.trim().toLowerCase()
+    const list = q
+      ? events.filter((ev) => {
+          const customer = eventLinkCustomerLabel(ev).toLowerCase()
+          const email = ev.owner_email.toLowerCase()
+          const game = eventLinkGameLabel(ev).toLowerCase()
+          return customer.includes(q) || email.includes(q) || game.includes(q)
+        })
+      : events
+    return list.slice(0, 50)
+  }, [events, eventLinkQuery])
+
+  const selectedLinkEvent = formEventId ? eventById.get(formEventId) ?? null : null
+
+  const suggestedPrice = useMemo(() => {
+    if (!formPackage) return null
+    return calculateBookingPrice(formPackage, formStart, formEnd)
+  }, [formPackage, formStart, formEnd])
+
+  // Recalculate amount when package or dates change (unless editing with a locked manual price).
+  useEffect(() => {
+    if (!autoPrice) return
+    if (!formPackage) {
+      setFormAmount('')
+      return
     }
-  }, [activeScanners, bookings])
+    const suggested = calculateBookingPrice(formPackage, formStart, formEnd)
+    setFormAmount(suggested != null ? String(suggested) : '')
+  }, [formPackage, formStart, formEnd, autoPrice])
+
+  const editingBooking = useMemo(
+    () => (editingBookingId ? bookings.find((b) => b.id === editingBookingId) ?? null : null),
+    [bookings, editingBookingId],
+  )
 
   const selectedDayBookings = useMemo(() => {
     if (!selectedDay) return []
     return bookings.filter((b) => bookingCoversDay(b, selectedDay))
   }, [bookings, selectedDay])
 
-  function scannerLabel(id: string): string {
+  const calendarWeeks = useMemo(() => chunkWeeks(calendarDays), [calendarDays])
+
+  const daysInMonth = useMemo(
+    () =>
+      eachDayOfInterval({
+        start: startOfMonth(month),
+        end: endOfMonth(month),
+      }),
+    [month],
+  )
+
+  function scannerLabel(id: string | null): string {
+    if (!id) return 'ללא סורק'
     const s = scanners.find((x) => x.id === id)
-    return s ? `${s.name} (${s.code})` : 'סורק'
+    return s ? s.name : 'סורק'
+  }
+
+  function eventLabel(id: string | null): string {
+    if (!id) return 'לא מקושר'
+    return eventNameById.get(id) ?? 'משחק לא נמצא'
+  }
+
+  function openDayDetail(day: Date) {
+    setSelectedBooking(null)
+    setSelectedDay(day)
+  }
+
+  function openBookingDetail(booking: ScannerBooking) {
+    setSelectedDay(null)
+    setSelectedBooking(booking)
+  }
+
+  function closeDetail() {
+    setSelectedDay(null)
+    setSelectedBooking(null)
+  }
+
+  function closeBookingForm() {
+    setBookingOpen(false)
+    setEditingBookingId(null)
+    setAutoPrice(true)
+    setEventLinkQuery('')
+    setEventLinkOpen(false)
+    setFormAmountPaid('')
+    setFormPaid(false)
   }
 
   function openBooking(day?: Date) {
     const iso = day ? format(day, 'yyyy-MM-dd') : todayISO()
+    setEditingBookingId(null)
+    setAutoPrice(true)
     setFormStart(iso)
     setFormEnd(iso)
     setFormCustomer('')
     setFormPhone('')
     setFormEmail('')
     setFormNotes('')
-    setFormScannerId(activeScanners[0]?.id ?? '')
+    setFormScannerId('')
+    setFormEventId('')
+    setEventLinkQuery('')
+    setEventLinkOpen(false)
+    setFormPackage('full')
+    setFormAmount(String(calculateBookingPrice('full', iso, iso) ?? 150))
+    setFormPaid(false)
+    setFormAmountPaid('')
     setError(null)
+    closeDetail()
     setBookingOpen(true)
+  }
+
+  function openEditBooking(booking: ScannerBooking) {
+    setEditingBookingId(booking.id)
+    setAutoPrice(false)
+    setFormStart(booking.start_date)
+    setFormEnd(booking.end_date)
+    setFormCustomer(booking.customer_name)
+    setFormPhone(booking.customer_phone ?? '')
+    setFormEmail(booking.customer_email ?? '')
+    setFormNotes(booking.notes ?? '')
+    setFormScannerId(booking.scanner_id ?? '')
+    setFormEventId(booking.event_id ?? '')
+    setEventLinkQuery('')
+    setEventLinkOpen(false)
+    setFormPackage((booking.booking_package as BookablePackage | null) ?? 'full')
+    setFormAmount(booking.amount != null ? String(booking.amount) : '')
+    const paid = booking.amount_paid != null ? Number(booking.amount_paid) : booking.is_paid ? Number(booking.amount ?? 0) : 0
+    setFormPaid(paid > 0 || booking.is_paid)
+    setFormAmountPaid(paid > 0 ? String(paid) : booking.is_paid && booking.amount != null ? String(booking.amount) : '')
+    setError(null)
+    closeDetail()
+    setBookingOpen(true)
+  }
+
+  function packageLabel(pkg: string | null | undefined): string {
+    if (!pkg) return 'ללא חבילה'
+    return BOOKING_PACKAGE_LABELS[pkg as BookablePackage] ?? pkg
+  }
+
+  function selectLinkedEvent(ev: EventOption) {
+    setFormEventId(ev.id)
+    setEventLinkQuery('')
+    setEventLinkOpen(false)
+    if (!formCustomer.trim()) setFormCustomer(ev.owner_name)
+    if (!formEmail.trim() && ev.owner_email) setFormEmail(ev.owner_email)
+  }
+
+  function clearLinkedEvent() {
+    setFormEventId('')
+    setEventLinkQuery('')
+    setEventLinkOpen(false)
   }
 
   function openAddScanner() {
@@ -202,17 +562,173 @@ export function AdminScannersPanel() {
     setScannerOpen(true)
   }
 
+  async function upsertFinanceEntry(options: {
+    existingId: string | null
+    entryType: 'income' | 'future_income'
+    amount: number
+    description: string
+  }): Promise<{ id: string | null; error: string | null; createdNew: boolean }> {
+    const { existingId, entryType, amount, description } = options
+    if (existingId) {
+      const { error: financeError } = await supabase
+        .from('admin_finance_entries')
+        .update({
+          entry_type: entryType,
+          amount,
+          description,
+          entry_date: formStart,
+        })
+        .eq('id', existingId)
+      if (financeError) {
+        const msg = financeError.message ?? ''
+        return {
+          id: null,
+          createdNew: false,
+          error:
+            msg.includes('entry_type') || msg.includes('check')
+              ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PAID_FUTURE_INCOME.sql)'
+              : msg,
+        }
+      }
+      return { id: existingId, error: null, createdNew: false }
+    }
+
+    if (!user) return { id: null, error: 'יש להתחבר מחדש', createdNew: false }
+    const { data: financeRow, error: financeError } = await supabase
+      .from('admin_finance_entries')
+      .insert({
+        entry_type: entryType,
+        amount,
+        description,
+        entry_date: formStart,
+        admin_user_id: null,
+        created_by: user.id,
+      })
+      .select('id')
+      .single()
+    if (financeError || !financeRow) {
+      const msg = financeError?.message ?? ''
+      return {
+        id: null,
+        createdNew: false,
+        error:
+          msg.includes('entry_type') || msg.includes('check')
+            ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PAID_FUTURE_INCOME.sql)'
+            : msg || 'שגיאה ביצירת רשומת הכנסה',
+      }
+    }
+    return { id: financeRow.id as string, error: null, createdNew: true }
+  }
+
+  async function deleteFinanceEntry(id: string | null) {
+    if (!id) return null as string | null
+    const { error } = await supabase.from('admin_finance_entries').delete().eq('id', id)
+    return error?.message ?? null
+  }
+
+  async function syncBookingFinance(options: {
+    existingFinanceId: string | null
+    existingDebtFinanceId: string | null
+    amount: number | null
+    amountPaid: number
+    customer: string
+    pkg: BookablePackage
+  }): Promise<{
+    financeEntryId: string | null
+    debtFinanceEntryId: string | null
+    error: string | null
+  }> {
+    const { existingFinanceId, existingDebtFinanceId, amount, amountPaid, customer, pkg } = options
+    const pkgLabel = BOOKING_PACKAGE_LABELS[pkg]
+    const base = `הזמנה: ${customer} · ${pkgLabel} · ${formatRange(formStart, formEnd)}`
+    const total = amount != null && amount > 0 ? amount : 0
+    const paid = Math.min(Math.max(0, amountPaid), total)
+    const debt = Math.max(0, total - paid)
+
+    let financeEntryId: string | null = existingFinanceId
+    let debtFinanceEntryId: string | null = existingDebtFinanceId
+    const createdIds: string[] = []
+
+    if (total <= 0) {
+      const delIncome = await deleteFinanceEntry(existingFinanceId)
+      if (delIncome) return { financeEntryId: null, debtFinanceEntryId: null, error: delIncome }
+      const delDebt = await deleteFinanceEntry(existingDebtFinanceId)
+      if (delDebt) return { financeEntryId: null, debtFinanceEntryId: null, error: delDebt }
+      return { financeEntryId: null, debtFinanceEntryId: null, error: null }
+    }
+
+    if (paid > 0) {
+      const res = await upsertFinanceEntry({
+        existingId: existingFinanceId,
+        entryType: 'income',
+        amount: paid,
+        description: debt > 0 ? `${base} · שולם חלקית` : base,
+      })
+      if (res.error) return { financeEntryId: null, debtFinanceEntryId: null, error: res.error }
+      financeEntryId = res.id
+      if (res.createdNew && res.id) createdIds.push(res.id)
+    } else if (existingFinanceId) {
+      // Unpaid: reuse the main finance row as future_income for the full amount.
+      financeEntryId = existingFinanceId
+    }
+
+    if (paid <= 0) {
+      // Entire amount is debt / future income — keep on finance_entry_id, clear debt row.
+      const res = await upsertFinanceEntry({
+        existingId: financeEntryId,
+        entryType: 'future_income',
+        amount: total,
+        description: base,
+      })
+      if (res.error) {
+        for (const id of createdIds) await deleteFinanceEntry(id)
+        return { financeEntryId: null, debtFinanceEntryId: null, error: res.error }
+      }
+      financeEntryId = res.id
+      if (res.createdNew && res.id) createdIds.push(res.id)
+      const delDebt = await deleteFinanceEntry(existingDebtFinanceId)
+      if (delDebt) {
+        for (const id of createdIds) await deleteFinanceEntry(id)
+        return { financeEntryId: null, debtFinanceEntryId: null, error: delDebt }
+      }
+      return { financeEntryId, debtFinanceEntryId: null, error: null }
+    }
+
+    if (debt > 0) {
+      const res = await upsertFinanceEntry({
+        existingId: existingDebtFinanceId,
+        entryType: 'future_income',
+        amount: debt,
+        description: `${base} · חוב`,
+      })
+      if (res.error) {
+        for (const id of createdIds) await deleteFinanceEntry(id)
+        return { financeEntryId: null, debtFinanceEntryId: null, error: res.error }
+      }
+      debtFinanceEntryId = res.id
+    } else {
+      const delDebt = await deleteFinanceEntry(existingDebtFinanceId)
+      if (delDebt) {
+        for (const id of createdIds) await deleteFinanceEntry(id)
+        return { financeEntryId: null, debtFinanceEntryId: null, error: delDebt }
+      }
+      debtFinanceEntryId = null
+    }
+
+    return { financeEntryId, debtFinanceEntryId, error: null }
+  }
+
   async function submitBooking(e: React.FormEvent) {
     e.preventDefault()
     if (!user || saving) return
 
     const customer = formCustomer.trim()
-    if (!formScannerId) {
-      setError('יש לבחור סורק')
+    if (!customer) {
+      setError('יש להזין שם לקוח / משפחה')
       return
     }
-    if (!customer) {
-      setError('יש להזין שם לקוח')
+    if (!formPackage) {
+      setError('יש לבחור חבילה')
       return
     }
     if (formEnd < formStart) {
@@ -220,40 +736,144 @@ export function AdminScannersPanel() {
       return
     }
 
-    const conflict = bookings.some(
-      (b) =>
-        b.scanner_id === formScannerId &&
-        rangesOverlap(formStart, formEnd, b.start_date, b.end_date),
-    )
-    if (conflict) {
-      setError('הסורק כבר תפוס בתאריכים האלה')
+    const amountRaw = formAmount.trim()
+    const amount = amountRaw === '' ? null : Number(amountRaw)
+    if (amountRaw !== '' && (!Number.isFinite(amount) || (amount as number) < 0)) {
+      setError('מחיר לא תקין')
       return
+    }
+
+    const total = amount ?? 0
+    let amountPaid = 0
+    if (formPaid) {
+      const paidRaw = formAmountPaid.trim()
+      if (paidRaw === '') {
+        amountPaid = total
+      } else {
+        amountPaid = Number(paidRaw)
+        if (!Number.isFinite(amountPaid) || amountPaid < 0) {
+          setError('סכום ששולם לא תקין')
+          return
+        }
+        if (total > 0 && amountPaid > total) {
+          setError('סכום ששולם לא יכול להיות גבוה מהמחיר')
+          return
+        }
+      }
+    }
+
+    if (formScannerId) {
+      const conflict = bookings.some(
+        (b) =>
+          b.id !== editingBookingId &&
+          b.scanner_id === formScannerId &&
+          rangesOverlap(formStart, formEnd, b.start_date, b.end_date),
+      )
+      if (conflict) {
+        setError('הסורק כבר תפוס בתאריכים האלה')
+        return
+      }
     }
 
     setSaving(true)
     setError(null)
+    setSuccessMsg(null)
+
+    const existingFinanceId = editingBooking?.finance_entry_id ?? null
+    const existingDebtFinanceId = editingBooking?.debt_finance_entry_id ?? null
+    const {
+      financeEntryId,
+      debtFinanceEntryId,
+      error: financeSyncError,
+    } = await syncBookingFinance({
+      existingFinanceId,
+      existingDebtFinanceId,
+      amount,
+      amountPaid,
+      customer,
+      pkg: formPackage,
+    })
+    if (financeSyncError) {
+      setError(financeSyncError)
+      setSaving(false)
+      return
+    }
+
+    const payload = {
+      scanner_id: formScannerId || null,
+      event_id: formEventId || null,
+      booking_package: formPackage as BookingPackage,
+      amount,
+      amount_paid: amountPaid,
+      is_paid: amountPaid > 0,
+      finance_entry_id: financeEntryId,
+      debt_finance_entry_id: debtFinanceEntryId,
+      start_date: formStart,
+      end_date: formEnd,
+      customer_name: customer,
+      customer_phone: formPhone.trim() || null,
+      customer_email: formEmail.trim() || null,
+      notes: formNotes.trim() || null,
+    }
+
+    if (editingBookingId) {
+      const { data, error: updateError } = await supabase
+        .from('scanner_bookings')
+        .update(payload)
+        .eq('id', editingBookingId)
+        .select()
+        .single()
+
+      if (updateError || !data) {
+        setError(
+          updateError?.message?.includes('scanner_bookings_no_overlap') ||
+            updateError?.message?.includes('exclusion')
+            ? 'הסורק כבר תפוס בתאריכים האלה'
+            : updateError?.message?.includes('amount_paid') ||
+                updateError?.message?.includes('debt_finance')
+              ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PARTIAL_PAYMENT.sql)'
+              : updateError?.message ?? 'שגיאה בעדכון',
+        )
+        setSaving(false)
+        return
+      }
+
+      setBookings((prev) =>
+        prev
+          .map((b) => (b.id === editingBookingId ? (data as ScannerBooking) : b))
+          .sort((a, b) => a.start_date.localeCompare(b.start_date)),
+      )
+      setSaving(false)
+      closeBookingForm()
+      setSuccessMsg('ההזמנה עודכנה')
+      return
+    }
 
     const { data, error: insertError } = await supabase
       .from('scanner_bookings')
       .insert({
-        scanner_id: formScannerId,
-        start_date: formStart,
-        end_date: formEnd,
-        customer_name: customer,
-        customer_phone: formPhone.trim() || null,
-        customer_email: formEmail.trim() || null,
-        notes: formNotes.trim() || null,
+        ...payload,
         created_by: user.id,
       })
       .select()
       .single()
 
     if (insertError || !data) {
+      if (financeEntryId && !existingFinanceId) {
+        await supabase.from('admin_finance_entries').delete().eq('id', financeEntryId)
+      }
+      if (debtFinanceEntryId && !existingDebtFinanceId) {
+        await supabase.from('admin_finance_entries').delete().eq('id', debtFinanceEntryId)
+      }
       const msg = insertError?.message ?? 'שגיאה בשמירה'
       setError(
         msg.includes('scanner_bookings_no_overlap') || msg.includes('exclusion')
           ? 'הסורק כבר תפוס בתאריכים האלה'
-          : msg,
+          : msg.includes('amount_paid') || msg.includes('debt_finance')
+            ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PARTIAL_PAYMENT.sql)'
+            : msg.includes('booking_package') || msg.includes('amount') || msg.includes('finance_entry')
+              ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PACKAGE_PRICE.sql)'
+              : msg,
       )
       setSaving(false)
       return
@@ -265,7 +885,127 @@ export function AdminScannersPanel() {
       ),
     )
     setSaving(false)
-    setBookingOpen(false)
+    closeBookingForm()
+    if (amount != null && amount > 0) {
+      const debt = Math.max(0, amount - amountPaid)
+      if (amountPaid > 0 && debt > 0) {
+        setSuccessMsg(
+          `ההזמנה נשמרה · שולם ${formatPriceIls(amountPaid)} · חוב ${formatPriceIls(debt)}`,
+        )
+      } else if (amountPaid > 0) {
+        setSuccessMsg(`ההזמנה נשמרה והוספה הכנסה של ${formatPriceIls(amountPaid)}`)
+      } else {
+        setSuccessMsg(`ההזמנה נשמרה והוספה הכנסה עתידית של ${formatPriceIls(amount)}`)
+      }
+    }
+  }
+
+  async function confirmResetEventScans() {
+    if (!resetEventTarget || resetting) return
+    const { eventId, eventName } = resetEventTarget
+    setResetting(true)
+    setError(null)
+    setSuccessMsg(null)
+    const { data, error: rpcError } = await supabase.rpc('admin_reset_event_scans', {
+      p_event_id: eventId,
+    })
+    setResetting(false)
+    setResetEventTarget(null)
+    if (rpcError) {
+      setError(rpcError.message)
+      return
+    }
+    const deleted = (data as { deleted_transactions?: number } | null)?.deleted_transactions ?? 0
+    setSuccessMsg(`הסריקות אופסו למשחק "${eventName}". נמחקו ${deleted} רשומות ניקוד.`)
+  }
+
+  function openEventActions(booking: ScannerBooking) {
+    if (!booking.event_id) return
+    setEventActionError(null)
+    setOfflineExportError(null)
+    setEventActionsBooking(booking)
+  }
+
+  function closeEventActions() {
+    if (updatingEventPlan || exportingOffline || activatingPlan) return
+    setEventActionsBooking(null)
+    setEventActionError(null)
+    setOfflineExportError(null)
+  }
+
+  async function applyEventPlanChange(eventId: string, newPlan: UserPlan) {
+    const { data, error: rpcError } = await supabase.rpc('update_event_plan', {
+      p_event_id: eventId,
+      p_new_plan: newPlan,
+    })
+    if (rpcError) return { ok: false as const, error: rpcError.message }
+
+    const result = data as {
+      previous_plan?: string
+      new_plan?: string
+      did_reset?: boolean
+      trial_scans_used?: number
+    } | null
+
+    setEvents((prev) =>
+      prev.map((ev) => (ev.id === eventId ? { ...ev, plan: newPlan } : ev)),
+    )
+
+    if (result?.previous_plan === 'free' && result.new_plan && result.new_plan !== 'free') {
+      trackTrialActivated(eventId, result.new_plan, result.trial_scans_used ?? 0)
+      if (result.did_reset) trackTrialDataReset(eventId)
+    }
+
+    return { ok: true as const }
+  }
+
+  function requestEventPlanChange(eventId: string, previousPlan: UserPlan, newPlan: UserPlan) {
+    if (previousPlan === newPlan) return
+    setEventActionError(null)
+    if (previousPlan === 'free' && newPlan !== 'free') {
+      setPendingPlanChange({ eventId, previousPlan, newPlan })
+      return
+    }
+    void (async () => {
+      setUpdatingEventPlan(true)
+      const result = await applyEventPlanChange(eventId, newPlan)
+      setUpdatingEventPlan(false)
+      if (!result.ok) {
+        setEventActionError(result.error)
+        return
+      }
+      setSuccessMsg(`תוכנית המשחק עודכנה ל־${eventPlanLabel(newPlan)}`)
+    })()
+  }
+
+  async function confirmPendingPlanChange() {
+    if (!pendingPlanChange) return
+    setActivatingPlan(true)
+    const { eventId, newPlan } = pendingPlanChange
+    setUpdatingEventPlan(true)
+    const result = await applyEventPlanChange(eventId, newPlan)
+    setUpdatingEventPlan(false)
+    setActivatingPlan(false)
+    setPendingPlanChange(null)
+    if (!result.ok) {
+      setEventActionError(result.error)
+      return
+    }
+    setSuccessMsg(`תוכנית המשחק עודכנה ל־${eventPlanLabel(newPlan)}`)
+  }
+
+  async function downloadLinkedOfflineGame(eventId: string) {
+    setOfflineExportError(null)
+    setExportingOffline(true)
+    try {
+      await exportOfflineGame(eventId)
+    } catch (err) {
+      setOfflineExportError(
+        err instanceof OfflineExportError ? err.message : 'ההורדה נכשלה. נסו שוב.',
+      )
+    } finally {
+      setExportingOffline(false)
+    }
   }
 
   async function submitScanner(e: React.FormEvent) {
@@ -314,6 +1054,9 @@ export function AdminScannersPanel() {
     if (!deleteBookingId || deleting) return
     setDeleting(true)
     const prev = bookings
+    const target = bookings.find((b) => b.id === deleteBookingId)
+    const financeId = target?.finance_entry_id ?? null
+    const debtFinanceId = target?.debt_finance_entry_id ?? null
     setBookings((items) => items.filter((b) => b.id !== deleteBookingId))
     const { error: delError } = await supabase
       .from('scanner_bookings')
@@ -322,6 +1065,15 @@ export function AdminScannersPanel() {
     if (delError) {
       setBookings(prev)
       setError(delError.message)
+      setDeleteBookingId(null)
+      setDeleting(false)
+      return
+    }
+    if (financeId) {
+      await supabase.from('admin_finance_entries').delete().eq('id', financeId)
+    }
+    if (debtFinanceId) {
+      await supabase.from('admin_finance_entries').delete().eq('id', debtFinanceId)
     }
     setDeleteBookingId(null)
     setDeleting(false)
@@ -331,26 +1083,6 @@ export function AdminScannersPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <KpiCard
-          label="סורקים פעילים"
-          value={todayStats.total}
-          accent="primary"
-          icon={<ScanLine size={18} />}
-        />
-        <KpiCard
-          label="תפוסים היום"
-          value={todayStats.booked}
-          accent="tertiary"
-        />
-        <KpiCard
-          label="פנויים היום"
-          value={todayStats.available}
-          accent="secondary"
-          hint="מכשירי סריקה למסלול מלא"
-        />
-      </div>
-
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-2">
           {scanners.map((s) => (
@@ -378,7 +1110,7 @@ export function AdminScannersPanel() {
             <Plus size={14} className="ml-1" />
             סורק חדש
           </Button>
-          <Button size="sm" onClick={() => openBooking()} disabled={activeScanners.length === 0}>
+          <Button size="sm" onClick={() => openBooking()}>
             <CalendarPlus size={14} className="ml-1" />
             הזמנה חדשה
           </Button>
@@ -416,150 +1148,259 @@ export function AdminScannersPanel() {
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
-          {calendarDays.map((day) => {
-            const inMonth = isSameMonth(day, month)
-            const isToday = isSameDay(day, new Date())
-            const isSelected = selectedDay ? isSameDay(day, selectedDay) : false
-            const dayBookings = bookings.filter((b) => bookingCoversDay(b, day))
-            const uniqueScannerIds = [...new Set(dayBookings.map((b) => b.scanner_id))]
+        <div className="space-y-1">
+          {calendarWeeks.map((week) => {
+            const weekBars = layoutWeekBookings(bookings, week)
+            const laneCount = Math.max(
+              weekBars.reduce((max, b) => Math.max(max, b.lane + 1), 0),
+              1,
+            )
+            const LANE_H = 26
+            const LANE_GAP = 4
+            const HEADER_H = 34
+            const barsBlockH = laneCount * LANE_H + Math.max(0, laneCount - 1) * LANE_GAP
+            const bodyMinHeight = HEADER_H + barsBlockH + 10
 
             return (
-              <button
-                key={day.toISOString()}
-                type="button"
-                onClick={() => {
-                  setSelectedDay(day)
-                }}
-                onDoubleClick={() => openBooking(day)}
-                className={cn(
-                  'min-h-[72px] rounded-xl border p-1.5 text-right transition-colors',
-                  inMonth ? 'border-border bg-surface' : 'border-transparent bg-surface-elevated/40',
-                  isToday && 'ring-1 ring-secondary/50',
-                  isSelected && 'border-secondary/50 bg-secondary/5',
-                  'hover:border-secondary/40',
-                )}
+              <div
+                key={week[0].toISOString()}
+                className="relative rounded-xl border border-border"
+                style={{ minHeight: bodyMinHeight }}
               >
-                <div
-                  className={cn(
-                    'mb-1 text-[11px] font-medium',
-                    inMonth ? 'text-foreground' : 'text-muted/60',
-                    isToday && 'text-secondary-text',
-                  )}
-                >
-                  {format(day, 'd')}
+                <div className="grid grid-cols-7" style={{ minHeight: bodyMinHeight }}>
+                  {week.map((day) => {
+                    const inMonth = isSameMonth(day, month)
+                    const isToday = isSameDay(day, new Date())
+                    const isSelected = selectedDay ? isSameDay(day, selectedDay) : false
+                    const dayBookings = bookings.filter((b) => bookingCoversDay(b, day))
+                    const activeCount = activeScanners.filter((s) => s.status === 'active').length
+                    const bookedActive = activeScanners.filter(
+                      (s) => s.status === 'active' && dayBookings.some((b) => b.scanner_id === s.id),
+                    ).length
+                    const freeCount = Math.max(0, activeCount - bookedActive)
+
+                    return (
+                      <button
+                        key={day.toISOString()}
+                        type="button"
+                        onClick={() => openDayDetail(day)}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation()
+                          openBooking(day)
+                        }}
+                        className={cn(
+                          'flex flex-col border-e border-border/70 p-1.5 text-right transition-colors last:border-e-0',
+                          inMonth ? 'bg-surface' : 'bg-surface-elevated/40',
+                          isToday && 'bg-secondary/5',
+                          isSelected && 'ring-inset ring-1 ring-secondary/40',
+                          'hover:bg-secondary/5',
+                        )}
+                        style={{ minHeight: bodyMinHeight }}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span
+                            className={cn(
+                              'inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[12px] font-semibold tabular-nums',
+                              inMonth ? 'text-foreground' : 'text-muted/50',
+                              isToday && 'bg-secondary text-white',
+                            )}
+                          >
+                            {format(day, 'd')}
+                          </span>
+                          {inMonth && activeCount > 0 && (
+                            <span
+                              className={cn(
+                                'rounded px-1 text-[9px] font-medium tabular-nums',
+                                freeCount === 0
+                                  ? 'bg-danger/15 text-danger-text'
+                                  : freeCount === activeCount
+                                    ? 'bg-success/15 text-success-text'
+                                    : 'bg-warning/15 text-warning-text',
+                              )}
+                              title={`${freeCount} פנויים מתוך ${activeCount}`}
+                            >
+                              {freeCount}/{activeCount}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
-                <div className="flex flex-wrap gap-0.5">
-                  {uniqueScannerIds.slice(0, 4).map((sid) => (
-                    <span
-                      key={sid}
-                      title={scannerLabel(sid)}
-                      className={cn('h-1.5 w-3 rounded-full', colorForScanner(scanners, sid))}
-                    />
-                  ))}
-                  {uniqueScannerIds.length > 4 && (
-                    <span className="text-[9px] text-muted">+{uniqueScannerIds.length - 4}</span>
-                  )}
-                </div>
-                {dayBookings.length > 0 && (
-                  <p className="mt-1 truncate text-[10px] text-muted">
-                    {dayBookings[0].customer_name}
-                    {dayBookings.length > 1 ? ` +${dayBookings.length - 1}` : ''}
-                  </p>
+
+                {/* Continuous family bars — one lane per overlapping booking */}
+                {weekBars.length > 0 && (
+                  <div
+                    className="pointer-events-none absolute inset-x-0 px-0.5"
+                    style={{ top: HEADER_H, height: barsBlockH }}
+                  >
+                    {weekBars.map((bar) => {
+                      const continuesBefore = bar.booking.start_date < dayISO(week[0])
+                      const continuesAfter = bar.booking.end_date > dayISO(week[6])
+                      const multiDay = bar.booking.start_date !== bar.booking.end_date
+                      const colors = colorForFamily(bar.booking.customer_name)
+                      const colPct = 100 / 7
+                      return (
+                        <button
+                          key={bar.booking.id}
+                          type="button"
+                          onClick={() => openBookingDetail(bar.booking)}
+                          title={`${bar.booking.customer_name} · ${formatRange(bar.booking.start_date, bar.booking.end_date)} · ${scannerLabel(bar.booking.scanner_id)}`}
+                          className={cn(
+                            'pointer-events-auto absolute z-10 flex items-center overflow-hidden px-1.5 text-start text-[11px] font-semibold leading-none shadow-sm transition-opacity hover:opacity-90',
+                            multiDay && continuesBefore && continuesAfter && 'rounded-none',
+                            multiDay && continuesBefore && !continuesAfter && 'rounded-e-md rounded-s-none',
+                            multiDay && !continuesBefore && continuesAfter && 'rounded-s-md rounded-e-none',
+                            (!multiDay || (!continuesBefore && !continuesAfter)) && 'rounded-md',
+                          )}
+                          style={{
+                            top: bar.lane * (LANE_H + LANE_GAP),
+                            height: LANE_H,
+                            insetInlineStart: `calc(${bar.start * colPct}% + 2px)`,
+                            width: `calc(${bar.span * colPct}% - 4px)`,
+                            backgroundColor: colors.bg,
+                            color: colors.text,
+                          }}
+                        >
+                          <span className="truncate">{bar.booking.customer_name}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 )}
-              </button>
+              </div>
             )
           })}
         </div>
 
         <p className="mt-3 text-[11px] text-muted">
-          לחיצה על יום מציגה פרטים · לחיצה כפולה פותחת הזמנה חדשה לתאריך
+          בקוביה מוצגות כל המשפחות · משפחה לכמה ימים מופיעה כרצועה צבעונית מתמשכת · לחיצה פותחת את כל הפרטים · לחיצה כפולה להזמנה חדשה
         </p>
       </Card>
 
-      {/* Resource timeline: scanners × days of month */}
+      {/* Resource timeline: scanners × days of month with continuous family bars */}
       <Card className="overflow-x-auto p-4">
-        <h3 className="mb-3 text-sm font-semibold text-foreground">לוח תפוסה לפי סורק</h3>
+        <h3 className="mb-3 text-sm font-semibold text-foreground">לוח תפוסה</h3>
         {activeScanners.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted">אין סורקים עדיין. הוסף סורק חדש.</p>
         ) : (
-          <div className="min-w-[640px] space-y-2">
-            {(() => {
-              const daysInMonth = eachDayOfInterval({
-                start: startOfMonth(month),
-                end: endOfMonth(month),
-              })
+          <div className="min-w-[720px] space-y-2">
+            <div
+              className="grid gap-0.5"
+              style={{ gridTemplateColumns: `132px repeat(${daysInMonth.length}, minmax(18px, 1fr))` }}
+            >
+              <div />
+              {daysInMonth.map((d) => (
+                <div
+                  key={d.toISOString()}
+                  className={cn(
+                    'text-center text-[9px] text-muted',
+                    isSameDay(d, new Date()) && 'font-bold text-secondary-text',
+                  )}
+                >
+                  {format(d, 'd')}
+                </div>
+              ))}
+            </div>
+            {[
+              ...activeScanners.map((scanner) => ({
+                key: scanner.id,
+                label: scanner.name,
+                color: colorForScanner(scanners, scanner.id),
+                rowBookings: bookings.filter((b) => b.scanner_id === scanner.id),
+              })),
+              {
+                key: '__none__',
+                label: 'ללא סורק',
+                color: 'bg-muted',
+                rowBookings: bookings.filter((b) => !b.scanner_id),
+              },
+            ].map((row) => {
+              const spans = row.rowBookings
+                .map((booking) => {
+                  const span = bookingSpanInDays(booking, daysInMonth)
+                  return span ? { booking, ...span } : null
+                })
+                .filter((x): x is { booking: ScannerBooking; start: number; span: number } => x != null)
+
+              if (row.key === '__none__' && spans.length === 0) return null
+
               return (
-                <>
-                  <div
-                    className="grid gap-0.5"
-                    style={{ gridTemplateColumns: `120px repeat(${daysInMonth.length}, minmax(14px, 1fr))` }}
-                  >
-                    <div />
-                    {daysInMonth.map((d) => (
-                      <div
-                        key={d.toISOString()}
-                        className={cn(
-                          'text-center text-[9px] text-muted',
-                          isSameDay(d, new Date()) && 'font-bold text-secondary-text',
-                        )}
-                      >
-                        {format(d, 'd')}
-                      </div>
-                    ))}
+                <div key={row.key} className="flex items-stretch gap-0.5">
+                  <div className="flex w-[132px] shrink-0 items-center gap-1.5 truncate pe-2 text-xs text-foreground">
+                    <span className={cn('h-2 w-2 shrink-0 rounded-full', row.color)} />
+                    <span className="truncate font-medium">{row.label}</span>
                   </div>
-                  {activeScanners.map((scanner) => (
-                    <div
-                      key={scanner.id}
-                      className="grid gap-0.5 items-stretch"
-                      style={{ gridTemplateColumns: `120px repeat(${daysInMonth.length}, minmax(14px, 1fr))` }}
-                    >
-                      <div className="flex items-center gap-1.5 truncate pe-2 text-xs text-foreground">
-                        <span
-                          className={cn('h-2 w-2 shrink-0 rounded-full', colorForScanner(scanners, scanner.id))}
+                  <div
+                    className="grid h-9 min-w-0 flex-1 gap-0.5"
+                    style={{ gridTemplateColumns: `repeat(${daysInMonth.length}, minmax(0, 1fr))` }}
+                  >
+                    {daysInMonth.map((d, dayIdx) => {
+                      const occupied = spans.some(
+                        (s) => dayIdx >= s.start && dayIdx < s.start + s.span,
+                      )
+                      return (
+                        <button
+                          key={d.toISOString()}
+                          type="button"
+                          onClick={() => openDayDetail(d)}
+                          className={cn(
+                            'row-start-1 rounded-sm border border-border/30 bg-surface-elevated/50',
+                            isSameDay(d, new Date()) && 'ring-1 ring-secondary/40',
+                          )}
+                          style={{ gridColumn: dayIdx + 1 }}
+                          title={occupied ? 'לחיצה לפרטי היום' : 'פנוי — לחיצה לפרטי היום'}
+                          aria-label={`${format(d, 'd/M')}${occupied ? '' : ' פנוי'}`}
                         />
-                        <span className="truncate">{scanner.name}</span>
-                      </div>
-                      {daysInMonth.map((d) => {
-                        const occupied = bookings.some(
-                          (b) => b.scanner_id === scanner.id && bookingCoversDay(b, d),
-                        )
-                        return (
-                          <div
-                            key={d.toISOString()}
-                            title={
-                              occupied
-                                ? bookings
-                                    .filter((b) => b.scanner_id === scanner.id && bookingCoversDay(b, d))
-                                    .map((b) => b.customer_name)
-                                    .join(', ')
-                                : 'פנוי'
-                            }
-                            className={cn(
-                              'h-7 rounded-sm border border-border/40',
-                              occupied
-                                ? colorForScanner(scanners, scanner.id)
-                                : 'bg-surface-elevated/50',
-                            )}
-                          />
-                        )
-                      })}
-                    </div>
-                  ))}
-                </>
+                      )
+                    })}
+                    {spans.map(({ booking, start, span }) => {
+                      const colors = colorForFamily(booking.customer_name)
+                      return (
+                        <button
+                          key={booking.id}
+                          type="button"
+                          onClick={() => openBookingDetail(booking)}
+                          title={`${booking.customer_name} · ${formatRange(booking.start_date, booking.end_date)}`}
+                          className="z-10 row-start-1 mx-px flex items-center overflow-hidden rounded-md px-1 text-start text-[10px] font-semibold transition-opacity hover:opacity-90"
+                          style={{
+                            gridColumn: `${start + 1} / span ${span}`,
+                            backgroundColor: colors.bg,
+                            color: colors.text,
+                          }}
+                        >
+                          <span className="truncate">{booking.customer_name}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
               )
-            })()}
+            })}
           </div>
         )}
       </Card>
 
-      {selectedDay && (
-        <Card className="p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-foreground">
-              {format(selectedDay, 'EEEE, d בMMMM yyyy', { locale: he })}
-            </h3>
-            <Button size="sm" variant="outline" onClick={() => openBooking(selectedDay)}>
+      <Modal
+        isOpen={!!selectedDay}
+        onClose={closeDetail}
+        title={
+          selectedDay
+            ? format(selectedDay, 'EEEE, d בMMMM yyyy', { locale: he })
+            : 'פרטי יום'
+        }
+        dialogClassName="max-w-lg max-h-[min(90vh,44rem)]"
+        contentClassName="overflow-y-auto overscroll-contain"
+      >
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (selectedDay) openBooking(selectedDay)
+              }}
+            >
               <Plus size={14} className="ml-1" />
               הזמנה ליום זה
             </Button>
@@ -567,68 +1408,96 @@ export function AdminScannersPanel() {
           {selectedDayBookings.length === 0 ? (
             <p className="text-sm text-muted">אין הזמנות ביום זה — כל הסורקים הפעילים פנויים.</p>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {selectedDayBookings.map((b) => (
-                <BookingRow
+                <BookingDetailCard
                   key={b.id}
                   booking={b}
-                  label={scannerLabel(b.scanner_id)}
-                  color={colorForScanner(scanners, b.scanner_id)}
-                  onDelete={() => setDeleteBookingId(b.id)}
+                  scannerLabel={scannerLabel(b.scanner_id)}
+                  eventLabel={eventLabel(b.event_id)}
+                  packageLabel={packageLabel(b.booking_package)}
+                  onEdit={() => openEditBooking(b)}
+                  onDelete={() => {
+                    closeDetail()
+                    setDeleteBookingId(b.id)
+                  }}
+                  onEventActions={b.event_id ? () => openEventActions(b) : undefined}
                 />
               ))}
             </div>
           )}
-        </Card>
-      )}
+        </div>
+      </Modal>
 
-      <div>
-        <h3 className="mb-3 text-sm font-semibold text-foreground">
-          הזמנות בחודש ({monthBookings.length})
-        </h3>
-        {monthBookings.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border py-10 text-center text-sm text-muted">
-            אין הזמנות בחודש זה
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            {monthBookings.map((b) => (
-              <BookingRow
-                key={b.id}
-                booking={b}
-                label={scannerLabel(b.scanner_id)}
-                color={colorForScanner(scanners, b.scanner_id)}
-                onDelete={() => setDeleteBookingId(b.id)}
-              />
-            ))}
-          </div>
+      <Modal
+        isOpen={!!selectedBooking}
+        onClose={closeDetail}
+        title={selectedBooking?.customer_name ?? 'פרטי הזמנה'}
+        dialogClassName="max-w-lg"
+      >
+        {selectedBooking && (
+          <BookingDetailCard
+            booking={selectedBooking}
+            scannerLabel={scannerLabel(selectedBooking.scanner_id)}
+            eventLabel={eventLabel(selectedBooking.event_id)}
+            packageLabel={packageLabel(selectedBooking.booking_package)}
+            onEdit={() => openEditBooking(selectedBooking)}
+            onDelete={() => {
+              const id = selectedBooking.id
+              closeDetail()
+              setDeleteBookingId(id)
+            }}
+            onEventActions={
+              selectedBooking.event_id
+                ? () => openEventActions(selectedBooking)
+                : undefined
+            }
+          />
         )}
-      </div>
+      </Modal>
 
-      {error && !bookingOpen && !scannerOpen && (
+      {error && !bookingOpen && !scannerOpen && !eventActionsBooking && (
         <p className="text-sm text-danger-text">{error}</p>
+      )}
+      {successMsg && !bookingOpen && !scannerOpen && (
+        <p className="text-sm text-success-text">{successMsg}</p>
       )}
 
       <Modal
         isOpen={bookingOpen}
-        onClose={() => setBookingOpen(false)}
-        title="הזמנת סורק"
+        onClose={closeBookingForm}
+        title={editingBookingId ? 'עריכת הזמנה' : 'הזמנה חדשה'}
         dialogClassName="max-w-md"
       >
         <form onSubmit={submitBooking} className="space-y-3">
           <Select
-            id="booking-scanner"
-            label="סורק"
-            value={formScannerId}
-            onChange={(e) => setFormScannerId(e.target.value)}
+            id="booking-package"
+            label="חבילה"
+            value={formPackage}
+            onChange={(e) => {
+              setAutoPrice(true)
+              setFormPackage(e.target.value as BookablePackage | '')
+            }}
             required
           >
-            {activeScanners.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} ({s.code})
-                {s.status === 'maintenance' ? ' — תחזוקה' : ''}
-              </option>
-            ))}
+            <option value="" disabled>
+              בחרי חבילה…
+            </option>
+            {BOOKABLE_PACKAGES.map((pkg) => {
+              const base = PLAN_BASE_PRICES[pkg]
+              const suffix =
+                base == null
+                  ? ' — מחיר לפי הסכם'
+                  : pkg === 'full' || pkg === 'offline'
+                    ? ` — מ-${formatPriceIls(base)} (+${formatPriceIls(EXTRA_DAY_PRICE)} ליום נוסף)`
+                    : ` — ${formatPriceIls(base)}`
+              return (
+                <option key={pkg} value={pkg}>
+                  {BOOKING_PACKAGE_LABELS[pkg]}
+                  {suffix}
+                </option>
+              )
+            })}
           </Select>
           <div className="grid grid-cols-2 gap-3">
             <Input
@@ -636,7 +1505,10 @@ export function AdminScannersPanel() {
               label="מתאריך"
               type="date"
               value={formStart}
-              onChange={(e) => setFormStart(e.target.value)}
+              onChange={(e) => {
+                setAutoPrice(true)
+                setFormStart(e.target.value)
+              }}
               required
             />
             <Input
@@ -644,16 +1516,205 @@ export function AdminScannersPanel() {
               label="עד תאריך"
               type="date"
               value={formEnd}
-              onChange={(e) => setFormEnd(e.target.value)}
+              onChange={(e) => {
+                setAutoPrice(true)
+                setFormEnd(e.target.value)
+              }}
               required
             />
           </div>
+          <div className="space-y-1">
+            <div className="flex items-end gap-3" dir="rtl">
+              <div className="min-w-0 flex-1">
+                <Input
+                  id="booking-amount"
+                  label="מחיר (₪)"
+                  type="number"
+                  min={0}
+                  step="1"
+                  value={formAmount}
+                  onChange={(e) => {
+                    setAutoPrice(false)
+                    setFormAmount(e.target.value)
+                    if (formPaid && !formAmountPaid.trim()) {
+                      setFormAmountPaid(e.target.value)
+                    }
+                  }}
+                  placeholder={suggestedPrice != null ? String(suggestedPrice) : 'הזיני מחיר'}
+                />
+              </div>
+              <div className="shrink-0 pb-2.5">
+                <Checkbox
+                  id="booking-paid"
+                  label="שולם"
+                  checked={formPaid}
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    setFormPaid(checked)
+                    if (checked) {
+                      setFormAmountPaid((prev) => prev.trim() || formAmount)
+                    } else {
+                      setFormAmountPaid('')
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-0.5 text-[11px] text-muted">
+              {formPackage && suggestedPrice != null ? (
+                <span>
+                  חישוב אוטומטי: {formatPriceIls(suggestedPrice)}
+                  {(formPackage === 'full' || formPackage === 'offline') &&
+                    ` · ${bookingDayCount(formStart, formEnd)} ימים`}
+                  {!autoPrice &&
+                    formAmount.trim() !== '' &&
+                    Number(formAmount) !== suggestedPrice &&
+                    ' · עודכן ידנית'}
+                </span>
+              ) : formPackage === 'organizations' ? (
+                <span>לחבילת ארגונים הזיני מחיר ידנית</span>
+              ) : (
+                <span>המחיר יתווסף אוטומטית כהכנסה</span>
+              )}
+              {suggestedPrice != null && !autoPrice && (
+                <button
+                  type="button"
+                  className="text-start text-secondary-text hover:underline"
+                  onClick={() => setAutoPrice(true)}
+                >
+                  חשב מחדש לפי חבילה ותאריכים
+                </button>
+              )}
+            </div>
+            {formPaid && (
+              <div className="space-y-1 pt-1">
+                <Input
+                  id="booking-amount-paid"
+                  label="כמה שולם (₪)"
+                  type="number"
+                  min={0}
+                  step="1"
+                  value={formAmountPaid}
+                  onChange={(e) => setFormAmountPaid(e.target.value)}
+                  placeholder={formAmount || '0'}
+                />
+                {(() => {
+                  const total = Number(formAmount)
+                  const paid = formAmountPaid.trim() === '' ? total : Number(formAmountPaid)
+                  if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(paid)) return null
+                  const debt = Math.max(0, total - paid)
+                  if (debt <= 0) {
+                    return <p className="text-[11px] text-muted">שולם במלואו</p>
+                  }
+                  return (
+                    <p className="text-[11px] text-muted">
+                      חוב: {formatPriceIls(debt)} · יישמר כהכנסה עתידית
+                    </p>
+                  )
+                })()}
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="booking-event-link" className="block text-sm font-medium text-foreground">
+              משחק מקושר (אופציונלי)
+            </label>
+            {selectedLinkEvent ? (
+              <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-elevated/40 px-3 py-2">
+                <div className="min-w-0 flex-1 text-sm text-foreground">
+                  <span className="font-medium">{eventLinkCustomerLabel(selectedLinkEvent)}</span>
+                  <span className="text-muted"> · </span>
+                  <span>{eventLinkGameLabel(selectedLinkEvent)}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearLinkedEvent}
+                  className="shrink-0 rounded-lg p-1 text-muted hover:bg-surface hover:text-foreground"
+                  title="הסר קישור למשחק"
+                  aria-label="הסר קישור למשחק"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Search
+                  size={15}
+                  className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted"
+                />
+                <input
+                  id="booking-event-link"
+                  type="search"
+                  value={eventLinkQuery}
+                  onChange={(e) => {
+                    setEventLinkQuery(e.target.value)
+                    setEventLinkOpen(true)
+                  }}
+                  onFocus={() => setEventLinkOpen(true)}
+                  onBlur={() => {
+                    // Allow click on an option before closing.
+                    window.setTimeout(() => setEventLinkOpen(false), 150)
+                  }}
+                  placeholder="חיפוש לפי לקוח, אימייל או שם נופש..."
+                  aria-label="חיפוש משחק מקושר"
+                  autoComplete="off"
+                  className="w-full rounded-xl border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand-500"
+                />
+                {eventLinkOpen && (
+                  <ul
+                    className="absolute inset-x-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-xl border border-border bg-modal py-1 shadow-lg"
+                    role="listbox"
+                  >
+                    {filteredLinkEvents.length === 0 ? (
+                      <li className="px-3 py-2 text-xs text-muted">לא נמצאו תוצאות</li>
+                    ) : (
+                      filteredLinkEvents.map((ev) => (
+                        <li key={ev.id}>
+                          <button
+                            type="button"
+                            role="option"
+                            className="flex w-full flex-col items-stretch gap-0.5 px-3 py-2 text-start hover:bg-surface-elevated"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => selectLinkedEvent(ev)}
+                          >
+                            <span className="truncate text-sm font-medium text-foreground">
+                              {eventLinkCustomerLabel(ev)}
+                            </span>
+                            <span className="truncate text-xs text-muted">
+                              {eventLinkGameLabel(ev)}
+                              {ev.owner_email && ev.owner_name.trim()
+                                ? ` · ${ev.owner_email}`
+                                : ''}
+                            </span>
+                          </button>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+          <Select
+            id="booking-scanner"
+            label="סורק (אופציונלי)"
+            value={formScannerId}
+            onChange={(e) => setFormScannerId(e.target.value)}
+          >
+            <option value="">ללא סורק</option>
+            {activeScanners.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+                {s.status === 'maintenance' ? ' — תחזוקה' : ''}
+              </option>
+            ))}
+          </Select>
           <Input
             id="booking-customer"
-            label="שם לקוח / אירוע"
+            label="שם לקוח / משפחה"
             value={formCustomer}
             onChange={(e) => setFormCustomer(e.target.value)}
-            placeholder="למשל: אירוע משפחת כהן"
+            placeholder="למשל: משפחת כהן"
             required
           />
           <div className="grid grid-cols-2 gap-3">
@@ -680,9 +1741,9 @@ export function AdminScannersPanel() {
           {error && <p className="text-sm text-danger-text">{error}</p>}
           <ModalActions>
             <Button type="submit" loading={saving}>
-              שמור הזמנה
+              {editingBookingId ? 'שמור שינויים' : 'שמור הזמנה'}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setBookingOpen(false)}>
+            <Button type="button" variant="outline" onClick={closeBookingForm}>
               ביטול
             </Button>
           </ModalActions>
@@ -729,49 +1790,220 @@ export function AdminScannersPanel() {
         </form>
       </Modal>
 
+      <Modal
+        isOpen={!!eventActionsBooking}
+        onClose={closeEventActions}
+        title="פעולות על האירוע"
+        dialogClassName="max-w-md"
+      >
+        {eventActionsBooking?.event_id && (() => {
+          const eventId = eventActionsBooking.event_id
+          const linked = eventById.get(eventId)
+          const currentPlan = (linked?.plan ?? 'free') as UserPlan
+          return (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border bg-surface px-3 py-3 text-sm">
+                <p className="font-medium text-foreground">
+                  {eventLabel(eventId)}
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  {eventActionsBooking.customer_name}
+                  {linked?.owner_email ? ` · ${linked.owner_email}` : ''}
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  תוכנית נוכחית: {eventPlanLabel(currentPlan)}
+                </p>
+              </div>
+
+              <Select
+                id="event-actions-plan"
+                label="שדרוג תוכנית"
+                value={currentPlan}
+                disabled={updatingEventPlan || activatingPlan}
+                onChange={(e) =>
+                  requestEventPlanChange(eventId, currentPlan, e.target.value as UserPlan)
+                }
+              >
+                {EVENT_PLAN_OPTIONS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </Select>
+
+              {currentPlan === 'offline' && (
+                <div className="space-y-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    loading={exportingOffline}
+                    onClick={() => void downloadLinkedOfflineGame(eventId)}
+                    title="הורידו את קובץ המשחק ושלחו אותו ללקוח"
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      <Download size={14} />
+                      הורד קובץ אופליין
+                    </span>
+                  </Button>
+                  {offlineExportError && (
+                    <p role="alert" className="text-xs font-semibold text-danger-text">
+                      {offlineExportError}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setResetEventTarget({
+                    eventId,
+                    eventName: eventLabel(eventId),
+                  })
+                }}
+              >
+                <RotateCcw size={14} className="ml-1" />
+                איפוס סריקות למשחק
+              </Button>
+
+              {eventActionError && (
+                <p className="text-sm text-danger-text">{eventActionError}</p>
+              )}
+
+              <ModalActions>
+                <Button type="button" variant="outline" onClick={closeEventActions}>
+                  סגור
+                </Button>
+              </ModalActions>
+            </div>
+          )
+        })()}
+      </Modal>
+
+      <TrialActivationResetModal
+        isOpen={pendingPlanChange !== null}
+        onClose={() => {
+          if (!activatingPlan) setPendingPlanChange(null)
+        }}
+        onContinue={() => void confirmPendingPlanChange()}
+        loading={activatingPlan}
+      />
+
       <ConfirmModal
         isOpen={!!deleteBookingId}
         onClose={() => setDeleteBookingId(null)}
         onConfirm={confirmDeleteBooking}
         title="מחיקת הזמנה"
-        description="למחוק את ההזמנה? הסורק יהיה פנוי שוב בתאריכים האלה."
+        description="למחוק את ההזמנה? רשומות הכנסה/חוב מקושרות יימחקו גם כן. סורק משויך יהיה פנוי שוב."
         confirmLabel="מחק"
         loading={deleting}
+      />
+
+      <ConfirmModal
+        isOpen={!!resetEventTarget}
+        onClose={() => setResetEventTarget(null)}
+        onConfirm={confirmResetEventScans}
+        title="איפוס סריקות למשחק"
+        description={
+          resetEventTarget
+            ? `לאפס את כל הסריקות, הניקוד והפרסים שנצברו במשחק "${resetEventTarget.eventName}"? פעולה זו לא ניתנת לביטול.`
+            : ''
+        }
+        confirmLabel="אפס סריקות"
+        loading={resetting}
       />
     </div>
   )
 }
 
-function BookingRow({
+function BookingDetailCard({
   booking,
-  label,
-  color,
+  scannerLabel,
+  eventLabel,
+  packageLabel,
+  onEdit,
   onDelete,
+  onEventActions,
 }: {
   booking: ScannerBooking
-  label: string
-  color: string
+  scannerLabel: string
+  eventLabel: string
+  packageLabel: string
+  onEdit: () => void
   onDelete: () => void
+  onEventActions?: () => void
 }) {
+  const rows: { label: string; value: string }[] = [
+    { label: 'משפחה / לקוח', value: booking.customer_name },
+    { label: 'חבילה', value: packageLabel },
+    {
+      label: 'מחיר',
+      value: booking.amount != null ? formatPriceIls(Number(booking.amount)) : '—',
+    },
+    {
+      label: 'תשלום',
+      value: (() => {
+        const total = booking.amount != null ? Number(booking.amount) : null
+        const paid =
+          booking.amount_paid != null
+            ? Number(booking.amount_paid)
+            : booking.is_paid && total != null
+              ? total
+              : 0
+        if (paid <= 0) return 'לא שולם · הכנסה עתידית'
+        if (total != null && paid < total) {
+          return `שולם ${formatPriceIls(paid)} · חוב ${formatPriceIls(total - paid)}`
+        }
+        return paid > 0 && total != null && paid >= total
+          ? 'שולם במלואו'
+          : `שולם ${formatPriceIls(paid)}`
+      })(),
+    },
+    { label: 'משחק', value: eventLabel },
+    { label: 'סורק', value: scannerLabel },
+    { label: 'תאריכים', value: formatRange(booking.start_date, booking.end_date) },
+  ]
+  if (booking.customer_phone) rows.push({ label: 'טלפון', value: booking.customer_phone })
+  if (booking.customer_email) rows.push({ label: 'אימייל', value: booking.customer_email })
+  if (booking.notes) rows.push({ label: 'הערות', value: booking.notes })
+
+  const familyColor = colorForFamily(booking.customer_name)
+
   return (
-    <div className="group/row flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 transition-all hover:border-secondary/40">
-      <span className={cn('h-8 w-1.5 shrink-0 rounded-full', color)} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm text-foreground">{booking.customer_name}</p>
-        <p className="mt-0.5 text-[11px] text-muted">
-          {label} · {formatRange(booking.start_date, booking.end_date)}
-          {booking.customer_phone ? ` · ${booking.customer_phone}` : ''}
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={onDelete}
-        className="shrink-0 rounded-lg p-1 text-muted opacity-0 transition-all hover:bg-surface-elevated hover:text-danger-text group-hover/row:opacity-100 focus-visible:opacity-100"
-        title="מחיקה"
-        aria-label="מחיקת ההזמנה"
+    <div className="space-y-3">
+      <div
+        className="rounded-lg px-3 py-2 text-sm font-semibold"
+        style={{ backgroundColor: familyColor.bg, color: familyColor.text }}
       >
-        <Trash2 size={14} />
-      </button>
+        {booking.customer_name}
+      </div>
+      <dl className="space-y-2 rounded-xl border border-border bg-surface px-3 py-3">
+        {rows.map((row) => (
+          <div key={row.label} className="grid grid-cols-[7rem_1fr] gap-2 text-sm">
+            <dt className="text-muted">{row.label}</dt>
+            <dd className="font-medium text-foreground break-words">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="flex flex-wrap justify-end gap-2">
+        {onEventActions && (
+          <Button type="button" variant="outline" size="sm" onClick={onEventActions}>
+            <Sparkles size={14} className="ml-1" />
+            פעולות על האירוע
+          </Button>
+        )}
+        <Button type="button" variant="outline" size="sm" onClick={onEdit}>
+          <Pencil size={14} className="ml-1" />
+          עריכה
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={onDelete}>
+          <Trash2 size={14} className="ml-1" />
+          מחק הזמנה
+        </Button>
+      </div>
     </div>
   )
 }
