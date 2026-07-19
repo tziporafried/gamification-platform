@@ -46,6 +46,20 @@ const SCANNER_COLORS = [
   'bg-danger/70',
 ]
 
+/** Distinct bar colors for families (customer names) on the calendar. */
+const FAMILY_BAR_COLORS = [
+  'bg-secondary text-white',
+  'bg-primary text-white',
+  'bg-tertiary text-white',
+  'bg-success text-white',
+  'bg-warning text-foreground',
+  'bg-accent text-white',
+  'bg-danger text-white',
+  'bg-secondary/70 text-white',
+  'bg-primary/70 text-white',
+  'bg-tertiary/80 text-white',
+]
+
 const WEEKDAY_LABELS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
 
 function todayISO(): string {
@@ -83,6 +97,89 @@ function colorForScanner(scanners: Scanner[], scannerId: string): string {
   return SCANNER_COLORS[idx >= 0 ? idx % SCANNER_COLORS.length : 0]
 }
 
+function hashString(value: string): number {
+  let h = 0
+  for (let i = 0; i < value.length; i++) h = (h * 31 + value.charCodeAt(i)) >>> 0
+  return h
+}
+
+function colorForFamily(customerName: string): string {
+  return FAMILY_BAR_COLORS[hashString(customerName.trim()) % FAMILY_BAR_COLORS.length]
+}
+
+function chunkWeeks(days: Date[]): Date[][] {
+  const weeks: Date[][] = []
+  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7))
+  return weeks
+}
+
+function dayISO(day: Date): string {
+  return format(day, 'yyyy-MM-dd')
+}
+
+/** Clip a booking into a week row and return 0-based start column + span. */
+function bookingSpanInWeek(
+  booking: ScannerBooking,
+  week: Date[],
+): { start: number; span: number } | null {
+  const wStart = dayISO(week[0])
+  const wEnd = dayISO(week[6])
+  if (booking.end_date < wStart || booking.start_date > wEnd) return null
+  const clipStart = booking.start_date < wStart ? wStart : booking.start_date
+  const clipEnd = booking.end_date > wEnd ? wEnd : booking.end_date
+  const start = week.findIndex((d) => dayISO(d) === clipStart)
+  const end = week.findIndex((d) => dayISO(d) === clipEnd)
+  if (start < 0 || end < 0) return null
+  return { start, span: end - start + 1 }
+}
+
+type WeekBar = {
+  booking: ScannerBooking
+  start: number
+  span: number
+  lane: number
+}
+
+/** Pack overlapping family bars into lanes within a week. */
+function layoutWeekBookings(bookings: ScannerBooking[], week: Date[]): WeekBar[] {
+  const items = bookings
+    .map((booking) => {
+      const span = bookingSpanInWeek(booking, week)
+      return span ? { booking, ...span } : null
+    })
+    .filter((x): x is { booking: ScannerBooking; start: number; span: number } => x != null)
+    .sort((a, b) => a.start - b.start || b.span - a.span || a.booking.customer_name.localeCompare(b.booking.customer_name, 'he'))
+
+  const laneEnds: number[] = []
+  return items.map((item) => {
+    let lane = laneEnds.findIndex((end) => end <= item.start)
+    if (lane === -1) {
+      lane = laneEnds.length
+      laneEnds.push(item.start + item.span)
+    } else {
+      laneEnds[lane] = item.start + item.span
+    }
+    return { ...item, lane }
+  })
+}
+
+/** Clip a booking to a month day list for the scanner timeline. */
+function bookingSpanInDays(
+  booking: ScannerBooking,
+  days: Date[],
+): { start: number; span: number } | null {
+  if (days.length === 0) return null
+  const dStart = dayISO(days[0])
+  const dEnd = dayISO(days[days.length - 1])
+  if (booking.end_date < dStart || booking.start_date > dEnd) return null
+  const clipStart = booking.start_date < dStart ? dStart : booking.start_date
+  const clipEnd = booking.end_date > dEnd ? dEnd : booking.end_date
+  const start = days.findIndex((d) => dayISO(d) === clipStart)
+  const end = days.findIndex((d) => dayISO(d) === clipEnd)
+  if (start < 0 || end < 0) return null
+  return { start, span: end - start + 1 }
+}
+
 export function AdminScannersPanel() {
   const { user } = useAuth()
   const [scanners, setScanners] = useState<Scanner[]>([])
@@ -97,6 +194,7 @@ export function AdminScannersPanel() {
   const [deleteBookingId, setDeleteBookingId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+  const [selectedBooking, setSelectedBooking] = useState<ScannerBooking | null>(null)
 
   // booking form
   const [formScannerId, setFormScannerId] = useState('')
@@ -175,9 +273,35 @@ export function AdminScannersPanel() {
     return bookings.filter((b) => bookingCoversDay(b, selectedDay))
   }, [bookings, selectedDay])
 
+  const calendarWeeks = useMemo(() => chunkWeeks(calendarDays), [calendarDays])
+
+  const daysInMonth = useMemo(
+    () =>
+      eachDayOfInterval({
+        start: startOfMonth(month),
+        end: endOfMonth(month),
+      }),
+    [month],
+  )
+
   function scannerLabel(id: string): string {
     const s = scanners.find((x) => x.id === id)
     return s ? `${s.name} (${s.code})` : 'סורק'
+  }
+
+  function openDayDetail(day: Date) {
+    setSelectedBooking(null)
+    setSelectedDay(day)
+  }
+
+  function openBookingDetail(booking: ScannerBooking) {
+    setSelectedDay(null)
+    setSelectedBooking(booking)
+  }
+
+  function closeDetail() {
+    setSelectedDay(null)
+    setSelectedBooking(null)
   }
 
   function openBooking(day?: Date) {
@@ -190,6 +314,7 @@ export function AdminScannersPanel() {
     setFormNotes('')
     setFormScannerId(activeScanners[0]?.id ?? '')
     setError(null)
+    closeDetail()
     setBookingOpen(true)
   }
 
@@ -416,150 +541,236 @@ export function AdminScannersPanel() {
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
-          {calendarDays.map((day) => {
-            const inMonth = isSameMonth(day, month)
-            const isToday = isSameDay(day, new Date())
-            const isSelected = selectedDay ? isSameDay(day, selectedDay) : false
-            const dayBookings = bookings.filter((b) => bookingCoversDay(b, day))
-            const uniqueScannerIds = [...new Set(dayBookings.map((b) => b.scanner_id))]
+        <div className="space-y-1">
+          {calendarWeeks.map((week) => {
+            const weekBars = layoutWeekBookings(bookings, week)
+            const laneCount = Math.max(
+              weekBars.reduce((max, b) => Math.max(max, b.lane + 1), 0),
+              1,
+            )
+            const bodyMinHeight = 32 + laneCount * 24 + 8
 
             return (
-              <button
-                key={day.toISOString()}
-                type="button"
-                onClick={() => {
-                  setSelectedDay(day)
-                }}
-                onDoubleClick={() => openBooking(day)}
-                className={cn(
-                  'min-h-[72px] rounded-xl border p-1.5 text-right transition-colors',
-                  inMonth ? 'border-border bg-surface' : 'border-transparent bg-surface-elevated/40',
-                  isToday && 'ring-1 ring-secondary/50',
-                  isSelected && 'border-secondary/50 bg-secondary/5',
-                  'hover:border-secondary/40',
-                )}
+              <div
+                key={week[0].toISOString()}
+                className="relative overflow-hidden rounded-xl border border-border"
+                style={{ minHeight: bodyMinHeight }}
               >
-                <div
-                  className={cn(
-                    'mb-1 text-[11px] font-medium',
-                    inMonth ? 'text-foreground' : 'text-muted/60',
-                    isToday && 'text-secondary',
-                  )}
-                >
-                  {format(day, 'd')}
+                <div className="grid grid-cols-7" style={{ minHeight: bodyMinHeight }}>
+                  {week.map((day) => {
+                    const inMonth = isSameMonth(day, month)
+                    const isToday = isSameDay(day, new Date())
+                    const isSelected = selectedDay ? isSameDay(day, selectedDay) : false
+                    const dayBookings = bookings.filter((b) => bookingCoversDay(b, day))
+                    const activeCount = activeScanners.filter((s) => s.status === 'active').length
+                    const bookedActive = activeScanners.filter(
+                      (s) => s.status === 'active' && dayBookings.some((b) => b.scanner_id === s.id),
+                    ).length
+                    const freeCount = Math.max(0, activeCount - bookedActive)
+
+                    return (
+                      <button
+                        key={day.toISOString()}
+                        type="button"
+                        onClick={() => openDayDetail(day)}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation()
+                          openBooking(day)
+                        }}
+                        className={cn(
+                          'flex flex-col border-e border-border/70 p-1.5 text-right transition-colors last:border-e-0',
+                          inMonth ? 'bg-surface' : 'bg-surface-elevated/40',
+                          isToday && 'bg-secondary/5',
+                          isSelected && 'ring-inset ring-1 ring-secondary/40',
+                          'hover:bg-secondary/5',
+                        )}
+                        style={{ minHeight: bodyMinHeight }}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span
+                            className={cn(
+                              'inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[12px] font-semibold tabular-nums',
+                              inMonth ? 'text-foreground' : 'text-muted/50',
+                              isToday && 'bg-secondary text-white',
+                            )}
+                          >
+                            {format(day, 'd')}
+                          </span>
+                          {inMonth && activeCount > 0 && (
+                            <span
+                              className={cn(
+                                'rounded px-1 text-[9px] font-medium tabular-nums',
+                                freeCount === 0
+                                  ? 'bg-danger/15 text-danger'
+                                  : freeCount === activeCount
+                                    ? 'bg-success/15 text-success'
+                                    : 'bg-warning/15 text-warning',
+                              )}
+                              title={`${freeCount} פנויים מתוך ${activeCount}`}
+                            >
+                              {freeCount}/{activeCount}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
-                <div className="flex flex-wrap gap-0.5">
-                  {uniqueScannerIds.slice(0, 4).map((sid) => (
-                    <span
-                      key={sid}
-                      title={scannerLabel(sid)}
-                      className={cn('h-1.5 w-3 rounded-full', colorForScanner(scanners, sid))}
-                    />
-                  ))}
-                  {uniqueScannerIds.length > 4 && (
-                    <span className="text-[9px] text-muted">+{uniqueScannerIds.length - 4}</span>
-                  )}
-                </div>
-                {dayBookings.length > 0 && (
-                  <p className="mt-1 truncate text-[10px] text-muted">
-                    {dayBookings[0].customer_name}
-                    {dayBookings.length > 1 ? ` +${dayBookings.length - 1}` : ''}
-                  </p>
+
+                {/* Continuous family bars overlaid across the week cubes */}
+                {weekBars.length > 0 && (
+                  <div
+                    className="pointer-events-none absolute inset-x-0 bottom-1 top-8 grid gap-x-0 gap-y-0.5 px-0.5"
+                    style={{
+                      gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                      gridTemplateRows: `repeat(${laneCount}, 22px)`,
+                    }}
+                  >
+                    {weekBars.map((bar) => {
+                      const continuesBefore = bar.booking.start_date < dayISO(week[0])
+                      const continuesAfter = bar.booking.end_date > dayISO(week[6])
+                      const multiDay = bar.booking.start_date !== bar.booking.end_date
+                      return (
+                        <button
+                          key={`${bar.booking.id}-${bar.start}`}
+                          type="button"
+                          onClick={() => openBookingDetail(bar.booking)}
+                          title={`${bar.booking.customer_name} · ${formatRange(bar.booking.start_date, bar.booking.end_date)} · ${scannerLabel(bar.booking.scanner_id)}`}
+                          className={cn(
+                            'pointer-events-auto z-10 flex items-center overflow-hidden px-1.5 text-start text-[10px] font-semibold leading-none shadow-sm transition-opacity hover:opacity-90',
+                            colorForFamily(bar.booking.customer_name),
+                            multiDay && continuesBefore && continuesAfter && 'rounded-none',
+                            multiDay && continuesBefore && !continuesAfter && 'rounded-e-md rounded-s-none',
+                            multiDay && !continuesBefore && continuesAfter && 'rounded-s-md rounded-e-none',
+                            (!multiDay || (!continuesBefore && !continuesAfter)) && 'rounded-md',
+                          )}
+                          style={{
+                            gridColumn: `${bar.start + 1} / span ${bar.span}`,
+                            gridRow: bar.lane + 1,
+                          }}
+                        >
+                          <span className="truncate">{bar.booking.customer_name}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 )}
-              </button>
+              </div>
             )
           })}
         </div>
 
         <p className="mt-3 text-[11px] text-muted">
-          לחיצה על יום מציגה פרטים · לחיצה כפולה פותחת הזמנה חדשה לתאריך
+          בקוביה מוצגות כל המשפחות · משפחה לכמה ימים מופיעה כרצועה צבעונית מתמשכת · לחיצה פותחת את כל הפרטים · לחיצה כפולה להזמנה חדשה
         </p>
       </Card>
 
-      {/* Resource timeline: scanners × days of month */}
+      {/* Resource timeline: scanners × days of month with continuous family bars */}
       <Card className="overflow-x-auto p-4">
         <h3 className="mb-3 text-sm font-semibold text-foreground">לוח תפוסה לפי סורק</h3>
         {activeScanners.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted">אין סורקים עדיין. הוסף סורק חדש.</p>
         ) : (
-          <div className="min-w-[640px] space-y-2">
-            {(() => {
-              const daysInMonth = eachDayOfInterval({
-                start: startOfMonth(month),
-                end: endOfMonth(month),
-              })
+          <div className="min-w-[720px] space-y-2">
+            <div
+              className="grid gap-0.5"
+              style={{ gridTemplateColumns: `132px repeat(${daysInMonth.length}, minmax(18px, 1fr))` }}
+            >
+              <div />
+              {daysInMonth.map((d) => (
+                <div
+                  key={d.toISOString()}
+                  className={cn(
+                    'text-center text-[9px] text-muted',
+                    isSameDay(d, new Date()) && 'font-bold text-secondary',
+                  )}
+                >
+                  {format(d, 'd')}
+                </div>
+              ))}
+            </div>
+            {activeScanners.map((scanner) => {
+              const scannerBookings = bookings.filter((b) => b.scanner_id === scanner.id)
+              const spans = scannerBookings
+                .map((booking) => {
+                  const span = bookingSpanInDays(booking, daysInMonth)
+                  return span ? { booking, ...span } : null
+                })
+                .filter((x): x is { booking: ScannerBooking; start: number; span: number } => x != null)
+
               return (
-                <>
+                <div key={scanner.id} className="flex items-stretch gap-0.5">
+                  <div className="flex w-[132px] shrink-0 items-center gap-1.5 truncate pe-2 text-xs text-foreground">
+                    <span
+                      className={cn('h-2 w-2 shrink-0 rounded-full', colorForScanner(scanners, scanner.id))}
+                    />
+                    <span className="truncate font-medium">{scanner.name}</span>
+                  </div>
                   <div
-                    className="grid gap-0.5"
-                    style={{ gridTemplateColumns: `120px repeat(${daysInMonth.length}, minmax(14px, 1fr))` }}
+                    className="grid h-9 min-w-0 flex-1 gap-0.5"
+                    style={{ gridTemplateColumns: `repeat(${daysInMonth.length}, minmax(0, 1fr))` }}
                   >
-                    <div />
-                    {daysInMonth.map((d) => (
-                      <div
-                        key={d.toISOString()}
+                    {daysInMonth.map((d, dayIdx) => {
+                      const occupied = spans.some(
+                        (s) => dayIdx >= s.start && dayIdx < s.start + s.span,
+                      )
+                      return (
+                        <button
+                          key={d.toISOString()}
+                          type="button"
+                          onClick={() => openDayDetail(d)}
+                          className={cn(
+                            'row-start-1 rounded-sm border border-border/30 bg-surface-elevated/50',
+                            isSameDay(d, new Date()) && 'ring-1 ring-secondary/40',
+                          )}
+                          style={{ gridColumn: dayIdx + 1 }}
+                          title={occupied ? 'לחיצה לפרטי היום' : 'פנוי — לחיצה לפרטי היום'}
+                          aria-label={`${format(d, 'd/M')}${occupied ? '' : ' פנוי'}`}
+                        />
+                      )
+                    })}
+                    {spans.map(({ booking, start, span }) => (
+                      <button
+                        key={booking.id}
+                        type="button"
+                        onClick={() => openBookingDetail(booking)}
+                        title={`${booking.customer_name} · ${formatRange(booking.start_date, booking.end_date)}`}
                         className={cn(
-                          'text-center text-[9px] text-muted',
-                          isSameDay(d, new Date()) && 'font-bold text-secondary',
+                          'z-10 row-start-1 mx-px flex items-center overflow-hidden rounded-md px-1 text-start text-[10px] font-semibold transition-opacity hover:opacity-90',
+                          colorForFamily(booking.customer_name),
                         )}
+                        style={{ gridColumn: `${start + 1} / span ${span}` }}
                       >
-                        {format(d, 'd')}
-                      </div>
+                        <span className="truncate">{booking.customer_name}</span>
+                      </button>
                     ))}
                   </div>
-                  {activeScanners.map((scanner) => (
-                    <div
-                      key={scanner.id}
-                      className="grid gap-0.5 items-stretch"
-                      style={{ gridTemplateColumns: `120px repeat(${daysInMonth.length}, minmax(14px, 1fr))` }}
-                    >
-                      <div className="flex items-center gap-1.5 truncate pe-2 text-xs text-foreground">
-                        <span
-                          className={cn('h-2 w-2 shrink-0 rounded-full', colorForScanner(scanners, scanner.id))}
-                        />
-                        <span className="truncate">{scanner.name}</span>
-                      </div>
-                      {daysInMonth.map((d) => {
-                        const occupied = bookings.some(
-                          (b) => b.scanner_id === scanner.id && bookingCoversDay(b, d),
-                        )
-                        return (
-                          <div
-                            key={d.toISOString()}
-                            title={
-                              occupied
-                                ? bookings
-                                    .filter((b) => b.scanner_id === scanner.id && bookingCoversDay(b, d))
-                                    .map((b) => b.customer_name)
-                                    .join(', ')
-                                : 'פנוי'
-                            }
-                            className={cn(
-                              'h-7 rounded-sm border border-border/40',
-                              occupied
-                                ? colorForScanner(scanners, scanner.id)
-                                : 'bg-surface-elevated/50',
-                            )}
-                          />
-                        )
-                      })}
-                    </div>
-                  ))}
-                </>
+                </div>
               )
-            })()}
+            })}
           </div>
         )}
       </Card>
 
-      {selectedDay && (
-        <Card className="p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-foreground">
-              {format(selectedDay, 'EEEE, d בMMMM yyyy', { locale: he })}
-            </h3>
-            <Button size="sm" variant="outline" onClick={() => openBooking(selectedDay)}>
+      <Modal
+        isOpen={!!selectedDay}
+        onClose={closeDetail}
+        title={
+          selectedDay
+            ? format(selectedDay, 'EEEE, d בMMMM yyyy', { locale: he })
+            : 'פרטי יום'
+        }
+        dialogClassName="max-w-lg"
+      >
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (selectedDay) openBooking(selectedDay)
+              }}
+            >
               <Plus size={14} className="ml-1" />
               הזמנה ליום זה
             </Button>
@@ -567,20 +778,41 @@ export function AdminScannersPanel() {
           {selectedDayBookings.length === 0 ? (
             <p className="text-sm text-muted">אין הזמנות ביום זה — כל הסורקים הפעילים פנויים.</p>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {selectedDayBookings.map((b) => (
-                <BookingRow
+                <BookingDetailCard
                   key={b.id}
                   booking={b}
-                  label={scannerLabel(b.scanner_id)}
-                  color={colorForScanner(scanners, b.scanner_id)}
-                  onDelete={() => setDeleteBookingId(b.id)}
+                  scannerLabel={scannerLabel(b.scanner_id)}
+                  onDelete={() => {
+                    closeDetail()
+                    setDeleteBookingId(b.id)
+                  }}
                 />
               ))}
             </div>
           )}
-        </Card>
-      )}
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!selectedBooking}
+        onClose={closeDetail}
+        title={selectedBooking?.customer_name ?? 'פרטי הזמנה'}
+        dialogClassName="max-w-lg"
+      >
+        {selectedBooking && (
+          <BookingDetailCard
+            booking={selectedBooking}
+            scannerLabel={scannerLabel(selectedBooking.scanner_id)}
+            onDelete={() => {
+              const id = selectedBooking.id
+              closeDetail()
+              setDeleteBookingId(id)
+            }}
+          />
+        )}
+      </Modal>
 
       <div>
         <h3 className="mb-3 text-sm font-semibold text-foreground">
@@ -771,6 +1003,52 @@ function BookingRow({
       >
         <Trash2 size={14} />
       </button>
+    </div>
+  )
+}
+
+function BookingDetailCard({
+  booking,
+  scannerLabel,
+  onDelete,
+}: {
+  booking: ScannerBooking
+  scannerLabel: string
+  onDelete: () => void
+}) {
+  const rows: { label: string; value: string }[] = [
+    { label: 'משפחה / לקוח', value: booking.customer_name },
+    { label: 'סורק', value: scannerLabel },
+    { label: 'תאריכים', value: formatRange(booking.start_date, booking.end_date) },
+  ]
+  if (booking.customer_phone) rows.push({ label: 'טלפון', value: booking.customer_phone })
+  if (booking.customer_email) rows.push({ label: 'אימייל', value: booking.customer_email })
+  if (booking.notes) rows.push({ label: 'הערות', value: booking.notes })
+
+  return (
+    <div className="space-y-3">
+      <div
+        className={cn(
+          'rounded-lg px-3 py-2 text-sm font-semibold',
+          colorForFamily(booking.customer_name),
+        )}
+      >
+        {booking.customer_name}
+      </div>
+      <dl className="space-y-2 rounded-xl border border-border bg-surface px-3 py-3">
+        {rows.map((row) => (
+          <div key={row.label} className="grid grid-cols-[7rem_1fr] gap-2 text-sm">
+            <dt className="text-muted">{row.label}</dt>
+            <dd className="font-medium text-foreground break-words">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="flex justify-end">
+        <Button type="button" variant="outline" size="sm" onClick={onDelete}>
+          <Trash2 size={14} className="ml-1" />
+          מחק הזמנה
+        </Button>
+      </div>
     </div>
   )
 }
