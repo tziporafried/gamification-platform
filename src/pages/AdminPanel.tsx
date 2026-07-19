@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download, Search } from 'lucide-react'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download, Search } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
@@ -33,7 +33,7 @@ const DEFAULT_ADMIN_TAB: AdminTab = 'analytics'
 /** Usage-first order; development todos last. */
 const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
   { id: 'analytics', label: 'אנליטיקות', icon: BarChart3 },
-  { id: 'upgrade-requests', label: 'פניות הפעלה', icon: MessageSquare },
+  { id: 'upgrade-requests', label: 'לידים', icon: MessageSquare },
   { id: 'customers', label: 'לקוחות', icon: Users },
   { id: 'events', label: 'אירועים', icon: Calendar },
   { id: 'scanners', label: 'לוח הזמנות', icon: CalendarDays },
@@ -153,13 +153,6 @@ const LIMIT_LABELS: Record<string, string> = {
   trial_contact: 'פנייה כללית (התנסות)',
 }
 
-const LIMIT_TYPE_TO_PLAN: Record<string, string> = {
-  'plan-independent': 'independent',
-  'plan-full': 'full',
-  'plan-offline': 'offline',
-  'plan-organizations': 'organizations',
-}
-
 const PLAN_OPTIONS: { value: UserPlan; label: string; color: string }[] = [
   { value: 'free',          label: 'התנסות',    color: 'text-gray-400' },
   { value: 'independent',   label: 'עצמאי',      color: 'text-blue-400' },
@@ -197,7 +190,6 @@ export function AdminPanel() {
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [loadingRequests, setLoadingRequests] = useState(false)
   const [newRequestCount, setNewRequestCount] = useState(0)
-  const [upgradingEventId, setUpgradingEventId] = useState<string | null>(null)
   const [exportingRequestId, setExportingRequestId] = useState<string | null>(null)
   const [offlineExportError, setOfflineExportError] = useState<{ requestId: string; message: string } | null>(null)
   const [usersError, setUsersError] = useState<string | null>(null)
@@ -223,9 +215,7 @@ export function AdminPanel() {
 
   // Trial → activation confirm (clears trial runtime data once)
   const [pendingPlanChange, setPendingPlanChange] = useState<{
-    kind: 'dropdown' | 'request'
-    userId?: string
-    requestId?: string
+    userId: string
     eventId: string
     previousPlan: UserPlan
     newPlan: UserPlan
@@ -371,7 +361,7 @@ export function AdminPanel() {
   async function applyEventPlanChange(
     eventId: string,
     newPlan: UserPlan,
-    opts?: { userId?: string; requestId?: string },
+    opts?: { userId?: string },
   ) {
     const { data, error } = await supabase.rpc('update_event_plan', {
       p_event_id: eventId,
@@ -397,10 +387,6 @@ export function AdminPanel() {
       })
     }
 
-    if (opts?.requestId) {
-      await updateRequestStatus(opts.requestId, 'closed')
-    }
-
     if (result?.previous_plan === 'free' && result.new_plan && result.new_plan !== 'free') {
       trackTrialActivated(eventId, result.new_plan, result.trial_scans_used ?? 0)
       if (result.did_reset) {
@@ -419,7 +405,7 @@ export function AdminPanel() {
   ) {
     if (previousPlan === newPlan) return
     if (previousPlan === 'free' && newPlan !== 'free') {
-      setPendingPlanChange({ kind: 'dropdown', userId, eventId, previousPlan, newPlan })
+      setPendingPlanChange({ userId, eventId, previousPlan, newPlan })
       return
     }
     void (async () => {
@@ -433,16 +419,6 @@ export function AdminPanel() {
     const events = userEvents.get(userId)
     const previousPlan = events?.find(e => e.event_id === eventId)?.plan ?? 'free'
     requestEventPlanChange(userId, eventId, previousPlan, newPlan)
-  }
-
-  function upgradeEventPlan(requestId: string, eventId: string, newPlan: string) {
-    setPendingPlanChange({
-      kind: 'request',
-      requestId,
-      eventId,
-      previousPlan: 'free',
-      newPlan: newPlan as UserPlan,
-    })
   }
 
   // The offline plan has no self-service download — the file is built here and
@@ -465,16 +441,10 @@ export function AdminPanel() {
   async function confirmPendingPlanChange() {
     if (!pendingPlanChange) return
     setActivatingPlan(true)
-    const { kind, userId, requestId, eventId, newPlan } = pendingPlanChange
-    if (kind === 'dropdown') {
-      setUpdatingEventPlanId(eventId)
-      await applyEventPlanChange(eventId, newPlan, { userId })
-      setUpdatingEventPlanId(null)
-    } else {
-      setUpgradingEventId(requestId!)
-      await applyEventPlanChange(eventId, newPlan, { requestId })
-      setUpgradingEventId(null)
-    }
+    const { userId, eventId, newPlan } = pendingPlanChange
+    setUpdatingEventPlanId(eventId)
+    await applyEventPlanChange(eventId, newPlan, { userId })
+    setUpdatingEventPlanId(null)
     setActivatingPlan(false)
     setPendingPlanChange(null)
   }
@@ -494,25 +464,6 @@ export function AdminPanel() {
     setExpandedUsers(prev => { const next = new Set(prev); next.delete(deleteTarget.user_id); return next })
     setDeletingUser(false)
     setDeleteTarget(null)
-  }
-
-  async function updateRequestStatus(requestId: string, newStatus: string) {
-    const { error } = await supabase
-      .from('contact_upgrade_requests')
-      .update({ status: newStatus })
-      .eq('id', requestId)
-    if (!error) {
-      setRequests(prev => prev.map(r =>
-        r.id === requestId ? { ...r, status: newStatus } : r
-      ))
-      setNewRequestCount((prev) => {
-        const req = requests.find((r) => r.id === requestId)
-        if (!req) return prev
-        if (req.status === 'new' && newStatus !== 'new') return Math.max(0, prev - 1)
-        if (req.status !== 'new' && newStatus === 'new') return prev + 1
-        return prev
-      })
-    }
   }
 
   async function deleteRequest() {
@@ -762,14 +713,14 @@ export function AdminPanel() {
         ) : requests.length === 0 ? (
           <EmptyState
             icon={<MessageSquare size={32} />}
-            title="אין פניות הפעלה"
-            description="פניות חדשות להפעלת אירוע יופיעו כאן"
+            title="אין לידים"
+            description="לידים חדשים יופיעו כאן"
           />
         ) : (
           <>
             <SectionHeader
               icon={<MessageSquare size={18} className="text-accent" />}
-              title={`${requests.length} פניות הפעלה${newRequestCount > 0 ? ` (${newRequestCount} חדשות)` : ''}`}
+              title={`${requests.length} לידים${newRequestCount > 0 ? ` (${newRequestCount} חדשים)` : ''}`}
               className="mb-6"
             />
 
@@ -806,23 +757,6 @@ export function AdminPanel() {
                       </div>
 
                       <div className="flex flex-col items-end gap-2 shrink-0">
-                        {req.event_id && LIMIT_TYPE_TO_PLAN[req.limit_type] && (
-                          req.status === 'closed' ? (
-                            <span className="flex items-center gap-1.5 text-sm font-semibold text-success">
-                              <CheckCircle size={16} />
-                              הופעל
-                            </span>
-                          ) : (
-                            <Button
-                              variant="gradient"
-                              size="sm"
-                              loading={upgradingEventId === req.id}
-                              onClick={() => upgradeEventPlan(req.id, req.event_id!, LIMIT_TYPE_TO_PLAN[req.limit_type])}
-                            >
-                              הפעל אירוע
-                            </Button>
-                          )
-                        )}
                         {req.event_id && req.limit_type === 'plan-offline' && (
                           <Button
                             variant="outline"
@@ -844,7 +778,7 @@ export function AdminPanel() {
                         )}
                         <button
                           onClick={() => { setDeleteRequestError(null); setDeleteRequestTarget(req) }}
-                          title="מחק פנייה"
+                          title="מחק ליד"
                           className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted hover:bg-danger/10 hover:text-danger transition-colors"
                         >
                           <Trash2 size={14} />
@@ -906,18 +840,18 @@ export function AdminPanel() {
       <ConfirmModal
         isOpen={deleteRequestTarget !== null}
         onClose={() => setDeleteRequestTarget(null)}
-        title="מחיקת פניית הפעלה"
-        confirmLabel="מחק פנייה"
+        title="מחיקת ליד"
+        confirmLabel="מחק ליד"
         onConfirm={deleteRequest}
         loading={deletingRequest}
       >
         <div className="space-y-3 text-sm">
           <p className="font-semibold text-foreground">
-            האם אתה בטוח שאתה רוצה למחוק את הפנייה של{' '}
+            האם אתה בטוח שאתה רוצה למחוק את הליד של{' '}
             {deleteRequestTarget?.full_name || deleteRequestTarget?.email}?
           </p>
           <p className="text-muted">
-            הפנייה תימחק לצמיתות ולא ניתן יהיה לשחזר אותה.
+            הליד יימחק לצמיתות ולא ניתן יהיה לשחזר אותו.
           </p>
           {deleteRequestError && (
             <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-danger">

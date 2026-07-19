@@ -8,6 +8,8 @@ import {
   RotateCcw,
   Pencil,
   Search,
+  Download,
+  Sparkles,
 } from 'lucide-react'
 import {
   addMonths,
@@ -46,8 +48,23 @@ import { Modal } from '@/components/ui/Modal'
 import { ModalActions } from '@/components/ui/ModalActions'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
+import { TrialActivationResetModal } from '@/components/TrialActivationResetModal'
+import { exportOfflineGame, OfflineExportError } from '@/lib/offline/exportGame'
+import { trackTrialActivated, trackTrialDataReset } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
-import type { BookingPackage, Scanner, ScannerBooking } from '@/types'
+import type { BookingPackage, Scanner, ScannerBooking, UserPlan } from '@/types'
+
+const EVENT_PLAN_OPTIONS: { value: UserPlan; label: string }[] = [
+  { value: 'free', label: 'התנסות' },
+  { value: 'independent', label: 'עצמאי' },
+  { value: 'full', label: 'מלא' },
+  { value: 'offline', label: 'ללא אינטרנט' },
+  { value: 'organizations', label: 'ארגונים' },
+]
+
+function eventPlanLabel(plan: string | undefined): string {
+  return EVENT_PLAN_OPTIONS.find((p) => p.value === plan)?.label ?? plan ?? '—'
+}
 
 type EventOption = {
   id: string
@@ -248,6 +265,17 @@ export function AdminScannersPanel() {
   const [resetting, setResetting] = useState(false)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [selectedBooking, setSelectedBooking] = useState<ScannerBooking | null>(null)
+  const [eventActionsBooking, setEventActionsBooking] = useState<ScannerBooking | null>(null)
+  const [updatingEventPlan, setUpdatingEventPlan] = useState(false)
+  const [exportingOffline, setExportingOffline] = useState(false)
+  const [offlineExportError, setOfflineExportError] = useState<string | null>(null)
+  const [eventActionError, setEventActionError] = useState<string | null>(null)
+  const [pendingPlanChange, setPendingPlanChange] = useState<{
+    eventId: string
+    previousPlan: UserPlan
+    newPlan: UserPlan
+  } | null>(null)
+  const [activatingPlan, setActivatingPlan] = useState(false)
 
   // booking form
   const [formScannerId, setFormScannerId] = useState('')
@@ -765,6 +793,95 @@ export function AdminScannersPanel() {
     setSuccessMsg(`הסריקות אופסו למשחק "${eventName}". נמחקו ${deleted} רשומות ניקוד.`)
   }
 
+  function openEventActions(booking: ScannerBooking) {
+    if (!booking.event_id) return
+    setEventActionError(null)
+    setOfflineExportError(null)
+    setEventActionsBooking(booking)
+  }
+
+  function closeEventActions() {
+    if (updatingEventPlan || exportingOffline || activatingPlan) return
+    setEventActionsBooking(null)
+    setEventActionError(null)
+    setOfflineExportError(null)
+  }
+
+  async function applyEventPlanChange(eventId: string, newPlan: UserPlan) {
+    const { data, error: rpcError } = await supabase.rpc('update_event_plan', {
+      p_event_id: eventId,
+      p_new_plan: newPlan,
+    })
+    if (rpcError) return { ok: false as const, error: rpcError.message }
+
+    const result = data as {
+      previous_plan?: string
+      new_plan?: string
+      did_reset?: boolean
+      trial_scans_used?: number
+    } | null
+
+    setEvents((prev) =>
+      prev.map((ev) => (ev.id === eventId ? { ...ev, plan: newPlan } : ev)),
+    )
+
+    if (result?.previous_plan === 'free' && result.new_plan && result.new_plan !== 'free') {
+      trackTrialActivated(eventId, result.new_plan, result.trial_scans_used ?? 0)
+      if (result.did_reset) trackTrialDataReset(eventId)
+    }
+
+    return { ok: true as const }
+  }
+
+  function requestEventPlanChange(eventId: string, previousPlan: UserPlan, newPlan: UserPlan) {
+    if (previousPlan === newPlan) return
+    setEventActionError(null)
+    if (previousPlan === 'free' && newPlan !== 'free') {
+      setPendingPlanChange({ eventId, previousPlan, newPlan })
+      return
+    }
+    void (async () => {
+      setUpdatingEventPlan(true)
+      const result = await applyEventPlanChange(eventId, newPlan)
+      setUpdatingEventPlan(false)
+      if (!result.ok) {
+        setEventActionError(result.error)
+        return
+      }
+      setSuccessMsg(`תוכנית המשחק עודכנה ל־${eventPlanLabel(newPlan)}`)
+    })()
+  }
+
+  async function confirmPendingPlanChange() {
+    if (!pendingPlanChange) return
+    setActivatingPlan(true)
+    const { eventId, newPlan } = pendingPlanChange
+    setUpdatingEventPlan(true)
+    const result = await applyEventPlanChange(eventId, newPlan)
+    setUpdatingEventPlan(false)
+    setActivatingPlan(false)
+    setPendingPlanChange(null)
+    if (!result.ok) {
+      setEventActionError(result.error)
+      return
+    }
+    setSuccessMsg(`תוכנית המשחק עודכנה ל־${eventPlanLabel(newPlan)}`)
+  }
+
+  async function downloadLinkedOfflineGame(eventId: string) {
+    setOfflineExportError(null)
+    setExportingOffline(true)
+    try {
+      await exportOfflineGame(eventId)
+    } catch (err) {
+      setOfflineExportError(
+        err instanceof OfflineExportError ? err.message : 'ההורדה נכשלה. נסו שוב.',
+      )
+    } finally {
+      setExportingOffline(false)
+    }
+  }
+
   async function submitScanner(e: React.FormEvent) {
     e.preventDefault()
     if (saving) return
@@ -1174,16 +1291,7 @@ export function AdminScannersPanel() {
                     closeDetail()
                     setDeleteBookingId(b.id)
                   }}
-                  onResetScans={
-                    b.event_id
-                      ? () => {
-                          setResetEventTarget({
-                            eventId: b.event_id!,
-                            eventName: eventLabel(b.event_id),
-                          })
-                        }
-                      : undefined
-                  }
+                  onEventActions={b.event_id ? () => openEventActions(b) : undefined}
                 />
               ))}
             </div>
@@ -1209,14 +1317,9 @@ export function AdminScannersPanel() {
               closeDetail()
               setDeleteBookingId(id)
             }}
-            onResetScans={
+            onEventActions={
               selectedBooking.event_id
-                ? () => {
-                    setResetEventTarget({
-                      eventId: selectedBooking.event_id!,
-                      eventName: eventLabel(selectedBooking.event_id),
-                    })
-                  }
+                ? () => openEventActions(selectedBooking)
                 : undefined
             }
           />
@@ -1243,13 +1346,14 @@ export function AdminScannersPanel() {
                 color={colorForScanner(scanners, b.scanner_id)}
                 onEdit={() => openEditBooking(b)}
                 onDelete={() => setDeleteBookingId(b.id)}
+                onEventActions={b.event_id ? () => openEventActions(b) : undefined}
               />
             ))}
           </div>
         )}
       </div>
 
-      {error && !bookingOpen && !scannerOpen && (
+      {error && !bookingOpen && !scannerOpen && !eventActionsBooking && (
         <p className="text-sm text-danger">{error}</p>
       )}
       {successMsg && !bookingOpen && !scannerOpen && (
@@ -1537,6 +1641,108 @@ export function AdminScannersPanel() {
         </form>
       </Modal>
 
+      <Modal
+        isOpen={!!eventActionsBooking}
+        onClose={closeEventActions}
+        title="פעולות על האירוע"
+        dialogClassName="max-w-md"
+      >
+        {eventActionsBooking?.event_id && (() => {
+          const eventId = eventActionsBooking.event_id
+          const linked = eventById.get(eventId)
+          const currentPlan = (linked?.plan ?? 'free') as UserPlan
+          return (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border bg-surface px-3 py-3 text-sm">
+                <p className="font-medium text-foreground">
+                  {eventLabel(eventId)}
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  {eventActionsBooking.customer_name}
+                  {linked?.owner_email ? ` · ${linked.owner_email}` : ''}
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  תוכנית נוכחית: {eventPlanLabel(currentPlan)}
+                </p>
+              </div>
+
+              <Select
+                id="event-actions-plan"
+                label="שדרוג תוכנית"
+                value={currentPlan}
+                disabled={updatingEventPlan || activatingPlan}
+                onChange={(e) =>
+                  requestEventPlanChange(eventId, currentPlan, e.target.value as UserPlan)
+                }
+              >
+                {EVENT_PLAN_OPTIONS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </Select>
+
+              {currentPlan === 'offline' && (
+                <div className="space-y-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    loading={exportingOffline}
+                    onClick={() => void downloadLinkedOfflineGame(eventId)}
+                    title="הורידו את קובץ המשחק ושלחו אותו ללקוח"
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      <Download size={14} />
+                      הורד קובץ אופליין
+                    </span>
+                  </Button>
+                  {offlineExportError && (
+                    <p role="alert" className="text-xs font-semibold text-danger">
+                      {offlineExportError}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setResetEventTarget({
+                    eventId,
+                    eventName: eventLabel(eventId),
+                  })
+                }}
+              >
+                <RotateCcw size={14} className="ml-1" />
+                איפוס סריקות למשחק
+              </Button>
+
+              {eventActionError && (
+                <p className="text-sm text-danger">{eventActionError}</p>
+              )}
+
+              <ModalActions>
+                <Button type="button" variant="outline" onClick={closeEventActions}>
+                  סגור
+                </Button>
+              </ModalActions>
+            </div>
+          )
+        })()}
+      </Modal>
+
+      <TrialActivationResetModal
+        isOpen={pendingPlanChange !== null}
+        onClose={() => {
+          if (!activatingPlan) setPendingPlanChange(null)
+        }}
+        onContinue={() => void confirmPendingPlanChange()}
+        loading={activatingPlan}
+      />
+
       <ConfirmModal
         isOpen={!!deleteBookingId}
         onClose={() => setDeleteBookingId(null)}
@@ -1572,6 +1778,7 @@ function BookingRow({
   color,
   onEdit,
   onDelete,
+  onEventActions,
 }: {
   booking: ScannerBooking
   label: string
@@ -1580,6 +1787,7 @@ function BookingRow({
   color: string
   onEdit: () => void
   onDelete: () => void
+  onEventActions?: () => void
 }) {
   return (
     <div className="group/row flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 transition-all hover:border-secondary/40">
@@ -1596,6 +1804,16 @@ function BookingRow({
           {booking.customer_phone ? ` · ${booking.customer_phone}` : ''}
         </p>
       </div>
+      {onEventActions && (
+        <button
+          type="button"
+          onClick={onEventActions}
+          className="shrink-0 rounded-lg p-1 text-muted opacity-0 transition-all hover:bg-surface-elevated hover:text-foreground group-hover/row:opacity-100"
+          title="פעולות על האירוע"
+        >
+          <Sparkles size={14} />
+        </button>
+      )}
       <button
         type="button"
         onClick={onEdit}
@@ -1623,7 +1841,7 @@ function BookingDetailCard({
   packageLabel,
   onEdit,
   onDelete,
-  onResetScans,
+  onEventActions,
 }: {
   booking: ScannerBooking
   scannerLabel: string
@@ -1631,7 +1849,7 @@ function BookingDetailCard({
   packageLabel: string
   onEdit: () => void
   onDelete: () => void
-  onResetScans?: () => void
+  onEventActions?: () => void
 }) {
   const rows: { label: string; value: string }[] = [
     { label: 'משפחה / לקוח', value: booking.customer_name },
@@ -1674,16 +1892,16 @@ function BookingDetailCard({
         ))}
       </dl>
       <div className="flex flex-wrap justify-end gap-2">
+        {onEventActions && (
+          <Button type="button" variant="outline" size="sm" onClick={onEventActions}>
+            <Sparkles size={14} className="ml-1" />
+            פעולות על האירוע
+          </Button>
+        )}
         <Button type="button" variant="outline" size="sm" onClick={onEdit}>
           <Pencil size={14} className="ml-1" />
           עריכה
         </Button>
-        {onResetScans && (
-          <Button type="button" variant="outline" size="sm" onClick={onResetScans}>
-            <RotateCcw size={14} className="ml-1" />
-            איפוס סריקות למשחק
-          </Button>
-        )}
         <Button type="button" variant="outline" size="sm" onClick={onDelete}>
           <Trash2 size={14} className="ml-1" />
           מחק הזמנה
