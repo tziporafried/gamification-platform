@@ -614,7 +614,7 @@ export function AdminScannersPanel() {
         error:
           msg.includes('entry_type') || msg.includes('check')
             ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PAID_FUTURE_INCOME.sql)'
-            : msg || 'שגיאה ביצירת רשומת הכנסה',
+            : msg || 'שגיאה בשמירת התשלום',
       }
     }
     return { id: financeRow.id as string, error: null, createdNew: true }
@@ -699,7 +699,7 @@ export function AdminScannersPanel() {
         existingId: existingDebtFinanceId,
         entryType: 'future_income',
         amount: debt,
-        description: `${base} · חוב`,
+        description: `${base} · לא שולם`,
       })
       if (res.error) {
         for (const id of createdIds) await deleteFinanceEntry(id)
@@ -890,12 +890,12 @@ export function AdminScannersPanel() {
       const debt = Math.max(0, amount - amountPaid)
       if (amountPaid > 0 && debt > 0) {
         setSuccessMsg(
-          `ההזמנה נשמרה · שולם ${formatPriceIls(amountPaid)} · חוב ${formatPriceIls(debt)}`,
+          `ההזמנה נשמרה · שולם ${formatPriceIls(amountPaid)} · לא שולם ${formatPriceIls(debt)}`,
         )
       } else if (amountPaid > 0) {
-        setSuccessMsg(`ההזמנה נשמרה והוספה הכנסה של ${formatPriceIls(amountPaid)}`)
+        setSuccessMsg(`ההזמנה נשמרה · שולם`)
       } else {
-        setSuccessMsg(`ההזמנה נשמרה והוספה הכנסה עתידית של ${formatPriceIls(amount)}`)
+        setSuccessMsg(`ההזמנה נשמרה · לא שולם`)
       }
     }
   }
@@ -1574,7 +1574,7 @@ export function AdminScannersPanel() {
               ) : formPackage === 'organizations' ? (
                 <span>לחבילת ארגונים הזיני מחיר ידנית</span>
               ) : (
-                <span>המחיר יתווסף אוטומטית כהכנסה</span>
+                <span>בחרי חבילה ותאריכים לחישוב מחיר</span>
               )}
               {suggestedPrice != null && !autoPrice && (
                 <button
@@ -1604,11 +1604,11 @@ export function AdminScannersPanel() {
                   if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(paid)) return null
                   const debt = Math.max(0, total - paid)
                   if (debt <= 0) {
-                    return <p className="text-[11px] text-muted">שולם במלואו</p>
+                    return <p className="text-[11px] text-muted">שולם</p>
                   }
                   return (
                     <p className="text-[11px] text-muted">
-                      חוב: {formatPriceIls(debt)} · יישמר כהכנסה עתידית
+                      לא שולם: {formatPriceIls(debt)}
                     </p>
                   )
                 })()}
@@ -1897,7 +1897,7 @@ export function AdminScannersPanel() {
         onClose={() => setDeleteBookingId(null)}
         onConfirm={confirmDeleteBooking}
         title="מחיקת הזמנה"
-        description="למחוק את ההזמנה? רשומות הכנסה/חוב מקושרות יימחקו גם כן. סורק משויך יהיה פנוי שוב."
+        description="למחוק את ההזמנה? סורק משויך יהיה פנוי שוב."
         confirmLabel="מחק"
         loading={deleting}
       />
@@ -1953,12 +1953,12 @@ function BookingDetailCard({
             : booking.is_paid && total != null
               ? total
               : 0
-        if (paid <= 0) return 'לא שולם · הכנסה עתידית'
+        if (paid <= 0) return 'לא שולם'
         if (total != null && paid < total) {
-          return `שולם ${formatPriceIls(paid)} · חוב ${formatPriceIls(total - paid)}`
+          return `שולם ${formatPriceIls(paid)} · לא שולם ${formatPriceIls(total - paid)}`
         }
         return paid > 0 && total != null && paid >= total
-          ? 'שולם במלואו'
+          ? 'שולם'
           : `שולם ${formatPriceIls(paid)}`
       })(),
     },
