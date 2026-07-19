@@ -7,6 +7,7 @@ import {
   CalendarPlus,
   RotateCcw,
   Pencil,
+  Search,
 } from 'lucide-react'
 import {
   addMonths,
@@ -53,6 +54,13 @@ type EventOption = {
   name: string
   plan: string
   status: string
+  owner_admin_id: string
+  owner_name: string
+  owner_email: string
+}
+
+function ownerDisplayName(displayName: string | null, email: string) {
+  return displayName?.trim() || email.split('@')[0] || email
 }
 
 const SCANNER_COLORS = [
@@ -244,6 +252,8 @@ export function AdminScannersPanel() {
   // booking form
   const [formScannerId, setFormScannerId] = useState('')
   const [formEventId, setFormEventId] = useState('')
+  const [eventOwnerQuery, setEventOwnerQuery] = useState('')
+  const [eventGameQuery, setEventGameQuery] = useState('')
   const [formPackage, setFormPackage] = useState<BookablePackage | ''>('')
   const [formAmount, setFormAmount] = useState('')
   const [formPaid, setFormPaid] = useState(false)
@@ -273,7 +283,7 @@ export function AdminScannersPanel() {
           .order('start_date', { ascending: true }),
         supabase
           .from('events')
-          .select('id, name, plan, status')
+          .select('id, name, plan, status, owner_admin_id')
           .neq('status', 'archived')
           .order('created_at', { ascending: false }),
         fetchTemplateDraftEventIds(),
@@ -285,11 +295,42 @@ export function AdminScannersPanel() {
       if (bookingsRes.error) setError(bookingsRes.error.message)
       else setBookings((bookingsRes.data as ScannerBooking[]) ?? [])
 
-      if (eventsRes.error) setError(eventsRes.error.message)
-      else {
+      if (eventsRes.error) {
+        setError(eventsRes.error.message)
+        setEvents([])
+      } else {
         const draftSet = new Set(draftIds)
+        const rows = ((eventsRes.data as Array<{
+          id: string
+          name: string
+          plan: string
+          status: string
+          owner_admin_id: string
+        }>) ?? []).filter((e) => !draftSet.has(e.id))
+        const ownerIds = [...new Set(rows.map((r) => r.owner_admin_id))]
+        const { data: profiles } = ownerIds.length
+          ? await supabase
+              .from('user_profiles')
+              .select('id, display_name, email')
+              .in('id', ownerIds)
+          : { data: [] as { id: string; display_name: string | null; email: string }[] }
+        const profileMap = new Map(
+          (profiles ?? []).map((p) => [p.id, p]),
+        )
         setEvents(
-          ((eventsRes.data as EventOption[]) ?? []).filter((e) => !draftSet.has(e.id)),
+          rows.map((row) => {
+            const profile = profileMap.get(row.owner_admin_id)
+            const email = profile?.email ?? ''
+            return {
+              id: row.id,
+              name: row.name,
+              plan: row.plan,
+              status: row.status,
+              owner_admin_id: row.owner_admin_id,
+              owner_name: profile ? ownerDisplayName(profile.display_name, email) : 'משתמש לא ידוע',
+              owner_email: email,
+            }
+          }),
         )
       }
 
@@ -320,6 +361,34 @@ export function AdminScannersPanel() {
     for (const e of events) map.set(e.id, e.name?.trim() || 'משחק ללא שם')
     return map
   }, [events])
+
+  const eventById = useMemo(() => {
+    const map = new Map<string, EventOption>()
+    for (const e of events) map.set(e.id, e)
+    return map
+  }, [events])
+
+  const filteredLinkEvents = useMemo(() => {
+    const oq = eventOwnerQuery.trim().toLowerCase()
+    const gq = eventGameQuery.trim().toLowerCase()
+    const selected = formEventId ? eventById.get(formEventId) : undefined
+
+    if (!oq) return selected ? [selected] : []
+
+    const list = events.filter((ev) => {
+      const ownerHit =
+        ev.owner_email.toLowerCase().includes(oq) ||
+        ev.owner_name.toLowerCase().includes(oq)
+      if (!ownerHit) return false
+      if (!gq) return true
+      return (ev.name?.trim() || 'משחק ללא שם').toLowerCase().includes(gq)
+    })
+
+    if (selected && !list.some((ev) => ev.id === selected.id)) {
+      return [selected, ...list]
+    }
+    return list
+  }, [events, eventOwnerQuery, eventGameQuery, formEventId, eventById])
 
   const suggestedPrice = useMemo(() => {
     if (!formPackage) return null
@@ -388,6 +457,8 @@ export function AdminScannersPanel() {
     setBookingOpen(false)
     setEditingBookingId(null)
     setAutoPrice(true)
+    setEventOwnerQuery('')
+    setEventGameQuery('')
   }
 
   function openBooking(day?: Date) {
@@ -402,6 +473,8 @@ export function AdminScannersPanel() {
     setFormNotes('')
     setFormScannerId('')
     setFormEventId('')
+    setEventOwnerQuery('')
+    setEventGameQuery('')
     setFormPackage('full')
     setFormAmount(String(calculateBookingPrice('full', iso, iso) ?? 150))
     setFormPaid(false)
@@ -421,6 +494,13 @@ export function AdminScannersPanel() {
     setFormNotes(booking.notes ?? '')
     setFormScannerId(booking.scanner_id ?? '')
     setFormEventId(booking.event_id ?? '')
+    const linked = booking.event_id ? eventById.get(booking.event_id) : undefined
+    setEventOwnerQuery(
+      linked
+        ? linked.owner_email || linked.owner_name
+        : booking.customer_email?.trim() || booking.customer_name || '',
+    )
+    setEventGameQuery('')
     setFormPackage((booking.booking_package as BookablePackage | null) ?? 'full')
     setFormAmount(booking.amount != null ? String(booking.amount) : '')
     setFormPaid(booking.is_paid ?? false)
@@ -436,10 +516,11 @@ export function AdminScannersPanel() {
 
   function onFormEventChange(eventId: string) {
     setFormEventId(eventId)
-    if (!formCustomer.trim() && eventId) {
-      const name = eventNameById.get(eventId)
-      if (name) setFormCustomer(name)
-    }
+    if (!eventId) return
+    const ev = eventById.get(eventId)
+    if (!ev) return
+    if (!formCustomer.trim()) setFormCustomer(ev.owner_name)
+    if (!formEmail.trim() && ev.owner_email) setFormEmail(ev.owner_email)
   }
 
   function openAddScanner() {
@@ -1291,19 +1372,76 @@ export function AdminScannersPanel() {
               </p>
             </div>
           </div>
-          <Select
-            id="booking-event"
-            label="משחק מקושר (אופציונלי)"
-            value={formEventId}
-            onChange={(e) => onFormEventChange(e.target.value)}
-          >
-            <option value="">ללא קישור למשחק</option>
-            {events.map((ev) => (
-              <option key={ev.id} value={ev.id}>
-                {ev.name?.trim() || 'משחק ללא שם'}
-              </option>
-            ))}
-          </Select>
+          <div className="space-y-2 rounded-xl border border-border bg-surface-elevated/30 p-3">
+            <p className="text-sm font-medium text-foreground">משחק מקושר (אופציונלי)</p>
+            <div className="relative">
+              <Search
+                size={15}
+                className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted"
+              />
+              <input
+                type="search"
+                value={eventOwnerQuery}
+                onChange={(e) => {
+                  setEventOwnerQuery(e.target.value)
+                  if (formEventId) {
+                    const selected = eventById.get(formEventId)
+                    const q = e.target.value.trim().toLowerCase()
+                    if (
+                      selected &&
+                      q &&
+                      !selected.owner_email.toLowerCase().includes(q) &&
+                      !selected.owner_name.toLowerCase().includes(q)
+                    ) {
+                      setFormEventId('')
+                    }
+                  }
+                }}
+                placeholder="חיפוש לקוח לפי שם או אימייל..."
+                aria-label="חיפוש לקוח לשיוך משחק"
+                className="w-full rounded-xl border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand-500"
+              />
+            </div>
+            <div className="relative">
+              <Search
+                size={15}
+                className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted"
+              />
+              <input
+                type="search"
+                value={eventGameQuery}
+                onChange={(e) => setEventGameQuery(e.target.value)}
+                placeholder="חיפוש משחק לפי שם..."
+                aria-label="חיפוש משחק לשיוך"
+                disabled={!eventOwnerQuery.trim() && !formEventId}
+                className="w-full rounded-xl border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-50"
+              />
+            </div>
+            <Select
+              id="booking-event"
+              aria-label="בחירת משחק מקושר"
+              value={formEventId}
+              onChange={(e) => onFormEventChange(e.target.value)}
+              disabled={!eventOwnerQuery.trim() && !formEventId}
+            >
+              <option value="">ללא קישור למשחק</option>
+              {filteredLinkEvents.map((ev) => (
+                <option key={ev.id} value={ev.id}>
+                  {(ev.name?.trim() || 'משחק ללא שם')}
+                  {' · '}
+                  {ev.owner_name}
+                  {ev.owner_email ? ` · ${ev.owner_email}` : ''}
+                </option>
+              ))}
+            </Select>
+            {!eventOwnerQuery.trim() && !formEventId ? (
+              <p className="text-[11px] text-muted">הקלידי שם או אימייל כדי לראות משחקים לשייך.</p>
+            ) : filteredLinkEvents.length === 0 ? (
+              <p className="text-[11px] text-muted">לא נמצאו משחקים לחיפוש הזה.</p>
+            ) : (
+              <p className="text-[11px] text-muted">{filteredLinkEvents.length} משחקים תואמים</p>
+            )}
+          </div>
           <Select
             id="booking-scanner"
             label="סורק (אופציונלי)"
