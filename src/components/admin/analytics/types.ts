@@ -146,7 +146,7 @@ export interface AnalyticsDashboardData {
   timeSeries: {
     days: AnalyticsTimeSeriesDay[]
     unavailable: boolean
-    /** hour when range is a single day (e.g. today); otherwise day */
+    /** hour when startDate === endDate (today or any single custom day); otherwise day */
     granularity?: 'day' | 'hour'
   }
   trafficSources: {
