@@ -137,6 +137,7 @@ The CSP in `vercel.json` is tuned to what the app actually loads:
 | `script-src https://*.googletagmanager.com` | GA4 gtag.js, loaded by `initAnalytics()` |
 | `style-src 'unsafe-inline'` | Tailwind + framer-motion inline styles |
 | `font-src https://fonts.gstatic.com` | Heebo webfont |
+| `img-src … https://*.supabase.co` | Event logos from Supabase Storage (`event-logos`) |
 | `connect-src …supabase… + GA/Google collect hosts` | Supabase + GA4 `g/collect` (incl. regional + `google.com`) |
 | `frame-ancestors 'none'` | app is never embedded — no iframes in the codebase |
 
