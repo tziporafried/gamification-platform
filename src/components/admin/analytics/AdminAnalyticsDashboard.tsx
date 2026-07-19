@@ -98,14 +98,23 @@ function isAffiliateLikeSource(source: string): boolean {
   return /^[a-z0-9_-]{1,12}$/i.test(code)
 }
 
-function todayYmd() {
-  return new Date().toISOString().slice(0, 10)
+const REPORT_TIMEZONE = 'Asia/Jerusalem'
+
+function ymdInJerusalem(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: REPORT_TIMEZONE }).format(date)
 }
 
+function todayYmd() {
+  return ymdInJerusalem(new Date())
+}
+
+/** Calendar days back from “today” in Israel (matches ga4-dashboard). */
 function daysAgoYmd(days: number) {
-  const d = new Date()
-  d.setDate(d.getDate() - days)
-  return d.toISOString().slice(0, 10)
+  const [y, m, d] = todayYmd().split('-').map(Number)
+  // Noon UTC on that Israel calendar day, then step back — avoids DST edge flips.
+  const cursor = new Date(Date.UTC(y, m - 1, d, 12, 0, 0))
+  cursor.setUTCDate(cursor.getUTCDate() - days)
+  return ymdInJerusalem(cursor)
 }
 
 function presetToRange(preset: AnalyticsDatePreset): { start: string; end: string } {
@@ -259,11 +268,16 @@ export function AdminAnalyticsDashboard() {
 
   function handlePresetChange(next: AnalyticsDatePreset) {
     setPreset(next)
-    if (next !== 'custom') {
-      const range = presetToRange(next)
-      setStartDate(range.start)
-      setEndDate(range.end)
+    if (next === 'custom') {
+      // Default custom → single day (hourly chart), not the previous multi-day span.
+      const day = todayYmd()
+      setStartDate(day)
+      setEndDate(day)
+      return
     }
+    const range = presetToRange(next)
+    setStartDate(range.start)
+    setEndDate(range.end)
   }
 
   function handleCustomChange(start: string, end: string) {
@@ -568,6 +582,7 @@ export function AdminAnalyticsDashboard() {
               onPresetChange={handlePresetChange}
               onCustomChange={handleCustomChange}
               disabled={loading}
+              maxDate={todayYmd()}
             />
           </div>
           <div className="min-w-[14rem] shrink-0 space-y-3 border-t border-border/60 pt-2 lg:max-w-sm lg:border-t-0 lg:border-s lg:ps-4 lg:pt-0">
