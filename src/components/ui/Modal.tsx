@@ -42,6 +42,15 @@ export function Modal({
   const restoreFocusRef = useRef<HTMLElement | null>(null)
   const titleId = useId()
 
+  // Escape reads onClose through a ref so the effect below can depend on
+  // `isOpen` alone. Callers routinely pass an inline/unmemoized handler, and a
+  // new identity per render would re-run the effect — stealing focus back to
+  // the first control on every keystroke.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
+
   useEffect(() => {
     if (!isOpen) return
 
@@ -62,7 +71,7 @@ export function Modal({
 
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        onClose()
+        onCloseRef.current()
         return
       }
       if (e.key !== 'Tab') return
@@ -100,7 +109,7 @@ export function Modal({
       // Return focus to whatever opened the dialog (WCAG 2.4.3).
       restoreFocusRef.current?.focus?.()
     }
-  }, [isOpen, onClose])
+  }, [isOpen])
 
   if (!isOpen) return null
 
