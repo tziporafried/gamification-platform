@@ -7,6 +7,7 @@ import {
   ScanLine,
   CalendarPlus,
   RotateCcw,
+  Pencil,
 } from 'lucide-react'
 import {
   addMonths,
@@ -26,6 +27,16 @@ import { he } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
+import {
+  BOOKABLE_PACKAGES,
+  BOOKING_PACKAGE_LABELS,
+  EXTRA_DAY_PRICE,
+  PLAN_BASE_PRICES,
+  bookingDayCount,
+  calculateBookingPrice,
+  formatPriceIls,
+  type BookablePackage,
+} from '@/lib/planPrices'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -36,7 +47,7 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { KpiCard } from '@/components/admin/analytics/KpiCard'
 import { cn } from '@/lib/utils'
-import type { Scanner, ScannerBooking } from '@/types'
+import type { BookingPackage, Scanner, ScannerBooking } from '@/types'
 
 type EventOption = {
   id: string
@@ -201,6 +212,9 @@ export function AdminScannersPanel() {
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
 
   const [bookingOpen, setBookingOpen] = useState(false)
+  const [editingBookingId, setEditingBookingId] = useState<string | null>(null)
+  /** When true, package/date changes recalculate the amount field. */
+  const [autoPrice, setAutoPrice] = useState(true)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleteBookingId, setDeleteBookingId] = useState<string | null>(null)
@@ -216,6 +230,8 @@ export function AdminScannersPanel() {
   // booking form
   const [formScannerId, setFormScannerId] = useState('')
   const [formEventId, setFormEventId] = useState('')
+  const [formPackage, setFormPackage] = useState<BookablePackage | ''>('')
+  const [formAmount, setFormAmount] = useState('')
   const [formStart, setFormStart] = useState(todayISO)
   const [formEnd, setFormEnd] = useState(todayISO)
   const [formCustomer, setFormCustomer] = useState('')
@@ -306,6 +322,27 @@ export function AdminScannersPanel() {
     return map
   }, [events])
 
+  const suggestedPrice = useMemo(() => {
+    if (!formPackage) return null
+    return calculateBookingPrice(formPackage, formStart, formEnd)
+  }, [formPackage, formStart, formEnd])
+
+  // Recalculate amount when package or dates change (unless editing with a locked manual price).
+  useEffect(() => {
+    if (!autoPrice) return
+    if (!formPackage) {
+      setFormAmount('')
+      return
+    }
+    const suggested = calculateBookingPrice(formPackage, formStart, formEnd)
+    setFormAmount(suggested != null ? String(suggested) : '')
+  }, [formPackage, formStart, formEnd, autoPrice])
+
+  const editingBooking = useMemo(
+    () => (editingBookingId ? bookings.find((b) => b.id === editingBookingId) ?? null : null),
+    [bookings, editingBookingId],
+  )
+
   const selectedDayBookings = useMemo(() => {
     if (!selectedDay) return []
     return bookings.filter((b) => bookingCoversDay(b, selectedDay))
@@ -348,8 +385,16 @@ export function AdminScannersPanel() {
     setSelectedBooking(null)
   }
 
+  function closeBookingForm() {
+    setBookingOpen(false)
+    setEditingBookingId(null)
+    setAutoPrice(true)
+  }
+
   function openBooking(day?: Date) {
     const iso = day ? format(day, 'yyyy-MM-dd') : todayISO()
+    setEditingBookingId(null)
+    setAutoPrice(true)
     setFormStart(iso)
     setFormEnd(iso)
     setFormCustomer('')
@@ -358,9 +403,34 @@ export function AdminScannersPanel() {
     setFormNotes('')
     setFormScannerId('')
     setFormEventId('')
+    setFormPackage('full')
+    setFormAmount(String(calculateBookingPrice('full', iso, iso) ?? 150))
     setError(null)
     closeDetail()
     setBookingOpen(true)
+  }
+
+  function openEditBooking(booking: ScannerBooking) {
+    setEditingBookingId(booking.id)
+    setAutoPrice(false)
+    setFormStart(booking.start_date)
+    setFormEnd(booking.end_date)
+    setFormCustomer(booking.customer_name)
+    setFormPhone(booking.customer_phone ?? '')
+    setFormEmail(booking.customer_email ?? '')
+    setFormNotes(booking.notes ?? '')
+    setFormScannerId(booking.scanner_id ?? '')
+    setFormEventId(booking.event_id ?? '')
+    setFormPackage((booking.booking_package as BookablePackage | null) ?? 'full')
+    setFormAmount(booking.amount != null ? String(booking.amount) : '')
+    setError(null)
+    closeDetail()
+    setBookingOpen(true)
+  }
+
+  function packageLabel(pkg: string | null | undefined): string {
+    if (!pkg) return 'ללא חבילה'
+    return BOOKING_PACKAGE_LABELS[pkg as BookablePackage] ?? pkg
   }
 
   function onFormEventChange(eventId: string) {
@@ -380,6 +450,59 @@ export function AdminScannersPanel() {
     setScannerOpen(true)
   }
 
+  async function syncBookingFinance(options: {
+    existingFinanceId: string | null
+    amount: number | null
+    customer: string
+    pkg: BookablePackage
+  }): Promise<{ financeEntryId: string | null; error: string | null }> {
+    const { existingFinanceId, amount, customer, pkg } = options
+    const pkgLabel = BOOKING_PACKAGE_LABELS[pkg]
+    const description = `הזמנה: ${customer} · ${pkgLabel} · ${formatRange(formStart, formEnd)}`
+
+    if (amount != null && amount > 0) {
+      if (existingFinanceId) {
+        const { error: financeError } = await supabase
+          .from('admin_finance_entries')
+          .update({
+            amount,
+            description,
+            entry_date: formStart,
+          })
+          .eq('id', existingFinanceId)
+        if (financeError) return { financeEntryId: null, error: financeError.message }
+        return { financeEntryId: existingFinanceId, error: null }
+      }
+
+      if (!user) return { financeEntryId: null, error: 'יש להתחבר מחדש' }
+      const { data: financeRow, error: financeError } = await supabase
+        .from('admin_finance_entries')
+        .insert({
+          entry_type: 'income',
+          amount,
+          description,
+          entry_date: formStart,
+          admin_user_id: null,
+          created_by: user.id,
+        })
+        .select('id')
+        .single()
+      if (financeError || !financeRow) {
+        return { financeEntryId: null, error: financeError?.message ?? 'שגיאה ביצירת רשומת הכנסה' }
+      }
+      return { financeEntryId: financeRow.id as string, error: null }
+    }
+
+    if (existingFinanceId) {
+      const { error: financeError } = await supabase
+        .from('admin_finance_entries')
+        .delete()
+        .eq('id', existingFinanceId)
+      if (financeError) return { financeEntryId: null, error: financeError.message }
+    }
+    return { financeEntryId: null, error: null }
+  }
+
   async function submitBooking(e: React.FormEvent) {
     e.preventDefault()
     if (!user || saving) return
@@ -389,14 +512,26 @@ export function AdminScannersPanel() {
       setError('יש להזין שם לקוח / משפחה')
       return
     }
+    if (!formPackage) {
+      setError('יש לבחור חבילה')
+      return
+    }
     if (formEnd < formStart) {
       setError('תאריך סיום חייב להיות אחרי תאריך התחלה')
+      return
+    }
+
+    const amountRaw = formAmount.trim()
+    const amount = amountRaw === '' ? null : Number(amountRaw)
+    if (amountRaw !== '' && (!Number.isFinite(amount) || (amount as number) < 0)) {
+      setError('מחיר לא תקין')
       return
     }
 
     if (formScannerId) {
       const conflict = bookings.some(
         (b) =>
+          b.id !== editingBookingId &&
           b.scanner_id === formScannerId &&
           rangesOverlap(formStart, formEnd, b.start_date, b.end_date),
       )
@@ -408,29 +543,85 @@ export function AdminScannersPanel() {
 
     setSaving(true)
     setError(null)
+    setSuccessMsg(null)
+
+    const existingFinanceId = editingBooking?.finance_entry_id ?? null
+    const { financeEntryId, error: financeSyncError } = await syncBookingFinance({
+      existingFinanceId,
+      amount,
+      customer,
+      pkg: formPackage,
+    })
+    if (financeSyncError) {
+      setError(financeSyncError)
+      setSaving(false)
+      return
+    }
+
+    const payload = {
+      scanner_id: formScannerId || null,
+      event_id: formEventId || null,
+      booking_package: formPackage as BookingPackage,
+      amount,
+      finance_entry_id: financeEntryId,
+      start_date: formStart,
+      end_date: formEnd,
+      customer_name: customer,
+      customer_phone: formPhone.trim() || null,
+      customer_email: formEmail.trim() || null,
+      notes: formNotes.trim() || null,
+    }
+
+    if (editingBookingId) {
+      const { data, error: updateError } = await supabase
+        .from('scanner_bookings')
+        .update(payload)
+        .eq('id', editingBookingId)
+        .select()
+        .single()
+
+      if (updateError || !data) {
+        setError(
+          updateError?.message?.includes('scanner_bookings_no_overlap') ||
+            updateError?.message?.includes('exclusion')
+            ? 'הסורק כבר תפוס בתאריכים האלה'
+            : updateError?.message ?? 'שגיאה בעדכון',
+        )
+        setSaving(false)
+        return
+      }
+
+      setBookings((prev) =>
+        prev
+          .map((b) => (b.id === editingBookingId ? (data as ScannerBooking) : b))
+          .sort((a, b) => a.start_date.localeCompare(b.start_date)),
+      )
+      setSaving(false)
+      closeBookingForm()
+      setSuccessMsg('ההזמנה עודכנה')
+      return
+    }
 
     const { data, error: insertError } = await supabase
       .from('scanner_bookings')
       .insert({
-        scanner_id: formScannerId || null,
-        event_id: formEventId || null,
-        start_date: formStart,
-        end_date: formEnd,
-        customer_name: customer,
-        customer_phone: formPhone.trim() || null,
-        customer_email: formEmail.trim() || null,
-        notes: formNotes.trim() || null,
+        ...payload,
         created_by: user.id,
       })
       .select()
       .single()
 
     if (insertError || !data) {
+      if (financeEntryId && !existingFinanceId) {
+        await supabase.from('admin_finance_entries').delete().eq('id', financeEntryId)
+      }
       const msg = insertError?.message ?? 'שגיאה בשמירה'
       setError(
         msg.includes('scanner_bookings_no_overlap') || msg.includes('exclusion')
           ? 'הסורק כבר תפוס בתאריכים האלה'
-          : msg,
+          : msg.includes('booking_package') || msg.includes('amount') || msg.includes('finance_entry')
+            ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PACKAGE_PRICE.sql)'
+            : msg,
       )
       setSaving(false)
       return
@@ -442,7 +633,10 @@ export function AdminScannersPanel() {
       ),
     )
     setSaving(false)
-    setBookingOpen(false)
+    closeBookingForm()
+    if (financeEntryId && amount != null) {
+      setSuccessMsg(`ההזמנה נשמרה והוספה הכנסה של ${formatPriceIls(amount)}`)
+    }
   }
 
   async function confirmResetEventScans() {
@@ -510,6 +704,8 @@ export function AdminScannersPanel() {
     if (!deleteBookingId || deleting) return
     setDeleting(true)
     const prev = bookings
+    const target = bookings.find((b) => b.id === deleteBookingId)
+    const financeId = target?.finance_entry_id ?? null
     setBookings((items) => items.filter((b) => b.id !== deleteBookingId))
     const { error: delError } = await supabase
       .from('scanner_bookings')
@@ -518,6 +714,12 @@ export function AdminScannersPanel() {
     if (delError) {
       setBookings(prev)
       setError(delError.message)
+      setDeleteBookingId(null)
+      setDeleting(false)
+      return
+    }
+    if (financeId) {
+      await supabase.from('admin_finance_entries').delete().eq('id', financeId)
     }
     setDeleteBookingId(null)
     setDeleting(false)
@@ -873,6 +1075,8 @@ export function AdminScannersPanel() {
                   booking={b}
                   scannerLabel={scannerLabel(b.scanner_id)}
                   eventLabel={eventLabel(b.event_id)}
+                  packageLabel={packageLabel(b.booking_package)}
+                  onEdit={() => openEditBooking(b)}
                   onDelete={() => {
                     closeDetail()
                     setDeleteBookingId(b.id)
@@ -905,6 +1109,8 @@ export function AdminScannersPanel() {
             booking={selectedBooking}
             scannerLabel={scannerLabel(selectedBooking.scanner_id)}
             eventLabel={eventLabel(selectedBooking.event_id)}
+            packageLabel={packageLabel(selectedBooking.booking_package)}
+            onEdit={() => openEditBooking(selectedBooking)}
             onDelete={() => {
               const id = selectedBooking.id
               closeDetail()
@@ -940,7 +1146,9 @@ export function AdminScannersPanel() {
                 booking={b}
                 label={scannerLabel(b.scanner_id)}
                 eventLabel={eventLabel(b.event_id)}
+                packageLabel={packageLabel(b.booking_package)}
                 color={colorForScanner(scanners, b.scanner_id)}
+                onEdit={() => openEditBooking(b)}
                 onDelete={() => setDeleteBookingId(b.id)}
               />
             ))}
@@ -957,11 +1165,105 @@ export function AdminScannersPanel() {
 
       <Modal
         isOpen={bookingOpen}
-        onClose={() => setBookingOpen(false)}
-        title="הזמנה חדשה"
+        onClose={closeBookingForm}
+        title={editingBookingId ? 'עריכת הזמנה' : 'הזמנה חדשה'}
         dialogClassName="max-w-md"
       >
         <form onSubmit={submitBooking} className="space-y-3">
+          <Select
+            id="booking-package"
+            label="חבילה"
+            value={formPackage}
+            onChange={(e) => {
+              setAutoPrice(true)
+              setFormPackage(e.target.value as BookablePackage | '')
+            }}
+            required
+          >
+            <option value="" disabled>
+              בחרי חבילה…
+            </option>
+            {BOOKABLE_PACKAGES.map((pkg) => {
+              const base = PLAN_BASE_PRICES[pkg]
+              const suffix =
+                base == null
+                  ? ' — מחיר לפי הסכם'
+                  : pkg === 'full' || pkg === 'offline'
+                    ? ` — מ-${formatPriceIls(base)} (+${formatPriceIls(EXTRA_DAY_PRICE)} ליום נוסף)`
+                    : ` — ${formatPriceIls(base)}`
+              return (
+                <option key={pkg} value={pkg}>
+                  {BOOKING_PACKAGE_LABELS[pkg]}
+                  {suffix}
+                </option>
+              )
+            })}
+          </Select>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              id="booking-start"
+              label="מתאריך"
+              type="date"
+              value={formStart}
+              onChange={(e) => {
+                setAutoPrice(true)
+                setFormStart(e.target.value)
+              }}
+              required
+            />
+            <Input
+              id="booking-end"
+              label="עד תאריך"
+              type="date"
+              value={formEnd}
+              onChange={(e) => {
+                setAutoPrice(true)
+                setFormEnd(e.target.value)
+              }}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              id="booking-amount"
+              label="מחיר (₪)"
+              type="number"
+              min={0}
+              step="1"
+              value={formAmount}
+              onChange={(e) => {
+                setAutoPrice(false)
+                setFormAmount(e.target.value)
+              }}
+              placeholder={suggestedPrice != null ? String(suggestedPrice) : 'הזיני מחיר'}
+            />
+            <div className="flex flex-col justify-end gap-1 pb-1 text-[11px] text-muted">
+              {formPackage && suggestedPrice != null ? (
+                <span>
+                  חישוב אוטומטי: {formatPriceIls(suggestedPrice)}
+                  {(formPackage === 'full' || formPackage === 'offline') &&
+                    ` · ${bookingDayCount(formStart, formEnd)} ימים`}
+                  {!autoPrice &&
+                    formAmount.trim() !== '' &&
+                    Number(formAmount) !== suggestedPrice &&
+                    ' · עודכן ידנית'}
+                </span>
+              ) : formPackage === 'organizations' ? (
+                <span>לחבילת ארגונים הזיני מחיר ידנית</span>
+              ) : (
+                <span>המחיר יתווסף אוטומטית כהכנסה</span>
+              )}
+              {suggestedPrice != null && !autoPrice && (
+                <button
+                  type="button"
+                  className="text-start text-secondary hover:underline"
+                  onClick={() => setAutoPrice(true)}
+                >
+                  חשב מחדש לפי חבילה ותאריכים
+                </button>
+              )}
+            </div>
+          </div>
           <Select
             id="booking-event"
             label="משחק מקושר (אופציונלי)"
@@ -989,24 +1291,6 @@ export function AdminScannersPanel() {
               </option>
             ))}
           </Select>
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              id="booking-start"
-              label="מתאריך"
-              type="date"
-              value={formStart}
-              onChange={(e) => setFormStart(e.target.value)}
-              required
-            />
-            <Input
-              id="booking-end"
-              label="עד תאריך"
-              type="date"
-              value={formEnd}
-              onChange={(e) => setFormEnd(e.target.value)}
-              required
-            />
-          </div>
           <Input
             id="booking-customer"
             label="שם לקוח / משפחה"
@@ -1039,9 +1323,9 @@ export function AdminScannersPanel() {
           {error && <p className="text-sm text-danger">{error}</p>}
           <ModalActions>
             <Button type="submit" loading={saving}>
-              שמור הזמנה
+              {editingBookingId ? 'שמור שינויים' : 'שמור הזמנה'}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setBookingOpen(false)}>
+            <Button type="button" variant="outline" onClick={closeBookingForm}>
               ביטול
             </Button>
           </ModalActions>
@@ -1093,7 +1377,7 @@ export function AdminScannersPanel() {
         onClose={() => setDeleteBookingId(null)}
         onConfirm={confirmDeleteBooking}
         title="מחיקת הזמנה"
-        description="למחוק את ההזמנה? אם היה סורק משויך — הוא יהיה פנוי שוב בתאריכים האלה."
+        description="למחוק את ההזמנה? אם נוצרה רשומת הכנסה מקושרת — גם היא תימחק. סורק משויך יהיה פנוי שוב."
         confirmLabel="מחק"
         loading={deleting}
       />
@@ -1119,13 +1403,17 @@ function BookingRow({
   booking,
   label,
   eventLabel,
+  packageLabel,
   color,
+  onEdit,
   onDelete,
 }: {
   booking: ScannerBooking
   label: string
   eventLabel: string
+  packageLabel: string
   color: string
+  onEdit: () => void
   onDelete: () => void
 }) {
   return (
@@ -1134,10 +1422,21 @@ function BookingRow({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm text-foreground">{booking.customer_name}</p>
         <p className="mt-0.5 text-[11px] text-muted">
+          {packageLabel}
+          {booking.amount != null ? ` · ${formatPriceIls(Number(booking.amount))}` : ''}
+          {' · '}
           {eventLabel} · {label} · {formatRange(booking.start_date, booking.end_date)}
           {booking.customer_phone ? ` · ${booking.customer_phone}` : ''}
         </p>
       </div>
+      <button
+        type="button"
+        onClick={onEdit}
+        className="shrink-0 rounded-lg p-1 text-muted opacity-0 transition-all hover:bg-surface-elevated hover:text-foreground group-hover/row:opacity-100"
+        title="עריכה"
+      >
+        <Pencil size={14} />
+      </button>
       <button
         type="button"
         onClick={onDelete}
@@ -1154,21 +1453,31 @@ function BookingDetailCard({
   booking,
   scannerLabel,
   eventLabel,
+  packageLabel,
+  onEdit,
   onDelete,
   onResetScans,
 }: {
   booking: ScannerBooking
   scannerLabel: string
   eventLabel: string
+  packageLabel: string
+  onEdit: () => void
   onDelete: () => void
   onResetScans?: () => void
 }) {
   const rows: { label: string; value: string }[] = [
     { label: 'משפחה / לקוח', value: booking.customer_name },
+    { label: 'חבילה', value: packageLabel },
+    {
+      label: 'מחיר',
+      value: booking.amount != null ? formatPriceIls(Number(booking.amount)) : '—',
+    },
     { label: 'משחק', value: eventLabel },
     { label: 'סורק', value: scannerLabel },
     { label: 'תאריכים', value: formatRange(booking.start_date, booking.end_date) },
   ]
+  if (booking.finance_entry_id) rows.push({ label: 'הכנסה', value: 'נרשמה בלוח הכספים' })
   if (booking.customer_phone) rows.push({ label: 'טלפון', value: booking.customer_phone })
   if (booking.customer_email) rows.push({ label: 'אימייל', value: booking.customer_email })
   if (booking.notes) rows.push({ label: 'הערות', value: booking.notes })
@@ -1192,6 +1501,10 @@ function BookingDetailCard({
         ))}
       </dl>
       <div className="flex flex-wrap justify-end gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={onEdit}>
+          <Pencil size={14} className="ml-1" />
+          עריכה
+        </Button>
         {onResetScans && (
           <Button type="button" variant="outline" size="sm" onClick={onResetScans}>
             <RotateCcw size={14} className="ml-1" />

@@ -297,6 +297,8 @@ export interface Scanner {
   updated_at: string;
 }
 
+export type BookingPackage = 'independent' | 'full' | 'offline' | 'organizations';
+
 export interface ScannerBooking {
   id: string;
   /** Null = booking without a physical scanner (calendar / game only). */
@@ -308,6 +310,12 @@ export interface ScannerBooking {
   customer_email: string | null;
   /** Linked game event. */
   event_id: string | null;
+  /** Commercial package for this booking. */
+  booking_package: BookingPackage | null;
+  /** Amount charged (may differ from list price). */
+  amount: number | null;
+  /** Linked income row in admin_finance_entries. */
+  finance_entry_id: string | null;
   notes: string | null;
   created_by: string;
   created_at: string;
