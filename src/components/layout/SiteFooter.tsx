@@ -15,7 +15,7 @@ export function SiteFooter() {
         <span className="text-border" aria-hidden="true">|</span>
         <Link
           to="/terms"
-          className="font-medium text-muted underline-offset-2 transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+          className="font-medium text-muted underline-offset-2 transition-colors hover:text-primary-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
         >
           תנאי שימוש
         </Link>

@@ -31,8 +31,8 @@ export const PLAN_BADGE_COLORS: Record<string, string> = {
 
 /** Tailwind class presets for admin status pills (non-dynamic) */
 export const ADMIN_STATUS_CLASSES: Record<string, string> = {
-  new: 'text-warning bg-warning/10',
-  contacted: 'text-secondary bg-secondary/10',
+  new: 'text-warning-text bg-warning/10',
+  contacted: 'text-secondary-text bg-secondary/10',
   closed: 'text-muted bg-muted/10',
 }
 

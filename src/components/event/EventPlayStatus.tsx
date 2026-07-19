@@ -15,25 +15,25 @@ export const EVENT_PLAY_STATUS: Record<EventPlayStatusKind, EventPlayStatusConfi
     label: 'בהכנה',
     color: 'var(--color-warning)',
     dotClass: 'bg-warning',
-    textClass: 'text-warning',
+    textClass: 'text-warning-text',
   },
   settings_complete: {
     label: 'ההגדרות הושלמו',
     color: 'var(--color-secondary)',
     dotClass: 'bg-secondary',
-    textClass: 'text-secondary',
+    textClass: 'text-secondary-text',
   },
   ready: {
     label: 'מוכן למשחק',
     color: 'var(--color-secondary)',
     dotClass: 'bg-secondary',
-    textClass: 'text-secondary',
+    textClass: 'text-secondary-text',
   },
   active: {
     label: 'משחק פעיל',
     color: 'var(--color-success)',
     dotClass: 'bg-success',
-    textClass: 'text-success',
+    textClass: 'text-success-text',
   },
 }
 

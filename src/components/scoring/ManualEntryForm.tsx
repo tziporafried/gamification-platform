@@ -348,7 +348,7 @@ export function ManualEntryForm({
         renderSelected={a => (
           <>
             <span className="truncate text-sm font-medium text-foreground">{a.name}</span>
-            <span className={cn('text-[10px] font-bold', a.points >= 0 ? 'text-success' : 'text-danger')}>
+            <span className={cn('text-[10px] font-bold', a.points >= 0 ? 'text-success-text' : 'text-danger-text')}>
               {a.points >= 0 ? '+' : ''}{a.points}
             </span>
           </>
@@ -356,7 +356,7 @@ export function ManualEntryForm({
         renderOption={a => (
           <div className="flex w-full items-center justify-between gap-2">
             <span className="truncate">{a.name}</span>
-            <span className={cn('shrink-0 text-xs font-bold', a.points >= 0 ? 'text-success' : 'text-danger')}>
+            <span className={cn('shrink-0 text-xs font-bold', a.points >= 0 ? 'text-success-text' : 'text-danger-text')}>
               {a.points >= 0 ? '+' : ''}{a.points}
             </span>
           </div>

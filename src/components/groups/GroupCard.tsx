@@ -31,7 +31,7 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [panelStyle, setPanelStyle] = useState<{ top: number; left: number } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const nameTextRef = useRef<HTMLParagraphElement>(null)
+  const nameTextRef = useRef<HTMLButtonElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -149,12 +149,9 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
             hidden={editing || !isNameTruncated}
             className="w-full"
           >
-            <div
-              className="flex h-9 w-full min-w-0 items-center justify-center"
-              onClick={() => !editing && setEditing(true)}
-              role="button"
-              tabIndex={-1}
-            >
+            {/* Real button when idle — role="button" with tabIndex={-1}
+                announced a control keyboard users could not reach. */}
+            <div className="flex h-9 w-full min-w-0 items-center justify-center">
               {editing ? (
                 <input
                   ref={inputRef}
@@ -170,12 +167,15 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
                   )}
                 />
               ) : (
-                <p
+                <button
                   ref={nameTextRef}
-                  className="w-full min-w-0 truncate text-xl font-bold leading-9 cursor-text hover:text-white/90 transition-colors"
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  aria-label={`עריכת שם הקבוצה: ${name}`}
+                  className="w-full min-w-0 truncate border-0 bg-transparent p-0 text-xl font-bold leading-9 cursor-text hover:text-white/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
                 >
                   {name}
-                </p>
+                </button>
               )}
             </div>
           </Tooltip>

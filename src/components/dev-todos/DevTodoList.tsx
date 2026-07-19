@@ -15,14 +15,14 @@ interface AdminUser {
 
 const STATUS_CONFIG: Record<DevTodoStatus, { label: string; icon: typeof Circle; color: string }> = {
   todo: { label: 'לביצוע', icon: Circle, color: 'text-muted' },
-  in_progress: { label: 'בעבודה', icon: Clock, color: 'text-warning' },
-  done: { label: 'הושלם', icon: CheckCircle2, color: 'text-success' },
+  in_progress: { label: 'בעבודה', icon: Clock, color: 'text-warning-text' },
+  done: { label: 'הושלם', icon: CheckCircle2, color: 'text-success-text' },
 }
 
 const PRIORITY_CONFIG: Record<DevTodoPriority, { label: string; color: string; dot: string }> = {
   low: { label: 'נמוך', color: 'text-muted', dot: 'bg-muted' },
-  medium: { label: 'בינוני', color: 'text-secondary', dot: 'bg-secondary' },
-  high: { label: 'גבוה', color: 'text-danger', dot: 'bg-danger' },
+  medium: { label: 'בינוני', color: 'text-secondary-text', dot: 'bg-secondary' },
+  high: { label: 'גבוה', color: 'text-danger-text', dot: 'bg-danger' },
 }
 
 export function DevTodoList() {
@@ -118,7 +118,7 @@ export function DevTodoList() {
           <button
             onClick={addTodo}
             disabled={adding}
-            className="shrink-0 text-xs font-medium text-accent hover:text-secondary transition-colors disabled:opacity-50"
+            className="shrink-0 text-xs font-medium text-accent-text hover:text-secondary-text transition-colors disabled:opacity-50"
           >
             הוסף
           </button>
@@ -134,7 +134,7 @@ export function DevTodoList() {
       )}
 
       {inProgressItems.length > 0 && (
-        <TodoSection title="בעבודה" count={inProgressItems.length} color="text-warning">
+        <TodoSection title="בעבודה" count={inProgressItems.length} color="text-warning-text">
           {inProgressItems.map(todo => (
             <TodoRow key={todo.id} todo={todo} admins={admins} onUpdate={updateField} onDelete={deleteTodo} getAssigneeName={getAssigneeName} />
           ))}
@@ -142,7 +142,7 @@ export function DevTodoList() {
       )}
 
       {doneItems.length > 0 && (
-        <TodoSection title="הושלם" count={doneItems.length} color="text-success">
+        <TodoSection title="הושלם" count={doneItems.length} color="text-success-text">
           {doneItems.map(todo => (
             <TodoRow key={todo.id} todo={todo} admins={admins} onUpdate={updateField} onDelete={deleteTodo} getAssigneeName={getAssigneeName} />
           ))}
@@ -223,7 +223,9 @@ function TodoRow({
         <StatusIcon size={18} />
       </button>
 
-      <div className="min-w-0 flex-1" onClick={() => !editing && setEditing(true)} role="button" tabIndex={-1}>
+      {/* Real button when idle — role="button" with tabIndex={-1} announced a
+          control that keyboard users could not reach. */}
+      <div className="min-w-0 flex-1">
         {editing ? (
           <input
             type="text"
@@ -235,12 +237,18 @@ function TodoRow({
             className="w-full bg-transparent text-sm text-foreground outline-none border-b border-secondary pb-0.5"
           />
         ) : (
-          <span className={cn(
-            'block w-full text-sm text-foreground hover:text-secondary transition-colors cursor-text truncate',
-            todo.status === 'done' && 'line-through',
-          )}>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            aria-label={`עריכת המשימה: ${title}`}
+            className={cn(
+              'block w-full border-0 bg-transparent p-0 text-right text-sm text-foreground hover:text-secondary-text transition-colors cursor-text truncate',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tertiary-text focus-visible:ring-offset-2',
+              todo.status === 'done' && 'line-through',
+            )}
+          >
             {title}
-          </span>
+          </button>
         )}
       </div>
 
@@ -283,7 +291,7 @@ function TodoRow({
           className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-all border border-border hover:border-secondary/30 text-muted"
         >
           {assigneeName ? (
-            <span className="text-secondary max-w-[80px] truncate">{assigneeName}</span>
+            <span className="text-secondary-text max-w-[80px] truncate">{assigneeName}</span>
           ) : (
             <span className="text-muted">לא משויך</span>
           )}
@@ -296,7 +304,7 @@ function TodoRow({
               onClick={() => { onUpdate(todo.id, 'assigned_to', null); setAssigneeOpen(false) }}
               className={cn(
                 'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
-                !todo.assigned_to ? 'text-secondary' : 'text-muted',
+                !todo.assigned_to ? 'text-secondary-text' : 'text-muted',
               )}
             >
               לא משויך
@@ -308,7 +316,7 @@ function TodoRow({
                 onClick={() => { onUpdate(todo.id, 'assigned_to', a.id); setAssigneeOpen(false) }}
                 className={cn(
                   'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
-                  todo.assigned_to === a.id ? 'text-secondary' : 'text-muted',
+                  todo.assigned_to === a.id ? 'text-secondary-text' : 'text-muted',
                 )}
               >
                 <span className="truncate">{a.display_name || a.email}</span>
@@ -356,7 +364,7 @@ function TodoRow({
 
       <button
         onClick={() => onDelete(todo.id)}
-        className="shrink-0 p-1 rounded-lg text-muted opacity-0 group-hover/todo:opacity-100 hover:bg-surface-elevated hover:text-danger transition-all"
+        className="shrink-0 p-1 rounded-lg text-muted opacity-0 group-hover/todo:opacity-100 hover:bg-surface-elevated hover:text-danger-text transition-all"
         title="מחיקה"
       >
         <Trash2 size={14} />

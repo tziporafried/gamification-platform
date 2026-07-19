@@ -260,7 +260,7 @@ export function EventDetailsModal({ eventId, eventName, onClose }: EventDetailsM
                           </div>
                         </div>
                         <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-game-border bg-white/5 px-2.5 py-1 text-xs font-bold text-foreground">
-                          <Star size={12} className="text-warning" />
+                          <Star size={12} className="text-warning-text" />
                           {a.points.toLocaleString()} נק׳
                         </span>
                       </div>

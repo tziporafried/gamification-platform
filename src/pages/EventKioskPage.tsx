@@ -8,7 +8,7 @@ import { useHardwareScanner } from '@/hooks/useHardwareScanner'
 import { usePlanPermissions } from '@/hooks/usePlanPermissions'
 import { useScoreSubmit } from '@/hooks/useScoreSubmit'
 import { useEventCatalog } from '@/hooks/useEventCatalog'
-import { parseQrPayload } from '@/lib/qrPayload'
+import { useScanSequence } from '@/hooks/useScanSequence'
 import { hexToRgb } from '@/lib/accentColor'
 import { getIsraelSecond } from '@/lib/israelTime'
 import {
@@ -871,8 +871,131 @@ function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () 
   )
 }
 
+// ─── "Participant is in, waiting for the task card" overlay ──────────────────
+// Greets the scanned participant by name so they can see the machine picked up
+// the right card before they commit to a task.
+
+const WAIT_RING_RADIUS = 34
+const WAIT_RING_CIRCUMFERENCE = 2 * Math.PI * WAIT_RING_RADIUS
+
+function AwaitingSecondScanOverlay({
+  participantName,
+  seconds,
+  progress,
+}: {
+  /** Null when the code matched no participant — greeting falls back to neutral. */
+  participantName: string | null
+  seconds: number
+  progress: number
+}) {
+  return (
+    <div
+      className="kiosk-waitPanel"
+      style={{
+        position: 'absolute', inset: 0, zIndex: 12,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        gap: 'clamp(8px, 1.4vh, 16px)',
+        background: 'radial-gradient(circle at 50% 42%,rgba(255,250,246,0.95),rgba(255,238,226,0.9))',
+        backdropFilter: 'blur(4px)', textAlign: 'center', padding: '0 6%',
+      }}
+    >
+      {/* Card + halo + draining ring */}
+      <div style={{ position: 'relative', width: 96, height: 96, flexShrink: 0 }}>
+        <div className="kiosk-waitHalo" style={{
+          position: 'absolute', inset: -14, borderRadius: '50%',
+          background: 'radial-gradient(circle,rgba(255,147,102,0.45),transparent 70%)',
+        }} />
+        <div className="kiosk-waitPing" style={{
+          position: 'absolute', inset: -6, borderRadius: '50%',
+          border: '2px solid rgba(239,138,78,0.5)',
+        }} />
+
+        <svg viewBox="0 0 80 80" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+          <circle className="kiosk-waitRingTrack" cx="40" cy="40" r={WAIT_RING_RADIUS} fill="none" strokeWidth="4" />
+          <circle
+            className="kiosk-waitRingFill"
+            cx="40" cy="40" r={WAIT_RING_RADIUS} fill="none" strokeWidth="4" strokeLinecap="round"
+            strokeDasharray={WAIT_RING_CIRCUMFERENCE}
+            strokeDashoffset={WAIT_RING_CIRCUMFERENCE * (1 - Math.max(0, Math.min(1, progress)))}
+          />
+        </svg>
+
+        <div className="kiosk-waitCard" style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 38,
+        }}>🙋</div>
+      </div>
+
+      <div style={{ fontSize: 'clamp(19px, 2.4vh, 26px)', fontWeight: 900, color: '#2E221E' }}>
+        {participantName ? `שלום ${participantName}!` : 'שלום!'}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 'clamp(14px, 1.8vh, 17px)', fontWeight: 800, color: '#B4552A' }}>
+          מחכים לתיקוף שלך
+        </span>
+        <span style={{ display: 'flex', gap: 3 }}>
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="kiosk-waitDot" style={{
+              width: 5, height: 5, borderRadius: '50%', background: '#EF8A4E',
+              animationDelay: `${i * 0.16}s`,
+            }} />
+          ))}
+        </span>
+      </div>
+
+      {/* The two slots — participant filled, task still waiting */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '6px 14px', borderRadius: 999,
+          background: 'linear-gradient(135deg,#FF9366,#F2B33C)', color: '#fff',
+          fontSize: 13, fontWeight: 900, boxShadow: '0 6px 16px rgba(255,147,102,0.35)',
+        }}>
+          <span>🙋</span>משתתף<span>✓</span>
+        </div>
+
+        <span style={{ fontSize: 15, color: '#B4552A', opacity: 0.6 }}>←</span>
+
+        <div className="kiosk-waitSlot" style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '6px 14px', borderRadius: 999,
+          border: '2px dashed rgba(239,138,78,0.6)', color: '#B4552A',
+          fontSize: 13, fontWeight: 900,
+        }}>
+          <span style={{ opacity: 0.65 }}>🎯</span>משימה
+        </div>
+      </div>
+
+      <div style={{ fontSize: 'clamp(13px, 1.7vh, 15px)', fontWeight: 700, color: '#7D706A', lineHeight: 1.4 }}>
+        סרקו עכשיו את כרטיס המשימה כדי לזכות בנקודות
+      </div>
+
+      <div style={{ fontSize: 12, fontWeight: 800, color: '#B4552A', opacity: 0.85 }}>
+        ממתין עוד {seconds} שניות
+      </div>
+    </div>
+  )
+}
+
 // ─── Decorative scanner frame (design-handoff spec) ──────────────────────────
-function ScannerFrame({ processing, locked }: { processing: boolean; locked?: boolean }) {
+function ScannerFrame({
+  processing,
+  locked,
+  awaiting,
+  awaitingName,
+  awaitingSeconds = 0,
+  waitProgress = 0,
+}: {
+  processing: boolean
+  locked?: boolean
+  /** A participant card is scanned; the scanner is holding for their task card. */
+  awaiting?: boolean
+  awaitingName?: string | null
+  awaitingSeconds?: number
+  waitProgress?: number
+}) {
   return (
     <div className="kiosk-fadeUp kiosk-scannerFrame" style={{ animationDelay: '0.1s' }}>
       {/* Rotating conic glow ring */}
@@ -937,6 +1060,15 @@ function ScannerFrame({ processing, locked }: { processing: boolean; locked?: bo
             }}>
               <div className="kiosk-bob" style={{ fontSize: 40 }}>⏳</div>
             </div>
+          )}
+
+          {/* Participant scanned — holding for their task card */}
+          {awaiting && !processing && !locked && (
+            <AwaitingSecondScanOverlay
+              participantName={awaitingName ?? null}
+              seconds={awaitingSeconds}
+              progress={waitProgress}
+            />
           )}
 
           {/* Locked overlay — scanning not included in this plan */}
@@ -3296,19 +3428,13 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     setTrialLimitOpen(true)
   }, [event.id])
 
-  const handleScan = useCallback(async (raw: string) => {
+  const handlePair = useCallback(async (participantCode: string, actionCode: string) => {
     if (!gameStarted) {
       trackScanFailed('not_started', 'qr_scan')
       showToast('התחרות עדיין לא התחילה')
       return
     }
-    const parsed = parseQrPayload(raw)
-    if (!parsed.ok) {
-      trackScanFailed('invalid_qr', 'qr_scan')
-      showToast('קוד QR לא תקין')
-      return
-    }
-    const response = await submit(parsed.data.participantCode, parsed.data.actionCode)
+    const response = await submit(participantCode, actionCode)
     if (!response.ok) {
       if (response.code === 'TRIAL_SCAN_LIMIT_REACHED') {
         handleTrialLimit()
@@ -3325,6 +3451,33 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     logScoreSubmit('qr_scan', response.result)
     triggerScanSuccess(response.result, response.result.transactionId, reducedMotion)
   }, [gameStarted, submit, showToast, logScoreSubmit, triggerScanSuccess, reducedMotion, handleTrialLimit, isTrial, event.id])
+
+  const handleScanError = useCallback((message: string) => {
+    trackScanFailed('invalid_qr', 'qr_scan')
+    showToast(message)
+  }, [showToast])
+
+  const {
+    handleScan,
+    pending: pendingScan,
+    remainingSeconds,
+    waitProgress,
+    reset: resetScanSequence,
+  } = useScanSequence({ onPair: handlePair, onError: handleScanError })
+
+  // Greet the waiting participant by name. Unknown codes still arm — the code
+  // is only validated on submit — so this stays null and the copy falls back.
+  const pendingParticipantName = useMemo(() => {
+    if (!pendingScan) return null
+    const match = catalog.participants.find((p) => p.externalId === pendingScan.participantCode)
+    return match?.name ?? null
+  }, [pendingScan, catalog.participants])
+
+  // Switching to manual entry (or hitting the trial wall) abandons the flow —
+  // an armed participant must not survive to pair with a later action scan.
+  useEffect(() => {
+    if (showManual || trialLimitOpen) resetScanSequence()
+  }, [showManual, trialLimitOpen, resetScanSequence])
 
   const bind = useHardwareScanner(gameStarted && !showManual && !submitting && !noScan && !trialLimitOpen, handleScan)
 
@@ -3525,7 +3678,14 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             ) : (
               <>
                 <div className="kiosk-scannerSlot">
-                  <ScannerFrame processing={gameStarted && submitting} locked={scanningLocked} />
+                  <ScannerFrame
+                    processing={gameStarted && submitting}
+                    locked={scanningLocked}
+                    awaiting={!!pendingScan}
+                    awaitingName={pendingParticipantName}
+                    awaitingSeconds={remainingSeconds}
+                    waitProgress={waitProgress}
+                  />
                 </div>
 
                 <div className="kiosk-centerHints">

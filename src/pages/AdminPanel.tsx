@@ -618,7 +618,7 @@ export function AdminPanel() {
                             {user.display_name || user.email.split('@')[0]}
                           </span>
                           {user.role === 'super_admin' && (
-                            <Crown size={14} className="text-warning shrink-0" />
+                            <Crown size={14} className="text-warning-text shrink-0" />
                           )}
                         </div>
                         <p className="text-xs text-muted truncate">{user.email}</p>
@@ -665,7 +665,7 @@ export function AdminPanel() {
                         <button
                           onClick={() => { setDeleteError(null); setDeleteTarget(user) }}
                           title="מחק משתמש"
-                          className="flex items-center justify-center rounded-lg p-2 text-muted hover:bg-danger/10 hover:text-danger transition-colors"
+                          className="flex items-center justify-center rounded-lg p-2 text-muted hover:bg-danger/10 hover:text-danger-text transition-colors"
                         >
                           <Trash2 size={15} />
                         </button>
@@ -733,7 +733,7 @@ export function AdminPanel() {
         ) : (
           <>
             <SectionHeader
-              icon={<MessageSquare size={18} className="text-accent" />}
+              icon={<MessageSquare size={18} className="text-accent-text" />}
               title={`${requests.length} פניות הפעלה${newRequestCount > 0 ? ` (${newRequestCount} חדשות)` : ''}`}
               className="mb-6"
             />
@@ -773,7 +773,7 @@ export function AdminPanel() {
                       <div className="flex flex-col items-end gap-2 shrink-0">
                         {req.event_id && LIMIT_TYPE_TO_PLAN[req.limit_type] && (
                           req.status === 'closed' ? (
-                            <span className="flex items-center gap-1.5 text-sm font-semibold text-success">
+                            <span className="flex items-center gap-1.5 text-sm font-semibold text-success-text">
                               <CheckCircle size={16} />
                               הופעל
                             </span>
@@ -803,14 +803,14 @@ export function AdminPanel() {
                           </Button>
                         )}
                         {offlineExportError?.requestId === req.id && (
-                          <p role="alert" className="max-w-[13rem] text-end text-xs font-semibold text-danger">
+                          <p role="alert" className="max-w-[13rem] text-end text-xs font-semibold text-danger-text">
                             {offlineExportError.message}
                           </p>
                         )}
                         <button
                           onClick={() => { setDeleteRequestError(null); setDeleteRequestTarget(req) }}
                           title="מחק פנייה"
-                          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted hover:bg-danger/10 hover:text-danger transition-colors"
+                          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted hover:bg-danger/10 hover:text-danger-text transition-colors"
                         >
                           <Trash2 size={14} />
                           מחק
@@ -861,7 +861,7 @@ export function AdminPanel() {
             המשתתפים, הקבוצות, המשימות, הניקוד והפרסים. לא ניתן לשחזר.
           </p>
           {deleteError && (
-            <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-danger">
+            <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-danger-text">
               שגיאה במחיקה: {deleteError}
             </p>
           )}
@@ -885,7 +885,7 @@ export function AdminPanel() {
             הפנייה תימחק לצמיתות ולא ניתן יהיה לשחזר אותה.
           </p>
           {deleteRequestError && (
-            <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-danger">
+            <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-danger-text">
               שגיאה במחיקה: {deleteRequestError}
             </p>
           )}

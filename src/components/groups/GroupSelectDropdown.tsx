@@ -132,6 +132,9 @@ export function GroupSelectDropdown({
     <div className="relative flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
       <button
         ref={buttonRef}
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
         onClick={() => {
           setOpen((prev) => {
             const next = !prev
@@ -164,7 +167,7 @@ export function GroupSelectDropdown({
               : singleGroupColor
                 ? 'text-foreground hover:brightness-95'
                 : isAllSelected
-                  ? 'border-success text-success bg-surface-elevated hover:bg-surface'
+                  ? 'border-success text-success-text bg-surface-elevated hover:bg-surface'
                   : selectedGroups.length > 0
                     ? 'border-primary/30 text-foreground bg-surface-elevated hover:bg-surface hover:border-accent'
                     : 'border-border text-muted bg-surface-elevated hover:bg-surface hover:border-accent',
@@ -206,7 +209,7 @@ export function GroupSelectDropdown({
             onClick={() => { onSelectAll(); setOpen(false) }}
             className={cn(
               'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-elevated',
-              isAllSelected ? 'text-success' : 'text-muted',
+              isAllSelected ? 'text-success-text' : 'text-muted',
             )}
           >
             <span className={cn(

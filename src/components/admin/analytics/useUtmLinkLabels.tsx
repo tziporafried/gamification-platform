@@ -370,7 +370,7 @@ export function UtmShareLinkGenerator({
             </Button>
           )}
         </form>
-        {showError && <p className="text-[11px] text-danger">{showError}</p>}
+        {showError && <p className="text-[11px] text-danger-text">{showError}</p>}
         {lastUrl && !showError && (
           <p className="truncate font-mono text-[10px] text-muted" dir="ltr" title={lastUrl}>
             {lastUrl}
@@ -383,7 +383,7 @@ export function UtmShareLinkGenerator({
   return (
     <Card className="space-y-3 p-4">
       <div className="flex items-center gap-2">
-        <Sparkles size={16} className="text-secondary" />
+        <Sparkles size={16} className="text-secondary-text" />
         <h3 className="text-sm font-semibold text-foreground">יצירת לינק שיתוף</h3>
       </div>
       <p className="text-[11px] text-muted">
@@ -409,7 +409,7 @@ export function UtmShareLinkGenerator({
           יצירת לינק
         </Button>
       </form>
-      {showError && <p className="text-xs text-danger">{showError}</p>}
+      {showError && <p className="text-xs text-danger-text">{showError}</p>}
       {lastUrl && (
         <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface-elevated/50 p-3 sm:flex-row sm:items-center">
           <div className="min-w-0 flex-1">
@@ -505,8 +505,9 @@ export function LinkLabelEditor({
           onClick={startEdit}
           className="shrink-0 rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-elevated hover:text-foreground"
           title={isMerged ? 'עריכה / פיצול שמות' : 'עריכת שם לינק'}
+          aria-label={isMerged ? 'עריכה / פיצול שמות' : 'עריכת שם לינק'}
         >
-          <Pencil size={14} />
+          <Pencil size={14} aria-hidden="true" />
         </button>
       </div>
     )
@@ -551,19 +552,21 @@ export function LinkLabelEditor({
             type="button"
             disabled={saving}
             onClick={() => void commit()}
-            className="shrink-0 rounded-lg p-1.5 text-success hover:bg-surface-elevated"
+            className="shrink-0 rounded-lg p-1.5 text-success-text hover:bg-surface-elevated"
             title="שמירה"
+        aria-label="שמירה"
           >
-            <Check size={14} />
+            <Check size={14} aria-hidden="true" />
           </button>
           <button
             type="button"
             disabled={saving}
             onClick={cancel}
-            className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-surface-elevated hover:text-danger"
+            className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-surface-elevated hover:text-danger-text"
             title="ביטול"
+        aria-label="ביטול"
           >
-            <X size={14} />
+            <X size={14} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -595,19 +598,21 @@ export function LinkLabelEditor({
         type="button"
         disabled={saving}
         onClick={() => void commit()}
-        className="shrink-0 rounded-lg p-1.5 text-success hover:bg-surface-elevated"
+        className="shrink-0 rounded-lg p-1.5 text-success-text hover:bg-surface-elevated"
         title="שמירה"
+        aria-label="שמירה"
       >
-        <Check size={14} />
+        <Check size={14} aria-hidden="true" />
       </button>
       <button
         type="button"
         disabled={saving}
         onClick={cancel}
-        className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-surface-elevated hover:text-danger"
+        className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-surface-elevated hover:text-danger-text"
         title="ביטול"
+        aria-label="ביטול"
       >
-        <X size={14} />
+        <X size={14} aria-hidden="true" />
       </button>
     </div>
   )

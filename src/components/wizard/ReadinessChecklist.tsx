@@ -35,9 +35,9 @@ export function ReadinessChecklist({ checks, eventId, onGoToStep }: ReadinessChe
         {checks.map((check) => (
           <div key={check.id} className="flex items-center gap-3">
             {check.passed ? (
-              <CheckCircle2 size={16} className="text-success shrink-0" />
+              <CheckCircle2 size={16} className="text-success-text shrink-0" />
             ) : (
-              <AlertCircle size={16} className="text-warning shrink-0" />
+              <AlertCircle size={16} className="text-warning-text shrink-0" />
             )}
             <span className={cn('text-sm', check.passed ? 'text-muted' : 'text-foreground')}>
               {check.passed ? (check.wizardPassedLabel ?? check.label) : (check.wizardFailedLabel ?? check.label)}

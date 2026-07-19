@@ -13,7 +13,7 @@ export function IconToggleButton({ active = false, activeColor, className, child
       type="button"
       className={cn(
         'inline-flex items-center justify-center rounded-lg p-2 transition-all',
-        active ? 'bg-surface-elevated text-secondary' : cn('text-muted hover:bg-surface-elevated hover:text-foreground'),
+        active ? 'bg-surface-elevated text-secondary-text' : cn('text-muted hover:bg-surface-elevated hover:text-foreground'),
         className,
       )}
       style={active && activeColor ? { color: activeColor, ...style } : style}

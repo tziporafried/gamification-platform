@@ -15,27 +15,49 @@ export default {
         background: 'var(--color-background)',
         foreground: 'var(--color-foreground)',
         muted: 'var(--color-muted)',
-        border: 'var(--color-border)',
+        border: {
+          DEFAULT: 'var(--color-border)',
+          // 3:1 against every surface — for control boundaries (1.4.11).
+          strong: 'var(--color-border-strong)',
+        },
         'surface-elevated': 'var(--color-surface-elevated)',
         'surface-modal': 'var(--color-surface-modal)',
         primary: {
           DEFAULT: 'var(--color-primary)',
           hover: 'var(--color-primary-hover)',
           foreground: 'var(--color-on-primary)',
+          text: 'var(--color-primary-text)',
         },
         secondary: {
           DEFAULT: 'var(--color-secondary)',
           foreground: 'var(--color-on-secondary)',
+          strong: 'var(--color-secondary-strong)',
+          text: 'var(--color-secondary-text)',
         },
-        tertiary: 'var(--color-tertiary)',
-        accent: 'var(--color-accent)',
-        success: 'var(--color-success)',
+        tertiary: {
+          DEFAULT: 'var(--color-tertiary)',
+          text: 'var(--color-tertiary-text)',
+        },
+        accent: {
+          DEFAULT: 'var(--color-accent)',
+          text: 'var(--color-accent-text)',
+        },
+        success: {
+          DEFAULT: 'var(--color-success)',
+          text: 'var(--color-success-text)',
+        },
         warning: {
           DEFAULT: 'var(--color-warning)',
           foreground: 'var(--color-on-warning)',
+          text: 'var(--color-warning-text)',
         },
-        danger: 'var(--color-danger)',
-        // Design review required: focus-ring, disabled
+        danger: {
+          DEFAULT: 'var(--color-danger)',
+          strong: 'var(--color-danger-strong)',
+          text: 'var(--color-danger-text)',
+        },
+        // `-text` variants clear 4.5:1 on our surfaces; the DEFAULT tokens do
+        // not, so use them for fills and decoration only. See design-tokens.css.
 
         surface: 'var(--color-surface)',
       },

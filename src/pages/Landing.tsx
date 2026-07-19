@@ -295,7 +295,7 @@ export function Landing() {
           {' '}
           <button
             type="button"
-            className="font-medium text-primary hover:underline"
+            className="font-medium text-primary-text hover:underline"
             onClick={() => handleOpenPlans('pricing')}
           >
             באפשרויות ההפעלה
@@ -313,7 +313,7 @@ export function Landing() {
           {' '}
           <button
             type="button"
-            className="font-medium text-primary hover:underline"
+            className="font-medium text-primary-text hover:underline"
             onClick={() => handleOpenPlans('pricing')}
           >
             לכל המחירים והמסלולים
@@ -331,7 +331,7 @@ export function Landing() {
           </p>
           <button
             type="button"
-            className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+            className="font-medium text-primary-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
             onClick={handleOpenPlansOffline}
           >
             למסלול ולמחירים — בלי אינטרנט
@@ -349,7 +349,7 @@ export function Landing() {
           <button
             ref={withoutScannerCtaRef}
             type="button"
-            className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+            className="font-medium text-primary-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
             onClick={handleOpenPlansWithoutScanner}
           >
             למסלולים ולמחירים
@@ -403,7 +403,7 @@ export function Landing() {
               סבתא? דודה?
               <br />
               אחראית על ה-
-              <span className={cn('text-primary', motionSafe && 'landing-brand-shimmer')}>Vibe</span>
+              <span className={cn('text-primary-text', motionSafe && 'landing-brand-shimmer')}>Vibe</span>
               {' '}בנופש המשפחתי?
             </motion.h1>
 
@@ -429,7 +429,7 @@ export function Landing() {
               className="mb-5 text-[26px] font-black leading-[1.3] text-foreground sm:text-[30px]"
             >
               עם{' '}
-              <span className={cn('text-primary', motionSafe && 'landing-brand-shimmer')}>Gamify</span>
+              <span className={cn('text-primary-text', motionSafe && 'landing-brand-shimmer')}>Gamify</span>
               {' '}זה פשוט לא קורה.
             </motion.p>
 
@@ -444,7 +444,7 @@ export function Landing() {
             <motion.p
               variants={fadeUp}
               transition={{ duration: 0.5, ease: EASE_OUT }}
-              className="mx-auto mb-0 max-w-[500px] text-base font-bold leading-[1.6] text-primary [text-shadow:0_0_18px_rgba(171,53,0,0.35)]"
+              className="mx-auto mb-0 max-w-[500px] text-base font-bold leading-[1.6] text-primary-text [text-shadow:0_0_18px_rgba(171,53,0,0.35)]"
             >
               פחות שעמום, יותר צחוק, יותר גיבוש, ורגעים שלא שוכחים.
             </motion.p>
@@ -526,7 +526,7 @@ export function Landing() {
             <motion.section className="mb-8 sm:mb-9" {...revealProps(motionSafe)}>
               <SectionTitle className="mb-4 text-center sm:mb-5">כמה זה עולה?</SectionTitle>
               <motion.p
-                className="mb-3 text-[34px] font-black leading-[1.15] tracking-tight text-primary sm:text-[48px]"
+                className="mb-3 text-[34px] font-black leading-[1.15] tracking-tight text-primary-text sm:text-[48px]"
                 {...revealProps(motionSafe, 0.05)}
               >
                 משחק מלא ב־
@@ -546,7 +546,7 @@ export function Landing() {
                     className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-surface-modal px-4 py-2.5 text-sm font-medium text-foreground shadow-card sm:text-[15px]"
                     {...revealProps(motionSafe, 0.08 + index * 0.06)}
                   >
-                    <Icon size={16} strokeWidth={2.25} className="shrink-0 text-primary" aria-hidden="true" />
+                    <Icon size={16} strokeWidth={2.25} className="shrink-0 text-primary-text" aria-hidden="true" />
                     {label}
                   </motion.li>
                 ))}
@@ -575,7 +575,7 @@ export function Landing() {
             </motion.section>
 
             <motion.section {...revealProps(motionSafe, 0.08)}>
-              <h2 className="mb-2.5 text-xl font-semibold leading-snug text-primary sm:text-[22px]">
+              <h2 className="mb-2.5 text-xl font-semibold leading-snug text-primary-text sm:text-[22px]">
                 רוצים קודם לראות איך זה עובד אצלכם?
               </h2>
               <p className="mx-auto mb-5 max-w-xl text-base leading-[1.65] text-muted">
@@ -629,7 +629,7 @@ export function Landing() {
               <button
                 type="button"
                 onClick={() => handleContactClick('faq')}
-                className="font-medium text-primary underline-offset-2 hover:underline"
+                className="font-medium text-primary-text underline-offset-2 hover:underline"
               >
                 דברו איתנו
               </button>
@@ -639,7 +639,7 @@ export function Landing() {
           {/* 8. Contact fallback — after FAQ */}
           <motion.section className="text-center" {...revealProps(motionSafe)}>
             <div className="mx-auto max-w-xl border-t border-border/60 pt-9">
-              <p className="text-2xl font-black leading-snug text-primary sm:text-[30px]">
+              <p className="text-2xl font-black leading-snug text-primary-text sm:text-[30px]">
                 יש לכם שאלה או אירוע מיוחד?
               </p>
               <p className="mt-2 text-lg font-semibold leading-[1.6] text-foreground sm:text-xl">
@@ -648,7 +648,7 @@ export function Landing() {
               <button
                 type="button"
                 onClick={() => handleContactClick('footer')}
-                className="mt-4 inline-flex items-center justify-center gap-1.5 text-base font-bold text-primary underline-offset-4 transition-colors hover:underline sm:text-lg"
+                className="mt-4 inline-flex items-center justify-center gap-1.5 text-base font-bold text-primary-text underline-offset-4 transition-colors hover:underline sm:text-lg"
               >
                 דברו איתנו
               </button>
@@ -658,7 +658,7 @@ export function Landing() {
                   target="_blank"
                   rel="noopener noreferrer"
                   dir="ltr"
-                  className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                  className="inline-flex items-center gap-1 font-semibold text-primary-text underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
                 >
                   <Mail size={17} strokeWidth={2.25} aria-hidden="true" />
                   {CONTACT_EMAIL}
@@ -667,7 +667,7 @@ export function Landing() {
                 <a
                   href={`tel:${CONTACT_PHONE}`}
                   dir="ltr"
-                  className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                  className="inline-flex items-center gap-1 font-semibold text-primary-text underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
                 >
                   <Phone size={17} strokeWidth={2.25} aria-hidden="true" />
                   {CONTACT_PHONE}
@@ -754,7 +754,7 @@ function SectionTitle({
   const motionSafe = !reducedMotion
   return (
     <motion.h2
-      className={cn('mb-2 text-right text-[26px] font-bold text-primary', className)}
+      className={cn('mb-2 text-right text-[26px] font-bold text-primary-text', className)}
       {...revealProps(motionSafe)}
     >
       {children}
@@ -833,7 +833,7 @@ function SetupSnakeFlow({
                     {showArrow && (
                       <motion.div
                         key={`desk-arrow-${active}`}
-                        className="text-primary"
+                        className="text-primary-text"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -853,7 +853,7 @@ function SetupSnakeFlow({
                     {showArrow ? (
                       <motion.div
                         key={`mobile-arrow-${active}`}
-                        className="text-primary"
+                        className="text-primary-text"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -919,7 +919,7 @@ function SetupStepCard({
           <span
             className={cn(
               'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-500',
-              active ? 'bg-primary/15 text-primary' : 'bg-surface-elevated text-primary/80',
+              active ? 'bg-primary/15 text-primary-text' : 'bg-surface-elevated text-primary-text/80',
             )}
           >
             <Icon size={20} strokeWidth={2.25} aria-hidden="true" />
@@ -928,7 +928,7 @@ function SetupStepCard({
         <h3
           className={cn(
             'mb-2 text-base font-bold leading-snug sm:text-lg',
-            active ? 'text-primary' : 'text-foreground',
+            active ? 'text-primary-text' : 'text-foreground',
           )}
         >
           {title}
@@ -971,10 +971,10 @@ function StepCard({
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-black text-primary-foreground shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_28%,transparent),0_4px_12px_color-mix(in_srgb,var(--color-primary)_35%,transparent)]">
             {step}
           </span>
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-surface-elevated text-primary">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-surface-elevated text-primary-text">
             <Icon size={16} strokeWidth={2.25} aria-hidden="true" />
           </span>
-          <h3 className="text-base font-bold text-primary sm:text-lg">{title}</h3>
+          <h3 className="text-base font-bold text-primary-text sm:text-lg">{title}</h3>
         </div>
         <p className="text-[15px] leading-[1.6] text-foreground sm:text-base sm:leading-[1.65]">
           {body}
@@ -1013,13 +1013,13 @@ function FaqItem({
         aria-expanded={open}
         aria-controls={id}
       >
-        <span className="text-[13px] font-semibold leading-snug text-primary sm:text-sm">{question}</span>
+        <span className="text-[13px] font-semibold leading-snug text-primary-text sm:text-sm">{question}</span>
         <ChevronDown
           size={16}
           strokeWidth={2.25}
           aria-hidden="true"
           className={cn(
-            'shrink-0 text-primary transition-transform duration-200',
+            'shrink-0 text-primary-text transition-transform duration-200',
             open && 'rotate-180',
           )}
         />

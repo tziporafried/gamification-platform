@@ -1,10 +1,14 @@
-interface QrScanResult {
-  participantCode: string
-  actionCode: string
-}
+/**
+ * A decoded card. `combined` carries both codes (single-scan events); the other
+ * two are the halves printed for split-scan events.
+ */
+export type ScannedCode =
+  | { kind: 'combined'; participantCode: string; actionCode: string }
+  | { kind: 'participant'; participantCode: string }
+  | { kind: 'action'; actionCode: string }
 
 type ParseQrPayloadResult =
-  | { ok: true; data: QrScanResult }
+  | { ok: true; data: ScannedCode }
   | { ok: false; error: string }
 
 function normalizeScanRaw(raw: string): string {
@@ -15,6 +19,10 @@ function normalizeScanRaw(raw: string): string {
     text = text.slice(start, end + 1)
   }
   return text
+}
+
+function readCode(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
 export function parseQrPayload(decodedText: string): ParseQrPayloadResult {
@@ -30,12 +38,18 @@ export function parseQrPayload(decodedText: string): ParseQrPayloadResult {
     return { ok: false, error: 'קוד QR לא תקין — פורמט לא מזוהה.' }
   }
 
-  const participantCode = parsed.participantCode as string | undefined
-  const actionCode = parsed.actionCode as string | undefined
+  const participantCode = readCode(parsed.participantCode)
+  const actionCode = readCode(parsed.actionCode)
 
-  if (!participantCode || !actionCode) {
-    return { ok: false, error: 'קוד QR חסר — חסר קוד משתתף או קוד משימה.' }
+  if (participantCode && actionCode) {
+    return { ok: true, data: { kind: 'combined', participantCode, actionCode } }
+  }
+  if (participantCode) {
+    return { ok: true, data: { kind: 'participant', participantCode } }
+  }
+  if (actionCode) {
+    return { ok: true, data: { kind: 'action', actionCode } }
   }
 
-  return { ok: true, data: { participantCode, actionCode } }
+  return { ok: false, error: 'קוד QR חסר — חסר קוד משתתף או קוד משימה.' }
 }

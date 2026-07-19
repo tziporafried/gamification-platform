@@ -85,6 +85,22 @@
 .pl-prompt-title { font-size: 32px; font-weight: 900; margin: 0 0 8px; }
 .pl-prompt-sub { font-size: 17px; color: var(--pl-muted); }
 
+/* Split-scan events: participant card is in, waiting on the action card. */
+.pl-prompt--awaiting .pl-prompt-badge {
+  border-style: solid;
+  background: color-mix(in srgb, var(--pl-primary) 16%, white);
+  border-color: var(--pl-primary);
+}
+.pl-prompt-countdown {
+  display: inline-block; margin-top: 14px; padding: 6px 18px; border-radius: 999px;
+  font-size: 16px; font-weight: 900; color: var(--pl-primary);
+  background: white; border: 2px solid color-mix(in srgb, var(--pl-primary) 30%, white);
+}
+.pl-prompt-dots { display: flex; justify-content: center; gap: 6px; margin-top: 14px; }
+.pl-prompt-dots span {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--pl-primary); display: block;
+}
+
 .pl-fb { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .pl-fb-avatar {
   width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center;

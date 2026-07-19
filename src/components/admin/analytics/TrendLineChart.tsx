@@ -337,7 +337,7 @@ function SeriesSelector({
               type="button"
               onClick={() => onSelectGroup(group)}
               className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
-                allOn ? 'text-secondary' : 'text-muted hover:text-foreground'
+                allOn ? 'text-secondary-text' : 'text-muted hover:text-foreground'
               }`}
             >
               {group.label}

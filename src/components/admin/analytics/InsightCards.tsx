@@ -10,19 +10,19 @@ const SEVERITY_STYLES: Record<
   critical: {
     border: 'border-danger/40',
     bg: 'bg-danger/5',
-    icon: 'text-danger',
+    icon: 'text-danger-text',
     Icon: AlertTriangle,
   },
   warning: {
     border: 'border-warning/40',
     bg: 'bg-warning/5',
-    icon: 'text-warning',
+    icon: 'text-warning-text',
     Icon: Info,
   },
   positive: {
     border: 'border-success/40',
     bg: 'bg-success/5',
-    icon: 'text-success',
+    icon: 'text-success-text',
     Icon: CheckCircle2,
   },
 }

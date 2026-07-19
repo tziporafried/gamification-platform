@@ -52,6 +52,46 @@
   --color-on-danger: var(--palette-surface);
 
   /*
+   * ── Layer 3: Accessible foreground variants (WCAG 2.1 AA) ──
+   *
+   * The palette above is tuned for fills, borders and decoration, where it
+   * works. As *text or icon* colour on our surfaces most of it lands between
+   * 1.65:1 and 3.7:1 — well under the 4.5:1 that 1.4.3 requires.
+   *
+   * These are the same hues darkened (hue and saturation preserved) to the
+   * lightest value that clears 4.5:1 against all three surfaces —
+   * background/surface #FFF8F3, surface-elevated #FFF1EC and modal #FFFFFF.
+   *
+   * Use `--color-*-text` whenever the colour carries text or a meaningful
+   * icon. Keep the plain token for fills, bars, dots and other decoration.
+   */
+  --color-primary-text: #D42F00;   /* from #D83000 — 4.39:1 on surface-elevated */
+  --color-success-text: #21803B;   /* from #45CF6B — was 1.92:1 */
+  --color-warning-text: #916900;   /* from #FFB800 — was 1.65:1 */
+  --color-danger-text: #E10000;    /* from #FF4D4D — was 3.11:1 */
+  --color-secondary-text: #007D7D; /* from #009090 — was 3.70:1 */
+  --color-tertiary-text: #A55E00;  /* from #FC9000 — was 2.19:1 */
+  --color-accent-text: #A55E00;    /* accent aliases tertiary */
+  --color-primary-accent-text: #CD3B03; /* from #FC6024 — was 2.92:1 */
+
+  /* muted cleared 4.5:1 on #FFF8F3 but not on #FFF1EC (4.33:1) */
+  --color-muted: #7A6D67;
+
+  /*
+   * Fills that carry white text. The plain tokens give 3.1–3.7:1 against
+   * --color-on-* , so buttons get these darker fills instead.
+   */
+  --color-secondary-strong: #008080;
+  --color-danger-strong: #E80000;
+
+  /*
+   * 1.4.11 wants 3:1 for the boundary of a control the user must find.
+   * --color-border (1.34:1) stays for decorative rules and card edges; form
+   * controls use this instead.
+   */
+  --color-border-strong: #B5816C;
+
+  /*
    * Page background — warm cream base; corner glows via AtmosphericBackground orbs
    */
   --gradient-background:

@@ -11,7 +11,7 @@ export function TermsPage() {
       <main className="mx-auto max-w-3xl px-5 py-12 text-right sm:px-6 sm:py-16">
         <Link
           to="/"
-          className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
+          className="text-sm font-semibold text-primary-text underline-offset-4 hover:underline"
         >
           חזרה לדף הבית
         </Link>

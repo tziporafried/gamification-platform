@@ -32,7 +32,7 @@ export const ParticipantRow = memo(function ParticipantRow({
   const [saving, setSaving] = useState(false)
   const [touchRevealed, setTouchRevealed] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
-  const nameTextRef = useRef<HTMLParagraphElement>(null)
+  const nameTextRef = useRef<HTMLButtonElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
 
   const ParticipantIcon = getParticipantIcon(participant.id)
@@ -128,12 +128,8 @@ export const ParticipantRow = memo(function ParticipantRow({
               hidden={editingName || !isNameTruncated}
               className="min-w-0 flex-1"
             >
-              <div
-                className="flex min-w-0 flex-1 items-center self-stretch cursor-text"
-                onClick={() => !editingName && setEditingName(true)}
-                role="button"
-                tabIndex={-1}
-              >
+              {/* Real button when idle — see GroupCard for the same fix. */}
+              <div className="flex min-w-0 flex-1 items-center self-stretch cursor-text">
                 {editingName ? (
                   <input
                     ref={nameRef}
@@ -149,12 +145,15 @@ export const ParticipantRow = memo(function ParticipantRow({
                     disabled={saving}
                   />
                 ) : (
-                  <p
+                  <button
                     ref={nameTextRef}
-                    className="w-full min-w-0 truncate text-sm font-semibold leading-5 tracking-tight text-[color-mix(in_srgb,var(--color-on-warning)_92%,#2e221e)]"
+                    type="button"
+                    onClick={() => setEditingName(true)}
+                    aria-label={`עריכת שם המשתתף: ${name}`}
+                    className="w-full min-w-0 truncate border-0 bg-transparent p-0 text-right text-sm font-semibold leading-5 tracking-tight text-[color-mix(in_srgb,var(--color-on-warning)_92%,#2e221e)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
                   >
                     {name}
-                  </p>
+                  </button>
                 )}
               </div>
             </Tooltip>

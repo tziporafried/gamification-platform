@@ -127,12 +127,12 @@ export function Login() {
         {/* Primary: Email + Password (sign in, or create an account on first use) */}
         {confirmationRequired ? (
           <div className="text-center space-y-2 py-2">
-            <CheckCircle2 size={32} className="mx-auto text-success" />
+            <CheckCircle2 size={32} className="mx-auto text-success-text" />
             <p className="text-sm font-medium text-foreground">נשלח אליך מייל אימות</p>
             <p className="text-xs text-muted">יש לאשר את הכתובת כדי להשלים את ההרשמה ולהתחבר</p>
             <button
               onClick={() => setConfirmationRequired(false)}
-              className="text-xs text-secondary hover:text-accent transition-colors mt-2"
+              className="text-xs text-secondary-text hover:text-accent-text transition-colors mt-2"
             >
               חזרה
             </button>
@@ -178,7 +178,7 @@ export function Login() {
           <button
             type="button"
             onClick={() => setMoreOptionsOpen((v) => !v)}
-            className="flex w-full items-center justify-center gap-1.5 text-xs text-muted hover:text-secondary transition-colors"
+            className="flex w-full items-center justify-center gap-1.5 text-xs text-muted hover:text-secondary-text transition-colors"
             aria-expanded={moreOptionsOpen}
           >
             אפשרויות התחברות נוספות

@@ -199,7 +199,7 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
     <div className={cn('flex h-full min-h-0 flex-1 flex-col', embedded && 'min-h-0')}>
       {!embedded && (
         <SectionHeader
-          icon={<Layers size={18} className="text-tertiary" />}
+          icon={<Layers size={18} className="text-tertiary-text" />}
           title="קבוצות"
           className="mb-4"
         />
@@ -230,7 +230,7 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
           >
             <EmptyState
               compact
-              icon={<Layers size={24} strokeWidth={1.75} className="text-tertiary" />}
+              icon={<Layers size={24} strokeWidth={1.75} className="text-tertiary-text" />}
               title="אין קבוצות עדיין"
               description="הוסיפו את הקבוצה הראשונה כדי להתחיל את התחרות."
               action={
@@ -246,7 +246,7 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
             <ScrollContainer ref={listRef} stableGutter={false} className="flex-1 py-1 px-0">
               <EmptyState
                 compact
-                icon={<Layers size={24} strokeWidth={1.75} className="text-tertiary" />}
+                icon={<Layers size={24} strokeWidth={1.75} className="text-tertiary-text" />}
                 title="אין קבוצות עדיין"
                 description="הוסיפו את הקבוצה הראשונה כדי להתחיל את התחרות."
                 action={

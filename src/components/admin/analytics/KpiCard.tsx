@@ -41,7 +41,7 @@ export function KpiCard({
     <Card className={cn('border-t-2 p-4', ACCENT[accent], className)}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-medium text-muted leading-snug">{label}</p>
-        {icon && <div className="shrink-0 text-secondary/80">{icon}</div>}
+        {icon && <div className="shrink-0 text-secondary-text/80">{icon}</div>}
       </div>
       {loading ? (
         <div className="mt-3 h-8 w-16 animate-pulse rounded-md bg-surface-elevated" />

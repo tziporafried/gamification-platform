@@ -356,38 +356,38 @@ function getSummaryAccent(type: SummaryCardType): { iconBg: string; iconText: st
     case 'participants':
       return {
         iconBg: 'bg-primary/12',
-        iconText: 'text-primary',
+        iconText: 'text-primary-text',
       }
     case 'activities':
       return {
         iconBg: 'bg-secondary/12',
-        iconText: 'text-secondary',
+        iconText: 'text-secondary-text',
       }
     case 'groups':
     case 'groupsTogether':
       return {
         iconBg: 'bg-tertiary/12',
-        iconText: 'text-tertiary',
+        iconText: 'text-tertiary-text',
       }
     case 'scans':
       return {
         iconBg: 'bg-success/12',
-        iconText: 'text-success',
+        iconText: 'text-success-text',
       }
     case 'points':
       return {
         iconBg: 'bg-primary/12',
-        iconText: 'text-primary',
+        iconText: 'text-primary-text',
       }
     case 'rewardsEarned':
       return {
         iconBg: 'bg-warning/12',
-        iconText: 'text-warning',
+        iconText: 'text-warning-text',
       }
     case 'cards':
       return {
         iconBg: 'bg-warning/12',
-        iconText: 'text-warning',
+        iconText: 'text-warning-text',
       }
   }
 }

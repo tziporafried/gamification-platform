@@ -10,6 +10,12 @@ interface EmptyStateProps {
   variant?: 'dashed' | 'solid'
   compact?: boolean
   className?: string
+  /**
+   * Heading level for the title. Defaults to h3, which suits the usual nested
+   * use. Pass "h1" when the empty state *is* the page — otherwise the page has
+   * no h1 and the outline starts at h3 (WCAG 1.3.1).
+   */
+  as?: 'h1' | 'h2' | 'h3' | 'h4'
 }
 
 export function EmptyState({
@@ -20,6 +26,7 @@ export function EmptyState({
   variant = 'dashed',
   compact = false,
   className,
+  as: Heading = 'h3',
 }: EmptyStateProps) {
   const shell =
     variant === 'dashed'
@@ -37,17 +44,18 @@ export function EmptyState({
     <div className={cn(shell, className)}>
       {icon && (
         <div
+          aria-hidden="true"
           className={cn(
-            'flex items-center justify-center text-secondary transition-transform duration-200',
+            'flex items-center justify-center text-secondary-text transition-transform duration-200',
             compact ? 'mb-2 scale-100' : 'mb-3 scale-110',
           )}
         >
           {icon}
         </div>
       )}
-      <h3 className={cn('text-sm font-semibold', variant === 'dashed' ? theme.label : theme.textMuted)}>
+      <Heading className={cn('text-sm font-semibold', variant === 'dashed' ? theme.label : theme.textMuted)}>
         {title}
-      </h3>
+      </Heading>
       <p className={cn('mt-1.5 max-w-sm text-sm leading-relaxed', theme.textSubtle)}>{description}</p>
       {action && <div className={cn(compact ? 'mt-3' : 'mt-5')}>{action}</div>}
     </div>

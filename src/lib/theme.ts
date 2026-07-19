@@ -19,26 +19,33 @@ export const theme = {
   textMuted: 'text-muted',
   textSubtle: 'text-muted',
   label: 'text-foreground',
-  accentText: 'text-accent',
+  accentText: 'text-accent-text',
   accentBorder: 'border-accent',
   accentBg: 'bg-surface-elevated',
-  focusRing: 'focus:outline-none focus-visible:outline-none',
-  focusBorder: 'focus:border-tertiary',
-  focusWithinBorder: 'focus-within:border-tertiary',
+  /**
+   * WCAG 2.4.7 — this used to be `focus:outline-none focus-visible:outline-none`,
+   * which stripped the browser default and put nothing back, leaving keyboard
+   * users with no focus indicator at all. The offset ring reads against every
+   * surface and only shows for keyboard focus, so pointer users see no change.
+   */
+  focusRing:
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tertiary-text focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+  focusBorder: 'focus:border-tertiary-text',
+  focusWithinBorder: 'focus-within:border-tertiary-text',
   inputBg: 'bg-surface',
-  inputBorder: 'border-border',
+  inputBorder: 'border-border-strong',
   inputPlaceholder: 'placeholder-muted',
   hoverSurface: 'hover:bg-surface-elevated',
   hoverText: 'hover:text-foreground',
   progressTrack: 'bg-border',
   progressFill: 'bg-secondary',
   spinner: 'border-tertiary',
-  checkbox: 'accent-tertiary focus:ring-tertiary',
+  checkbox: 'accent-tertiary-text focus-visible:ring-2 focus-visible:ring-tertiary-text focus-visible:ring-offset-2',
   iconBg: 'bg-surface-elevated',
   iconBgSubtle: 'bg-surface-elevated',
 
   /** Dropdown / select panel section titles */
-  dropdownHeader: 'px-3 py-1.5 text-[11px] font-semibold text-primary text-right',
+  dropdownHeader: 'px-3 py-1.5 text-[11px] font-semibold text-primary-text text-right',
 
   // Composite surfaces
   surfaceCard: 'rounded-xl border border-border bg-surface shadow-card',
@@ -60,32 +67,34 @@ export const theme = {
     'inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-normal leading-none shrink-0 transition-all [&_svg]:size-3 [&_svg]:shrink-0',
 
   // Icon containers
-  iconBox: 'flex h-12 w-12 items-center justify-center rounded-xl bg-surface-elevated text-secondary',
-  iconBoxSm: 'flex h-8 w-8 items-center justify-center rounded-lg bg-surface-elevated text-secondary',
-  iconBoxMd: 'flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated text-secondary',
+  iconBox: 'flex h-12 w-12 items-center justify-center rounded-xl bg-surface-elevated text-secondary-text',
+  iconBoxSm: 'flex h-8 w-8 items-center justify-center rounded-lg bg-surface-elevated text-secondary-text',
+  iconBoxMd: 'flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated text-secondary-text',
 } as const
 
 export const buttonVariants = {
-  primary: 'bg-primary text-[var(--color-on-primary)] hover:bg-primary-hover focus:ring-primary font-semibold [&_svg]:text-[var(--color-on-primary)]',
-  secondary: 'bg-secondary text-[var(--color-on-secondary)] hover:opacity-90 focus:ring-secondary font-semibold',
-  outline: 'border border-border text-foreground hover:bg-surface-elevated focus:ring-secondary',
-  soft: 'border border-primary bg-surface text-primary hover:bg-primary hover:text-[var(--color-on-primary)] focus:ring-primary font-medium',
-  ghost: 'text-muted hover:bg-surface-elevated hover:text-foreground focus:ring-secondary',
-  danger: 'bg-danger text-[var(--color-on-danger)] hover:bg-danger focus:ring-danger font-semibold',
-  gradient: 'bg-primary text-[var(--color-on-primary)] hover:bg-primary-hover focus:ring-primary font-semibold [&_svg]:text-[var(--color-on-primary)]',
+  primary: 'bg-primary text-[var(--color-on-primary)] hover:bg-primary-hover focus-visible:ring-primary font-semibold [&_svg]:text-[var(--color-on-primary)]',
+  // `-strong` fills: white text on the plain secondary/danger tokens lands at
+  // 3.7:1 and 3.1:1. The darker fills carry the same white at 4.5:1+.
+  secondary: 'bg-secondary-strong text-[var(--color-on-secondary)] hover:opacity-90 focus-visible:ring-secondary-text font-semibold',
+  outline: 'border border-border-strong text-foreground hover:bg-surface-elevated focus-visible:ring-secondary-text',
+  soft: 'border border-primary bg-surface text-primary hover:bg-primary hover:text-[var(--color-on-primary)] focus-visible:ring-primary font-medium',
+  ghost: 'text-muted hover:bg-surface-elevated hover:text-foreground focus-visible:ring-secondary-text',
+  danger: 'bg-danger-strong text-[var(--color-on-danger)] hover:bg-danger-strong focus-visible:ring-danger-text font-semibold',
+  gradient: 'bg-primary text-[var(--color-on-primary)] hover:bg-primary-hover focus-visible:ring-primary font-semibold [&_svg]:text-[var(--color-on-primary)]',
 } as const
 
 export const alertVariants = {
-  error: 'rounded-lg bg-surface-elevated border border-danger text-danger',
-  success: 'rounded-lg bg-surface-elevated border border-success text-success',
-  warning: 'rounded-lg bg-surface-elevated border border-warning text-warning-foreground',
+  error: 'rounded-lg bg-surface-elevated border border-danger text-danger-text',
+  success: 'rounded-lg bg-surface-elevated border border-success text-success-text',
+  warning: 'rounded-lg bg-surface-elevated border border-warning text-warning-text',
 } as const
 
 export const chipColors = {
-  brand: 'border-primary text-primary bg-surface-elevated hover:bg-surface',
-  accent: 'border-accent text-accent bg-surface-elevated hover:bg-surface',
-  amber: 'border-warning text-warning bg-surface-elevated hover:bg-surface',
-  cyan: 'border-secondary text-secondary bg-surface-elevated hover:bg-surface',
+  brand: 'border-primary text-primary-text bg-surface-elevated hover:bg-surface',
+  accent: 'border-accent text-accent-text bg-surface-elevated hover:bg-surface',
+  amber: 'border-warning text-warning-text bg-surface-elevated hover:bg-surface',
+  cyan: 'border-secondary text-secondary-text bg-surface-elevated hover:bg-surface',
   default: 'border-border text-muted bg-surface-elevated hover:bg-surface hover:border-accent',
 } as const
 

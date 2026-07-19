@@ -457,3 +457,25 @@
     color: var(--color-primary);
   }
 }
+
+/*
+ * Global reduced-motion safety net (WCAG 2.3.3).
+ *
+ * Individual animations opt out above, but Tailwind's animate-* utilities and
+ * ad-hoc keyframes across the kiosk and celebration screens were not covered.
+ * Durations are collapsed rather than set to `none` so animationend/transitionend
+ * listeners still fire and nothing hangs waiting for a callback.
+ *
+ * JS-driven framer-motion animations are handled separately by
+ * <MotionConfig reducedMotion="user"> in App.tsx — CSS cannot reach those.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

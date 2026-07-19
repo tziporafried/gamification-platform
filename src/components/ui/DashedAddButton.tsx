@@ -11,7 +11,7 @@ export function DashedAddButton({ className, children, ...props }: DashedAddButt
     <button
       type="button"
       className={cn(
-        'flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm text-primary shadow-lift',
+        'flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm text-primary-text shadow-lift',
         'transition-all duration-[180ms] ease-out',
         theme.borderInteractiveDashed,
         'hover:bg-surface-elevated hover:shadow-card-hover',

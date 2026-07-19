@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { QrCode, Printer, ChevronDown, ChevronUp, User, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -7,12 +7,22 @@ import { Button } from '@/components/ui/Button'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { PanelCard } from '@/components/ui/PanelCard'
 import { theme } from '@/lib/theme'
-import type { Action, Group, ParticipantWithGroups, Event } from '@/types'
+import { computeCardCounts, isActionRelevantTo, type CardCounts } from '@/lib/cardCounts'
+
+export type { CardCounts }
+import type { Action, Group, ParticipantWithGroups, Event, ScanMode } from '@/types'
 
 interface QrCardGeneratorProps {
   event: Event
+  /** Which deck to lay out. Chosen at print time; not stored on the event. */
+  scanMode: ScanMode
   onReadyChange?: (fn: (() => void) | null) => void
-  onTotalCardsChange?: (total: number) => void
+  /**
+   * Both deck sizes, computed from the rows actually being printed. Callers must
+   * use these rather than deriving from `useEventCounts` — that counts every
+   * action row, including inactive ones, and cannot see group targeting.
+   */
+  onCardCountsChange?: (counts: CardCounts) => void
   onGeneratedChange?: (generated: boolean) => void
 }
 
@@ -32,12 +42,12 @@ const CARD_PALETTE = {
 /** Set to true to show the participant/group accordion before card generation. */
 const SHOW_PARTICIPANT_ACCORDION = false
 
-export function QrCardGenerator({ event, onReadyChange, onTotalCardsChange, onGeneratedChange }: QrCardGeneratorProps) {
+export function QrCardGenerator({ event, scanMode, onReadyChange, onCardCountsChange, onGeneratedChange }: QrCardGeneratorProps) {
+  const isSplit = scanMode === 'split'
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [actions, setActions] = useState<ActionWithGroupIds[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
-  const [sheets, setSheets] = useState<ParticipantSheet[]>([])
   const [generated, setGenerated] = useState(false)
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null)
   const [expandedParticipant, setExpandedParticipant] = useState<string | null>(null)
@@ -71,27 +81,38 @@ export function QrCardGenerator({ event, onReadyChange, onTotalCardsChange, onGe
 
   const getRelevantActions = useCallback((participant: ParticipantWithGroups): ActionWithGroupIds[] => {
     const participantGroupIds = new Set(participant.groups.map((g) => g.id))
-    return actions.filter((action) => action.groupIds.length === 0 || action.groupIds.some((gid) => participantGroupIds.has(gid)))
+    return actions.filter((action) => isActionRelevantTo(action, participantGroupIds))
   }, [actions])
 
-  const previewTotalCards = useMemo(
-    () => participants.reduce((sum, p) => sum + getRelevantActions(p).length, 0),
-    [participants, getRelevantActions],
+  // Counted from the same rows and the same targeting rule that lay the deck
+  // out, so the advertised number cannot drift from what actually prints.
+  const cardCounts = useMemo<CardCounts>(
+    () => computeCardCounts(
+      participants.map((p) => ({ groupIds: p.groups.map((g) => g.id) })),
+      actions,
+    ),
+    [participants, actions],
   )
 
   useEffect(() => {
     if (loading) return
-    onTotalCardsChange?.(previewTotalCards)
-  }, [loading, previewTotalCards, onTotalCardsChange])
+    onCardCountsChange?.(cardCounts)
+  }, [loading, cardCounts, onCardCountsChange])
 
   useEffect(() => {
     onGeneratedChange?.(generated)
   }, [generated, onGeneratedChange])
 
-  const handleGenerate = useCallback(() => {
-    const built: ParticipantSheet[] = participants.map((p) => ({ participant: p, actions: getRelevantActions(p) })).filter((s) => s.actions.length > 0)
-    setSheets(built); setGenerated(true)
-  }, [participants, getRelevantActions])
+  // Derived, not snapshotted on generate — the scan mode is chosen in the same
+  // click that generates, so a snapshot would lay out the previous mode.
+  const sheets = useMemo<ParticipantSheet[]>(
+    () => isSplit
+      ? []
+      : participants.map((p) => ({ participant: p, actions: getRelevantActions(p) })).filter((s) => s.actions.length > 0),
+    [isSplit, participants, getRelevantActions],
+  )
+
+  const handleGenerate = useCallback(() => { setGenerated(true) }, [])
 
   const showGenerateButton = useMemo(
     () => !loading && participants.length > 0 && actions.length > 0 && !generated,
@@ -116,6 +137,8 @@ export function QrCardGenerator({ event, onReadyChange, onTotalCardsChange, onGe
 body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm; }
 
 .participant-section { margin-bottom: 20px; }
+.section-heading { font-size: 17px; font-weight: 900; color: ${CARD_PALETTE.foreground}; margin: 18px 0 4px; }
+.section-hint { font-size: 11px; color: ${CARD_PALETTE.muted}; margin-bottom: 10px; }
 .participant-divider { display: flex; align-items: center; gap: 8px; margin: 14px 0 12px; padding: 6px 0; border-bottom: 2.5px solid ${c}; }
 .participant-divider .name { font-size: 15px; font-weight: 800; color: ${CARD_PALETTE.foreground}; }
 .participant-divider .group-dots { display: flex; gap: 4px; }
@@ -254,11 +277,169 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
 
           <div className="rounded-2xl border border-border bg-surface">
             <div ref={printRef} className="p-6">
-              {sheets.map((sheet) => (<ParticipantPage key={sheet.participant.id} sheet={sheet} event={event} wizardPreview />))}
+              {isSplit ? (
+                <SplitPages participants={participants} actions={actions} event={event} wizardPreview />
+              ) : (
+                sheets.map((sheet) => (<ParticipantPage key={sheet.participant.id} sheet={sheet} event={event} wizardPreview />))
+              )}
             </div>
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Split-mode sheet: participant cards, then action cards. The two are printed
+ * as separate decks because scoring pairs one of each at scan time.
+ */
+function SplitPages({
+  participants,
+  actions,
+  event,
+  wizardPreview = false,
+}: {
+  participants: ParticipantWithGroups[]
+  actions: ActionWithGroupIds[]
+  event: Event
+  wizardPreview?: boolean
+}) {
+  const c = CARD_PALETTE.primary
+
+  const gridStyle = {
+    display: wizardPreview ? 'grid' : 'flex',
+    gridTemplateColumns: wizardPreview ? 'repeat(2, minmax(0, 1fr))' : undefined,
+    flexWrap: wizardPreview ? undefined : ('wrap' as const),
+    gap: '12px',
+  }
+
+  return (
+    <>
+      <div className="participant-section" style={{ marginBottom: '24px' }}>
+        <div className="section-heading" style={{ fontSize: '17px', fontWeight: 900, color: CARD_PALETTE.foreground, margin: '0 0 4px' }}>
+          כרטיסי משתתפים
+        </div>
+        <div className="section-hint" style={{ fontSize: '11px', color: CARD_PALETTE.muted, marginBottom: '10px' }}>
+          נסרקים ראשונים — לפני כרטיס המשימה.
+        </div>
+        <div className="cards-grid" style={gridStyle}>
+          {participants.map((participant) => (
+            <QrCard
+              key={participant.id}
+              event={event}
+              wizardPreview={wizardPreview}
+              payload={{ participantCode: participant.external_id }}
+              eyebrow="כרטיס משתתף"
+              title={participant.name}
+              scanHint="סרקו ראשון"
+              footer={participant.groups.length > 0 ? (
+                <div className="group-dots" style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                  {participant.groups.map((g) => (
+                    <span key={g.id} className="group-dot" style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: g.color }} title={g.name} />
+                  ))}
+                  <span style={{ fontSize: '10px', color: CARD_PALETTE.muted, marginInlineStart: '2px' }}>
+                    {participant.groups.map((g) => g.name).join(' · ')}
+                  </span>
+                </div>
+              ) : null}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="participant-section" style={{ marginBottom: '20px' }}>
+        <div className="section-heading" style={{ fontSize: '17px', fontWeight: 900, color: CARD_PALETTE.foreground, margin: '0 0 4px' }}>
+          כרטיסי משימות
+        </div>
+        <div className="section-hint" style={{ fontSize: '11px', color: CARD_PALETTE.muted, marginBottom: '10px' }}>
+          נסרקים אחרי כרטיס המשתתף כדי לזכות בנקודות.
+        </div>
+        <div className="cards-grid" style={gridStyle}>
+          {actions.map((action) => (
+            <QrCard
+              key={action.id}
+              event={event}
+              wizardPreview={wizardPreview}
+              payload={{ actionCode: action.code }}
+              eyebrow="כרטיס משימה"
+              title={action.name}
+              scanHint="סרקו שני"
+              footer={(
+                <div className="points-row" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
+                  <span className="points-icon" style={{ fontSize: '14px' }}>⭐</span>
+                  <span className="points-value" style={{ fontSize: wizardPreview ? '16px' : '18px', fontWeight: 900, color: c, letterSpacing: '-0.5px' }}>
+                    {action.points >= 0 ? '+' : ''}{action.points}
+                  </span>
+                  <span className="points-label" style={{ fontSize: '10px', color: CARD_PALETTE.muted, fontWeight: 500 }}>נקודות</span>
+                </div>
+              )}
+            />
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
+
+/** One split-mode card — same chrome as the combined card, single code inside. */
+function QrCard({
+  event,
+  payload,
+  eyebrow,
+  title,
+  scanHint,
+  footer,
+  wizardPreview = false,
+}: {
+  event: Event
+  payload: { participantCode: string } | { actionCode: string }
+  eyebrow: string
+  title: string
+  scanHint: string
+  footer?: ReactNode
+  wizardPreview?: boolean
+}) {
+  const c = CARD_PALETTE.primary
+
+  return (
+    <div
+      className="card"
+      style={{
+        width: wizardPreview ? '100%' : '310px',
+        minWidth: 0,
+        borderRadius: '16px',
+        border: `1.5px solid ${CARD_PALETTE.border}`,
+        overflow: 'hidden',
+        display: 'flex',
+        direction: 'ltr',
+        background: CARD_PALETTE.surface,
+        breakInside: 'avoid',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+      }}
+    >
+      <div className="qr-side" style={{ flexShrink: 0, width: wizardPreview ? '96px' : '120px', padding: wizardPreview ? '10px' : '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', background: `linear-gradient(135deg, ${c}08 0%, ${c}03 100%)`, borderLeft: `3px solid ${c}` }}>
+        <QRCodeSVG value={JSON.stringify(payload)} size={wizardPreview ? 72 : 90} level="M" fgColor={CARD_PALETTE.foreground} />
+        <span className="scan-text" style={{ fontSize: '7px', color: CARD_PALETTE.muted, textAlign: 'center', direction: 'rtl', letterSpacing: '0.3px' }}>{scanHint}</span>
+      </div>
+
+      <div className="info-side" style={{ flex: 1, padding: wizardPreview ? '10px 12px' : '14px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center', direction: 'rtl', minWidth: 0, gap: '2px' }}>
+        <div className="event-row" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+          {event.logo_url && <img src={event.logo_url} alt="" className="event-logo" style={{ width: '18px', height: '18px', borderRadius: '4px', objectFit: 'cover' }} />}
+          <span className="event-label" style={{ fontSize: '9px', color: CARD_PALETTE.muted }}>{event.name}</span>
+        </div>
+
+        <div className="participant-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: `${c}12`, border: `1px solid ${c}25`, borderRadius: '20px', padding: '3px 10px', fontSize: '10px', fontWeight: 600, color: CARD_PALETTE.foreground, width: 'fit-content', marginBottom: '6px' }}>
+          <span className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: c }} />
+          {eyebrow}
+        </div>
+
+        <div className="action-name" style={{ fontSize: wizardPreview ? '14px' : '16px', fontWeight: 800, color: CARD_PALETTE.foreground, marginBottom: '4px', lineHeight: 1.2 }}>
+          {title}
+        </div>
+
+        {footer}
+      </div>
     </div>
   )
 }

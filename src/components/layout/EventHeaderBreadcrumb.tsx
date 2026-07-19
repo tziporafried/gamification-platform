@@ -22,7 +22,7 @@ export function EventHeaderBreadcrumb({ eventName, suffix, trialEventId }: Event
         <span>{backLabel}</span>
       </button>
       <span className="shrink-0 text-muted/60 leading-none">/</span>
-      <span className="truncate max-w-[200px] text-sm font-bold leading-none text-primary">
+      <span className="truncate max-w-[200px] text-sm font-bold leading-none text-primary-text">
         {eventName || 'אירוע חדש'}
       </span>
       {trialEventId && (

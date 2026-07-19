@@ -31,7 +31,7 @@ const GROUP_OPTIONS: { type: GroupType; label: string; description: string; icon
 const SELECTED_SEGMENT_STYLES = {
   indicator:
     'bg-[color-mix(in_srgb,var(--color-tertiary)_11%,var(--color-surface))]',
-  icon: 'text-tertiary',
+  icon: 'text-tertiary-text',
   title: 'text-[color-mix(in_srgb,var(--color-tertiary)_88%,var(--color-foreground))]',
   description: 'text-muted/58',
 } as const
@@ -251,7 +251,7 @@ export function StepGroups({
             <EmptyState
               compact
               variant="solid"
-              icon={<CheckCircle2 size={28} strokeWidth={1.75} className="text-success" />}
+              icon={<CheckCircle2 size={28} strokeWidth={1.75} className="text-success-text" />}
               title="מעולה!"
               description="כל משתתף יתחרה באופן עצמאי ואין צורך להגדיר קבוצות."
               className="w-full"
@@ -286,7 +286,7 @@ export function StepGroups({
       >
         <div className="space-y-4">
           <div className="flex items-start gap-3 rounded-lg bg-surface-elevated border border-warning p-4">
-            <AlertTriangle size={20} className="shrink-0 text-warning mt-0.5" />
+            <AlertTriangle size={20} className="shrink-0 text-warning-text mt-0.5" />
             <div className="text-sm text-warning-foreground">
               <p className="font-medium mb-1">שים לב!</p>
               <p>מעבר ל"בלי קבוצות" ימחק את כל הקבוצות הקיימות ({localGroupCount}) ואת כל שיוכי המשתתפים לקבוצות.</p>

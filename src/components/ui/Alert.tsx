@@ -11,7 +11,12 @@ interface AlertProps {
 
 export function Alert({ variant = 'error', message, children, className }: AlertProps) {
   return (
-    <div className={cn(alertVariants[variant], 'p-3 text-sm', className)}>
+    <div
+      // Alerts appear in response to an action, so they must be announced.
+      // Errors interrupt; success and warning are polite.
+      role={variant === 'error' ? 'alert' : 'status'}
+      className={cn(alertVariants[variant], 'p-3 text-sm', className)}
+    >
       {children ?? message}
     </div>
   )

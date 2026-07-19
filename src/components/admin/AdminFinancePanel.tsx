@@ -211,7 +211,7 @@ export function AdminFinancePanel() {
             className={cn(
               'flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
               entryType === 'expense'
-                ? 'border-danger/40 bg-danger/10 text-danger'
+                ? 'border-danger/40 bg-danger/10 text-danger-text'
                 : 'border-border bg-surface text-muted hover:border-secondary/30',
             )}
           >
@@ -223,7 +223,7 @@ export function AdminFinancePanel() {
             className={cn(
               'flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
               entryType === 'income'
-                ? 'border-success/40 bg-success/10 text-success'
+                ? 'border-success/40 bg-success/10 text-success-text'
                 : 'border-border bg-surface text-muted hover:border-secondary/30',
             )}
           >
@@ -280,7 +280,7 @@ export function AdminFinancePanel() {
           </Select>
 
           {error && (
-            <p className="text-sm text-danger">{error}</p>
+            <p className="text-sm text-danger-text">{error}</p>
           )}
 
           <Button type="submit" loading={saving} className="w-full sm:w-auto">
@@ -328,7 +328,7 @@ export function AdminFinancePanel() {
                   <div
                     className={cn(
                       'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                      isIncome ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger',
+                      isIncome ? 'bg-success/10 text-success-text' : 'bg-danger/10 text-danger-text',
                     )}
                   >
                     {isIncome ? <ArrowUpCircle size={16} /> : <ArrowDownCircle size={16} />}
@@ -349,7 +349,7 @@ export function AdminFinancePanel() {
                   <span
                     className={cn(
                       'shrink-0 text-sm font-semibold tabular-nums',
-                      isIncome ? 'text-success' : 'text-danger',
+                      isIncome ? 'text-success-text' : 'text-danger-text',
                     )}
                   >
                     {isIncome ? '+' : '−'}
@@ -359,7 +359,7 @@ export function AdminFinancePanel() {
                   <button
                     type="button"
                     onClick={() => setDeleteId(entry.id)}
-                    className="shrink-0 rounded-lg p-1 text-muted opacity-0 transition-all hover:bg-surface-elevated hover:text-danger group-hover/row:opacity-100"
+                    className="shrink-0 rounded-lg p-1 text-muted opacity-0 transition-all hover:bg-surface-elevated hover:text-danger-text group-hover/row:opacity-100"
                     title="מחיקה"
                   >
                     <Trash2 size={14} />

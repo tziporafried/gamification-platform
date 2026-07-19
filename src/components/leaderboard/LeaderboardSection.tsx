@@ -70,7 +70,7 @@ function DetailModal({ title, children, onClose }: { title: string; children: Re
           initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }} transition={{ duration: 0.25 }}>
           <div className="mb-5 flex items-center justify-between">
             <h3 className="text-lg font-black text-foreground">{title}</h3>
-            <button onClick={onClose} className="rounded-lg p-1.5 text-muted transition-all hover:bg-surface-elevated hover:text-foreground hover:scale-110"><X size={18} /></button>
+            <button type="button" onClick={onClose} aria-label="סגירה" className="rounded-lg p-1.5 text-muted transition-all hover:bg-surface-elevated hover:text-foreground hover:scale-110 motion-reduce:hover:scale-100"><X size={18} aria-hidden="true" /></button>
           </div>{children}
         </motion.div>
       </motion.div>
@@ -194,14 +194,14 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
               ) : null}
               <div className="flex items-center gap-2.5">
                 <motion.div animate={{ rotate: [0, -10, 10, 0] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}>
-                  <Trophy size={30} className="text-warning" fill="currentColor" style={{ filter: 'drop-shadow(0 0 8px rgba(251,191,36,0.5))' }} />
+                  <Trophy size={30} className="text-warning-text" fill="currentColor" style={{ filter: 'drop-shadow(0 0 8px rgba(251,191,36,0.5))' }} />
                 </motion.div>
                 <h1 className="text-3xl font-black text-foreground sm:text-4xl">שיאים</h1>
               </div>
               {eventName && <p className="text-sm font-medium text-foreground">{eventName}</p>}
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success shadow-[0_0_6px_color-mix(in_srgb,var(--color-success)_60%,transparent)]" /></span>
-                <span className="text-[11px] font-semibold text-success/80">LIVE</span>
+                <span className="text-[11px] font-semibold text-success-text/80">LIVE</span>
               </div>
             </div>
             <div className="w-10" />
@@ -213,9 +213,9 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
               {phase === 'suspense' && (
                 <motion.div className="flex flex-col items-center gap-6 py-16" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                   <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, 5, -5, 0] }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}>
-                    <Sparkles size={56} className="text-warning" style={{ filter: 'drop-shadow(0 0 16px rgba(251,191,36,0.7))' }} />
+                    <Sparkles size={56} className="text-warning-text" style={{ filter: 'drop-shadow(0 0 16px rgba(251,191,36,0.7))' }} />
                   </motion.div>
-                  <motion.p className="text-4xl font-black text-warning sm:text-5xl md:text-6xl" style={{ textShadow: '0 0 30px color-mix(in srgb, var(--color-warning) 40%, transparent)' }} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity }}>
+                  <motion.p className="text-4xl font-black text-warning-text sm:text-5xl md:text-6xl" style={{ textShadow: '0 0 30px color-mix(in srgb, var(--color-warning) 40%, transparent)' }} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity }}>
                     ...מי יהיו האלופים?
                   </motion.p>
                   <button onClick={handleSkip} className="mt-2 text-xs text-muted transition-colors hover:text-foreground">דלג ←</button>
@@ -244,15 +244,15 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                       <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}>
                         <motion.div animate={isRevealed ? { filter: ['drop-shadow(0 0 8px rgba(234,179,8,0.5))', 'drop-shadow(0 0 24px rgba(234,179,8,0.9))', 'drop-shadow(0 0 8px rgba(234,179,8,0.5))'] } : undefined}
                           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}>
-                          <Crown size={42} className="mx-auto mb-3 text-warning" fill="currentColor" style={{ filter: 'drop-shadow(0 0 12px rgba(250,204,21,0.6))' }} />
+                          <Crown size={42} className="mx-auto mb-3 text-warning-text" fill="currentColor" style={{ filter: 'drop-shadow(0 0 12px rgba(250,204,21,0.6))' }} />
                         </motion.div>
                       </motion.div>
-                      <p className="mb-3 text-[10px] font-black uppercase tracking-[0.25em] text-warning/80">אלוף המשתתפים</p>
-                      <p className="text-5xl font-black text-warning tabular-nums" style={{ textShadow: '0 0 20px rgba(250,204,21,0.3)' }}><AnimatedNumber value={champ.total_points} duration={2500} /></p>
+                      <p className="mb-3 text-[10px] font-black uppercase tracking-[0.25em] text-warning-text/80">אלוף המשתתפים</p>
+                      <p className="text-5xl font-black text-warning-text tabular-nums" style={{ textShadow: '0 0 20px rgba(250,204,21,0.3)' }}><AnimatedNumber value={champ.total_points} duration={2500} /></p>
                       <p className="mb-5 text-sm text-muted">נקודות</p>
                       {!isRevealed ? (
                         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-warning/30">
-                          <motion.span className="text-3xl text-warning/40" animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 1.2, repeat: Infinity }}>?</motion.span>
+                          <motion.span className="text-3xl text-warning-text/40" animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 1.2, repeat: Infinity }}>?</motion.span>
                         </div>
                       ) : (
                         <motion.div initial={{ opacity: 0, scale: 0.8, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 200, damping: 20 }}>
@@ -283,15 +283,15 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                         <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}>
                           <motion.div animate={isRevealed ? { filter: ['drop-shadow(0 0 8px rgba(234,179,8,0.5))', 'drop-shadow(0 0 24px rgba(234,179,8,0.9))', 'drop-shadow(0 0 8px rgba(234,179,8,0.5))'] } : undefined}
                             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}>
-                            <Crown size={42} className="mx-auto mb-3 text-warning" fill="currentColor" style={{ filter: 'drop-shadow(0 0 12px rgba(250,204,21,0.6))' }} />
+                            <Crown size={42} className="mx-auto mb-3 text-warning-text" fill="currentColor" style={{ filter: 'drop-shadow(0 0 12px rgba(250,204,21,0.6))' }} />
                           </motion.div>
                         </motion.div>
-                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.25em] text-warning/80">אלופת הקבוצות</p>
-                        <p className="text-5xl font-black text-warning tabular-nums" style={{ textShadow: '0 0 20px rgba(250,204,21,0.3)' }}><AnimatedNumber value={gChamp.total_points} duration={2500} /></p>
+                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.25em] text-warning-text/80">אלופת הקבוצות</p>
+                        <p className="text-5xl font-black text-warning-text tabular-nums" style={{ textShadow: '0 0 20px rgba(250,204,21,0.3)' }}><AnimatedNumber value={gChamp.total_points} duration={2500} /></p>
                         <p className="mb-5 text-sm text-muted">נקודות</p>
                         {!isRevealed ? (
                           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-warning/30">
-                            <motion.span className="text-3xl text-warning/40" animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.3 }}>?</motion.span>
+                            <motion.span className="text-3xl text-warning-text/40" animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.3 }}>?</motion.span>
                           </div>
                         ) : (
                           <motion.div initial={{ opacity: 0, scale: 0.8, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.15 }}>
@@ -322,7 +322,7 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                       <div className="mb-5 flex items-center justify-center gap-2.5">
                         <motion.div animate={{ rotate: [0, -5, 5, 0] }} transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}>
-                          <Award size={22} className="text-warning" style={{ filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.4))' }} />
+                          <Award size={22} className="text-warning-text" style={{ filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.4))' }} />
                         </motion.div>
                         <h3 className="text-lg font-black text-foreground">פודיום משתתפים</h3>
                       </div>
@@ -350,7 +350,7 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                       <div className="mb-5 flex items-center justify-center gap-2.5">
                         <motion.div animate={{ rotate: [0, -5, 5, 0] }} transition={{ duration: 3, repeat: Infinity, repeatDelay: 2, delay: 0.5 }}>
-                          <Award size={22} className="text-warning" style={{ filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.4))' }} />
+                          <Award size={22} className="text-warning-text" style={{ filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.4))' }} />
                         </motion.div>
                         <h3 className="text-lg font-black text-foreground">פודיום קבוצות</h3>
                       </div>
@@ -380,7 +380,7 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                 <motion.div className="cursor-pointer rounded-2xl border border-border overflow-hidden transition-all hover:border-secondary/30 hover:shadow-card hover:-translate-y-0.5"
                   style={{ background: 'linear-gradient(180deg, rgba(26,20,51,0.85) 0%, rgba(13,9,32,0.9) 100%)', boxShadow: '0 2px 16px rgba(0,0,0,0.25)' }}
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} onClick={() => setExpanded('participants')}>
-                  <div className="flex items-center gap-2.5 border-b border-border px-5 py-4"><Users size={18} className="text-secondary" /><h3 className="text-sm font-black text-foreground">שיאנים לפי משתתפים</h3></div>
+                  <div className="flex items-center gap-2.5 border-b border-border px-5 py-4"><Users size={18} className="text-secondary-text" /><h3 className="text-sm font-black text-foreground">שיאנים לפי משתתפים</h3></div>
                   <div>
                     {rankedP.filter(p => p.total_points > 0).slice(0, 4).length === 0 ? (
                       <p className="px-5 py-6 text-center text-sm text-muted">אין ניקוד עדיין</p>
@@ -399,7 +399,7 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                   <motion.div className="cursor-pointer rounded-2xl border border-border overflow-hidden transition-all hover:border-secondary/30 hover:shadow-card hover:-translate-y-0.5"
                     style={{ background: 'linear-gradient(180deg, rgba(26,20,51,0.85) 0%, rgba(13,9,32,0.9) 100%)', boxShadow: '0 2px 16px rgba(0,0,0,0.25)' }}
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} onClick={() => setExpanded('groups')}>
-                    <div className="flex items-center gap-2.5 border-b border-border px-5 py-4"><Trophy size={18} className="text-warning" style={{ filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.4))' }} /><h3 className="text-sm font-black text-foreground">שיאנים לפי קבוצות</h3></div>
+                    <div className="flex items-center gap-2.5 border-b border-border px-5 py-4"><Trophy size={18} className="text-warning-text" style={{ filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.4))' }} /><h3 className="text-sm font-black text-foreground">שיאנים לפי קבוצות</h3></div>
                     <div>
                       {rankedG.filter(g => g.total_points > 0).slice(0, 4).length === 0 ? (
                         <p className="px-5 py-6 text-center text-sm text-muted">אין ניקוד עדיין</p>
@@ -408,7 +408,7 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                           style={{ boxShadow: rg || 'none', borderInlineStartWidth: g.rank <= 3 ? 3 : 0, borderInlineStartStyle: 'solid' as const, borderInlineStartColor: RANK_BG[g.rank] || 'transparent', backgroundColor: rbg || 'transparent' }}
                           initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + idx * 0.07 }}>
                           <div className="flex items-center gap-3"><RankCircle rank={g.rank} /><span className="h-5 w-5 shrink-0 rounded-full shadow-sm" style={{ backgroundColor: g.group_color, boxShadow: `0 0 8px ${g.group_color}40` }} />
-                            <div className="min-w-0 flex-1"><p className="truncate text-sm font-black text-foreground">{g.group_name}</p><div className="text-[11px] text-muted">{g.total_points.toLocaleString('he-IL')} נק׳{tc > 0 ? ` · ${tc} משימות` : ''}</div>{ch && <div className="flex items-center gap-1 text-[11px] text-muted"><Crown size={10} className="text-warning/60" />שיאן: <span className="font-semibold text-foreground">{ch.name}</span></div>}</div>
+                            <div className="min-w-0 flex-1"><p className="truncate text-sm font-black text-foreground">{g.group_name}</p><div className="text-[11px] text-muted">{g.total_points.toLocaleString('he-IL')} נק׳{tc > 0 ? ` · ${tc} משימות` : ''}</div>{ch && <div className="flex items-center gap-1 text-[11px] text-muted"><Crown size={10} className="text-warning-text/60" />שיאן: <span className="font-semibold text-foreground">{ch.name}</span></div>}</div>
                             <span className="shrink-0 text-lg font-black text-foreground tabular-nums">{g.total_points.toLocaleString('he-IL')}</span>
                           </div>
                         </motion.div>
@@ -420,7 +420,7 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                   <motion.div className="cursor-pointer rounded-2xl border border-border overflow-hidden transition-all hover:border-success/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.3)] hover:-translate-y-0.5"
                     style={{ background: 'linear-gradient(180deg, rgba(26,20,51,0.85) 0%, rgba(13,9,32,0.9) 100%)', boxShadow: '0 2px 16px rgba(0,0,0,0.25)' }}
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} onClick={() => setExpanded('tasks')}>
-                    <div className="flex items-center gap-2.5 border-b border-border px-5 py-4"><ClipboardCheck size={18} className="text-success" style={{ filter: 'drop-shadow(0 0 4px rgba(52,211,153,0.4))' }} /><h3 className="text-sm font-black text-foreground">המשימות שבוצעו הכי הרבה</h3></div>
+                    <div className="flex items-center gap-2.5 border-b border-border px-5 py-4"><ClipboardCheck size={18} className="text-success-text" style={{ filter: 'drop-shadow(0 0 4px rgba(52,211,153,0.4))' }} /><h3 className="text-sm font-black text-foreground">המשימות שבוצעו הכי הרבה</h3></div>
                     <div>
                       {taskStats.slice(0, 4).map((t, idx) => { const tRank = idx + 1; const rg = RANK_GLOW[tRank]; const rbg = RANK_ROW_BG[tRank]; return (
                         <motion.div key={t.name} className="flex items-center gap-3 border-b border-border px-5 py-3.5 transition-all hover:bg-surface-elevated"
@@ -443,7 +443,7 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                   initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
                   <div className="flex items-center gap-2.5 border-b border-secondary/10 px-5 py-3">
                     <span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-secondary opacity-75" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-secondary shadow-[0_0_6px_color-mix(in_srgb,var(--color-secondary)_60%,transparent)]" /></span>
-                    <span className="text-xs font-black text-secondary/90">פעילות אחרונה</span>
+                    <span className="text-xs font-black text-secondary-text/90">פעילות אחרונה</span>
                   </div>
                   <div>
                     {recentActivity.map((tx, idx) => { const pos = tx.points >= 0; return (
@@ -451,10 +451,10 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                         style={idx === 0 ? { backgroundColor: 'rgba(6,182,212,0.04)' } : undefined}
                         initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.45 + idx * 0.06 }}>
                         <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${pos ? 'bg-success/20' : 'bg-danger/20'}`}>
-                          {pos ? <ArrowUp size={12} className="text-success" /> : <ArrowDown size={12} className="text-danger" />}
+                          {pos ? <ArrowUp size={12} className="text-success-text" /> : <ArrowDown size={12} className="text-danger-text" />}
                         </div>
                         <span className="min-w-0 flex-1 truncate text-xs text-foreground"><span className="font-bold text-foreground">{tx.participant?.name}</span> ביצע <span className="font-medium text-foreground">{tx.action?.name}</span></span>
-                        <span className={`shrink-0 text-xs font-black tabular-nums ${pos ? 'text-success' : 'text-danger'}`}>{pos ? '+' : ''}{tx.points}</span>
+                        <span className={`shrink-0 text-xs font-black tabular-nums ${pos ? 'text-success-text' : 'text-danger-text'}`}>{pos ? '+' : ''}{tx.points}</span>
                         <span className="shrink-0 text-[10px] text-muted">{formatDistanceToNow(new Date(tx.created_at), { addSuffix: true, locale: he })}</span>
                       </motion.div>
                     ) })}

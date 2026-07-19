@@ -241,12 +241,12 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
               )}
             >
               <div className="w-14 h-14 rounded-full bg-surface-elevated flex items-center justify-center">
-                <ImageIcon size={28} className="text-tertiary" />
+                <ImageIcon size={28} className="text-tertiary-text" />
               </div>
               <div className="text-center">
                 <p className="text-sm text-foreground">
                   גררו לוגו לכאן או{' '}
-                  <span className="text-accent underline underline-offset-2">בחרו מהמכשיר</span>
+                  <span className="text-accent-text underline underline-offset-2">בחרו מהמכשיר</span>
                 </p>
                 <p className="text-xs text-muted mt-1">
                   PNG, JPG, WebP או SVG • עד 2MB
@@ -267,7 +267,7 @@ export function StepEventDetails({ event, onEventUpdated, onNext, templateMode }
           />
 
           {uploadError && (
-            <p className="mt-2 text-center text-sm text-danger">{uploadError}</p>
+            <p className="mt-2 text-center text-sm text-danger-text">{uploadError}</p>
           )}
         </div>
         </>

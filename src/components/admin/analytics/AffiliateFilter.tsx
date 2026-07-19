@@ -55,7 +55,7 @@ export function AffiliateFilterBar({
 
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <Filter size={16} className="shrink-0 text-secondary" aria-hidden />
+      <Filter size={16} className="shrink-0 text-secondary-text" aria-hidden />
       <h3 className="shrink-0 text-sm font-semibold text-foreground">סינון לפי אפיליאייט</h3>
       <div className="min-w-0 max-w-md flex-1">
         <Select

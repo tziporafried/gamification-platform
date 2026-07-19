@@ -99,15 +99,16 @@ export function AutocompleteField<T>({
             style={{ borderColor: 'color-mix(in srgb, var(--color-success) 50%, transparent)' }}
           >
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <CheckCircle2 size={14} className="shrink-0 text-success" />
+              <CheckCircle2 size={14} className="shrink-0 text-success-text" />
               {renderSelected(selected)}
             </div>
             <button
               type="button"
               onClick={onClear}
+              aria-label="ניקוי הבחירה"
               className="mr-1 shrink-0 rounded p-0.5 text-muted hover:text-foreground"
             >
-              <X size={14} />
+              <X size={14} aria-hidden="true" />
             </button>
           </div>
         ) : (
@@ -131,7 +132,7 @@ export function AutocompleteField<T>({
             />
             <div className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2">
               {searching && <Loader2 size={14} className="animate-spin text-muted" />}
-              {!searching && isInvalid && <AlertCircle size={14} className="text-danger" />}
+              {!searching && isInvalid && <AlertCircle size={14} className="text-danger-text" />}
             </div>
           </div>
         )}
@@ -162,7 +163,7 @@ export function AutocompleteField<T>({
         )}
 
         {isInvalid && !showPanel && (
-          <p className="mt-1 text-[10px] text-danger">
+          <p className="mt-1 text-[10px] text-danger-text">
             {suggestions.length === 0 && hasQuery ? emptyMessage : 'יש לבחור מהרשימה'}
           </p>
         )}

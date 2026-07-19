@@ -39,9 +39,9 @@ export function BrandWordmark({
           align === 'end' ? 'items-end' : 'items-start',
         )}
       >
-        <span className="text-sm font-bold tracking-tight text-primary">Gamify</span>
+        <span className="text-sm font-bold tracking-tight text-primary-text">Gamify</span>
         {showSubtitle && (
-          <span className="text-[10px] font-semibold tracking-wide text-secondary">PLATFORM</span>
+          <span className="text-[10px] font-semibold tracking-wide text-secondary-text">PLATFORM</span>
         )}
       </span>
     </span>

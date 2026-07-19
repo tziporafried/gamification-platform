@@ -1426,3 +1426,50 @@
 .kiosk-scannerCorner--tl { top: 4.35cqw; left: 4.35cqw; }
 .kiosk-scannerCorner--br { bottom: 4.35cqw; right: 4.35cqw; }
 .kiosk-scannerCorner--bl { bottom: 4.35cqw; left: 4.35cqw; }
+
+/* ── Awaiting the second card of a pairing ──────────────────────────────────
+   Shown when one half (participant or action) is scanned and the scanner is
+   holding it open for the other. Everything here reads as "held, not stuck":
+   the card hovers, a halo breathes behind it, and a ring drains the window. */
+
+@keyframes kiosk-waitCardFloat {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50%      { transform: translateY(-10px) rotate(3deg); }
+}
+@keyframes kiosk-waitHalo {
+  0%, 100% { opacity: 0.35; transform: scale(0.94); }
+  50%      { opacity: 0.75; transform: scale(1.08); }
+}
+@keyframes kiosk-waitPing {
+  0%   { opacity: 0.5; transform: scale(0.75); }
+  100% { opacity: 0;   transform: scale(1.9); }
+}
+@keyframes kiosk-waitDotBounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
+  40%           { transform: translateY(-7px); opacity: 1; }
+}
+@keyframes kiosk-waitSlotPulse {
+  0%, 100% { border-color: rgba(239,138,78,0.35); background: rgba(255,255,255,0.55); }
+  50%      { border-color: rgba(239,138,78,0.85); background: rgba(255,236,222,0.9); }
+}
+@keyframes kiosk-waitPanelIn {
+  0%   { opacity: 0; transform: scale(0.9); }
+  60%  { transform: scale(1.03); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.kiosk-waitPanel { animation: kiosk-waitPanelIn 0.42s cubic-bezier(0.2,0.9,0.25,1.2) both; }
+.kiosk-waitCard  { animation: kiosk-waitCardFloat 2.6s ease-in-out infinite; }
+.kiosk-waitHalo  { animation: kiosk-waitHalo 2.6s ease-in-out infinite; }
+.kiosk-waitPing  { animation: kiosk-waitPing 2s ease-out infinite; }
+.kiosk-waitSlot  { animation: kiosk-waitSlotPulse 1.6s ease-in-out infinite; }
+.kiosk-waitDot   { animation: kiosk-waitDotBounce 1.4s ease-in-out infinite; }
+
+/* The ring drains via stroke-dashoffset driven inline from the countdown. */
+.kiosk-waitRingTrack { stroke: rgba(239,138,78,0.16); }
+.kiosk-waitRingFill  { stroke: #EF8A4E; transition: stroke-dashoffset 0.1s linear; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kiosk-waitPanel, .kiosk-waitCard, .kiosk-waitHalo,
+  .kiosk-waitPing, .kiosk-waitSlot, .kiosk-waitDot { animation: none; }
+}

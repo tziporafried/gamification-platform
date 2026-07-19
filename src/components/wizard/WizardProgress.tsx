@@ -28,7 +28,7 @@ export function WizardProgress({ currentStep, wizardState, onStepClick, hiddenSt
             aria-current={isCurrent ? 'step' : undefined}
             title={step.label}
             className={cn(
-              'flex min-w-0 flex-1 flex-col items-center rounded-xl px-0.5 py-1.5 text-primary outline-none transition-all duration-200',
+              'flex min-w-0 flex-1 flex-col items-center rounded-xl px-0.5 py-1.5 text-primary-text outline-none transition-all duration-200',
               'focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-primary)_45%,transparent)] focus-visible:ring-offset-1',
               isCurrent ? 'hover:opacity-100' : 'hover:opacity-80',
             )}
@@ -57,7 +57,7 @@ export function WizardProgress({ currentStep, wizardState, onStepClick, hiddenSt
                 </span>
                 <span
                   className={cn(
-                    'line-clamp-2 w-full text-center leading-snug text-primary transition-opacity duration-200',
+                    'line-clamp-2 w-full text-center leading-snug text-primary-text transition-opacity duration-200',
                     isCurrent
                       ? 'text-xs font-bold sm:text-sm'
                       : isCompleted

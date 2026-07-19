@@ -541,7 +541,7 @@ export function AdminAnalyticsDashboard() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <SectionHeader
             size="md"
-            icon={<BarChart3 size={18} className="text-secondary" />}
+            icon={<BarChart3 size={18} className="text-secondary-text" />}
             title="ניתוח נתונים"
             subtitle={`טווח: ${rangeLabel}`}
           />
@@ -616,7 +616,7 @@ export function AdminAnalyticsDashboard() {
           {/* Site-wide quick summary — above affiliate filter */}
           <section className="space-y-3">
             <SectionHeader
-              icon={<Users size={16} className="text-secondary" />}
+              icon={<Users size={16} className="text-secondary-text" />}
               title="סיכום מהיר"
             />
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -715,7 +715,7 @@ export function AdminAnalyticsDashboard() {
             <Card className="space-y-3 border-2 border-secondary/40 p-4 shadow-card">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Filter size={16} className="text-secondary" />
+                  <Filter size={16} className="text-secondary-text" />
                   <h2 className="text-sm font-semibold text-foreground">מגמה וסינון</h2>
                   <span className="rounded-full border border-secondary/40 bg-secondary/10 px-2 py-0.5 text-[10px] font-medium text-foreground">
                     {affiliatesFiltered ? 'מסונן לפי אפיליאייט' : 'כל האתר'}
@@ -732,7 +732,7 @@ export function AdminAnalyticsDashboard() {
               <div className="border-t border-border pt-3">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <TrendingUp size={14} className="text-secondary" />
+                    <TrendingUp size={14} className="text-secondary-text" />
                     <h3 className="text-sm font-semibold text-foreground">מגמה לאורך זמן</h3>
                   </div>
                   <p className="text-[11px] text-muted">
@@ -746,7 +746,7 @@ export function AdminAnalyticsDashboard() {
                   </p>
                 </div>
                 {trendLooksEmpty && (
-                  <div className="mb-4 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
+                  <div className="mb-4 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning-text">
                     המגמה ריקה למרות שיש תנועה. ייתכן שצריך לדפלוי מחדש את{' '}
                     <code className="text-xs">ga4-dashboard</code>.
                   </div>
@@ -763,7 +763,7 @@ export function AdminAnalyticsDashboard() {
               <div className="grid gap-4 border-t border-border pt-3 lg:grid-cols-2 lg:items-start">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Video size={14} className="text-secondary" />
+                    <Video size={14} className="text-secondary-text" />
                     <h3 className="text-sm font-semibold text-foreground">ביצועי הסרטון</h3>
                   </div>
                   <div className="rounded-xl border border-border bg-surface-elevated/40 p-3 sm:p-4">
@@ -786,7 +786,7 @@ export function AdminAnalyticsDashboard() {
 
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <HelpCircle size={14} className="text-secondary" />
+                    <HelpCircle size={14} className="text-secondary-text" />
                     <h3 className="text-sm font-semibold text-foreground">שאלות נפוצות</h3>
                   </div>
                   <div className="space-y-3 rounded-xl border border-border bg-surface-elevated/40 p-3 sm:p-4">
@@ -801,7 +801,7 @@ export function AdminAnalyticsDashboard() {
                         <button
                           type="button"
                           onClick={() => setShowAllFaq((v) => !v)}
-                          className="text-xs font-medium text-secondary hover:underline"
+                          className="text-xs font-medium text-secondary-text hover:underline"
                         >
                           {showAllFaq ? 'הצג פחות' : 'הצג את כל השאלות'}
                         </button>
@@ -826,7 +826,7 @@ export function AdminAnalyticsDashboard() {
           {insights.length > 0 && (
             <section className="space-y-2">
               <SectionHeader
-                icon={<AlertTriangle size={14} className="text-warning" />}
+                icon={<AlertTriangle size={14} className="text-warning-text" />}
                 title="דורש תשומת לב"
               />
               <InsightCards insights={insights} loading={loading} />
@@ -837,7 +837,7 @@ export function AdminAnalyticsDashboard() {
           {/* CTA + Traffic */}
           <section className="space-y-3">
             <SectionHeader
-              icon={<MousePointerClick size={16} className="text-secondary" />}
+              icon={<MousePointerClick size={16} className="text-secondary-text" />}
               title="לחיצות CTA ומקורות"
             />
             <div className="grid gap-4 lg:grid-cols-2">
@@ -876,7 +876,7 @@ export function AdminAnalyticsDashboard() {
           {/* Traffic sources + link performance side by side */}
           <section className="space-y-3">
             <SectionHeader
-              icon={<Link2 size={16} className="text-secondary" />}
+              icon={<Link2 size={16} className="text-secondary-text" />}
               title="מקורות תנועה וביצועי לינקים"
             />
             <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
@@ -943,7 +943,7 @@ export function AdminAnalyticsDashboard() {
           {/* UTM / shared-link attribution — detail table + name editor */}
           <section className="space-y-3">
             <SectionHeader
-              icon={<Link2 size={16} className="text-secondary" />}
+              icon={<Link2 size={16} className="text-secondary-text" />}
               title="לינקים מסומנים — פירוט"
             />
 
@@ -1004,23 +1004,23 @@ export function AdminAnalyticsDashboard() {
                       כולל גם לינקים ישנים (?utm_source=קוד). קודים עם אותו שם מאוחדים לשורה אחת.
                     </p>
                     {linkLabelError && (
-                      <p className="mt-2 text-xs text-danger">{linkLabelError}</p>
+                      <p className="mt-2 text-xs text-danger-text">{linkLabelError}</p>
                     )}
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[820px] text-sm" dir="rtl">
                       <thead>
                         <tr className="border-b border-border bg-white/[0.02] text-xs text-muted">
-                          <th className="px-4 py-2.5 text-right font-medium">לינק</th>
-                          <th className="px-4 py-2.5 text-right font-medium">מקור</th>
-                          <th className="px-4 py-2.5 text-center font-medium">מבקרים</th>
-                          <th className="px-4 py-2.5 text-center font-medium">חדשים</th>
-                          <th className="px-4 py-2.5 text-center font-medium">סרטון</th>
-                          <th className="px-4 py-2.5 text-center font-medium">% סרטון</th>
-                          <th className="px-4 py-2.5 text-center font-medium">מחירים</th>
-                          <th className="px-4 py-2.5 text-center font-medium">% מחירים</th>
-                          <th className="px-4 py-2.5 text-center font-medium">לידים</th>
-                          <th className="px-4 py-2.5 text-center font-medium">% ליד</th>
+                          <th scope="col" className="px-4 py-2.5 text-right font-medium">לינק</th>
+                          <th scope="col" className="px-4 py-2.5 text-right font-medium">מקור</th>
+                          <th scope="col" className="px-4 py-2.5 text-center font-medium">מבקרים</th>
+                          <th scope="col" className="px-4 py-2.5 text-center font-medium">חדשים</th>
+                          <th scope="col" className="px-4 py-2.5 text-center font-medium">סרטון</th>
+                          <th scope="col" className="px-4 py-2.5 text-center font-medium">% סרטון</th>
+                          <th scope="col" className="px-4 py-2.5 text-center font-medium">מחירים</th>
+                          <th scope="col" className="px-4 py-2.5 text-center font-medium">% מחירים</th>
+                          <th scope="col" className="px-4 py-2.5 text-center font-medium">לידים</th>
+                          <th scope="col" className="px-4 py-2.5 text-center font-medium">% ליד</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/60">
@@ -1115,7 +1115,7 @@ export function AdminAnalyticsDashboard() {
           {/* Plans + contact progression */}
           <section className="space-y-3">
             <SectionHeader
-              icon={<MessageCircle size={16} className="text-secondary" />}
+              icon={<MessageCircle size={16} className="text-secondary-text" />}
               title="מחירים ויצירת קשר"
             />
             <Card className="p-5">
@@ -1207,7 +1207,7 @@ export function AdminAnalyticsDashboard() {
           {/* Contact source breakdowns only */}
           <section className="space-y-3">
             <SectionHeader
-              icon={<MessageCircle size={16} className="text-secondary" />}
+              icon={<MessageCircle size={16} className="text-secondary-text" />}
               title="יצירת קשר — לפי מקור"
             />
             {contactSourceUnavailable ? (
@@ -1258,7 +1258,7 @@ export function AdminAnalyticsDashboard() {
             <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-border" />
             <div className="relative mx-auto flex w-fit flex-col items-center gap-1 rounded-full border border-border bg-surface px-5 py-2 shadow-card">
               <div className="flex items-center gap-2">
-                <Package size={16} className="text-secondary" />
+                <Package size={16} className="text-secondary-text" />
                 <span className="text-sm font-semibold text-foreground">שימוש במוצר</span>
               </div>
               <p className="text-[11px] text-muted">מה קורה אחרי שמבקרים נכנסים למערכת</p>
@@ -1268,7 +1268,7 @@ export function AdminAnalyticsDashboard() {
           {/* Login funnel */}
           <section className="space-y-3">
             <SectionHeader
-              icon={<LogIn size={16} className="text-secondary" />}
+              icon={<LogIn size={16} className="text-secondary-text" />}
               title="התחברות"
             />
             <Card className="p-5">
@@ -1287,7 +1287,7 @@ export function AdminAnalyticsDashboard() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   {data.login.errorCount > 0 && (
                     <span className="inline-flex items-center gap-1.5 rounded-lg border border-warning/40 bg-warning/5 px-3 py-1.5 text-xs font-medium text-foreground">
-                      <AlertTriangle size={12} className="text-warning" />
+                      <AlertTriangle size={12} className="text-warning-text" />
                       {formatNumber(data.login.errorCount)} שגיאות התחברות
                     </span>
                   )}
@@ -1304,7 +1304,7 @@ export function AdminAnalyticsDashboard() {
           {/* Event creation */}
           <section className="space-y-3">
             <SectionHeader
-              icon={<Package size={16} className="text-secondary" />}
+              icon={<Package size={16} className="text-secondary-text" />}
               title="יצירת אירוע"
             />
             <Card className="p-5">

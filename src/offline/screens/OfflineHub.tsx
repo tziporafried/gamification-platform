@@ -55,7 +55,7 @@ export function OfflineHub({ pack, onScan, onBoard }: OfflineHubProps) {
             {pack.event.name}
           </h1>
 
-          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-secondary/25 bg-secondary/10 px-4 py-1.5 text-sm font-bold text-secondary">
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-secondary/25 bg-secondary/10 px-4 py-1.5 text-sm font-bold text-secondary-text">
             <WifiOff size={15} strokeWidth={2.5} />
             מצב לא מקוון
           </div>

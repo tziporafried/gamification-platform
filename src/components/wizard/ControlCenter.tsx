@@ -223,7 +223,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
               >
                 <div className="flex flex-col gap-4 border-s-4 border-primary p-4 sm:flex-row sm:items-center sm:gap-5 sm:p-4 sm:ps-5">
                   <div className="min-w-0 flex-1 space-y-1">
-                    <p className="text-xs font-bold text-primary">✨ מצב התנסות</p>
+                    <p className="text-xs font-bold text-primary-text">✨ מצב התנסות</p>
                     <p className="text-base font-bold leading-snug text-foreground">
                       המשחק שלכם מוכן! 🎉
                     </p>

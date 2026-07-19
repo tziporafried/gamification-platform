@@ -9,7 +9,7 @@ export function SoundToggle({ muted, onToggle }: SoundToggleProps) {
   return (
     <IconToggleButton
       active={!muted}
-      className={!muted ? 'text-accent' : undefined}
+      className={!muted ? 'text-accent-text' : undefined}
       onClick={onToggle}
       title={muted ? 'הפעלת אפקטי קול' : 'השתקת אפקטי קול'}
     >

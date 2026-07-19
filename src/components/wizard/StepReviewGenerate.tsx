@@ -12,11 +12,12 @@ import {
   useStepEntryCelebration,
 } from './ReadyCelebration'
 import { EventSummaryGrid } from './EventSummaryGrid'
-import { QrCardGenerator } from '@/components/qr-cards/QrCardGenerator'
+import { QrCardGenerator, type CardCounts } from '@/components/qr-cards/QrCardGenerator'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { syncEventToTemplate } from '@/lib/templates'
-import type { Event, EventCounts, GroupType } from '@/types'
+import { ScanModeModal } from './ScanModeModal'
+import type { Event, EventCounts, GroupType, ScanMode } from '@/types'
 import { isEventReady, calculateReadiness, isTemplateReady, calculateTemplateReadiness } from '@/lib/wizard'
 import { trackWizardStepComplete } from '@/lib/analytics'
 import { getPendingActivation, clearPendingActivation } from '@/lib/contact'
@@ -54,27 +55,40 @@ export function StepReviewGenerate({
     : calculateReadiness(event, counts, groupType)
 
   const [generateFn, setGenerateFn] = useState<(() => void) | null>(null)
-  const [totalCards, setTotalCards] = useState(0)
+  const [cardCounts, setCardCounts] = useState<CardCounts>({ combined: 0, split: 0 })
   const [cardsGenerated, setCardsGenerated] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  // Print-time preference only — nothing persists it, because the scanner reads
+  // both kinds of card and no other screen branches on the choice.
+  const [scanMode, setScanMode] = useState<ScanMode>('combined')
+  const [scanModeOpen, setScanModeOpen] = useState(false)
   const { celebrate, animationKey } = useStepEntryCelebration(isActive, ready && !isTemplate)
 
   const handleReadyChange = useCallback((fn: (() => void) | null) => {
     setGenerateFn(() => fn)
   }, [])
 
-  const handleTotalCardsChange = useCallback((total: number) => {
-    setTotalCards(total)
+  const handleCardCountsChange = useCallback((next: CardCounts) => {
+    setCardCounts(next)
   }, [])
 
   const handleGeneratedChange = useCallback((generated: boolean) => {
     setCardsGenerated(generated)
   }, [])
 
+  /** Confirmed in the modal: take the mode, then reveal the cards. */
+  const handleScanModeConfirm = useCallback((next: ScanMode) => {
+    // Safe to set and generate together — QrCardGenerator derives its sheets
+    // from the prop rather than snapshotting them on the generate call.
+    setScanMode(next)
+    setScanModeOpen(false)
+    generateFn?.()
+  }, [generateFn])
+
   const footerBar = !isTemplate && generateFn ? (
     <AnimatedPrintFooter key={animationKey} celebrate={celebrate}>
-      <Button onClick={generateFn} className="w-full">
+      <Button onClick={() => setScanModeOpen(true)} className="w-full">
         <Eye size={16} className="ml-1.5" />סקור כרטיסים
       </Button>
     </AnimatedPrintFooter>
@@ -123,6 +137,14 @@ export function StepReviewGenerate({
         <ReadyCelebrationOverlay celebrate={celebrate} burstKey={animationKey} confettiLoop={ready} />
       )}
 
+      <ScanModeModal
+        isOpen={scanModeOpen}
+        value={scanMode}
+        cardCounts={cardCounts}
+        onCancel={() => setScanModeOpen(false)}
+        onConfirm={handleScanModeConfirm}
+      />
+
       <WizardStepWrapper
         title={isTemplate ? 'סיכום התבנית' : 'מוכנים לצאת לדרך?'}
         subtitle={isTemplate
@@ -138,7 +160,7 @@ export function StepReviewGenerate({
         {isActive ? (
         <div key={animationKey} className="flex min-h-0 flex-1 flex-col overflow-hidden px-1">
           {saveError && (
-            <p className="mb-3 shrink-0 rounded-lg bg-surface-elevated border border-danger px-3 py-2 text-sm text-danger">
+            <p className="mb-3 shrink-0 rounded-lg bg-surface-elevated border border-danger px-3 py-2 text-sm text-danger-text">
               {saveError}
             </p>
           )}
@@ -204,7 +226,7 @@ export function StepReviewGenerate({
                       ready={ready}
                       animationKey={animationKey}
                       showCards
-                      totalCards={totalCards}
+                      totalCards={cardCounts[scanMode]}
                       compact={cardsGenerated}
                     />
                   </ReadyCelebrationBanner>
@@ -213,8 +235,9 @@ export function StepReviewGenerate({
                 <ScrollContainer className="flex-1 px-0" stableGutter={false}>
                   <QrCardGenerator
                     event={event}
+                    scanMode={scanMode}
                     onReadyChange={handleReadyChange}
-                    onTotalCardsChange={handleTotalCardsChange}
+                    onCardCountsChange={handleCardCountsChange}
                     onGeneratedChange={handleGeneratedChange}
                   />
                 </ScrollContainer>

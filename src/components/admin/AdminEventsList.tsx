@@ -155,16 +155,16 @@ export function AdminEventsList() {
             <table className="w-full min-w-[840px] text-sm">
               <thead>
                 <tr className="border-b border-game-border bg-white/[0.02] text-xs text-muted">
-                  <th className="px-4 py-3 text-right font-medium">שם האירוע</th>
-                  <th className="px-4 py-3 text-right font-medium">משתמש</th>
-                  <th className="px-4 py-3 text-right font-medium">תוכנית</th>
-                  <th className="px-4 py-3 text-right font-medium">סטטוס</th>
-                  <th className="px-4 py-3 text-center font-medium">קבוצות</th>
-                  <th className="px-4 py-3 text-center font-medium">משתתפים</th>
-                  <th className="px-4 py-3 text-center font-medium">משימות</th>
-                  <th className="px-4 py-3 text-center font-medium">פרסים</th>
-                  <th className="px-4 py-3 text-center font-medium">מספר סריקות</th>
-                  <th className="px-4 py-3 text-right font-medium">נוצר</th>
+                  <th scope="col" className="px-4 py-3 text-right font-medium">שם האירוע</th>
+                  <th scope="col" className="px-4 py-3 text-right font-medium">משתמש</th>
+                  <th scope="col" className="px-4 py-3 text-right font-medium">תוכנית</th>
+                  <th scope="col" className="px-4 py-3 text-right font-medium">סטטוס</th>
+                  <th scope="col" className="px-4 py-3 text-center font-medium">קבוצות</th>
+                  <th scope="col" className="px-4 py-3 text-center font-medium">משתתפים</th>
+                  <th scope="col" className="px-4 py-3 text-center font-medium">משימות</th>
+                  <th scope="col" className="px-4 py-3 text-center font-medium">פרסים</th>
+                  <th scope="col" className="px-4 py-3 text-center font-medium">מספר סריקות</th>
+                  <th scope="col" className="px-4 py-3 text-right font-medium">נוצר</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-game-border/50">

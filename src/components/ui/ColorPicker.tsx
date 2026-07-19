@@ -68,7 +68,7 @@ export function ColorPicker({ label, value, onChange, error, compact = false }: 
         <label className={cn('block text-sm font-medium mb-1', theme.label)}>{label}</label>
       )}
       {picker}
-      {error && <p className="mt-1 text-sm text-danger">{error}</p>}
+      {error && <p className="mt-1 text-sm text-danger-text">{error}</p>}
     </div>
   )
 }

@@ -285,6 +285,8 @@ export function TaskLimitSelect({
           type="button"
           onClick={toggleOpen}
           title={limitTooltip}
+          aria-haspopup="dialog"
+          aria-expanded={open}
           className={cn(
             compact ? theme.wizardCompactChip : 'inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-normal transition-all',
             tone === 'onColor' && 'border-white/50 text-white bg-white/20 hover:bg-white/30',
@@ -303,6 +305,8 @@ export function TaskLimitSelect({
           color="default"
           onClick={toggleOpen}
           title={limitTooltip}
+          aria-haspopup="dialog"
+          aria-expanded={open}
           className="max-w-[14rem]"
         >
           <Icon size={10} className="shrink-0" />
@@ -418,7 +422,7 @@ export function TaskLimitSelect({
                     />
                   </div>
                   {!timeWindowValid && (
-                    <div className="text-[10px] text-warning">שעת ההתחלה חייבת להיות לפני הסיום</div>
+                    <div className="text-[10px] text-warning-text">שעת ההתחלה חייבת להיות לפני הסיום</div>
                   )}
                 </>
               )}

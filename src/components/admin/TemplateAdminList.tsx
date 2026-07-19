@@ -129,7 +129,7 @@ export function TemplateAdminList() {
       </div>
 
       {error && (
-        <p className="rounded-lg bg-surface-elevated border border-danger px-3 py-2 text-sm text-danger">
+        <p className="rounded-lg bg-surface-elevated border border-danger px-3 py-2 text-sm text-danger-text">
           {error}
         </p>
       )}
@@ -155,7 +155,7 @@ export function TemplateAdminList() {
                       className={cn(
                         'text-[10px] font-medium px-2 py-0.5 rounded-full',
                         template.is_active
-                          ? 'text-success bg-surface-elevated border border-success'
+                          ? 'text-success-text bg-surface-elevated border border-success'
                           : 'text-muted bg-surface-elevated border border-border',
                       )}
                     >
@@ -225,7 +225,7 @@ export function TemplateAdminList() {
                     variant="outline"
                     loading={busyId === template.id}
                     onClick={() => setDeletingTemplate(template)}
-                    className="text-danger hover:text-danger"
+                    className="text-danger-text hover:text-danger-text"
                   >
                     <Trash2 size={14} className="ml-1" />
                     מחק

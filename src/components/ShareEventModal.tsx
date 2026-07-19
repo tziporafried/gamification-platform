@@ -104,10 +104,10 @@ export function ShareEventModal({ isOpen, onClose, eventId }: ShareEventModalPro
         </div>
 
         {error && (
-          <p className="text-sm text-danger">{error}</p>
+          <p className="text-sm text-danger-text">{error}</p>
         )}
         {success && (
-          <p className="text-sm text-success">{success}</p>
+          <p className="text-sm text-success-text">{success}</p>
         )}
       </form>
 
@@ -120,7 +120,7 @@ export function ShareEventModal({ isOpen, onClose, eventId }: ShareEventModalPro
                 {c.avatar_url ? (
                   <img src={c.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover" />
                 ) : (
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-elevated text-xs font-bold text-secondary">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-elevated text-xs font-bold text-secondary-text">
                     {(c.display_name || c.email)[0]?.toUpperCase()}
                   </div>
                 )}
@@ -131,7 +131,7 @@ export function ShareEventModal({ isOpen, onClose, eventId }: ShareEventModalPro
               </div>
               <button
                 onClick={() => handleRemove(c.user_id)}
-                className="text-muted hover:text-danger transition-colors p-1"
+                className="text-muted hover:text-danger-text transition-colors p-1"
               >
                 <Trash2 size={14} />
               </button>

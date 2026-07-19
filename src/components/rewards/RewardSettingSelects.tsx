@@ -119,6 +119,9 @@ export function RewardScopeSelect({
     <div className="relative flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
       <button
         ref={buttonRef}
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
         onClick={() => {
           setOpen((prev) => {
             const next = !prev

@@ -31,7 +31,7 @@ export function InlineAddPointsTrailing({
         disabled={disabled}
         placeholder={placeholder}
         className={cn(
-          'bg-transparent text-sm font-bold text-success outline-none placeholder:font-normal placeholder:text-muted',
+          'bg-transparent text-sm font-bold text-success-text outline-none placeholder:font-normal placeholder:text-muted',
           placeholder ? 'w-24 text-start' : 'w-10 text-center',
           disabled && 'opacity-50',
         )}

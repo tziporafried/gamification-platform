@@ -8,6 +8,12 @@ interface InlineAddFieldProps {
   onChange: (value: string) => void
   onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void
   placeholder?: string
+  /**
+   * Accessible name for the input. A placeholder is not a label — it is not
+   * exposed as one and disappears on typing (WCAG 1.3.1 / 3.3.2), so this
+   * falls back to the placeholder only as a last resort.
+   */
+  'aria-label'?: string
   disabled?: boolean
   submitLabel?: string
   onSubmit?: () => void
@@ -23,6 +29,7 @@ export function InlineAddField({
   onChange,
   onKeyDown,
   placeholder,
+  'aria-label': ariaLabel,
   disabled = false,
   submitLabel = 'הוסף',
   onSubmit,
@@ -52,11 +59,13 @@ export function InlineAddField({
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
+        aria-label={ariaLabel ?? placeholder}
         className={cn(
-          'min-w-0 flex-1 h-9 rounded-lg border border-border bg-surface px-3 text-sm outline-none transition-colors',
+          'min-w-0 flex-1 h-9 rounded-lg border border-border-strong bg-surface px-3 text-sm transition-colors',
           theme.text,
           theme.inputPlaceholder,
-          'focus:border-secondary',
+          theme.focusRing,
+          'focus:border-secondary-text',
           disabled && 'opacity-50',
         )}
         disabled={disabled}
@@ -75,7 +84,7 @@ export function InlineAddField({
               : 'cursor-not-allowed border-border bg-surface text-muted',
           )}
         >
-          <Plus size={14} strokeWidth={2.5} />
+          <Plus size={14} strokeWidth={2.5} aria-hidden="true" />
           {submitLabel}
         </button>
       )}

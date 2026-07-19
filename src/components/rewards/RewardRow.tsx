@@ -48,7 +48,7 @@ export function RewardRow({
   const [targetType, setTargetType] = useState<RewardTargetType>(reward.target_type ?? 'all')
   const [winnerMode, setWinnerMode] = useState<RewardWinnerMode>(reward.winner_mode ?? 'all')
   const nameRef = useRef<HTMLInputElement>(null)
-  const nameTextRef = useRef<HTMLParagraphElement>(null)
+  const nameTextRef = useRef<HTMLButtonElement>(null)
   const pointsRef = useRef<HTMLInputElement>(null)
 
   const pointsNum = parseInt(points, 10) || reward.required_points
@@ -267,12 +267,8 @@ export function RewardRow({
             hidden={editingName || !isNameTruncated}
             className="w-full"
           >
-            <div
-              className="flex h-9 w-full min-w-0 items-center justify-center"
-              onClick={() => !editingName && setEditingName(true)}
-              role="button"
-              tabIndex={-1}
-            >
+            {/* Real button when idle — see GroupCard for the same fix. */}
+            <div className="flex h-9 w-full min-w-0 items-center justify-center">
               {editingName ? (
                 <input
                   ref={nameRef}
@@ -288,12 +284,15 @@ export function RewardRow({
                   )}
                 />
               ) : (
-                <p
+                <button
                   ref={nameTextRef}
-                  className="w-full min-w-0 truncate text-xl font-bold leading-9 cursor-text hover:text-white/90 transition-colors"
+                  type="button"
+                  onClick={() => setEditingName(true)}
+                  aria-label={`עריכת שם הפרס: ${name}`}
+                  className="w-full min-w-0 truncate border-0 bg-transparent p-0 text-xl font-bold leading-9 cursor-text hover:text-white/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
                 >
                   {name}
-                </p>
+                </button>
               )}
             </div>
           </Tooltip>

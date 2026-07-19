@@ -95,7 +95,7 @@ export function TemplatePickerModal({
           >
             <div className="flex items-start gap-3">
               <div className="shrink-0 rounded-lg bg-surface-elevated p-2 group-hover:bg-surface-elevated transition-colors">
-                <Sparkles size={20} className="text-accent" />
+                <Sparkles size={20} className="text-accent-text" />
               </div>
               <div>
                 <p className="font-medium text-foreground">התחל מתבנית</p>
@@ -122,7 +122,7 @@ export function TemplatePickerModal({
       ) : (
         <div className="space-y-3 pt-1">
           {error && (
-            <p className="rounded-lg bg-surface-elevated border border-danger px-3 py-2 text-sm text-danger">
+            <p className="rounded-lg bg-surface-elevated border border-danger px-3 py-2 text-sm text-danger-text">
               {error}
             </p>
           )}

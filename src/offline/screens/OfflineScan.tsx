@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowRight, Camera, Ban, ScanLine } from 'lucide-react'
 import { useHardwareScanner } from '@/hooks/useHardwareScanner'
-import { parseQrPayload } from '@/lib/qrPayload'
+import { useScanSequence } from '@/hooks/useScanSequence'
 import { getParticipantLeaderboard } from '@/lib/offline/leaderboard'
 import type { GamePack } from '@/lib/offline/types'
 import type { ScoreSubmitResult } from '@/hooks/useScoreSubmit'
@@ -49,19 +49,28 @@ export function OfflineScan({ pack, scans, scanCount, onSubmitCodes, onBack }: O
     [onSubmitCodes, showFeedback],
   )
 
-  const handleScan = useCallback(
-    (raw: string) => {
-      const parsed = parseQrPayload(raw)
-      if (!parsed.ok) {
-        showFeedback({ kind: 'error', message: parsed.error })
-        return
-      }
-      handleCodes(parsed.data.participantCode, parsed.data.actionCode)
-    },
-    [handleCodes, showFeedback],
+  const handleScanError = useCallback(
+    (message: string) => showFeedback({ kind: 'error', message }),
+    [showFeedback],
   )
 
+  const { handleScan, pending, remainingSeconds } = useScanSequence({
+    onPair: handleCodes,
+    onError: handleScanError,
+  })
+
   const bindScanner = useHardwareScanner(true, handleScan)
+
+  const awaiting = feedback.kind === 'idle' ? pending : null
+
+  // Unknown codes still arm — they are only validated on submit — so the
+  // greeting falls back to a neutral one rather than blocking.
+  const awaitingName = useMemo(
+    () => awaiting
+      ? pack.participants.find((p) => p.external_id === awaiting.participantCode)?.name ?? null
+      : null,
+    [awaiting, pack.participants],
+  )
 
   const submitManual = useCallback(() => {
     if (!manualP.trim() || !manualA.trim()) return
@@ -98,11 +107,44 @@ export function OfflineScan({ pack, scans, scanCount, onSubmitCodes, onBack }: O
           <input ref={bindScanner} className="pl-hidden-input" aria-hidden="true" tabIndex={-1} />
 
           <AnimatePresence>
-            {feedback.kind === 'idle' && (
+            {feedback.kind === 'idle' && !awaiting && (
               <motion.div key="idle" className="pl-prompt" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="pl-prompt-badge"><Camera size={52} strokeWidth={2} /></div>
                 <div className="pl-prompt-title">מוכנים לסריקה</div>
                 <div className="pl-prompt-sub">סרקו את קוד ה־QR של המשתתף</div>
+              </motion.div>
+            )}
+
+            {awaiting && (
+              <motion.div
+                key="awaiting"
+                className="pl-prompt pl-prompt--awaiting"
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 22 }}
+              >
+                <motion.div
+                  className="pl-prompt-badge"
+                  animate={{ y: [0, -8, 0], rotate: [-3, 3, -3] }}
+                  transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  <ScanLine size={52} strokeWidth={2} />
+                </motion.div>
+                <div className="pl-prompt-title">
+                  {awaitingName ? `שלום ${awaitingName}!` : 'שלום!'}
+                </div>
+                <div className="pl-prompt-sub">מחכים לתיקוף שלך — סרקו את כרטיס המשימה</div>
+                <div className="pl-prompt-dots" aria-hidden="true">
+                  {[0, 1, 2].map((i) => (
+                    <motion.span
+                      key={i}
+                      animate={{ y: [0, -6, 0], opacity: [0.4, 1, 0.4] }}
+                      transition={{ duration: 1.3, repeat: Infinity, delay: i * 0.16, ease: 'easeInOut' }}
+                    />
+                  ))}
+                </div>
+                <div className="pl-prompt-countdown">ממתין עוד {remainingSeconds} שניות</div>
               </motion.div>
             )}
 

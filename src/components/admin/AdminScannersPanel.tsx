@@ -368,7 +368,7 @@ export function AdminScannersPanel() {
               <span className="font-medium text-foreground">{s.name}</span>
               <span className="text-muted">{s.code}</span>
               {s.status === 'maintenance' && (
-                <span className="text-warning">תחזוקה</span>
+                <span className="text-warning-text">תחזוקה</span>
               )}
             </span>
           ))}
@@ -444,7 +444,7 @@ export function AdminScannersPanel() {
                   className={cn(
                     'mb-1 text-[11px] font-medium',
                     inMonth ? 'text-foreground' : 'text-muted/60',
-                    isToday && 'text-secondary',
+                    isToday && 'text-secondary-text',
                   )}
                 >
                   {format(day, 'd')}
@@ -501,7 +501,7 @@ export function AdminScannersPanel() {
                         key={d.toISOString()}
                         className={cn(
                           'text-center text-[9px] text-muted',
-                          isSameDay(d, new Date()) && 'font-bold text-secondary',
+                          isSameDay(d, new Date()) && 'font-bold text-secondary-text',
                         )}
                       >
                         {format(d, 'd')}
@@ -606,7 +606,7 @@ export function AdminScannersPanel() {
       </div>
 
       {error && !bookingOpen && !scannerOpen && (
-        <p className="text-sm text-danger">{error}</p>
+        <p className="text-sm text-danger-text">{error}</p>
       )}
 
       <Modal
@@ -677,7 +677,7 @@ export function AdminScannersPanel() {
             value={formNotes}
             onChange={(e) => setFormNotes(e.target.value)}
           />
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p className="text-sm text-danger-text">{error}</p>}
           <ModalActions>
             <Button type="submit" loading={saving}>
               שמור הזמנה
@@ -717,7 +717,7 @@ export function AdminScannersPanel() {
             value={newNotes}
             onChange={(e) => setNewNotes(e.target.value)}
           />
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p className="text-sm text-danger-text">{error}</p>}
           <ModalActions>
             <Button type="submit" loading={saving}>
               הוסף סורק
@@ -766,8 +766,9 @@ function BookingRow({
       <button
         type="button"
         onClick={onDelete}
-        className="shrink-0 rounded-lg p-1 text-muted opacity-0 transition-all hover:bg-surface-elevated hover:text-danger group-hover/row:opacity-100"
+        className="shrink-0 rounded-lg p-1 text-muted opacity-0 transition-all hover:bg-surface-elevated hover:text-danger-text group-hover/row:opacity-100 focus-visible:opacity-100"
         title="מחיקה"
+        aria-label="מחיקת ההזמנה"
       >
         <Trash2 size={14} />
       </button>

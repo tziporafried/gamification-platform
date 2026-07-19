@@ -237,12 +237,10 @@ export const ActionRow = memo(function ActionRow({
         />
 
         <div className="relative z-10 flex flex-col gap-2 py-2 pl-9 pr-3">
-          <div
-            className="flex min-w-0 items-start"
-            onClick={() => !editingName && setEditingName(true)}
-            role="button"
-            tabIndex={-1}
-          >
+          {/* A real button when idle — the old role="button" tabIndex={-1}
+              wrapper announced a button that keyboard users could not reach.
+              Mirrors the points field just below. */}
+          <div className="flex min-w-0 items-start">
             {editingName ? (
               <input
                 ref={nameRef}
@@ -258,9 +256,14 @@ export const ActionRow = memo(function ActionRow({
                 disabled={saving}
               />
             ) : (
-              <p className="w-full min-w-0 whitespace-normal break-words text-sm font-semibold leading-snug cursor-text hover:text-white/90 transition-colors">
+              <button
+                type="button"
+                onClick={() => setEditingName(true)}
+                aria-label={`עריכת שם המשימה: ${name}`}
+                className="w-full min-w-0 border-0 bg-transparent p-0 text-right whitespace-normal break-words text-sm font-semibold leading-snug cursor-text hover:text-white/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent"
+              >
                 {name}
-              </p>
+              </button>
             )}
           </div>
 

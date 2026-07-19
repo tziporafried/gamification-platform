@@ -470,7 +470,7 @@ function StageHeader({
         <button
           type="button"
           onClick={onToggleFullscreen}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-white/65 text-muted shadow-sm backdrop-blur transition hover:text-primary"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-white/65 text-muted shadow-sm backdrop-blur transition hover:text-primary-text"
           title={fullscreen ? 'יציאה ממסך מלא' : 'מסך מלא'}
         >
           {fullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
@@ -481,12 +481,12 @@ function StageHeader({
           {eventLogoUrl ? (
             <img src={eventLogoUrl} alt={eventName || ''} className="h-14 w-14 rounded-2xl object-cover shadow-[0_0_28px_rgba(255,107,53,0.24)]" />
           ) : (
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 text-xl font-black text-primary shadow-[0_0_28px_rgba(255,107,53,0.2)]">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 text-xl font-black text-primary-text shadow-[0_0_28px_rgba(255,107,53,0.2)]">
               {(eventName || '🏆').slice(0, 2)}
             </div>
           )}
           <div>
-            <p className="text-[13px] font-black uppercase tracking-[0.24em] text-primary">טקס הסיום</p>
+            <p className="text-[13px] font-black uppercase tracking-[0.24em] text-primary-text">טקס הסיום</p>
             <h1 className="text-3xl font-black text-foreground md:text-4xl">{eventName || 'תוצאות התחרות'}</h1>
           </div>
         </div>
@@ -502,7 +502,7 @@ function SuspensePhase() {
       <motion.div animate={{ y: [0, -14, 0], rotate: [0, -4, 4, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} className="text-[7.5rem] leading-none drop-shadow-[0_0_34px_rgba(255,184,0,0.45)]">
         🏆
       </motion.div>
-      <p className="mt-6 text-2xl font-black text-primary">רגע האמת</p>
+      <p className="mt-6 text-2xl font-black text-primary-text">רגע האמת</p>
       <motion.h2
         className="mt-3 text-[clamp(4.4rem,9vw,8.7rem)] font-black leading-[0.95] text-foreground"
         animate={{ scale: [1, 1.03, 1], textShadow: ['0 0 0 rgba(255,184,0,0)', '0 0 34px rgba(255,184,0,0.42)', '0 0 0 rgba(255,184,0,0)'] }}
@@ -557,7 +557,7 @@ function ChampionPhase({
           <motion.div className="mx-auto mb-2 w-fit text-6xl" animate={{ rotate: [0, -8, 8, 0], y: [0, -5, 0] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}>
             👑
           </motion.div>
-          <p className="text-2xl font-black text-primary">{isGroup ? '🏆 אליפות הקבוצות' : 'אלוף המשתתפים'}</p>
+          <p className="text-2xl font-black text-primary-text">{isGroup ? '🏆 אליפות הקבוצות' : 'אלוף המשתתפים'}</p>
           <div className="mx-auto mt-5 flex h-32 w-32 items-center justify-center rounded-full border-[8px] border-white text-5xl font-black text-white shadow-[0_16px_46px_rgba(46,34,30,0.2)] md:h-40 md:w-40 md:text-6xl" style={{ background: `linear-gradient(135deg, ${color}, ${isGroup ? ORANGE : GOLD})` }}>
             {isGroup ? <Users size={72} /> : <AvatarCircle name={name} size="lg" ringColor={color} className="h-32 w-32 text-5xl ring-0 md:h-40 md:w-40 md:text-6xl" />}
           </div>
@@ -590,7 +590,7 @@ function PodiumPhase({ title, items, type }: { title: string; items: (RankedGrou
 
   return (
     <div className="flex h-full flex-col items-center justify-center px-5">
-      <p className="text-2xl font-black text-primary">פודיום המנצחים</p>
+      <p className="text-2xl font-black text-primary-text">פודיום המנצחים</p>
       <h2 className="mb-10 text-center text-[clamp(3.5rem,6vw,6.2rem)] font-black leading-none text-foreground">{title}</h2>
       <div
         className={cn(
@@ -612,7 +612,7 @@ function PodiumPhase({ title, items, type }: { title: string; items: (RankedGrou
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ delay: rank === 1 ? 0.05 : 0.22 + idx * 0.1, type: 'spring', stiffness: 180, damping: 18 }}
             >
-              {rank === 1 && <Crown size={52} className="mb-2 animate-crown-glow text-warning" fill="currentColor" />}
+              {rank === 1 && <Crown size={52} className="mb-2 animate-crown-glow text-warning-text" fill="currentColor" />}
               <div className="relative">
                 <div
                   className="absolute -inset-5 animate-halo-pulse rounded-full blur-xl"
@@ -630,7 +630,7 @@ function PodiumPhase({ title, items, type }: { title: string; items: (RankedGrou
                 <span className="absolute -bottom-2 -right-2 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-white text-3xl shadow-lg">{MEDALS[rank - 1] || rank}</span>
               </div>
               <h3 className="mt-5 w-full truncate text-center text-3xl font-black text-foreground md:text-4xl">{name}</h3>
-              <p className="mt-1 text-2xl font-black text-primary tabular-nums">{item.total_points.toLocaleString('he-IL')} נק׳</p>
+              <p className="mt-1 text-2xl font-black text-primary-text tabular-nums">{item.total_points.toLocaleString('he-IL')} נק׳</p>
               <motion.div
                 className={cn('relative mt-5 flex w-full origin-bottom items-end justify-center overflow-hidden rounded-t-[1.75rem] shadow-[0_16px_44px_rgba(46,34,30,0.16)]', heights[rank])}
                 style={{ background: rank === 1 ? 'linear-gradient(180deg,#FFD68A,#FFB800)' : rank === 2 ? 'linear-gradient(180deg,#F5F2EE,#B9AEA7)' : 'linear-gradient(180deg,#FFB28D,#EF8A4E)' }}
@@ -697,7 +697,7 @@ function LeaderboardPhase({
     <div className="flex h-full flex-col px-5 py-1 md:px-10">
       <div className="mb-7 flex items-end justify-between gap-5">
         <div>
-          <p className="text-2xl font-black text-primary">{subtitle}</p>
+          <p className="text-2xl font-black text-primary-text">{subtitle}</p>
           <h2 className="text-[clamp(3.5rem,6vw,6rem)] font-black leading-none text-foreground">{title}</h2>
         </div>
       </div>
@@ -761,7 +761,7 @@ function LeaderboardPhase({
                 </div>
               </div>
               <div className="text-left">
-                <p className={cn('text-4xl font-black tabular-nums', item.rank === 1 ? 'text-warning' : 'text-foreground')}>{item.total_points.toLocaleString('he-IL')}</p>
+                <p className={cn('text-4xl font-black tabular-nums', item.rank === 1 ? 'text-warning-text' : 'text-foreground')}>{item.total_points.toLocaleString('he-IL')}</p>
                 <p className="text-lg font-bold text-muted">נקודות</p>
               </div>
             </motion.div>
@@ -779,7 +779,7 @@ function MissionsPhase({ type, winners }: { type: 'group' | 'participant'; winne
 
   return (
     <div className="flex h-full flex-col items-center justify-center px-5">
-      <p className="text-2xl font-black text-primary">🎯 אלופי ההתמדה</p>
+      <p className="text-2xl font-black text-primary-text">🎯 אלופי ההתמדה</p>
       <h2 className="mt-2 max-w-5xl text-center text-[clamp(3.5rem,6vw,6rem)] font-black leading-none text-foreground">
         {type === 'group' ? 'הקבוצות שהשלימו הכי הרבה משימות' : 'המשתתפים שהשלימו הכי הרבה משימות'}
       </h2>
@@ -804,11 +804,11 @@ function MissionsPhase({ type, winners }: { type: 'group' | 'participant'; winne
               <div className="relative">
                 {rank === 1 && <div className="mb-2 text-5xl">👑</div>}
                 <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-[6px] border-white bg-gradient-to-br from-[#FF9366] to-[#FFB800] text-5xl shadow-xl">🎯</div>
-                <div className="mt-5 inline-flex rounded-full bg-[#FFF1D2] px-4 py-2 text-lg font-black text-primary">
+                <div className="mt-5 inline-flex rounded-full bg-[#FFF1D2] px-4 py-2 text-lg font-black text-primary-text">
                   {rank === 1 ? '🎯 אלוף' : MEDALS[rank - 1] || `#${rank}`}
                 </div>
                 <h3 className="mt-5 truncate text-4xl font-black text-foreground">{winner.name}</h3>
-                <p className="mt-5 text-[6rem] font-black leading-none tabular-nums text-secondary">{winner.count.toLocaleString('he-IL')}</p>
+                <p className="mt-5 text-[6rem] font-black leading-none tabular-nums text-secondary-text">{winner.count.toLocaleString('he-IL')}</p>
                 <p className="text-2xl font-black text-muted">משימות הושלמו</p>
               </div>
             </motion.div>
@@ -823,7 +823,7 @@ function EmptyPhase({ title }: { title: string }) {
   return (
     <div className="flex h-full items-center justify-center text-center">
       <div className="rounded-[1.75rem] border border-border bg-white/70 px-12 py-10 shadow-card backdrop-blur">
-        <Trophy size={52} className="mx-auto mb-4 text-warning" />
+        <Trophy size={52} className="mx-auto mb-4 text-warning-text" />
         <p className="text-4xl font-black text-foreground">{title}</p>
       </div>
     </div>
@@ -1192,7 +1192,7 @@ function ArenaNotReadyScreen({
           <button
             type="button"
             onClick={onToggleFullscreen}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-white/65 text-muted shadow-sm backdrop-blur transition hover:text-primary"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-white/65 text-muted shadow-sm backdrop-blur transition hover:text-primary-text"
             title={fullscreen ? 'יציאה ממסך מלא' : 'מסך מלא'}
           >
             {fullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
@@ -1203,12 +1203,12 @@ function ArenaNotReadyScreen({
             {eventLogoUrl ? (
               <img src={eventLogoUrl} alt={eventName || ''} className="h-14 w-14 rounded-2xl object-cover shadow-[0_0_28px_rgba(255,107,53,0.24)]" />
             ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 text-xl font-black text-primary shadow-[0_0_28px_rgba(255,107,53,0.2)]">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 text-xl font-black text-primary-text shadow-[0_0_28px_rgba(255,107,53,0.2)]">
                 {(eventName || '🏆').slice(0, 2)}
               </div>
             )}
             <div>
-              <p className="text-[13px] font-black uppercase tracking-[0.24em] text-primary">טקס הסיום</p>
+              <p className="text-[13px] font-black uppercase tracking-[0.24em] text-primary-text">טקס הסיום</p>
               <h1 className="text-3xl font-black text-foreground md:text-4xl">{eventName || 'תוצאות התחרות'}</h1>
             </div>
           </div>
@@ -1258,13 +1258,13 @@ function ArenaNotReadyScreen({
 function ProgressChrome({ activeDot, count, onReplay, paused, onTogglePause }: { activeDot: number; count: number; onReplay: () => void; paused: boolean; onTogglePause: () => void }) {
   return (
     <div className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-center gap-5 px-6 pb-6">
-      <button onClick={onReplay} className="flex items-center gap-2 rounded-full border border-border bg-white/65 px-4 py-2 text-sm font-black text-muted shadow-sm backdrop-blur transition hover:text-primary">
+      <button onClick={onReplay} className="flex items-center gap-2 rounded-full border border-border bg-white/65 px-4 py-2 text-sm font-black text-muted shadow-sm backdrop-blur transition hover:text-primary-text">
         <RotateCcw size={15} />
         הצג שוב
       </button>
       <button
         onClick={onTogglePause}
-        className="flex items-center gap-2 rounded-full border border-border bg-white/65 px-4 py-2 text-sm font-black text-muted shadow-sm backdrop-blur transition hover:text-primary"
+        className="flex items-center gap-2 rounded-full border border-border bg-white/65 px-4 py-2 text-sm font-black text-muted shadow-sm backdrop-blur transition hover:text-primary-text"
       >
         {paused ? <Play size={15} /> : <Pause size={15} />}
         {paused ? 'המשך' : 'השהה'}

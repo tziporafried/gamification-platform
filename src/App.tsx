@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { MotionConfig } from 'framer-motion'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { PlansModalProvider } from '@/contexts/PlansModalContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -19,8 +20,11 @@ import { PlansPage } from '@/pages/PlansPage'
 import { TermsPage } from '@/pages/TermsPage'
 
 export default function App() {
+  // reducedMotion="user" makes every framer-motion component honour the OS
+  // setting — CSS media queries cannot reach JS-driven transforms.
   return (
-    <BrowserRouter>
+    <MotionConfig reducedMotion="user">
+      <BrowserRouter>
       <AuthProvider>
         <AnalyticsListener />
         <PlansModalProvider>
@@ -51,6 +55,7 @@ export default function App() {
           </Routes>
         </PlansModalProvider>
       </AuthProvider>
-    </BrowserRouter>
+      </BrowserRouter>
+    </MotionConfig>
   )
 }

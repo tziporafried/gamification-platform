@@ -184,7 +184,7 @@ export function ReadyCelebrationBanner({
         <div className={cn('w-full', !collapsed && 'space-y-1')}>
           <motion.p
             className={cn(
-              'font-semibold text-success',
+              'font-semibold text-success-text',
               collapsed ? 'text-sm' : 'text-base',
             )}
             initial={reducedMotion ? false : { opacity: 0, y: 8 }}
@@ -242,7 +242,7 @@ function FestiveSuccessIcon() {
       <div className="festive-success-ring festive-success-ring-inner">
         <div className="festive-success-ring-hole" />
       </div>
-      <CheckCircle2 size={32} className="festive-success-check text-success" strokeWidth={2.5} />
+      <CheckCircle2 size={32} className="festive-success-check text-success-text" strokeWidth={2.5} />
     </div>
   )
 }

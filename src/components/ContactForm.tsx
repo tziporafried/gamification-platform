@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect, useId, FormEvent } from 'react'
 import { CheckCircle, Mail, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/contexts/AuthContext'
@@ -93,6 +93,9 @@ export function ContactForm({
   const hasEvent = Boolean(eventId)
   const compactPlanLead = intent === 'plan_lead' && hasEvent
 
+  // Ids so each visible label is programmatically tied to its control —
+  // they read as labels only when associated (WCAG 1.3.1 / 4.1.2).
+  const fid = useId()
   const [fullName, setFullName] = useState(profile?.display_name || '')
   const [email, setEmail] = useState(profile?.email || user?.email || '')
   const [phone, setPhone] = useState('')
@@ -225,7 +228,7 @@ export function ContactForm({
     return (
       <div className="flex flex-col items-center gap-4 py-6 text-center">
         <div className="flex h-14 w-14 items-center justify-center rounded-full border border-success bg-surface-elevated">
-          <CheckCircle size={26} className="text-success" />
+          <CheckCircle size={26} className="text-success-text" />
         </div>
         <div>
           <p className="text-base font-semibold text-foreground">הפנייה נשלחה בהצלחה</p>
@@ -258,7 +261,7 @@ export function ContactForm({
 
       {selectedOptionLabel && (
         <div className="mb-5 flex items-center gap-2 rounded-xl border border-primary bg-surface-elevated px-4 py-2.5">
-          <span className="text-xs font-semibold text-primary">האפשרות שבחרתם</span>
+          <span className="text-xs font-semibold text-primary-text">האפשרות שבחרתם</span>
           <span className="text-xs font-medium text-foreground">{selectedOptionLabel}</span>
         </div>
       )}
@@ -279,8 +282,9 @@ export function ContactForm({
           )}
         >
           <div className="min-w-0">
-            <label className="mb-1 block text-xs font-semibold text-muted">שם *</label>
+            <label htmlFor={`${fid}-name`} className="mb-1 block text-xs font-semibold text-muted">שם *</label>
             <input
+              id={`${fid}-name`}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="ישראל ישראלי"
@@ -288,9 +292,10 @@ export function ContactForm({
             />
           </div>
           <div className="min-w-0">
-            <label className="mb-1 block text-xs font-semibold text-muted">טלפון *</label>
+            <label htmlFor={`${fid}-phone`} className="mb-1 block text-xs font-semibold text-muted">טלפון *</label>
             <input
               type="tel"
+              id={`${fid}-phone`}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="050-1234567"
@@ -300,11 +305,12 @@ export function ContactForm({
           </div>
           {showEmailField && (
             <div className="min-w-0">
-              <label className="mb-1 block text-xs font-semibold text-muted">
+              <label htmlFor={`${fid}-email`} className="mb-1 block text-xs font-semibold text-muted">
                 אימייל {emailRequired ? '*' : '(אופציונלי)'}
               </label>
               <input
                 type="email"
+                id={`${fid}-email`}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@example.com"
@@ -317,8 +323,9 @@ export function ContactForm({
 
         {intent === 'organization_lead' && (
           <div>
-            <label className="mb-1 block text-xs font-semibold text-muted">שם הארגון *</label>
+            <label htmlFor={`${fid}-org`} className="mb-1 block text-xs font-semibold text-muted">שם הארגון *</label>
             <input
+              id={`${fid}-org`}
               value={organizationName}
               onChange={(e) => setOrganizationName(e.target.value)}
               placeholder="שם בית הספר / החברה / הקהילה"
@@ -330,10 +337,11 @@ export function ContactForm({
         {!compactPlanLead && (intent === 'plan_lead' || intent === 'organization_lead') && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(7.5rem,0.85fr)]">
             <div className="min-w-0">
-              <label className="mb-1 block text-xs font-semibold text-muted">
+              <label htmlFor={`${fid}-eventType`} className="mb-1 block text-xs font-semibold text-muted">
                 {intent === 'organization_lead' ? 'סוג האירוע / הפעילות' : 'סוג אירוע'}
               </label>
               <input
+                id={`${fid}-eventType`}
                 value={eventType}
                 onChange={(e) => setEventType(e.target.value)}
                 placeholder="לדוגמה: נופש משפחתי, יום גיבוש, קייטנה"
@@ -341,11 +349,12 @@ export function ContactForm({
               />
             </div>
             <div className="min-w-0">
-              <label className="mb-1 block text-xs font-semibold text-muted">מספר משתתפים משוער</label>
+              <label htmlFor={`${fid}-count`} className="mb-1 block text-xs font-semibold text-muted">מספר משתתפים משוער</label>
               <input
                 type="number"
                 min="1"
-                value={participantCount}
+                id={`${fid}-count`}
+              value={participantCount}
                 onChange={(e) => setParticipantCount(e.target.value)}
                 placeholder="50"
                 dir="ltr"
@@ -357,10 +366,11 @@ export function ContactForm({
 
         {!compactPlanLead && intent === 'plan_lead' && (
           <div>
-            <label className="mb-1 block text-xs font-semibold text-muted">תאריך אירוע</label>
+            <label htmlFor={`${fid}-eventDate`} className="mb-1 block text-xs font-semibold text-muted">תאריך אירוע</label>
             <div className="flex flex-wrap items-center gap-3">
               <input
                 type="date"
+                id={`${fid}-eventDate`}
                 value={eventDate}
                 disabled={dateUndecided}
                 onChange={(e) => setEventDate(e.target.value)}
@@ -384,8 +394,9 @@ export function ContactForm({
 
         {compactPlanLead && (
           <div>
-            <label className="mb-1 block text-xs font-semibold text-muted">מתי נוח לחזור אליכם</label>
+            <label htmlFor={`${fid}-callback`} className="mb-1 block text-xs font-semibold text-muted">מתי נוח לחזור אליכם</label>
             <input
+              id={`${fid}-callback`}
               value={callbackPreference}
               onChange={(e) => setCallbackPreference(e.target.value)}
               placeholder="לדוגמה: בוקר, אחה״צ, באמצע השבוע"
@@ -395,11 +406,12 @@ export function ContactForm({
         )}
 
         <div>
-          <label className="mb-1 block text-xs font-semibold text-muted">
+          <label htmlFor={`${fid}-notes`} className="mb-1 block text-xs font-semibold text-muted">
             {notesLabel}
             {notesOptional ? ' (אופציונלי)' : ''}
           </label>
           <textarea
+            id={`${fid}-notes`}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder={intent === 'contact' ? 'ספרו לנו במה נוכל לעזור' : 'פרטים נוספים'}
@@ -408,7 +420,7 @@ export function ContactForm({
           />
         </div>
 
-        {error && <p className="text-xs text-danger">{error}</p>}
+        {error && <p role="alert" className="text-xs text-danger-text">{error}</p>}
 
         <Button
           type="submit"
@@ -429,7 +441,7 @@ export function ContactForm({
                 target="_blank"
                 rel="noopener noreferrer"
                 dir="ltr"
-                className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                className="inline-flex items-center gap-1 font-semibold text-primary-text underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
                 <Mail size={17} strokeWidth={2.25} aria-hidden="true" />
                 {CONTACT_EMAIL}
@@ -438,7 +450,7 @@ export function ContactForm({
               <a
                 href={`tel:${CONTACT_PHONE}`}
                 dir="ltr"
-                className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                className="inline-flex items-center gap-1 font-semibold text-primary-text underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
                 <Phone size={17} strokeWidth={2.25} aria-hidden="true" />
                 {CONTACT_PHONE}

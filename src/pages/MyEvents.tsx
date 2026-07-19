@@ -164,6 +164,8 @@ export function MyEvents() {
     <main className="mx-auto w-full max-w-5xl px-4 py-8">
       {events.length === 0 ? (
         <EmptyState
+          // This empty state is the whole page, so it carries the h1.
+          as="h1"
           icon={<Calendar size={40} />}
           title="עדיין אין אירועים"
           description="צרו את האירוע הראשון שלכם והתחילו לנהל משתתפים, קבוצות ומשימות."
@@ -177,7 +179,7 @@ export function MyEvents() {
               <button
                 type="button"
                 onClick={handleConsultClick}
-                className="mt-3 text-sm font-medium text-muted transition-colors hover:text-primary"
+                className="mt-3 text-sm font-medium text-muted transition-colors hover:text-primary-text"
               >
                 רוצים להתייעץ לפני שמתחילים?
               </button>
@@ -358,10 +360,11 @@ function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: Ev
         <IconButton
           variant="default"
           title="שיתוף"
+          aria-label={`שיתוף האירוע ${gameEvent.name}`}
           className="text-foreground/75 transition-colors duration-[180ms] ease-out hover:text-foreground"
           onClick={handleShare}
         >
-          <Share2 size={13} strokeWidth={2} />
+          <Share2 size={13} strokeWidth={2} aria-hidden="true" />
         </IconButton>
         <div className="flex h-[26px] w-7 shrink-0 items-center justify-center">
           {isOwner && (
@@ -369,7 +372,8 @@ function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: Ev
               revealOnHover
               iconSize={13}
               title="מחיקה"
-              className="text-foreground/75 transition-colors duration-[180ms] ease-out hover:text-danger"
+              aria-label={`מחיקת האירוע ${gameEvent.name}`}
+              className="text-foreground/75 transition-colors duration-[180ms] ease-out hover:text-danger-text"
               onClick={handleDelete}
             />
           )}

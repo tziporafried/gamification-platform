@@ -242,7 +242,7 @@ export function PlansModal({
                   <span
                     className={cn(
                       'text-3xl font-extrabold leading-none',
-                      emphasizeBasic ? 'text-primary' : 'text-foreground',
+                      emphasizeBasic ? 'text-primary-text' : 'text-foreground',
                     )}
                   >
                     ₪40
@@ -297,7 +297,7 @@ export function PlansModal({
                   <span
                     className={cn(
                       'text-3xl font-extrabold leading-none',
-                      emphasizeFull ? 'text-primary' : 'text-foreground',
+                      emphasizeFull ? 'text-primary-text' : 'text-foreground',
                     )}
                   >
                     ₪150
@@ -318,7 +318,7 @@ export function PlansModal({
                   <p className="text-[10px] font-semibold leading-none text-foreground/75">כולל גם:</p>
                   {FULL_SPECIALS.map((item) => (
                     <div key={item} className="flex items-center gap-2">
-                      <Check size={13} className="shrink-0 text-success" aria-hidden="true" />
+                      <Check size={13} className="shrink-0 text-success-text" aria-hidden="true" />
                       <span className="text-xs font-semibold leading-snug text-foreground">
                         {item}
                       </span>
@@ -363,7 +363,7 @@ export function PlansModal({
                   <span
                     className={cn(
                       'text-3xl font-extrabold leading-none',
-                      emphasizeOffline ? 'text-primary' : 'text-foreground',
+                      emphasizeOffline ? 'text-primary-text' : 'text-foreground',
                     )}
                   >
                     ₪200
@@ -384,7 +384,7 @@ export function PlansModal({
                   <p className="text-[10px] font-semibold leading-none text-foreground/75">כולל גם:</p>
                   {OFFLINE_SPECIALS.map((item) => (
                     <div key={item} className="flex items-center gap-2">
-                      <Check size={13} className="shrink-0 text-success" aria-hidden="true" />
+                      <Check size={13} className="shrink-0 text-success-text" aria-hidden="true" />
                       <span className="text-xs font-semibold leading-snug text-foreground">
                         {item}
                       </span>
@@ -524,7 +524,7 @@ function OptionCard({
 function FeatureRow({ text }: { text: string }) {
   return (
     <div className="flex items-center gap-2">
-      <Check size={13} className="shrink-0 text-success" aria-hidden="true" />
+      <Check size={13} className="shrink-0 text-success-text" aria-hidden="true" />
       <span className="text-xs leading-snug text-foreground">{text}</span>
     </div>
   )

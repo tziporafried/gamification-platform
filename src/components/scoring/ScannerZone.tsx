@@ -231,7 +231,7 @@ export function ScannerZone({ successFlash, processing = false, accent }: Props)
                     initial={{ scale: 0, rotate: -180 }} animate={{ scale: [0, 1.3, 1], rotate: 0 }}
                     transition={{ duration: 0.55, type: 'spring', stiffness: 200 }}
                   >
-                    <Check className="h-[55%] w-[55%] text-success" strokeWidth={3} />
+                    <Check className="h-[55%] w-[55%] text-success-text" strokeWidth={3} />
                   </motion.div>
                 </motion.div>
               )}
