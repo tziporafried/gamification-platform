@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download } from 'lucide-react'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, CheckCircle, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download, Search } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
@@ -202,6 +202,7 @@ export function AdminPanel() {
   const [offlineExportError, setOfflineExportError] = useState<{ requestId: string; message: string } | null>(null)
   const [usersError, setUsersError] = useState<string | null>(null)
   const [selectedAffiliates, setSelectedAffiliates] = useState<string[]>([])
+  const [customerSearch, setCustomerSearch] = useState('')
 
   // Per-user event expansion state
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set())
@@ -326,16 +327,30 @@ export function AdminPanel() {
   }, [users, labelFor])
 
   const filteredUsers = useMemo(() => {
-    if (selectedAffiliates.length === 0) return users
-    const codeSet = new Set(expandAffiliateSelection(selectedAffiliates, labelsByCode))
-    const includeNoContent = selectedAffiliates.includes(AFFILIATE_NO_CONTENT)
-    return users.filter((user) => {
-      const code = affiliateFilterCode(user.affiliate_attribution)
-      if (!code) return false
-      if (code === AFFILIATE_NO_CONTENT) return includeNoContent
-      return codeSet.has(code)
+    const q = customerSearch.trim().toLowerCase()
+    let list = users
+
+    if (selectedAffiliates.length > 0) {
+      const codeSet = new Set(expandAffiliateSelection(selectedAffiliates, labelsByCode))
+      const includeNoContent = selectedAffiliates.includes(AFFILIATE_NO_CONTENT)
+      list = list.filter((user) => {
+        const code = affiliateFilterCode(user.affiliate_attribution)
+        if (!code) return false
+        if (code === AFFILIATE_NO_CONTENT) return includeNoContent
+        return codeSet.has(code)
+      })
+    }
+
+    if (!q) return list
+    return list.filter((user) => {
+      const email = user.email.toLowerCase()
+      const name = (user.display_name ?? '').toLowerCase()
+      return email.includes(q) || name.includes(q)
     })
-  }, [users, selectedAffiliates, labelsByCode])
+  }, [users, selectedAffiliates, labelsByCode, customerSearch])
+
+  const customersFiltered =
+    selectedAffiliates.length > 0 || customerSearch.trim().length > 0
 
   async function toggleUserEvents(userId: string) {
     if (expandedUsers.has(userId)) {
@@ -562,14 +577,28 @@ export function AdminPanel() {
               שגיאה בטעינת משתמשים: {usersError}
             </div>
           )}
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Users size={18} className="text-gray-400" />
               <h2 className="text-sm font-medium text-gray-400">
-                {selectedAffiliates.length > 0
+                {customersFiltered
                   ? `${filteredUsers.length} מתוך ${users.length} משתמשים`
                   : `${users.length} משתמשים רשומים`}
               </h2>
+            </div>
+            <div className="relative w-full sm:w-72">
+              <Search
+                size={15}
+                className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted"
+              />
+              <input
+                type="search"
+                value={customerSearch}
+                onChange={(e) => setCustomerSearch(e.target.value)}
+                placeholder="חיפוש לפי שם או אימייל..."
+                aria-label="חיפוש לקוחות לפי שם או אימייל"
+                className="w-full rounded-xl border border-border bg-surface py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand-500"
+              />
             </div>
           </div>
 
@@ -589,7 +618,11 @@ export function AdminPanel() {
                 compact
                 icon={<Users size={22} />}
                 title="אין לקוחות בסינון הזה"
-                description="נסו לבחור אפיליאייט אחר או לנקות את הסינון."
+                description={
+                  customerSearch.trim()
+                    ? 'נסו חיפוש אחר, או נקו את הסינון.'
+                    : 'נסו לבחור אפיליאייט אחר או לנקות את הסינון.'
+                }
               />
             ) : null}
             {filteredUsers.map(user => {

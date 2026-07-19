@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowDownCircle, ArrowUpCircle, Scale, Trash2, Plus } from 'lucide-react'
+import { ArrowDownCircle, ArrowUpCircle, Clock3, Scale, Trash2, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
@@ -84,13 +84,20 @@ export function AdminFinancePanel() {
 
   const totals = useMemo(() => {
     let income = 0
+    let futureIncome = 0
     let expense = 0
     for (const e of entries) {
       const n = Number(e.amount)
       if (e.entry_type === 'income') income += n
+      else if (e.entry_type === 'future_income') futureIncome += n
       else expense += n
     }
-    return { income, expense, balance: income - expense }
+    return {
+      income,
+      futureIncome,
+      expense,
+      balance: income - expense,
+    }
   }, [entries])
 
   const filteredEntries = useMemo(() => {
@@ -175,12 +182,19 @@ export function AdminFinancePanel() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="סה״כ הכנסות"
           value={formatMoney(totals.income)}
           accent="secondary"
           icon={<ArrowUpCircle size={18} />}
+        />
+        <KpiCard
+          label="הכנסות עתידיות"
+          value={formatMoney(totals.futureIncome)}
+          accent="primary"
+          hint="עדיין לא שולמו"
+          icon={<Clock3 size={18} />}
         />
         <KpiCard
           label="סה״כ הוצאות"
@@ -192,7 +206,7 @@ export function AdminFinancePanel() {
           label="מאזן"
           value={formatMoney(totals.balance)}
           accent={totals.balance >= 0 ? 'primary' : 'muted'}
-          hint={totals.balance >= 0 ? 'הכנסות גבוהות מההוצאות' : 'הוצאות גבוהות מההכנסות'}
+          hint="הכנסות שהתקבלו פחות הוצאות"
           icon={<Scale size={18} />}
         />
       </div>
@@ -200,7 +214,7 @@ export function AdminFinancePanel() {
       <Card className="p-4">
         <h3 className="mb-4 text-sm font-semibold text-foreground">רשומה חדשה</h3>
 
-        <div className="mb-4 flex gap-2">
+        <div className="mb-4 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => {
@@ -209,7 +223,7 @@ export function AdminFinancePanel() {
               else if (!adminUserId && admins[0]) setAdminUserId(admins[0].id)
             }}
             className={cn(
-              'flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
+              'min-w-[6.5rem] flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
               entryType === 'expense'
                 ? 'border-danger/40 bg-danger/10 text-danger'
                 : 'border-border bg-surface text-muted hover:border-secondary/30',
@@ -221,13 +235,25 @@ export function AdminFinancePanel() {
             type="button"
             onClick={() => setEntryType('income')}
             className={cn(
-              'flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
+              'min-w-[6.5rem] flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
               entryType === 'income'
                 ? 'border-success/40 bg-success/10 text-success'
                 : 'border-border bg-surface text-muted hover:border-secondary/30',
             )}
           >
             הכנסה
+          </button>
+          <button
+            type="button"
+            onClick={() => setEntryType('future_income')}
+            className={cn(
+              'min-w-[6.5rem] flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
+              entryType === 'future_income'
+                ? 'border-secondary/40 bg-secondary/10 text-secondary'
+                : 'border-border bg-surface text-muted hover:border-secondary/30',
+            )}
+          >
+            הכנסה עתידית
           </button>
         </div>
 
@@ -260,7 +286,13 @@ export function AdminFinancePanel() {
             label="תיאור"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder={entryType === 'expense' ? 'למשל: שרתים / עיצוב / פרסום' : 'למשל: תשלום מלקוח'}
+            placeholder={
+              entryType === 'expense'
+                ? 'למשל: שרתים / עיצוב / פרסום'
+                : entryType === 'future_income'
+                  ? 'למשל: הזמנה ממתינה לתשלום'
+                  : 'למשל: תשלום מלקוח'
+            }
             required
           />
 
@@ -271,7 +303,7 @@ export function AdminFinancePanel() {
             onChange={(e) => setAdminUserId(e.target.value)}
             required={entryType === 'expense'}
           >
-            {entryType === 'income' && <option value="">ללא שיוך</option>}
+            {entryType !== 'expense' && <option value="">ללא שיוך</option>}
             {admins.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.display_name || a.email}
@@ -285,7 +317,11 @@ export function AdminFinancePanel() {
 
           <Button type="submit" loading={saving} className="w-full sm:w-auto">
             <Plus size={16} className="ml-1" />
-            {entryType === 'expense' ? 'הוסף הוצאה' : 'דווח הכנסה'}
+            {entryType === 'expense'
+              ? 'הוסף הוצאה'
+              : entryType === 'future_income'
+                ? 'הוסף הכנסה עתידית'
+                : 'דווח הכנסה'}
           </Button>
         </form>
       </Card>
@@ -320,6 +356,12 @@ export function AdminFinancePanel() {
           <div className="space-y-1.5">
             {filteredEntries.map((entry) => {
               const isIncome = entry.entry_type === 'income'
+              const isFuture = entry.entry_type === 'future_income'
+              const typeLabel = isIncome
+                ? 'הכנסה'
+                : isFuture
+                  ? 'הכנסה עתידית'
+                  : 'הוצאה'
               return (
                 <div
                   key={entry.id}
@@ -328,10 +370,18 @@ export function AdminFinancePanel() {
                   <div
                     className={cn(
                       'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                      isIncome ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger',
+                      isIncome && 'bg-success/10 text-success',
+                      isFuture && 'bg-secondary/10 text-secondary',
+                      !isIncome && !isFuture && 'bg-danger/10 text-danger',
                     )}
                   >
-                    {isIncome ? <ArrowUpCircle size={16} /> : <ArrowDownCircle size={16} />}
+                    {isIncome ? (
+                      <ArrowUpCircle size={16} />
+                    ) : isFuture ? (
+                      <Clock3 size={16} />
+                    ) : (
+                      <ArrowDownCircle size={16} />
+                    )}
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -342,17 +392,19 @@ export function AdminFinancePanel() {
                         <> · {adminLabel(entry.admin_user_id)}</>
                       )}
                       <span className="mx-1">·</span>
-                      {isIncome ? 'הכנסה' : 'הוצאה'}
+                      {typeLabel}
                     </p>
                   </div>
 
                   <span
                     className={cn(
                       'shrink-0 text-sm font-semibold tabular-nums',
-                      isIncome ? 'text-success' : 'text-danger',
+                      isIncome && 'text-success',
+                      isFuture && 'text-secondary',
+                      !isIncome && !isFuture && 'text-danger',
                     )}
                   >
-                    {isIncome ? '+' : '−'}
+                    {isIncome || isFuture ? '+' : '−'}
                     {formatMoney(Number(entry.amount))}
                   </span>
 

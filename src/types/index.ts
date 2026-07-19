@@ -270,7 +270,7 @@ export interface DevTodoWithAssignee extends DevTodo {
   assignee?: { display_name: string | null; email: string; avatar_url: string | null };
 }
 
-export type FinanceEntryType = 'income' | 'expense';
+export type FinanceEntryType = 'income' | 'expense' | 'future_income';
 
 export interface AdminFinanceEntry {
   id: string;
@@ -314,7 +314,9 @@ export interface ScannerBooking {
   booking_package: BookingPackage | null;
   /** Amount charged (may differ from list price). */
   amount: number | null;
-  /** Linked income row in admin_finance_entries. */
+  /** When false, linked finance row is future_income (not yet received). */
+  is_paid: boolean;
+  /** Linked income / future_income row in admin_finance_entries. */
   finance_entry_id: string | null;
   notes: string | null;
   created_by: string;

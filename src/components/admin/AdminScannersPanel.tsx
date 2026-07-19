@@ -40,6 +40,7 @@ import {
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Checkbox } from '@/components/ui/Checkbox'
 import { Select } from '@/components/ui/Select'
 import { Modal } from '@/components/ui/Modal'
 import { ModalActions } from '@/components/ui/ModalActions'
@@ -247,6 +248,7 @@ export function AdminScannersPanel() {
   const [formEventId, setFormEventId] = useState('')
   const [formPackage, setFormPackage] = useState<BookablePackage | ''>('')
   const [formAmount, setFormAmount] = useState('')
+  const [formPaid, setFormPaid] = useState(false)
   const [formStart, setFormStart] = useState(todayISO)
   const [formEnd, setFormEnd] = useState(todayISO)
   const [formCustomer, setFormCustomer] = useState('')
@@ -420,6 +422,7 @@ export function AdminScannersPanel() {
     setFormEventId('')
     setFormPackage('full')
     setFormAmount(String(calculateBookingPrice('full', iso, iso) ?? 150))
+    setFormPaid(false)
     setError(null)
     closeDetail()
     setBookingOpen(true)
@@ -438,6 +441,7 @@ export function AdminScannersPanel() {
     setFormEventId(booking.event_id ?? '')
     setFormPackage((booking.booking_package as BookablePackage | null) ?? 'full')
     setFormAmount(booking.amount != null ? String(booking.amount) : '')
+    setFormPaid(booking.is_paid ?? false)
     setError(null)
     closeDetail()
     setBookingOpen(true)
@@ -470,22 +474,34 @@ export function AdminScannersPanel() {
     amount: number | null
     customer: string
     pkg: BookablePackage
+    isPaid: boolean
   }): Promise<{ financeEntryId: string | null; error: string | null }> {
-    const { existingFinanceId, amount, customer, pkg } = options
+    const { existingFinanceId, amount, customer, pkg, isPaid } = options
     const pkgLabel = BOOKING_PACKAGE_LABELS[pkg]
     const description = `הזמנה: ${customer} · ${pkgLabel} · ${formatRange(formStart, formEnd)}`
+    const entryType = isPaid ? 'income' : 'future_income'
 
     if (amount != null && amount > 0) {
       if (existingFinanceId) {
         const { error: financeError } = await supabase
           .from('admin_finance_entries')
           .update({
+            entry_type: entryType,
             amount,
             description,
             entry_date: formStart,
           })
           .eq('id', existingFinanceId)
-        if (financeError) return { financeEntryId: null, error: financeError.message }
+        if (financeError) {
+          const msg = financeError.message ?? ''
+          return {
+            financeEntryId: null,
+            error:
+              msg.includes('entry_type') || msg.includes('check')
+                ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PAID_FUTURE_INCOME.sql)'
+                : msg,
+          }
+        }
         return { financeEntryId: existingFinanceId, error: null }
       }
 
@@ -493,7 +509,7 @@ export function AdminScannersPanel() {
       const { data: financeRow, error: financeError } = await supabase
         .from('admin_finance_entries')
         .insert({
-          entry_type: 'income',
+          entry_type: entryType,
           amount,
           description,
           entry_date: formStart,
@@ -503,7 +519,14 @@ export function AdminScannersPanel() {
         .select('id')
         .single()
       if (financeError || !financeRow) {
-        return { financeEntryId: null, error: financeError?.message ?? 'שגיאה ביצירת רשומת הכנסה' }
+        const msg = financeError?.message ?? ''
+        return {
+          financeEntryId: null,
+          error:
+            msg.includes('entry_type') || msg.includes('check')
+              ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PAID_FUTURE_INCOME.sql)'
+              : msg || 'שגיאה ביצירת רשומת הכנסה',
+        }
       }
       return { financeEntryId: financeRow.id as string, error: null }
     }
@@ -566,6 +589,7 @@ export function AdminScannersPanel() {
       amount,
       customer,
       pkg: formPackage,
+      isPaid: formPaid,
     })
     if (financeSyncError) {
       setError(financeSyncError)
@@ -578,6 +602,7 @@ export function AdminScannersPanel() {
       event_id: formEventId || null,
       booking_package: formPackage as BookingPackage,
       amount,
+      is_paid: formPaid,
       finance_entry_id: financeEntryId,
       start_date: formStart,
       end_date: formEnd,
@@ -650,7 +675,11 @@ export function AdminScannersPanel() {
     setSaving(false)
     closeBookingForm()
     if (financeEntryId && amount != null) {
-      setSuccessMsg(`ההזמנה נשמרה והוספה הכנסה של ${formatPriceIls(amount)}`)
+      setSuccessMsg(
+        formPaid
+          ? `ההזמנה נשמרה והוספה הכנסה של ${formatPriceIls(amount)}`
+          : `ההזמנה נשמרה והוספה הכנסה עתידית של ${formatPriceIls(amount)}`,
+      )
     }
   }
 
@@ -1289,6 +1318,19 @@ export function AdminScannersPanel() {
               )}
             </div>
           </div>
+          <div className="rounded-xl border border-border bg-surface-elevated/40 px-3 py-2.5">
+            <Checkbox
+              id="booking-paid"
+              label="שולם"
+              checked={formPaid}
+              onChange={(e) => setFormPaid(e.target.checked)}
+            />
+            <p className="mt-1 text-[11px] text-muted">
+              {formPaid
+                ? 'יירשם כהכנסה בלוח הכספים'
+                : 'יירשם כהכנסה עתידית עד שיסומן כשולם'}
+            </p>
+          </div>
           <Select
             id="booking-event"
             label="משחק מקושר (אופציונלי)"
@@ -1450,6 +1492,8 @@ function BookingRow({
           {packageLabel}
           {booking.amount != null ? ` · ${formatPriceIls(Number(booking.amount))}` : ''}
           {' · '}
+          {booking.is_paid ? 'שולם' : 'לא שולם'}
+          {' · '}
           {eventLabel} · {label} · {formatRange(booking.start_date, booking.end_date)}
           {booking.customer_phone ? ` · ${booking.customer_phone}` : ''}
         </p>
@@ -1498,11 +1542,17 @@ function BookingDetailCard({
       label: 'מחיר',
       value: booking.amount != null ? formatPriceIls(Number(booking.amount)) : '—',
     },
+    { label: 'תשלום', value: booking.is_paid ? 'שולם' : 'לא שולם (הכנסה עתידית)' },
     { label: 'משחק', value: eventLabel },
     { label: 'סורק', value: scannerLabel },
     { label: 'תאריכים', value: formatRange(booking.start_date, booking.end_date) },
   ]
-  if (booking.finance_entry_id) rows.push({ label: 'הכנסה', value: 'נרשמה בלוח הכספים' })
+  if (booking.finance_entry_id) {
+    rows.push({
+      label: 'הכנסה',
+      value: booking.is_paid ? 'נרשמה בלוח הכספים' : 'נרשמה כהכנסה עתידית',
+    })
+  }
   if (booking.customer_phone) rows.push({ label: 'טלפון', value: booking.customer_phone })
   if (booking.customer_email) rows.push({ label: 'אימייל', value: booking.customer_email })
   if (booking.notes) rows.push({ label: 'הערות', value: booking.notes })
