@@ -1,6 +1,8 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Award, Crown, Gift, Maximize2, Minimize2, Pause, Play, RotateCcw, ScanLine, Sparkles, Trophy, Users } from 'lucide-react'
+import { Award, ClipboardCheck, Crown, Gift, Maximize2, Minimize2, Pause, Play, RotateCcw, ScanLine, Sparkles, Trophy, Users, X } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+import { he } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
 import { computeRanks } from '@/lib/missionUtils'
 import { cn } from '@/lib/utils'
@@ -279,6 +281,27 @@ function useLeaderboardData(eventId: string) {
     }
     return m
   }, [taskCountByP, pgMap])
+  const txByParticipant = useMemo(() => {
+    const m = new Map<string, TxRow[]>()
+    for (const tx of transactions) {
+      const arr = m.get(tx.participant_id)
+      if (arr) arr.push(tx)
+      else m.set(tx.participant_id, [tx])
+    }
+    return m
+  }, [transactions])
+  const txByGroup = useMemo(() => {
+    const m = new Map<string, TxRow[]>()
+    for (const tx of transactions) {
+      const groups = pgMap.get(tx.participant_id) ?? []
+      for (const g of groups) {
+        const arr = m.get(g.id)
+        if (arr) arr.push(tx)
+        else m.set(g.id, [tx])
+      }
+    }
+    return m
+  }, [transactions, pgMap])
   const topPByGroup = useMemo(() => {
     const m = new Map<string, { name: string }>()
     for (const p of rankedP) {
@@ -316,6 +339,8 @@ function useLeaderboardData(eventId: string) {
     totalGroupCount,
     taskCountByP,
     groupTaskCounts,
+    txByParticipant,
+    txByGroup,
     topPByGroup,
     taskStats,
     pgMap,
@@ -841,6 +866,7 @@ function SummaryLeaderboardPreview({
   topPByGroup,
   expanded = false,
   large = false,
+  onSelect,
 }: {
   items: (RankedGroup | RankedParticipant)[]
   pgMap: Map<string, ParticipantGroupRef[]>
@@ -850,6 +876,7 @@ function SummaryLeaderboardPreview({
   topPByGroup: Map<string, { name: string }>
   expanded?: boolean
   large?: boolean
+  onSelect?: (item: RankedGroup | RankedParticipant) => void
 }) {
   const visible = expanded ? items : items.slice(0, 3)
   const topPoints = Math.max(1, visible[0]?.total_points || 1)
@@ -874,27 +901,25 @@ function SummaryLeaderboardPreview({
         const color = isGroup ? item.group_color : groups[0]?.color || TEAL
         const missions = isGroup ? groupTaskCounts.get(item.group_id) || 0 : taskCountByP.get(item.participant_id) || 0
         const pct = Math.max(5, Math.round((item.total_points / topPoints) * 100))
+        const clickable = Boolean(onSelect)
 
-        return (
-          <motion.div
-            key={id}
-            className={cn(
-              'grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center rounded-[18px] border bg-white/82 shadow-[0_8px_24px_rgba(46,34,30,.08)] backdrop-blur',
-              item.rank <= 3 && 'top-rank-row summary-top-rank-row',
-              item.rank === 1 && 'top-rank-1',
-              item.rank === 2 && 'top-rank-2',
-              item.rank === 3 && 'top-rank-3',
-              expanded ? 'gap-4 px-5 py-3.5' : large ? 'gap-4 px-5 py-3.5' : 'gap-3 px-4 py-2.5',
-            )}
-            style={{
-              borderColor: item.rank === 1 ? 'rgba(242,179,60,.72)' : item.rank === 2 ? 'rgba(185,174,167,.72)' : item.rank === 3 ? 'rgba(255,147,102,.7)' : 'rgba(231,214,207,.85)',
-              borderInlineStartWidth: item.rank <= 3 ? 8 : 1,
-              background: item.rank === 1 ? 'linear-gradient(90deg,rgba(242,179,60,.18),rgba(255,255,255,.86))' : 'rgba(255,255,255,.82)',
-            }}
-            initial={{ opacity: 0, x: 24 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: idx * 0.05, duration: 0.35 }}
-          >
+        const rowClass = cn(
+          'grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center rounded-[18px] border bg-white/82 text-right shadow-[0_8px_24px_rgba(46,34,30,.08)] backdrop-blur',
+          item.rank <= 3 && 'top-rank-row summary-top-rank-row',
+          item.rank === 1 && 'top-rank-1',
+          item.rank === 2 && 'top-rank-2',
+          item.rank === 3 && 'top-rank-3',
+          expanded ? 'gap-4 px-5 py-3.5' : large ? 'gap-4 px-5 py-3.5' : 'gap-3 px-4 py-2.5',
+          clickable && 'cursor-pointer transition hover:-translate-y-0.5 hover:shadow-[0_16px_38px_rgba(46,34,30,.16)]',
+        )
+        const rowStyle = {
+          borderColor: item.rank === 1 ? 'rgba(242,179,60,.72)' : item.rank === 2 ? 'rgba(185,174,167,.72)' : item.rank === 3 ? 'rgba(255,147,102,.7)' : 'rgba(231,214,207,.85)',
+          borderInlineStartWidth: item.rank <= 3 ? 8 : 1,
+          background: item.rank === 1 ? 'linear-gradient(90deg,rgba(242,179,60,.18),rgba(255,255,255,.86))' : 'rgba(255,255,255,.82)',
+        } as const
+
+        const content = (
+          <>
             <RankBadge rank={item.rank} />
             {isGroup ? (
               <div className={cn('flex items-center justify-center rounded-2xl text-white shadow-lg', large ? 'h-16 w-16' : 'h-14 w-14')} style={{ background: color }}>
@@ -916,6 +941,12 @@ function SummaryLeaderboardPreview({
                   transition={{ delay: 0.1 + idx * 0.05, duration: 0.65, ease: 'easeOut' }}
                 />
               </div>
+              {clickable && (
+                <div className="mt-2 inline-flex items-center gap-1.5 text-sm font-extrabold text-[#EF8A4E]">
+                  <ClipboardCheck size={16} />
+                  צפו ב{missions} המשימות ›
+                </div>
+              )}
             </div>
             <div className={cn('text-left', expanded || large ? 'min-w-[118px]' : 'min-w-[92px]')}>
               <p className={cn('font-black leading-none tabular-nums', item.rank === 1 ? 'text-[#F2B33C]' : 'text-[#2E221E]', expanded || large ? 'text-4xl' : 'text-3xl')}>
@@ -923,6 +954,36 @@ function SummaryLeaderboardPreview({
               </p>
               <p className="text-sm font-extrabold text-[#9A8E88]">נקודות</p>
             </div>
+          </>
+        )
+
+        if (clickable) {
+          return (
+            <motion.button
+              key={id}
+              type="button"
+              onClick={() => onSelect?.(item)}
+              className={rowClass}
+              style={rowStyle}
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: idx * 0.05, duration: 0.35 }}
+            >
+              {content}
+            </motion.button>
+          )
+        }
+
+        return (
+          <motion.div
+            key={id}
+            className={rowClass}
+            style={rowStyle}
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: idx * 0.05, duration: 0.35 }}
+          >
+            {content}
           </motion.div>
         )
       })}
@@ -1004,6 +1065,115 @@ function FocusedSummaryHeader({ icon, title, subtitle, accent }: { icon: ReactNo
   )
 }
 
+interface SelectedEntry {
+  type: 'group' | 'participant'
+  id: string
+  name: string
+  color: string
+}
+
+function EntryTasksOverlay({ entry, transactions, onClose }: { entry: SelectedEntry; transactions: TxRow[]; onClose: () => void }) {
+  const isGroup = entry.type === 'group'
+  const summary = useMemo(() => {
+    const m = new Map<string, { name: string; count: number; points: number; last: string }>()
+    for (const tx of transactions) {
+      const existing = m.get(tx.action_id)
+      if (existing) {
+        existing.count += 1
+        existing.points += tx.points
+        if (tx.created_at > existing.last) existing.last = tx.created_at
+      } else {
+        m.set(tx.action_id, { name: tx.action?.name ?? 'משימה', count: 1, points: tx.points, last: tx.created_at })
+      }
+    }
+    return [...m.values()].sort((a, b) => b.count - a.count || b.points - a.points)
+  }, [transactions])
+  const totalTasks = transactions.length
+  const totalPoints = transactions.reduce((sum, tx) => sum + (tx.points || 0), 0)
+
+  return (
+    <motion.div
+      className="absolute inset-0 z-[60] flex items-center justify-center rounded-[28px] bg-[#2E221E]/45 p-8 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className="relative flex h-full max-h-[760px] w-full max-w-[1040px] flex-col overflow-hidden rounded-[34px] border border-[#F2B33C]/60 bg-[linear-gradient(150deg,#FFFDF7,#FFF4E6)] p-8 shadow-[0_34px_100px_rgba(46,34,30,.28)]"
+        initial={{ scale: 0.92, y: 24 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.94, y: 18 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="absolute inset-y-0 -right-1/3 w-1/3 rotate-12 bg-gradient-to-l from-transparent via-white/70 to-transparent animate-light-sweep" />
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute left-6 top-6 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-[#E7D6CF]/80 bg-white/88 text-[#7D706A] shadow-[0_10px_28px_rgba(46,34,30,.12)] transition hover:scale-105 hover:text-[#2E221E]"
+          aria-label="סגירה"
+        >
+          <X size={22} />
+        </button>
+
+        <div className="relative mb-6 flex items-center gap-5">
+          <div
+            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-[6px] border-white text-white shadow-[0_16px_46px_rgba(46,34,30,.2)]"
+            style={{ background: `linear-gradient(135deg, ${entry.color || TEAL}, #FFB800)` }}
+          >
+            {isGroup ? <Users size={34} /> : <AvatarCircle name={entry.name} size="lg" ringColor={entry.color} className="h-20 w-20 text-3xl ring-0" />}
+          </div>
+          <div className="min-w-0">
+            <p className="text-lg font-black text-[#EF8A4E]">{isGroup ? 'כל המשימות שהקבוצה ביצעה' : 'כל המשימות שהמשתתף ביצע'}</p>
+            <h3 className="truncate text-[3rem] font-black leading-none text-[#2E221E]">{entry.name}</h3>
+            <p className="mt-2 text-lg font-extrabold text-[#7D706A]">
+              {totalTasks.toLocaleString('he-IL')} משימות · {totalPoints.toLocaleString('he-IL')} נקודות
+            </p>
+          </div>
+        </div>
+
+        {summary.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center rounded-[24px] border border-[#E7D6CF]/80 bg-white/70 text-center shadow-[0_12px_34px_rgba(46,34,30,.08)]">
+            <ClipboardCheck size={40} className="mb-3 text-[#F2B33C]" />
+            <p className="text-2xl font-black text-[#2E221E]">טרם בוצעו משימות</p>
+          </div>
+        ) : (
+          <div className="relative grid min-h-0 flex-1 content-start gap-3 overflow-y-auto overscroll-contain pe-1 summary-scroll">
+            {summary.map((task, idx) => (
+              <motion.div
+                key={task.name + idx}
+                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-[18px] border border-[#E7D6CF]/85 bg-white/82 px-5 py-3.5 shadow-[0_8px_24px_rgba(46,34,30,.08)] backdrop-blur"
+                initial={{ opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: Math.min(idx * 0.04, 0.4), duration: 0.3 }}
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#FFF1D2] text-[#EF8A4E] shadow-sm">
+                  <ClipboardCheck size={24} />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-2xl font-black text-[#2E221E]">{task.name}</p>
+                  <p className="text-sm font-extrabold text-[#9A8E88]">
+                    {task.count > 1 ? `בוצעה ${task.count.toLocaleString('he-IL')} פעמים · ` : ''}
+                    {formatDistanceToNow(new Date(task.last), { addSuffix: true, locale: he })}
+                  </p>
+                </div>
+                <div className="text-left">
+                  <p className="text-3xl font-black leading-none tabular-nums text-[#2E221E]">
+                    {task.points >= 0 ? '+' : ''}
+                    {task.points.toLocaleString('he-IL')}
+                  </p>
+                  <p className="text-sm font-extrabold text-[#9A8E88]">נקודות</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  )
+}
+
 function FinalSummaryPhase({
   rankedG,
   rankedP,
@@ -1011,11 +1181,14 @@ function FinalSummaryPhase({
   totalGroups,
   groupTaskCounts,
   taskCountByP,
+  txByParticipant,
+  txByGroup,
   topPByGroup,
   totalScans,
   totalParticipants,
   totalPointsEarned,
   totalRewardsAwarded,
+  onInteractingChange,
 }: {
   rankedG: RankedGroup[]
   rankedP: RankedParticipant[]
@@ -1023,29 +1196,55 @@ function FinalSummaryPhase({
   totalGroups: number
   groupTaskCounts: Map<string, number>
   taskCountByP: Map<string, number>
+  txByParticipant: Map<string, TxRow[]>
+  txByGroup: Map<string, TxRow[]>
   topPByGroup: Map<string, { name: string }>
   totalScans: number
   totalParticipants: number
   totalPointsEarned: number
   totalRewardsAwarded: number
+  onInteractingChange?: (interacting: boolean) => void
 }) {
   const [focus, setFocus] = useState<SummaryFocus>(null)
-  const toggleFocus = (id: Exclude<SummaryFocus, null>) => setFocus((current) => (current === id ? null : id))
+  const [selected, setSelected] = useState<SelectedEntry | null>(null)
+
+  // Pause the auto-advancing ceremony while the viewer is drilling into the data.
+  useEffect(() => {
+    onInteractingChange?.(focus !== null)
+    return () => onInteractingChange?.(false)
+  }, [focus, onInteractingChange])
+  const toggleFocus = (id: Exclude<SummaryFocus, null>) => {
+    setSelected(null)
+    setFocus((current) => (current === id ? null : id))
+  }
+
+  const handleSelectGroup = (item: RankedGroup | RankedParticipant) => {
+    const group = item as RankedGroup
+    setSelected({ type: 'group', id: group.group_id, name: group.group_name, color: group.group_color || GOLD })
+  }
+  const handleSelectParticipant = (item: RankedGroup | RankedParticipant) => {
+    const participant = item as RankedParticipant
+    const color = (pgMap.get(participant.participant_id) ?? [])[0]?.color || TEAL
+    setSelected({ type: 'participant', id: participant.participant_id, name: participant.participant_name, color })
+  }
+  const selectedTransactions = selected
+    ? (selected.type === 'group' ? txByGroup.get(selected.id) : txByParticipant.get(selected.id)) ?? []
+    : []
 
   const renderFocused = () => {
     if (focus === 'groups') {
       return (
         <>
-          <FocusedSummaryHeader icon={<Users size={34} />} title="הדירוג המלא של הקבוצות" subtitle="כל הקבוצות במקום אחד" accent={GOLD} />
-          <SummaryLeaderboardPreview expanded large items={rankedG} pgMap={pgMap} totalGroups={totalGroups} groupTaskCounts={groupTaskCounts} taskCountByP={taskCountByP} topPByGroup={topPByGroup} />
+          <FocusedSummaryHeader icon={<Users size={34} />} title="הדירוג המלא של הקבוצות" subtitle="לחצו על קבוצה כדי לראות את כל המשימות שלה" accent={GOLD} />
+          <SummaryLeaderboardPreview expanded large items={rankedG} pgMap={pgMap} totalGroups={totalGroups} groupTaskCounts={groupTaskCounts} taskCountByP={taskCountByP} topPByGroup={topPByGroup} onSelect={handleSelectGroup} />
         </>
       )
     }
     if (focus === 'participants') {
       return (
         <>
-          <FocusedSummaryHeader icon={<Trophy size={34} />} title="הדירוג המלא של המשתתפים" subtitle="כל המשתתפים במקום אחד" accent={TEAL} />
-          <SummaryLeaderboardPreview expanded large items={rankedP} pgMap={pgMap} totalGroups={totalGroups} groupTaskCounts={groupTaskCounts} taskCountByP={taskCountByP} topPByGroup={topPByGroup} />
+          <FocusedSummaryHeader icon={<Trophy size={34} />} title="הדירוג המלא של המשתתפים" subtitle="לחצו על משתתף כדי לראות את כל המשימות שלו" accent={TEAL} />
+          <SummaryLeaderboardPreview expanded large items={rankedP} pgMap={pgMap} totalGroups={totalGroups} groupTaskCounts={groupTaskCounts} taskCountByP={taskCountByP} topPByGroup={topPByGroup} onSelect={handleSelectParticipant} />
         </>
       )
     }
@@ -1139,7 +1338,10 @@ function FinalSummaryPhase({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setFocus(null)}
+            onClick={() => {
+              setSelected(null)
+              setFocus(null)
+            }}
           >
             <motion.div
               layoutId={`summary-${focus}`}
@@ -1153,13 +1355,19 @@ function FinalSummaryPhase({
               <div className="absolute inset-y-0 -right-1/3 w-1/3 rotate-12 bg-gradient-to-l from-transparent via-white/70 to-transparent animate-light-sweep" />
               <button
                 type="button"
-                onClick={() => setFocus(null)}
+                onClick={() => {
+                  setSelected(null)
+                  setFocus(null)
+                }}
                 className="absolute left-6 top-6 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-[#E7D6CF]/80 bg-white/88 text-[#7D706A] shadow-[0_10px_28px_rgba(46,34,30,.12)] transition hover:scale-105 hover:text-[#2E221E]"
                 aria-label="הקטן"
               >
                 <Minimize2 size={22} />
               </button>
               <div className="relative flex h-full flex-col">{renderFocused()}</div>
+              <AnimatePresence>
+                {selected && <EntryTasksOverlay entry={selected} transactions={selectedTransactions} onClose={() => setSelected(null)} />}
+              </AnimatePresence>
             </motion.div>
           </motion.div>
         )}
@@ -1279,12 +1487,13 @@ function ProgressChrome({ activeDot, count, onReplay, paused, onTogglePause }: {
 }
 
 export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCeremonyProps) {
-  const { rankedP, rankedG, hasGroups, totalGroupCount, taskCountByP, groupTaskCounts, topPByGroup, taskStats, pgMap, totalScans, totalParticipants, totalPointsEarned, totalRewardsAwarded, ceremonyReadiness, loading, error } = useLeaderboardData(eventId)
+  const { rankedP, rankedG, hasGroups, totalGroupCount, taskCountByP, groupTaskCounts, txByParticipant, txByGroup, topPByGroup, taskStats, pgMap, totalScans, totalParticipants, totalPointsEarned, totalRewardsAwarded, ceremonyReadiness, loading, error } = useLeaderboardData(eventId)
   const { play, playApplause, muted, toggleMute } = useSound()
   const { play: playFanfare } = useCelebrationSound()
   const [phaseIndex, setPhaseIndex] = useState(0)
   const [replayNonce, setReplayNonce] = useState(0)
   const [paused, setPaused] = useState(false)
+  const [summaryInteracting, setSummaryInteracting] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const stageRef = useRef<HTMLDivElement | null>(null)
   const applausePhaseRef = useRef<string | null>(null)
@@ -1303,7 +1512,7 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
   }, [hasGroups, eventId])
 
   useEffect(() => {
-    if (paused || loading || error || rankedP.length === 0 || !phase || phases.length === 0) return undefined
+    if (paused || summaryInteracting || loading || error || rankedP.length === 0 || !phase || phases.length === 0) return undefined
     const timer = window.setTimeout(() => {
       setPhaseIndex((idx) => {
         const next = idx + 1
@@ -1312,7 +1521,7 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
       })
     }, phase.duration / revealSpeed)
     return () => window.clearTimeout(timer)
-  }, [autoLoop, error, loading, paused, phase, phases.length, rankedP.length, replayNonce, revealSpeed])
+  }, [autoLoop, error, loading, paused, summaryInteracting, phase, phases.length, rankedP.length, replayNonce, revealSpeed])
 
   useEffect(() => {
     function handleFullscreenChange() {
@@ -1351,6 +1560,7 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
 
   function handleReplay() {
     applausePhaseRef.current = null
+    setSummaryInteracting(false)
     setPhaseIndex(0)
     setReplayNonce((n) => n + 1)
   }
@@ -1468,11 +1678,14 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
                     totalGroups={totalGroupCount}
                     groupTaskCounts={groupTaskCounts}
                     taskCountByP={taskCountByP}
+                    txByParticipant={txByParticipant}
+                    txByGroup={txByGroup}
                     topPByGroup={topPByGroup}
                     totalScans={totalScans}
                     totalParticipants={totalParticipants}
                     totalPointsEarned={totalPointsEarned}
                     totalRewardsAwarded={totalRewardsAwarded}
+                    onInteractingChange={setSummaryInteracting}
                   />
                 )}
               </motion.section>
