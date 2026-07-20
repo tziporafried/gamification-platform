@@ -4,7 +4,7 @@ import type { Action, Group, Participant, Reward } from '@/types'
  * Everything an exported game needs to run with no network.
  *
  * This is embedded verbatim into the downloaded HTML file, so it must stay
- * JSON-serializable and self-contained — no ids pointing at rows that aren't here.
+ * JSON-serializable and self-contained - no ids pointing at rows that aren't here.
  */
 export interface GamePack {
   /** Bumped when the shape changes, so a player can reject a pack it can't read. */

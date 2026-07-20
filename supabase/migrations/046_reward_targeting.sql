@@ -1,13 +1,13 @@
 -- Migration 046: Reward targeting and winner mode
 --
 -- target_type:
---   all         — open to every participant (default)
---   groups      — restricted via reward_groups junction
---   participant — restricted to a single participant
+--   all         - open to every participant (default)
+--   groups      - restricted via reward_groups junction
+--   participant - restricted to a single participant
 --
 -- winner_mode:
---   all   — every eligible participant who reaches the threshold wins (default)
---   first — only the first eligible participant to reach the threshold wins
+--   all   - every eligible participant who reaches the threshold wins (default)
+--   first - only the first eligible participant to reach the threshold wins
 
 ALTER TABLE rewards
   ADD COLUMN IF NOT EXISTS target_type TEXT NOT NULL DEFAULT 'all'

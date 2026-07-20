@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trophy, Crown, ScanLine, Settings, Zap } from 'lucide-react'
+import { Trophy, Crown, ScanLine, Pencil, Zap, Gift } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { ControlActionCard, FloatingActionIcon } from './ControlActionCard'
@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 import { trackEventEditStart, trackCtaClick } from '@/lib/analytics'
 import { FloatingContactButton } from '@/components/layout/FloatingContactButton'
+import { LiveEventsSelectModal, type LiveEventsOriginRect } from '@/components/live-events/LiveEventsSelectModal'
 import type { Event, EventCounts } from '@/types'
 
 interface ControlCenterProps {
@@ -33,13 +34,16 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   const { openPlans } = usePlansModal()
   const isTrial = !isSuperAdmin && event.plan === 'free'
   const [settingsWarningOpen, setSettingsWarningOpen] = useState(false)
+  const [liveEventsOpen, setLiveEventsOpen] = useState(false)
+  const [liveEventsOrigin, setLiveEventsOrigin] = useState<LiveEventsOriginRect | null>(null)
+  const liveEventsCardRef = useRef<HTMLDivElement>(null)
   const activationCtaRef = useRef<HTMLButtonElement>(null)
   const scrollRootRef = useRef<HTMLDivElement>(null)
   const [primaryActivationInView, setPrimaryActivationInView] = useState(true)
   useEventHeaderBreadcrumb(event.name, undefined, event.plan, event.id)
 
   // On a paid plan, any premium template content that was locked while on the
-  // free plan is imported automatically — no banner, no manual step. Safe to run
+  // free plan is imported automatically - no banner, no manual step. Safe to run
   // repeatedly: completeTemplateImport de-dupes by name and clears the store when
   // done (which re-fires LOCKED_TEMPLATE_CHANGED, but getLockedTemplate is then
   // null so it no-ops). On failure the store is left in place and retried on the
@@ -72,9 +76,11 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
     displayFloat: Math.random(),
     liveFloat: Math.random(),
     scanLine: -3 * Math.random(),
-    borderPulse: -3 * Math.random(),
+    /** Different border-glow tempos per card so they don't pulse in sync. */
+    borderPulseKiosk: { duration: 2.4, delay: -2.4 * Math.random() },
+    borderPulseDisplay: { duration: 3.2, delay: -3.2 * Math.random() },
+    borderPulseLive: { duration: 2.8, delay: -2.8 * Math.random() },
     crown: -(2.2 + 2.5 * Math.random()),
-    gift: -(2 + 2.2 * Math.random()),
     pulseGlow: -2.5 * Math.random(),
     statsInterval: 2600 + Math.random() * 900,
   }), [])
@@ -187,41 +193,66 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
         </div>
       </Modal>
 
+      <LiveEventsSelectModal
+        isOpen={liveEventsOpen}
+        onClose={() => setLiveEventsOpen(false)}
+        eventId={event.id}
+        originRect={liveEventsOrigin}
+      />
+
       <main
         className={cn(
-          'relative z-10 mx-auto flex min-h-full w-full max-w-6xl flex-col justify-center px-4 pt-5',
-          ready && summaryItems.length > 0 ? 'pb-[4.5rem]' : 'pb-5',
+          'relative z-10 mx-auto flex min-h-full w-full max-w-6xl flex-col justify-start px-4 pt-1.5',
+          ready && (counts.rewards === 0 || summaryItems.length > 0) ? 'pb-[4.5rem]' : 'pb-5',
         )}
       >
           <motion.div
-            className={cn(
-              'flex shrink-0 flex-col items-center text-center',
-              isTrial && ready ? 'mb-10' : 'mb-14',
-            )}
+            className="mb-3 flex shrink-0 flex-col items-center text-center sm:mb-3.5"
             initial={false}
           >
             {event.logo_url && (
               <img
                 src={event.logo_url}
                 alt={event.name}
-                className="mb-3 h-16 w-16 rounded-2xl border border-border object-cover shadow-card"
+                className="mb-2 h-14 w-14 rounded-2xl border border-border object-cover shadow-card"
               />
             )}
 
-            <h1
-              className={cn(
-                'mb-1.5 bg-[length:250%_100%] bg-clip-text text-2xl font-black text-transparent sm:text-3xl',
-                'animate-[shimmer_8s_ease-in-out_infinite] motion-reduce:animate-none',
-                '[background-image:linear-gradient(110deg,var(--color-foreground)_0%,var(--color-foreground)_38%,color-mix(in_srgb,var(--color-primary)_85%,white)_50%,var(--color-foreground)_62%,var(--color-foreground)_100%)]',
-              )}
-            >
-              {event.name}
-            </h1>
+            {/* Title + status + edit - one centered info block */}
+            <div className="flex max-w-full flex-col items-center">
+              <h1
+                className={cn(
+                  'bg-[length:250%_100%] bg-clip-text text-2xl font-black text-transparent sm:text-3xl',
+                  'animate-[shimmer_8s_ease-in-out_infinite] motion-reduce:animate-none',
+                  '[background-image:linear-gradient(110deg,var(--color-foreground)_0%,var(--color-foreground)_38%,color-mix(in_srgb,var(--color-primary)_85%,white)_50%,var(--color-foreground)_62%,var(--color-foreground)_100%)]',
+                )}
+              >
+                {event.name}
+              </h1>
+
+              <div className="mt-1 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+                {!showPrimaryActivationCta && <EventPlayStatus status={playStatus} />}
+                <button
+                  type="button"
+                  onClick={handleSettings}
+                  className={cn(
+                    'inline-flex shrink-0 items-center gap-1 rounded-md',
+                    'px-1.5 py-0.5 text-[11px] font-medium text-muted sm:text-xs',
+                    'transition-[background-color,color] duration-150',
+                    'hover:bg-white/40 hover:text-foreground',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+                  )}
+                >
+                  <Pencil size={12} strokeWidth={2} aria-hidden="true" />
+                  עריכת משחק
+                </button>
+              </div>
+            </div>
 
             {showPrimaryActivationCta ? (
               <div
                 role="status"
-                className="mt-4 w-full max-w-2xl overflow-hidden rounded-xl border border-primary/20 bg-[color-mix(in_srgb,var(--color-primary)_7%,var(--color-surface-elevated))] text-right shadow-sm"
+                className="mt-1.5 w-full max-w-2xl overflow-hidden rounded-xl border border-primary/20 bg-[color-mix(in_srgb,var(--color-primary)_7%,var(--color-surface-elevated))] text-right shadow-sm"
               >
                 <div className="flex flex-col gap-4 border-s-4 border-primary p-4 sm:flex-row sm:items-center sm:gap-5 sm:p-4 sm:ps-5">
                   <div className="min-w-0 flex-1 space-y-1">
@@ -248,9 +279,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                   </Button>
                 </div>
               </div>
-            ) : (
-              <EventPlayStatus status={playStatus} />
-            )}
+            ) : null}
           </motion.div>
 
           {!ready && (
@@ -259,66 +288,38 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
             </div>
           )}
 
-          <div
-            className={cn(
-              'grid shrink-0 items-stretch gap-4 sm:grid-cols-2',
-              isSuperAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-3',
-            )}
-          >
-            <ControlActionCard
-              onClick={handleSettings}
-              dimmed
-              title="הגדרות"
-              description="לא מומלץ במהלך המשחק"
-              cta="לעריכה ←"
-              icon={
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-neutral-300 bg-neutral-100 shadow-sm">
-                  <Settings size={32} className="text-neutral-500" strokeWidth={2.25} />
-                </div>
-              }
-            />
-
-            {isSuperAdmin && (
-              <ControlActionCard
-                onClick={() => {
-                  trackCtaClick({
-                    cta_name: 'open_live_events',
-                    cta_location: 'control_center',
-                    destination: `/events/${event.id}/live-events`,
-                  })
-                  navigate(`/events/${event.id}/live-events`)
-                }}
-                gradient="gradient-reward-medium"
-                title="הפעלות בזמן אמת"
-                description="הפעילו הגרלות, בונוסים ואירועים מיוחדים במהלך המשחק."
-                cta="פתח ←"
-                decoration={
-                  <motion.div
-                    className="pointer-events-none absolute inset-3 rounded-[1.35rem] border border-white/15"
-                    animate={{ opacity: [0.35, 0.8, 0.35] }}
-                    transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut', delay: cardAnim.gift }}
-                  />
-                }
-                icon={
-                  <FloatingActionIcon phase={cardAnim.liveFloat} pulsePhase={cardAnim.pulseGlow} pulse>
-                    <Zap size={32} className="text-white" strokeWidth={2.25} />
-                  </FloatingActionIcon>
-                }
-              />
-            )}
-
+          <div className="flex min-h-0 flex-1 flex-col justify-center">
+            <div
+              className="grid shrink-0 items-stretch gap-3.5 sm:grid-cols-2 lg:grid-cols-3"
+            >
             <ControlActionCard
               onClick={() => handleAction('kiosk')}
               gradient="gradient-reward-legendary"
               title={isTrial ? 'נסו את המשחק 🎯' : '🔥 שחקו בלי להפסיק'}
               description={isTrial ? 'בצעו סריקות ניסיון וצפו בתוצאות בזמן אמת' : 'סרקו משימות וצברו נקודות'}
-              cta={isTrial ? 'לסריקת ניסיון ←' : 'פתח ←'}
+              cta="התחילו לסרוק ←"
               decoration={
-                <motion.div
-                  className="pointer-events-none absolute left-6 right-6 z-10 h-[2px] bg-white/35"
-                  animate={{ top: ['18%', '82%', '18%'] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: cardAnim.scanLine }}
-                />
+                <>
+                  <motion.div
+                    className="pointer-events-none absolute inset-3 rounded-[1.35rem] border border-white/20"
+                    animate={{ boxShadow: [
+                      '0 0 0 0 color-mix(in srgb, white 0%, transparent)',
+                      '0 0 0 6px color-mix(in srgb, white 14%, transparent)',
+                      '0 0 0 0 color-mix(in srgb, white 0%, transparent)',
+                    ] }}
+                    transition={{
+                      duration: cardAnim.borderPulseKiosk.duration,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: cardAnim.borderPulseKiosk.delay,
+                    }}
+                  />
+                  <motion.div
+                    className="pointer-events-none absolute left-6 right-6 z-10 h-[2px] bg-white/35"
+                    animate={{ top: ['18%', '82%', '18%'] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: cardAnim.scanLine }}
+                  />
+                </>
               }
               icon={
                 <FloatingActionIcon phase={cardAnim.kioskFloat} pulsePhase={cardAnim.pulseGlow} pulse>
@@ -332,7 +333,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
               gradient="gradient-reward-rich"
               title="שיאים"
               description={isTrial ? 'צפו בתוצאות סריקות הניסיון' : 'צפו בדירוג המתעדכן בזמן אמת'}
-              cta="צפו בדירוג ←"
+              cta="הציגו לוח שיאים ←"
               decoration={
                 <motion.div
                   className="pointer-events-none absolute inset-3 rounded-[1.35rem] border border-white/20"
@@ -341,7 +342,12 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                     '0 0 0 6px color-mix(in srgb, white 14%, transparent)',
                     '0 0 0 0 color-mix(in srgb, white 0%, transparent)',
                   ] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: cardAnim.borderPulse }}
+                  transition={{
+                    duration: cardAnim.borderPulseDisplay.duration,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                    delay: cardAnim.borderPulseDisplay.delay,
+                  }}
                 />
               }
               icon={
@@ -359,14 +365,89 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                 </FloatingActionIcon>
               }
             />
+
+            <ControlActionCard
+              onClick={() => {
+                const rect = liveEventsCardRef.current?.getBoundingClientRect()
+                if (rect) {
+                  setLiveEventsOrigin({
+                    top: rect.top,
+                    left: rect.left,
+                    width: rect.width,
+                    height: rect.height,
+                  })
+                } else {
+                  setLiveEventsOrigin(null)
+                }
+                trackCtaClick({
+                  cta_name: 'open_live_events',
+                  cta_location: 'control_center',
+                  destination: 'live_events_modal',
+                })
+                setLiveEventsOpen(true)
+              }}
+              surfaceRef={liveEventsCardRef}
+              surfaceHidden={liveEventsOpen}
+              gradient="gradient-reward-medium"
+              title="הפעלות בזמן אמת"
+              description="הפעילו הגרלות, בונוסים ואירועים מיוחדים במהלך המשחק."
+              cta="בחרו הפעלה ←"
+              decoration={
+                <motion.div
+                  className="pointer-events-none absolute inset-3 rounded-[1.35rem] border border-white/20"
+                  animate={{ boxShadow: [
+                    '0 0 0 0 color-mix(in srgb, white 0%, transparent)',
+                    '0 0 0 6px color-mix(in srgb, white 14%, transparent)',
+                    '0 0 0 0 color-mix(in srgb, white 0%, transparent)',
+                  ] }}
+                  transition={{
+                    duration: cardAnim.borderPulseLive.duration,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                    delay: cardAnim.borderPulseLive.delay,
+                  }}
+                />
+              }
+              icon={
+                <FloatingActionIcon phase={cardAnim.liveFloat} pulsePhase={cardAnim.pulseGlow} pulse>
+                  <Zap size={32} className="text-white" strokeWidth={2.25} />
+                </FloatingActionIcon>
+              }
+            />
+            </div>
           </div>
 
-          {ready && summaryItems.length > 0 && (
-            <LiveStatsCaption
-              items={summaryItems}
-              ready={ready}
-              intervalMs={cardAnim.statsInterval}
-            />
+          {ready && counts.rewards === 0 ? (
+            <div className="pointer-events-none fixed inset-x-0 bottom-3 z-20 flex justify-center px-4">
+              <div
+                role="status"
+                aria-live="polite"
+                className={cn(
+                  'flex w-full max-w-sm items-center gap-2',
+                  'rounded-lg border border-border/30 bg-white/35 px-3 py-1.5',
+                  'shadow-[0_4px_18px_rgba(46,34,30,0.06)] backdrop-blur-md',
+                )}
+              >
+                <Gift
+                  size={13}
+                  strokeWidth={2}
+                  className="shrink-0 text-warning-text/80"
+                  aria-hidden="true"
+                />
+                <p className="min-w-0 flex-1 text-center text-xs font-medium leading-snug text-foreground/75">
+                  עדיין לא נוצרו פרסים
+                </p>
+              </div>
+            </div>
+          ) : (
+            ready &&
+            summaryItems.length > 0 && (
+              <LiveStatsCaption
+                items={summaryItems}
+                ready={ready}
+                intervalMs={cardAnim.statsInterval}
+              />
+            )
           )}
       </main>
       {isTrial && (

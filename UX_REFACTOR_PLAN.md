@@ -64,7 +64,7 @@ Login → My Events (multi-event list)
 | Home (dashboard) | Replaced by "My Events" list |
 | Leaderboard | Accessed via "Display Screen" in Control Center |
 | Score | Accessed via "Scan Mode" in Control Center |
-| Actions | Renamed to "Tasks" — Step 4 in wizard |
+| Actions | Renamed to "Tasks" - Step 4 in wizard |
 | Rewards | Kept as internal logic; no dedicated nav item (auto-awards stay, UI simplified) |
 
 ### Top-Level Navigation (Post-Login)
@@ -130,12 +130,12 @@ Login → My Events (multi-event list)
 
 ### Route Details
 
-- `/events` — Protected. Shows all events for current user.
-- `/events/:id` — Redirects to current wizard step (based on event progress state).
-- `/events/:id/step/1` through `/events/:id/step/5` — Direct access to any setup step.
-- `/events/:id/control` — Post-setup operational area. Unlocked when readiness validation passes.
-- `/events/:id/scan` — Full-screen scan mode during event operation.
-- `/events/:id/display` — Designed to be projected on a screen during the event.
+- `/events` - Protected. Shows all events for current user.
+- `/events/:id` - Redirects to current wizard step (based on event progress state).
+- `/events/:id/step/1` through `/events/:id/step/5` - Direct access to any setup step.
+- `/events/:id/control` - Post-setup operational area. Unlocked when readiness validation passes.
+- `/events/:id/scan` - Full-screen scan mode during event operation.
+- `/events/:id/display` - Designed to be projected on a screen during the event.
 
 ### Auth Redirects
 
@@ -180,7 +180,7 @@ Login → My Events (multi-event list)
 | 3 – Groups | User selects a group type or "No Groups" | ✓ |
 | 4 – Tasks | At least 1 task created | ✓ |
 | 5 – Review & Generate | User reviews and generates cards | ✓ |
-| Control Center | N/A — post-setup operational area (not a wizard step) | ✓ |
+| Control Center | N/A - post-setup operational area (not a wizard step) | ✓ |
 
 ### Progress Persistence
 
@@ -230,7 +230,7 @@ Replace the simple Yes/No question with a group type selector:
 | Teams | Pre-labels groups as "Team ___". Prompts for team names. |
 | Custom Groups | Free-form group creation (current behavior). |
 
-All options lead to the same underlying `groups` table — the selection only affects UI labels and pre-fill behavior.
+All options lead to the same underlying `groups` table - the selection only affects UI labels and pre-fill behavior.
 
 ### Group Membership – Matrix Editor
 
@@ -281,11 +281,11 @@ src/pages/
 ├── Landing.tsx              (keep)
 ├── Login.tsx                (keep)
 ├── Register.tsx             (keep)
-├── MyEvents.tsx             (NEW — replaces Dashboard)
-├── EventWizard.tsx          (NEW — wizard container)
-├── ScanMode.tsx             (NEW — full-screen scoring)
-├── DisplayScreen.tsx        (NEW — projector leaderboard)
-└── ExportResults.tsx        (NEW — export/download)
+├── MyEvents.tsx             (NEW - replaces Dashboard)
+├── EventWizard.tsx          (NEW - wizard container)
+├── ScanMode.tsx             (NEW - full-screen scoring)
+├── DisplayScreen.tsx        (NEW - projector leaderboard)
+└── ExportResults.tsx        (NEW - export/download)
 ```
 
 ### New Component Tree
@@ -293,61 +293,61 @@ src/pages/
 ```
 src/components/
 ├── events/                          (NEW)
-│   ├── EventCard.tsx                — Event card in "My Events" list
-│   └── CreateEventButton.tsx        — Large CTA
+│   ├── EventCard.tsx                - Event card in "My Events" list
+│   └── CreateEventButton.tsx        - Large CTA
 │
 ├── wizard/                          (NEW)
-│   ├── WizardLayout.tsx             — Progress bar + step container
-│   ├── WizardProgress.tsx           — Visual step indicator (5 steps + control center)
-│   ├── WizardStepWrapper.tsx        — Step navigation (Next/Back)
+│   ├── WizardLayout.tsx             - Progress bar + step container
+│   ├── WizardProgress.tsx           - Visual step indicator (5 steps + control center)
+│   ├── WizardStepWrapper.tsx        - Step navigation (Next/Back)
 │   │
-│   ├── StepEventDetails.tsx         — Step 1
-│   ├── StepParticipants.tsx         — Step 2
-│   ├── StepGroupsDecision.tsx       — Step 3 (group type selector)
-│   ├── StepGroupsSetup.tsx          — Step 3 (group creation + matrix)
-│   ├── StepTasks.tsx                — Step 4
-│   ├── StepReviewGenerate.tsx       — Step 5 (Review & Generate)
-│   └── ControlCenter.tsx            — Post-setup operational area
+│   ├── StepEventDetails.tsx         - Step 1
+│   ├── StepParticipants.tsx         - Step 2
+│   ├── StepGroupsDecision.tsx       - Step 3 (group type selector)
+│   ├── StepGroupsSetup.tsx          - Step 3 (group creation + matrix)
+│   ├── StepTasks.tsx                - Step 4
+│   ├── StepReviewGenerate.tsx       - Step 5 (Review & Generate)
+│   └── ControlCenter.tsx            - Post-setup operational area
 │
 ├── participants/                    (REFACTOR)
-│   ├── ParticipantCard.tsx          — Card-based display (replaces table row)
-│   ├── AddParticipantInline.tsx     — Simple inline add
-│   ├── BulkAddParticipants.tsx      — Quick multi-add
-│   └── CsvImportParticipants.tsx    — CSV import (keep logic)
+│   ├── ParticipantCard.tsx          - Card-based display (replaces table row)
+│   ├── AddParticipantInline.tsx     - Simple inline add
+│   ├── BulkAddParticipants.tsx      - Quick multi-add
+│   └── CsvImportParticipants.tsx    - CSV import (keep logic)
 │
 ├── groups/                          (REFACTOR)
-│   ├── GroupCard.tsx                — Visual group card with member count
-│   ├── MembershipMatrix.tsx         — Desktop: grid matrix / Mobile: card list
-│   └── GroupTypeSelector.tsx        — No Groups / Families / Teams / Custom
+│   ├── GroupCard.tsx                - Visual group card with member count
+│   ├── MembershipMatrix.tsx         - Desktop: grid matrix / Mobile: card list
+│   └── GroupTypeSelector.tsx        - No Groups / Families / Teams / Custom
 │
-├── tasks/                           (NEW — replaces actions/)
-│   ├── TaskCard.tsx                 — Visual task card (emoji + points)
-│   ├── TaskForm.tsx                 — Create/edit task
-│   ├── BonusTasks.tsx              — Pre-generated bonus tasks section
-│   └── TaskGroupRestriction.tsx     — Optional group restriction
+├── tasks/                           (NEW - replaces actions/)
+│   ├── TaskCard.tsx                 - Visual task card (emoji + points)
+│   ├── TaskForm.tsx                 - Create/edit task
+│   ├── BonusTasks.tsx              - Pre-generated bonus tasks section
+│   └── TaskGroupRestriction.tsx     - Optional group restriction
 │
 ├── cards/                           (REFACTOR from qr-cards/)
-│   ├── CardPreview.tsx              — Single card preview
-│   ├── CardGenerationSummary.tsx    — Stats before generation
-│   └── CardPrintLayout.tsx          — Print-optimized layout
+│   ├── CardPreview.tsx              - Single card preview
+│   ├── CardGenerationSummary.tsx    - Stats before generation
+│   └── CardPrintLayout.tsx          - Print-optimized layout
 │
 ├── control-center/                  (NEW)
-│   ├── ControlActionCard.tsx        — Large action button card
-│   ├── EventStatusBanner.tsx        — Active/Draft/Finished status
-│   └── QuickStats.tsx              — Participant count, scores, etc.
+│   ├── ControlActionCard.tsx        - Large action button card
+│   ├── EventStatusBanner.tsx        - Active/Draft/Finished status
+│   └── QuickStats.tsx              - Participant count, scores, etc.
 │
-├── scoring/                         (KEEP — used by ScanMode)
+├── scoring/                         (KEEP - used by ScanMode)
 │   ├── QrScanner.tsx
 │   ├── CelebrationModal.tsx
 │   └── ParticipantPreview.tsx
 │
-├── leaderboard/                     (KEEP — used by DisplayScreen)
+├── leaderboard/                     (KEEP - used by DisplayScreen)
 │   ├── LeaderboardSection.tsx
 │   ├── RevealPodium.tsx
 │   ├── WinnersReveal.tsx
 │   └── PodiumPlace.tsx
 │
-├── ui/                              (KEEP — shared primitives)
+├── ui/                              (KEEP - shared primitives)
 │   ├── Button.tsx
 │   ├── Input.tsx
 │   ├── Card.tsx
@@ -358,8 +358,8 @@ src/components/
 │   └── ... (other shared UI)
 │
 └── layout/                          (REFACTOR)
-    ├── AppHeader.tsx                — Simple header (logo + user + logout)
-    └── WizardLayout.tsx             — Wizard page layout
+    ├── AppHeader.tsx                - Simple header (logo + user + logout)
+    └── WizardLayout.tsx             - Wizard page layout
 ```
 
 ### Components to REMOVE
@@ -392,7 +392,7 @@ src/components/
 ### A. TypeScript Type Additions (No Schema Change)
 
 ```typescript
-// New client-side types — no DB columns added
+// New client-side types - no DB columns added
 export type StepStatus = 'not_started' | 'in_progress' | 'completed';
 export type WizardStepId = 'details' | 'participants' | 'groups' | 'tasks' | 'cards' | 'control';
 
@@ -433,8 +433,8 @@ export interface EventCounts {
 | QR Cards | Cards | כרטיסים |
 | Score Entry | Scan Mode | מצב סריקה |
 | Leaderboard | Display Screen | מסך תצוגה |
-| Point Transactions | (hidden) | — |
-| Rewards | (background, no label) | — |
+| Point Transactions | (hidden) | - |
+| Rewards | (background, no label) | - |
 
 ### C. UI Pattern Changes
 
@@ -463,7 +463,7 @@ export interface EventCounts {
 
 ## 6. Migration Plan (Presentation-Layer Only)
 
-### Phase 1 — New Types & Utilities
+### Phase 1 - New Types & Utilities
 
 1. Add client-side types: `WizardState`, `StepStatus`, `WizardStepId`, `ReadinessCheck`, `EventCounts`
 2. Create `computeWizardState()` utility (derives step status from existing data)
@@ -471,7 +471,7 @@ export interface EventCounts {
 4. Create localStorage helpers for wizard prefs
 5. Remove `DashboardTab` type
 
-### Phase 2 — New Pages & Routes
+### Phase 2 - New Pages & Routes
 
 1. Create `MyEvents` page (shows current event; multi-event ready for future)
 2. Create `EventWizard` page with `WizardLayout`
@@ -479,7 +479,7 @@ export interface EventCounts {
 4. Update `App.tsx` with new route structure
 5. Add redirect: `/dashboard` → `/events` (backward compat)
 
-### Phase 3 — Wizard Steps (One at a Time)
+### Phase 3 - Wizard Steps (One at a Time)
 
 1. **Step 1 – Event Details:** Extract from `EventForm` + simplify
 2. **Step 2 – Participants:** Refactor `ParticipantList` into card-based UI
@@ -488,13 +488,13 @@ export interface EventCounts {
 5. **Step 5 – Cards:** Refactor `QrCardGenerator` with generation summary
 6. **Step 6 – Control Center:** New component with large action cards + readiness validation
 
-### Phase 4 — Operational Screens
+### Phase 4 - Operational Screens
 
-1. `ScanMode` — Extract from `ScoreEntry`, make full-screen
-2. `DisplayScreen` — Extract from `LeaderboardSection`, full-screen for projection
-3. `ExportResults` — New (CSV export of final standings)
+1. `ScanMode` - Extract from `ScoreEntry`, make full-screen
+2. `DisplayScreen` - Extract from `LeaderboardSection`, full-screen for projection
+3. `ExportResults` - New (CSV export of final standings)
 
-### Phase 5 — Cleanup
+### Phase 5 - Cleanup
 
 1. Remove old components (DashboardLayout, SidebarNav, BottomTabBar, etc.)
 2. Remove old `Dashboard.tsx` page
@@ -502,7 +502,7 @@ export interface EventCounts {
 4. Update `Landing.tsx` copy to match new product positioning
 5. Delete unused imports and dead code
 
-### Phase 6 — Polish
+### Phase 6 - Polish
 
 1. Mobile-optimize wizard steps
 2. Add step transition animations
@@ -518,7 +518,7 @@ export interface EventCounts {
 - Keep hidden from primary workflow
 - Rewards logic continues to run in background (existing RPC)
 - Celebration modal still fires on reward unlock
-- No UI changes to rewards — simply not exposed in wizard navigation
+- No UI changes to rewards - simply not exposed in wizard navigation
 
 ### 2. Display Screen
 - Reuses existing `LeaderboardSection` component
@@ -527,7 +527,7 @@ export interface EventCounts {
 - Auth still required (public token deferred to schema phase)
 
 ### 3. Multi-Event Per Admin
-- Confirmed as a goal — but requires schema change (unique index removal)
+- Confirmed as a goal - but requires schema change (unique index removal)
 - **Deferred to schema phase**
 - For now: UI assumes single event per admin (current behavior)
 - `MyEvents` page will show one event; multi-event support activates after schema approval
@@ -606,7 +606,7 @@ interface WizardPrefs {
 | `/events/:id/scan` | ScanMode | Yes | Full-screen scoring |
 | `/events/:id/display` | DisplayScreen | Yes | Full-screen leaderboard (public access deferred) |
 | `/events/:id/export` | ExportResults | Yes | Export data |
-| `/dashboard` | Redirect → `/events` | — | Backward compat |
+| `/dashboard` | Redirect → `/events` | - | Backward compat |
 
 ---
 

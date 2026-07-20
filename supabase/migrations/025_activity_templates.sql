@@ -202,7 +202,7 @@ BEGIN
   -- t20: ילדות
   INSERT INTO template_task_groups VALUES (t20, 'ילדות');
 
-  -- Rewards (threshold-based, global — no group restriction)
+  -- Rewards (threshold-based, global - no group restriction)
   INSERT INTO template_rewards (activity_template_id, name, required_points, sort_order) VALUES
     (v_tmpl, 'מקופלת',  300,  1),
     (v_tmpl, 'פחית',    500,  2),

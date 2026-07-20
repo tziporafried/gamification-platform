@@ -14,7 +14,7 @@ interface FloatingShape {
   anim: FloatAnim
 }
 
-/** Kiosk-matched palette — circles and rounded squares scattered across the viewport. */
+/** Kiosk-matched palette - circles and rounded squares scattered across the viewport. */
 const FLOATING_SHAPES: FloatingShape[] = [
   { top: '6%', right: '10%', width: 16, height: 16, borderRadius: 5, color: '#F2B33C', anim: 'app-floatY-1' },
   { top: '14%', left: '7%', width: 14, height: 14, borderRadius: '50%', color: '#5FB3AA', anim: 'app-floatY-2' },

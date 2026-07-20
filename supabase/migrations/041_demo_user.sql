@@ -1,4 +1,4 @@
--- Demo user for ?demo=true login flow — do NOT use in production
+-- Demo user for ?demo=true login flow - do NOT use in production
 -- Credentials: demo@test.local / demo-password-123
 
 DO $$
@@ -38,7 +38,7 @@ BEGIN
     now()
   );
 
-  -- Required for email/password login — without this GoTrue returns "Database error querying schema"
+  -- Required for email/password login - without this GoTrue returns "Database error querying schema"
   INSERT INTO auth.identities (
     id,
     user_id,

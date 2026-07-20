@@ -37,7 +37,7 @@ export function EventHeaderBreadcrumb({
           type="button"
           onClick={() => navigate(controlPath)}
           className="truncate max-w-[200px] text-sm font-bold leading-none text-primary-text transition-colors hover:opacity-80"
-          aria-label={`חזרה ללוח הבקרה — ${nameLabel}`}
+          aria-label={`חזרה ללוח הבקרה - ${nameLabel}`}
         >
           {nameLabel}
         </button>

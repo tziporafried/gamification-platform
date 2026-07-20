@@ -6,8 +6,8 @@ import { getParticipantTotal } from './leaderboard'
  * Local mirror of check_and_award_rewards.
  *
  * Source of truth: supabase/migrations/046_reward_targeting.sql
- * The rules encoded here — active, threshold, not-already-won, targeting, and
- * winner_mode — must match that function exactly.
+ * The rules encoded here - active, threshold, not-already-won, targeting, and
+ * winner_mode - must match that function exactly.
  */
 
 /** Rewards this participant has just earned. Caller records them. */

@@ -38,7 +38,7 @@ export function buildAttentionInsights(data: AnalyticsDashboardData): AnalyticsI
 
   const plans = data.productInterest.plansViewedUsers
   const formOpen = data.contact.openUsers
-  // Plans vs form open: independent unique-user cohorts — comparison, not sequence.
+  // Plans vs form open: independent unique-user cohorts - comparison, not sequence.
   if (plans >= 5 && formOpen < plans) {
     const gap = plans - formOpen
     const gapRate = dropPct(plans, formOpen)
@@ -109,7 +109,7 @@ export function buildFaqInsight(
   if (ratio < 1.8) return null
   const rounded = Math.round(ratio * 10) / 10
   const shortQ = top.question.length > 40 ? `${top.question.slice(0, 40)}…` : top.question
-  return `השאלה המובילה בפער: 「${shortQ}」 — פי ${rounded} מהשאלה הבאה`
+  return `השאלה המובילה בפער: 「${shortQ}」 - פי ${rounded} מהשאלה הבאה`
 }
 
 export function buildVideoDropInsight(milestones: {

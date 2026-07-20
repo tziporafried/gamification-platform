@@ -1,4 +1,4 @@
-/* Shared styles for Gamify demo title cards — full-bleed, centered */
+/* Shared styles for Gamify demo title cards - full-bleed, centered */
 :root {
   --bg: #fff5ef;
   --bg-glow: #ffe8dc;
@@ -87,7 +87,7 @@ body {
   object-fit: contain;
 }
 
-/* First card — logo as the hero signal */
+/* First card - logo as the hero signal */
 .brand-hero {
   gap: clamp(1rem, 1.8vw, 1.6rem);
 }
@@ -181,6 +181,37 @@ body {
 .c-ink { color: var(--ink-soft); }
 .c-orange { color: var(--orange); }
 .c-teal { color: var(--teal); }
+
+.contact-block {
+  margin-top: clamp(1.6rem, 3.5vh, 2.8rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(0.85rem, 2vh, 1.4rem);
+}
+
+.contact-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.55em 0.85em;
+  margin: 0;
+  font-size: clamp(1.55rem, 3.6vmin, 2.85rem);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.contact-label {
+  font-weight: 800;
+}
+
+.contact-value {
+  color: var(--ink);
+  letter-spacing: 0.01em;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
 
 /* staggered phrase reveals for subtitle lines */
 .stagger .phrase {

@@ -74,7 +74,7 @@ export function TrialActivationBadge({
           color: 'color-mix(in srgb, var(--color-primary) 78%, var(--color-muted))',
           border: '1px solid color-mix(in srgb, var(--color-primary) 18%, transparent)',
         }}
-        aria-label="הפעלת המשחק — בחרו אופן הפעלה"
+        aria-label="הפעלת המשחק - בחרו אופן הפעלה"
       >
         <span>הפעלת המשחק</span>
         <ChevronLeft size={12} strokeWidth={2.5} className="opacity-70" aria-hidden />

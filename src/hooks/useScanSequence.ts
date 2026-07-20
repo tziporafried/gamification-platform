@@ -31,13 +31,13 @@ interface UseScanSequenceReturn {
  *
  * A combined card scores immediately; a participant card arms the sequence
  * until its action card is scanned. The ordering rules live in
- * `@/lib/scanSequence` — this owns only React state and the countdown tick.
+ * `@/lib/scanSequence` - this owns only React state and the countdown tick.
  */
 export function useScanSequence({ onPair, onError }: UseScanSequenceOptions): UseScanSequenceReturn {
   const [pending, setPending] = useState<PendingParticipant | null>(null)
   const [remainingMs, setRemainingMs] = useState(0)
 
-  // Held in refs so handleScan keeps a stable identity across parent renders —
+  // Held in refs so handleScan keeps a stable identity across parent renders -
   // callers pass inline closures that would otherwise change every render.
   const onPairRef = useRef(onPair)
   const onErrorRef = useRef(onError)

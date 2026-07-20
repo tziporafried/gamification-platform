@@ -1,7 +1,7 @@
-# robots.txt — Gamify Platform
+# robots.txt - Gamify Platform
 #
 # AI crawlers / dataset collectors: disallowed sitewide.
-# This is an advisory standard — well-behaved crawlers honour it, others ignore
+# This is an advisory standard - well-behaved crawlers honour it, others ignore
 # it entirely. The middleware.ts User-Agent block is the enforcing layer.
 
 User-agent: ClaudeBot
@@ -59,7 +59,7 @@ User-agent: YouBot
 Disallow: /
 
 # Everyone else (Googlebot, Bingbot, real users): allowed.
-# Authenticated app surfaces are excluded — they require login anyway and have
+# Authenticated app surfaces are excluded - they require login anyway and have
 # no SEO value.
 User-agent: *
 Disallow: /admin

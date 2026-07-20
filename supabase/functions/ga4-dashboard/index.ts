@@ -108,7 +108,7 @@ interface DashboardPayload {
     eventsCreated: number
     eventCreators: number
     leadConversionRate: number | null
-    /** Always site-wide (not affiliate-scoped) — for quick summary KPI. */
+    /** Always site-wide (not affiliate-scoped) - for quick summary KPI. */
     videoUsers: number
   }
   video: {
@@ -337,7 +337,7 @@ function resolveDateRange(body: RequestBody): { startDate: string; endDate: stri
   if (preset === 'today') return { startDate: end, endDate: end }
   if (preset === '14d') return { startDate: daysAgoYmd(13), endDate: end }
   if (preset === '28d') return { startDate: daysAgoYmd(27), endDate: end }
-  // default / 7d — last 7 days including today
+  // default / 7d - last 7 days including today
   return { startDate: daysAgoYmd(6), endDate: end }
 }
 
@@ -665,7 +665,7 @@ function groupTrafficSources(rows: Ga4Row[] | undefined): NamedMetric[] {
 const UTM_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'] as const
 type UtmParam = (typeof UTM_PARAMS)[number]
 
-/** Channel sources — not short affiliate codes from broken ?utm_source=CODE links. */
+/** Channel sources - not short affiliate codes from broken ?utm_source=CODE links. */
 const GENERIC_UTM_SOURCES = new Set([
   'share',
   'personal_share',
@@ -753,7 +753,7 @@ function normalizeUtmContents(raw: unknown): string[] {
 
 /**
  * Filter to specific affiliate content codes.
- * Caller must not invoke this when codes is empty — empty means no UTM filter (whole site).
+ * Caller must not invoke this when codes is empty - empty means no UTM filter (whole site).
  */
 function utmContentDimFilter(fieldName: string, codes: string[]) {
   return {
@@ -770,7 +770,7 @@ function orDimFilters(...expressions: Record<string, unknown>[]) {
 }
 
 /**
- * Match affiliate code on content OR source — catches correct links
+ * Match affiliate code on content OR source - catches correct links
  * (?utm_source=share&utm_content=bt) and mistaken ones (?utm_source=bt).
  */
 function affiliateCodeDimFilter(contentField: string, sourceField: string, codes: string[]) {
@@ -1053,7 +1053,7 @@ function preferBreakdown<T extends { users: number }>(
   return primary ?? fallback ?? []
 }
 
-/** Merge content breakdowns by code — keep every affiliate with traffic from either source. */
+/** Merge content breakdowns by code - keep every affiliate with traffic from either source. */
 function mergeContentBreakdowns(
   primary: UtmContentRow[] | null,
   fallback: UtmContentRow[] | null,
@@ -1180,7 +1180,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Failed to authenticate with Google', code: 'GOOGLE_AUTH_FAILED' }, 502)
     }
 
-    // Report A — core events (batched metrics by eventName)
+    // Report A - core events (batched metrics by eventName)
     const corePromise = runReport(accessToken, propertyId, {
       dateRanges,
       dimensions: [{ name: 'eventName' }],
@@ -1194,7 +1194,7 @@ Deno.serve(async (req) => {
       limit: 50,
     })
 
-    // Report B — homepage page_view users + views
+    // Report B - homepage page_view users + views
     const homepagePromise = runReport(accessToken, propertyId, {
       dateRanges,
       metrics: [{ name: 'totalUsers' }, { name: 'eventCount' }],
@@ -1374,7 +1374,7 @@ Deno.serve(async (req) => {
       limit: 50,
     })
 
-    // Daily (or hourly for a single day) traffic/events — whole site or UTM-scoped
+    // Daily (or hourly for a single day) traffic/events - whole site or UTM-scoped
     const affiliateContentCustom = 'customEvent:utm_content'
     const affiliateSourceCustom = 'customEvent:utm_source'
     const affiliateContentSession = 'sessionManualAdContent'
@@ -1596,7 +1596,7 @@ Deno.serve(async (req) => {
       limit: 50,
     })
 
-    // UTM — customEvent params (our attached attribution) + GA4 session UTM fallbacks.
+    // UTM - customEvent params (our attached attribution) + GA4 session UTM fallbacks.
     // Session dimensions are auto-filled from landing URL even when only source+content are present.
     const utmSourcePromise = utmDimensionReport(
       accessToken,
@@ -1804,7 +1804,7 @@ Deno.serve(async (req) => {
       limit: 50,
     })
 
-    // Broken links (?utm_source=bt) — funnel by source, not only by content.
+    // Broken links (?utm_source=bt) - funnel by source, not only by content.
     const sourceFieldForEvents = 'customEvent:utm_source'
     const sessionSourceField = 'sessionSource'
     const utmSourceVideoPromise = eventUsersByDimensionReport(
@@ -2040,7 +2040,7 @@ Deno.serve(async (req) => {
     const creationMethodHasRows = !creationMethod.error && (creationMethod.rows?.length ?? 0) > 0
 
     if (startMethodHasRows) {
-      // Prefer wizard choice (scratch | template) — correct semantic for the donut
+      // Prefer wizard choice (scratch | template) - correct semantic for the donut
       scratchCount = 0
       templateCount = 0
       for (const row of eventStartMethod.rows ?? []) {
@@ -2050,7 +2050,7 @@ Deno.serve(async (req) => {
         if (key === 'template') templateCount += count
       }
     } else if (creationMethodHasRows) {
-      // Fallback: event_created.creation_method — client sends `new` (and rarely scratch/template)
+      // Fallback: event_created.creation_method - client sends `new` (and rarely scratch/template)
       scratchCount = 0
       templateCount = 0
       for (const row of creationMethod.rows ?? []) {
@@ -2355,7 +2355,7 @@ Deno.serve(async (req) => {
     }
 
     // ── session UTM fallbacks (auto from landing URL: ?utm_source=share&utm_content=rs) ──
-    // Do NOT use raw sessionSource alone — it includes google/(direct). Prefer content×source pairs.
+    // Do NOT use raw sessionSource alone - it includes google/(direct). Prefer content×source pairs.
     const sessionContent: UtmContentRow[] | null = sessionContentReport.error
       ? null
       : mapUtmDimensionRows(sessionContentReport.rows).map(({ key, users }) => ({
@@ -2396,7 +2396,7 @@ Deno.serve(async (req) => {
 
     // Prefer customEvent; fall back to session dims populated from short UTM URLs
     const sourceBreakdown = preferBreakdown(customSource, sessionSourceFromContent)
-    // Merge content codes from BOTH sources — never drop older session-only affiliates
+    // Merge content codes from BOTH sources - never drop older session-only affiliates
     // just because a newer customEvent code exists.
     const contentBreakdown = mergeContentBreakdowns(customContent, sessionContent)
 
@@ -2583,7 +2583,7 @@ Deno.serve(async (req) => {
         .sort((a, b) => b.users - a.users || b.leadUsers - a.leadUsers)
     }
 
-    // Reconcile KPI with visible breakdowns — never show 46 tagged with empty charts
+    // Reconcile KPI with visible breakdowns - never show 46 tagged with empty charts
     const breakdownSignal = Math.max(
       sumBreakdownUsers(sourceBreakdown),
       sumBreakdownUsers(contentBreakdown),

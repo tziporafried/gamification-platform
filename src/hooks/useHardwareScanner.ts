@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 
 const TERMINATORS = new Set(['Enter', 'Tab', 'NumpadEnter'])
-/** Wait after last character — scanners type fast; Enter (CR+LF) commits immediately. */
+/** Wait after last character - scanners type fast; Enter (CR+LF) commits immediately. */
 const IDLE_MS = 100
 
 function isOtherField(el: Element | null, scanInput: HTMLInputElement): boolean {

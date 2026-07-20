@@ -1,8 +1,8 @@
-# Gamification Platform — Product Requirements Document
+# Gamification Platform - Product Requirements Document
 
 ## Overview
 
-A **React 18 + TypeScript SPA** (Vite) that connects directly to **Supabase** (PostgreSQL + Auth + Storage). No custom backend — all data access via Supabase JS client with Row Level Security (RLS). The UI is **Hebrew RTL**, styled with Tailwind CSS, deployed to Vercel.
+A **React 18 + TypeScript SPA** (Vite) that connects directly to **Supabase** (PostgreSQL + Auth + Storage). No custom backend - all data access via Supabase JS client with Row Level Security (RLS). The UI is **Hebrew RTL**, styled with Tailwind CSS, deployed to Vercel.
 
 ---
 
@@ -11,7 +11,7 @@ A **React 18 + TypeScript SPA** (Vite) that connects directly to **Supabase** (P
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS |
-| Backend | Supabase (PostgREST + Auth + Storage) — no custom server |
+| Backend | Supabase (PostgREST + Auth + Storage) - no custom server |
 | Database | PostgreSQL (via Supabase) |
 | Auth | Supabase Auth (email/password) |
 | Deploy | Vercel (static SPA) |
@@ -50,7 +50,7 @@ auth.users (Supabase-managed)
 | **groups** | `event_id`, `name`, `color` (hex) | UNIQUE(event_id, name) |
 | **participant_groups** | `participant_id`, `group_id` | M:N junction |
 | **actions** | `event_id`, `code` (A-XXXX auto), `name`, `points`, `is_active` | Scoring rules/tasks |
-| **point_transactions** | `event_id`, `participant_id`, `action_id`, `points`, `created_by` | **Immutable** — no UPDATE/DELETE |
+| **point_transactions** | `event_id`, `participant_id`, `action_id`, `points`, `created_by` | **Immutable** - no UPDATE/DELETE |
 | **rewards** | `event_id`, `name`, `required_points`, `is_active` | Threshold-based unlocks |
 | **reward_groups** | `reward_id`, `group_id` | Empty = global reward |
 | **participant_rewards** | `participant_id`, `reward_id`, `score_at_award` | UNIQUE(participant_id, reward_id) |
@@ -67,10 +67,10 @@ auth.users (Supabase-managed)
 
 ## Authentication & Authorization
 
-- **Single role: Admin** — every authenticated user is an admin
+- **Single role: Admin** - every authenticated user is an admin
 - **One event per admin** (enforced by unique index)
-- **No participant login** — participants are data records
-- **RLS on all tables** — checks `owner_admin_id = auth.uid()`
+- **No participant login** - participants are data records
+- **RLS on all tables** - checks `owner_admin_id = auth.uid()`
 - **Route guards:** `ProtectedRoute` (unauthenticated → `/login`), `AuthRedirect` (authenticated → `/dashboard`)
 
 ---
@@ -112,7 +112,7 @@ auth.users (Supabase-managed)
 
 ### Rewards
 
-- **Threshold-based** — awarded when participant reaches `required_points`
+- **Threshold-based** - awarded when participant reaches `required_points`
 - Can be scoped to specific groups via `reward_groups` (empty = global)
 - Auto-awarded, no duplicates (unique constraint)
 - Celebration modal + animations on award

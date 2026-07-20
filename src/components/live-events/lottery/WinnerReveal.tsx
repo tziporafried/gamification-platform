@@ -38,7 +38,7 @@ export function WinnerReveal({
             animate={{ opacity: [0.7, 1, 0.7] }}
             transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
           >
-            🎉 הזוכה
+            🎉 יש לנו זוכה!!
           </motion.p>
 
           <motion.h2

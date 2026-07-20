@@ -111,7 +111,7 @@ function todayYmd() {
 /** Calendar days back from “today” in Israel (matches ga4-dashboard). */
 function daysAgoYmd(days: number) {
   const [y, m, d] = todayYmd().split('-').map(Number)
-  // Noon UTC on that Israel calendar day, then step back — avoids DST edge flips.
+  // Noon UTC on that Israel calendar day, then step back - avoids DST edge flips.
   const cursor = new Date(Date.UTC(y, m - 1, d, 12, 0, 0))
   cursor.setUTCDate(cursor.getUTCDate() - days)
   return ymdInJerusalem(cursor)
@@ -167,7 +167,7 @@ export function AdminAnalyticsDashboard() {
   const [endDate, setEndDate] = useState(() => todayYmd())
   const [data, setData] = useState<AnalyticsDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  /** Affiliate-filter refetch only — must not flash the site-wide quick summary. */
+  /** Affiliate-filter refetch only - must not flash the site-wide quick summary. */
   const [frameLoading, setFrameLoading] = useState(false)
   const [error, setError] = useState<AnalyticsFetchError | null>(null)
   const [showAllFaq, setShowAllFaq] = useState(false)
@@ -248,19 +248,19 @@ export function AdminAnalyticsDashboard() {
     [preset, startDate, endDate],
   )
 
-  // Date range / initial load — includes current affiliate selection.
+  // Date range / initial load - includes current affiliate selection.
   useEffect(() => {
     void load('full')
   }, [load])
 
-  // Affiliate filter — refetch scoped frame only; do not flash site-wide summary.
+  // Affiliate filter - refetch scoped frame only; do not flash site-wide summary.
   useEffect(() => {
     if (skipAffiliateReload.current) {
       skipAffiliateReload.current = false
       return
     }
     void load('frame')
-    // Only when affiliate chips change — not when date-range `load` identity updates.
+    // Only when affiliate chips change - not when date-range `load` identity updates.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedAffiliates only
   }, [selectedAffiliates])
 
@@ -341,7 +341,7 @@ export function AdminAnalyticsDashboard() {
     : null
 
   /**
-   * Affiliate codes with real signal — GA traffic and/or registered customers.
+   * Affiliate codes with real signal - GA traffic and/or registered customers.
    * Includes broken links (?utm_source=CODE without utm_content) via sourceBreakdown.
    * Codes that share the same display name are merged into one row.
    */
@@ -356,7 +356,7 @@ export function AdminAnalyticsDashboard() {
         videoViewUsers: number
         plansViewUsers: number
         leadUsers: number
-        /** Seen via customers only — no GA signal in range. */
+        /** Seen via customers only - no GA signal in range. */
         noGaTraffic: boolean
       }
     >()
@@ -628,7 +628,7 @@ export function AdminAnalyticsDashboard() {
 
       {!error && data && (
         <>
-          {/* Site-wide quick summary — above affiliate filter */}
+          {/* Site-wide quick summary - above affiliate filter */}
           <section className="space-y-3">
             <SectionHeader
               icon={<Users size={16} className="text-secondary-text" />}
@@ -809,7 +809,7 @@ export function AdminAnalyticsDashboard() {
                       <div className="flex items-baseline gap-2">
                         <span className="text-xs text-muted">פתחו שאלות</span>
                         <span className="text-lg font-bold tabular-nums text-foreground">
-                          {frameBusy ? '—' : formatNumber(data.homepageInterest.faqUsers)}
+                          {frameBusy ? '-' : formatNumber(data.homepageInterest.faqUsers)}
                         </span>
                       </div>
                       {faqQuestions.length > 7 && (
@@ -955,11 +955,11 @@ export function AdminAnalyticsDashboard() {
             </div>
           </section>
 
-          {/* UTM / shared-link attribution — detail table + name editor */}
+          {/* UTM / shared-link attribution - detail table + name editor */}
           <section className="space-y-3">
             <SectionHeader
               icon={<Link2 size={16} className="text-secondary-text" />}
-              title="לינקים מסומנים — פירוט"
+              title="לינקים מסומנים - פירוט"
             />
 
             {linkDetailRows.length === 0 ? (
@@ -975,7 +975,7 @@ export function AdminAnalyticsDashboard() {
                   description={
                     data.utm.unavailable
                       ? 'יש לרשום ב-GA4 כ-Event-scoped Custom Dimensions לפחות את utm_source ו-utm_content. פרמטרים אופציונליים (utm_medium, utm_campaign) אינם נדרשים ללינקים קצרים.'
-                      : 'צרו לינק בראש העמוד ושתפו אותו — כשייכנסו מבקרים או לקוחות עם utm_content הם יופיעו כאן לעריכת שם.'
+                      : 'צרו לינק בראש העמוד ושתפו אותו - כשייכנסו מבקרים או לקוחות עם utm_content הם יופיעו כאן לעריכת שם.'
                   }
                 />
               </Card>
@@ -1006,15 +1006,15 @@ export function AdminAnalyticsDashboard() {
                   <Card className="border-secondary/30 bg-secondary/5 p-4">
                     <p className="text-xs text-foreground">
                       {unnamedLinkCount === 1
-                        ? 'יש קוד אחד בלי שם — בראש הטבלה. לחצו על העיפרון כדי לתת לו שם לתצוגה.'
-                        : `יש ${unnamedLinkCount} קודים בלי שם — הם בראש הטבלה. לחצו על העיפרון כדי לתת שם לתצוגה.`}
+                        ? 'יש קוד אחד בלי שם - בראש הטבלה. לחצו על העיפרון כדי לתת לו שם לתצוגה.'
+                        : `יש ${unnamedLinkCount} קודים בלי שם - הם בראש הטבלה. לחצו על העיפרון כדי לתת שם לתצוגה.`}
                     </p>
                   </Card>
                 )}
 
                 <Card className="overflow-hidden p-0">
                   <div className="border-b border-border px-5 py-3">
-                    <h3 className="text-sm font-semibold text-foreground">ביצועי לינקים — פירוט</h3>
+                    <h3 className="text-sm font-semibold text-foreground">ביצועי לינקים - פירוט</h3>
                     <p className="mt-0.5 text-[11px] text-muted">
                       כולל גם לינקים ישנים (?utm_source=קוד). קודים עם אותו שם מאוחדים לשורה אחת.
                     </p>
@@ -1076,7 +1076,7 @@ export function AdminAnalyticsDashboard() {
                                 />
                               </td>
                               <td className="px-4 py-2.5 text-muted">
-                                {row.source ? utmSourceLabel(row.source) : '—'}
+                                {row.source ? utmSourceLabel(row.source) : '-'}
                               </td>
                               <td className="px-4 py-2.5 text-center tabular-nums text-muted">
                                 {formatNumber(row.users)}
@@ -1223,7 +1223,7 @@ export function AdminAnalyticsDashboard() {
           <section className="space-y-3">
             <SectionHeader
               icon={<MessageCircle size={16} className="text-secondary-text" />}
-              title="יצירת קשר — לפי מקור"
+              title="יצירת קשר - לפי מקור"
             />
             {contactSourceUnavailable ? (
               <Card className="p-5">

@@ -9,7 +9,7 @@ interface PresentationLayoutProps {
   className?: string
 }
 
-/** Fullscreen presentation shell — cream game stage like kiosk / שיאים. */
+/** Fullscreen presentation shell - cream game stage like kiosk / שיאים. */
 export function PresentationLayout({ children, onExit, className }: PresentationLayoutProps) {
   const orbs = useMemo(
     () =>

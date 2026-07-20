@@ -13,7 +13,7 @@ import {
 
 /**
  * A minimal PostgREST/realtime/auth shim that answers exactly the queries the
- * real kiosk, display, useScoreSubmit and AuthContext make — from the embedded
+ * real kiosk, display, useScoreSubmit and AuthContext make - from the embedded
  * pack instead of the network. Lets those components run unchanged offline.
  */
 

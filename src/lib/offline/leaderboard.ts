@@ -5,7 +5,7 @@ import type { GamePack, LocalScan } from './types'
  * Local mirror of get_participant_leaderboard / get_group_leaderboard.
  *
  * Source of truth: supabase/migrations/020_fix_leaderboard_multi_event.sql
- * Keep the two in step — the ranking a player sees offline should match what
+ * Keep the two in step - the ranking a player sees offline should match what
  * the same event shows online.
  */
 
@@ -23,7 +23,7 @@ function byName(a: string, b: string): number {
 }
 
 /**
- * Every participant appears, scored or not — the SQL LEFT JOINs transactions
+ * Every participant appears, scored or not - the SQL LEFT JOINs transactions
  * and COALESCEs the sum to 0.
  */
 export function getParticipantLeaderboard(
@@ -47,7 +47,7 @@ export function getParticipantLeaderboard(
 
 /**
  * A group's score is the sum of its members' scans. A participant in two groups
- * counts toward both — that is what the SQL's join produces, not a bug.
+ * counts toward both - that is what the SQL's join produces, not a bug.
  */
 export function getGroupLeaderboard(pack: GamePack, scans: LocalScan[]): GroupLeaderboardEntry[] {
   const perParticipant = pointsByParticipant(scans)
@@ -69,7 +69,7 @@ export function getGroupLeaderboard(pack: GamePack, scans: LocalScan[]): GroupLe
     .sort((a, b) => b.total_points - a.total_points || byName(a.group_name, b.group_name))
 }
 
-/** Total for one participant — the figure rewards are judged against. */
+/** Total for one participant - the figure rewards are judged against. */
 export function getParticipantTotal(scans: LocalScan[], participantId: string): number {
   let total = 0
   for (const scan of scans) {

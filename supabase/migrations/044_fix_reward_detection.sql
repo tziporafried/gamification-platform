@@ -7,7 +7,7 @@
 --   2. Multi-event admins: arbitrary event returned → may not match participant → returns nothing
 --
 -- FIX: Derive v_event_id from the participant record directly (safe: already
---      guarded by RLS — only owners/collaborators can read their own participants).
+--      guarded by RLS - only owners/collaborators can read their own participants).
 --      Security check remains: verifies the caller owns or collaborates on the event.
 --
 -- The threshold comparison  r.required_points <= v_total_points  is intentionally

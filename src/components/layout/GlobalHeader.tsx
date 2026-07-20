@@ -57,7 +57,7 @@ export function GlobalHeader() {
           <button
             type="button"
             onClick={() => navigate('/welcome')}
-            aria-label="Gamify — מעבר לדף הבית"
+            aria-label="Gamify - מעבר לדף הבית"
             className="group flex shrink-0 items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             {centerSlot ? (

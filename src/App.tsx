@@ -24,7 +24,7 @@ import { TermsPage } from '@/pages/TermsPage'
 
 export default function App() {
   // reducedMotion="user" makes every framer-motion component honour the OS
-  // setting — CSS media queries cannot reach JS-driven transforms.
+  // setting - CSS media queries cannot reach JS-driven transforms.
   return (
     <MotionConfig reducedMotion="user">
       <BrowserRouter>
@@ -50,7 +50,7 @@ export default function App() {
             <Route path="/e/:slug/control" element={<ProtectedRoute><AppShell atmosphere="control"><EventBySlugControl /></AppShell></ProtectedRoute>} />
             <Route path="/admin" element={<Navigate to="/admin/analytics" replace />} />
             <Route path="/admin/:tab" element={<ProtectedRoute requireRole="super_admin"><AppShell><AdminPanel /></AppShell></ProtectedRoute>} />
-            {/* Legacy / deep-link entry — opens plans modal, then leaves /plans */}
+            {/* Legacy / deep-link entry - opens plans modal, then leaves /plans */}
             <Route path="/plans" element={<PlansPage />} />
             <Route path="/terms" element={<TermsPage />} />
 

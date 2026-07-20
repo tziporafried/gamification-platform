@@ -5,7 +5,7 @@ type BrandLogoProps = {
   alt?: string
 }
 
-/** Product mark — sized to match the Gamify wordmark height by default */
+/** Product mark - sized to match the Gamify wordmark height by default */
 export function BrandLogo({ className, alt = 'Gamify' }: BrandLogoProps) {
   return (
     <img

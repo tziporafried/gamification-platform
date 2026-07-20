@@ -12,7 +12,7 @@ interface EmptyStateProps {
   className?: string
   /**
    * Heading level for the title. Defaults to h3, which suits the usual nested
-   * use. Pass "h1" when the empty state *is* the page — otherwise the page has
+   * use. Pass "h1" when the empty state *is* the page - otherwise the page has
    * no h1 and the outline starts at h3 (WCAG 1.3.1).
    */
   as?: 'h1' | 'h2' | 'h3' | 'h4'

@@ -5,7 +5,7 @@ import { fileURLToPath, URL } from 'node:url'
 /**
  * Inlines the Heebo webfont as @font-face data URIs so the offline player matches
  * the online app's typography. Runs at build time (which is online); if the fetch
- * fails, it warns and falls back to the system Hebrew stack — the build never breaks.
+ * fails, it warns and falls back to the system Hebrew stack - the build never breaks.
  */
 function inlineHeebo(): Plugin {
   const CSS_URL =
@@ -45,7 +45,7 @@ function inlineHeebo(): Plugin {
 
 /**
  * Builds the standalone offline player into a single self-contained HTML file
- * that runs from file:// — no server, no network, no dependencies.
+ * that runs from file:// - no server, no network, no dependencies.
  *
  * Everything (JS, CSS, fonts, images) must end up inline: a file:// page cannot
  * fetch sibling assets, and external <script src> is blocked by CORS on opaque origins.
@@ -64,7 +64,7 @@ function inlineSingleFile(): Plugin {
       if (htmlAsset.type !== 'asset') return
       let html = String(htmlAsset.source)
       // Emitted as .tpl, not .html: Vite's dep scanner crawls every .html under
-      // the project root — including build output — and chokes trying to resolve
+      // the project root - including build output - and chokes trying to resolve
       // bare imports out of already-bundled code. It ignores unknown extensions.
       delete bundle[htmlKey]
 
@@ -125,7 +125,7 @@ export default defineConfig({
     rollupOptions: {
       input: fileURLToPath(new URL('./offline.html', import.meta.url)),
       output: {
-        // One chunk only — a file:// page cannot fetch split chunks.
+        // One chunk only - a file:// page cannot fetch split chunks.
         inlineDynamicImports: true,
         entryFileNames: 'player.js',
         assetFileNames: 'player.[ext]',

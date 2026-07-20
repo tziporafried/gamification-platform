@@ -3,7 +3,7 @@ import { KpiCard, formatNumber, formatRate } from './KpiCard'
 import { Filter, UserPlus, Percent, Users, Video, Eye } from 'lucide-react'
 
 export interface AffiliateOption {
-  /** Selection key — group key when named links are merged. */
+  /** Selection key - group key when named links are merged. */
   code: string
   name: string
   /** Concrete codes behind a merged name (for display / expansion). */

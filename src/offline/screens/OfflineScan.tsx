@@ -63,7 +63,7 @@ export function OfflineScan({ pack, scans, scanCount, onSubmitCodes, onBack }: O
 
   const awaiting = feedback.kind === 'idle' ? pending : null
 
-  // Unknown codes still arm — they are only validated on submit — so the
+  // Unknown codes still arm - they are only validated on submit - so the
   // greeting falls back to a neutral one rather than blocking.
   const awaitingName = useMemo(
     () => awaiting
@@ -134,7 +134,7 @@ export function OfflineScan({ pack, scans, scanCount, onSubmitCodes, onBack }: O
                 <div className="pl-prompt-title">
                   {awaitingName ? `שלום ${awaitingName}!` : 'שלום!'}
                 </div>
-                <div className="pl-prompt-sub">מחכים לתיקוף שלך — סרקו את כרטיס המשימה</div>
+                <div className="pl-prompt-sub">מחכים לתיקוף שלך - סרקו את כרטיס המשימה</div>
                 <div className="pl-prompt-dots" aria-hidden="true">
                   {[0, 1, 2].map((i) => (
                     <motion.span

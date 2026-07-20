@@ -19,7 +19,7 @@ interface QrCardGeneratorProps {
   onReadyChange?: (fn: (() => void) | null) => void
   /**
    * Both deck sizes, computed from the rows actually being printed. Callers must
-   * use these rather than deriving from `useEventCounts` — that counts every
+   * use these rather than deriving from `useEventCounts` - that counts every
    * action row, including inactive ones, and cannot see group targeting.
    */
   onCardCountsChange?: (counts: CardCounts) => void
@@ -103,7 +103,7 @@ export function QrCardGenerator({ event, scanMode, onReadyChange, onCardCountsCh
     onGeneratedChange?.(generated)
   }, [generated, onGeneratedChange])
 
-  // Derived, not snapshotted on generate — the scan mode is chosen in the same
+  // Derived, not snapshotted on generate - the scan mode is chosen in the same
   // click that generates, so a snapshot would lay out the previous mode.
   const sheets = useMemo<ParticipantSheet[]>(
     () => isSplit
@@ -321,7 +321,7 @@ function SplitPages({
           כרטיסי משתתפים
         </div>
         <div className="section-hint" style={{ fontSize: '11px', color: CARD_PALETTE.muted, marginBottom: '10px' }}>
-          נסרקים ראשונים — לפני כרטיס המשימה.
+          נסרקים ראשונים - לפני כרטיס המשימה.
         </div>
         <div className="cards-grid" style={gridStyle}>
           {participants.map((participant) => (
@@ -382,7 +382,7 @@ function SplitPages({
   )
 }
 
-/** One split-mode card — same chrome as the combined card, single code inside. */
+/** One split-mode card - same chrome as the combined card, single code inside. */
 function QrCard({
   event,
   payload,

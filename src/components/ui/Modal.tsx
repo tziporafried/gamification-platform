@@ -13,6 +13,8 @@ interface ModalProps {
   overlayClassName?: string
   /** Optional override for the dialog panel (e.g. wider form modals). */
   dialogClassName?: string
+  /** Optional override for the title bar (e.g. glass / borderless headers). */
+  headerClassName?: string
   /** Optional override for the scrollable content area. */
   contentClassName?: string
 }
@@ -35,6 +37,7 @@ export function Modal({
   children,
   overlayClassName,
   dialogClassName,
+  headerClassName,
   contentClassName,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -44,7 +47,7 @@ export function Modal({
 
   // Escape reads onClose through a ref so the effect below can depend on
   // `isOpen` alone. Callers routinely pass an inline/unmemoized handler, and a
-  // new identity per render would re-run the effect — stealing focus back to
+  // new identity per render would re-run the effect - stealing focus back to
   // the first control on every keystroke.
   const onCloseRef = useRef(onClose)
   useEffect(() => {
@@ -76,7 +79,7 @@ export function Modal({
       }
       if (e.key !== 'Tab') return
 
-      // Focus trap — wrap at both ends so Tab never escapes to the page behind.
+      // Focus trap - wrap at both ends so Tab never escapes to the page behind.
       const items = focusable()
       if (items.length === 0) {
         e.preventDefault()
@@ -94,7 +97,7 @@ export function Modal({
         e.preventDefault()
         lastItem.focus()
       } else if (active && !dialogRef.current?.contains(active)) {
-        // Focus drifted out (e.g. browser chrome round-trip) — pull it back.
+        // Focus drifted out (e.g. browser chrome round-trip) - pull it back.
         e.preventDefault()
         firstItem.focus()
       }
@@ -130,14 +133,20 @@ export function Modal({
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          // Default max-w-md only when callers don't override width — `cn` does not
+          // Default max-w-md only when callers don't override width - `cn` does not
           // tailwind-merge, so a hard-coded max-w-md would beat dialogClassName.
           // Cap height so long content scrolls inside the body instead of clipping.
           'relative z-10 flex w-full max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden rounded-2xl border border-border bg-modal shadow-modal animate-scale-in focus:outline-none motion-reduce:animate-none',
           dialogClassName ?? 'max-w-md',
         )}
       >
-        <div className={cn('flex shrink-0 items-center justify-between border-b bg-modal px-6 py-4', theme.border)}>
+        <div
+          className={cn(
+            'flex shrink-0 items-center justify-between border-b bg-modal px-6 py-4',
+            theme.border,
+            headerClassName,
+          )}
+        >
           <h2 id={titleId} className={titleClassName ?? cn('text-lg font-semibold', theme.text)}>{title}</h2>
           <button
             type="button"

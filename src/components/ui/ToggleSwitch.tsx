@@ -6,7 +6,7 @@ interface ToggleSwitchProps {
   disabled?: boolean
   size?: 'sm' | 'md'
   className?: string
-  /** The switch renders no text of its own — name it for screen readers. */
+  /** The switch renders no text of its own - name it for screen readers. */
   'aria-label'?: string
 }
 

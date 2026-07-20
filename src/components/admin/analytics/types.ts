@@ -74,7 +74,7 @@ export interface AnalyticsDashboardData {
     eventsCreated: number
     eventCreators: number
     leadConversionRate: number | null
-    /** Always site-wide — not scoped by affiliate filter. */
+    /** Always site-wide - not scoped by affiliate filter. */
     videoUsers: number
   }
   video: {

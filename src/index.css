@@ -76,7 +76,7 @@
   .gradient-diamond {
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 50%, var(--color-primary-hover) 100%);
   }
-  /* Wizard cards — solid single-color backgrounds */
+  /* Wizard cards - solid single-color backgrounds */
   .gradient-reward-starter {
     background-color: var(--color-success);
   }
@@ -115,7 +115,7 @@
     background-attachment: fixed;
   }
 
-  /* Dashboard (My Events) — warm but restrained; content stays primary */
+  /* Dashboard (My Events) - warm but restrained; content stays primary */
   .atmosphere-dashboard {
     --atmosphere-orb-top-orange: color-mix(in srgb, var(--palette-brand-accent) 16%, var(--palette-background));
     --atmosphere-orb-top-yellow: color-mix(in srgb, var(--palette-warning) 24%, var(--palette-background));
@@ -128,7 +128,7 @@
       radial-gradient(ellipse 72% 58% at 50% 54%, color-mix(in srgb, var(--palette-secondary) 3%, var(--palette-background)), transparent 76%);
   }
 
-  /* Control center — vibrant game-hub atmosphere */
+  /* Control center - vibrant game-hub atmosphere */
   .atmosphere-control {
     --atmosphere-orb-top-orange: color-mix(in srgb, var(--palette-brand-accent) 32%, var(--palette-background));
     --atmosphere-orb-top-yellow: color-mix(in srgb, var(--palette-warning) 46%, var(--palette-background));
@@ -141,7 +141,7 @@
       radial-gradient(ellipse 85% 68% at 50% 58%, color-mix(in srgb, var(--palette-secondary) 12%, var(--palette-background)), transparent 65%);
   }
 
-  /* Wizard — softer glows than the events list, with a light cream veil */
+  /* Wizard - softer glows than the events list, with a light cream veil */
   .atmosphere-wizard {
     --atmosphere-orb-top-orange: color-mix(in srgb, var(--palette-brand-accent) 15%, var(--palette-surface-elevated));
     --atmosphere-orb-top-yellow: color-mix(in srgb, var(--palette-warning) 22%, transparent);
@@ -151,7 +151,7 @@
     --wizard-background-veil: color-mix(in srgb, var(--palette-surface) 28%, transparent);
   }
 
-  /* Login — softer blobs so the form stays in focus */
+  /* Login - softer blobs so the form stays in focus */
   .atmosphere-login {
     --atmosphere-orb-top-orange: color-mix(in srgb, var(--palette-brand-accent) 20%, var(--palette-background));
     --atmosphere-orb-top-yellow: color-mix(in srgb, var(--palette-warning) 31%, var(--palette-background));
@@ -160,7 +160,7 @@
     --atmosphere-orb-bottom-teal-wash: color-mix(in srgb, var(--palette-secondary) 6%, var(--palette-background));
   }
 
-  /* Landing — full-strength atmospheric glows */
+  /* Landing - full-strength atmospheric glows */
   .atmosphere-landing {
     --atmosphere-orb-top-orange: color-mix(in srgb, var(--palette-brand-accent) 34%, var(--palette-surface-elevated));
     --atmosphere-orb-top-yellow: color-mix(in srgb, var(--palette-warning) 52%, transparent);
@@ -351,7 +351,7 @@
   }
 }
 
-/* Floating shapes — shared kiosk-style circles and rounded squares */
+/* Floating shapes - shared kiosk-style circles and rounded squares */
 @keyframes app-floatY {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-12px); }
@@ -393,7 +393,7 @@
   }
 }
 
-/* Landing atmosphere — slow orb drift for depth */
+/* Landing atmosphere - slow orb drift for depth */
 @keyframes landing-orb-drift-a {
   0%, 100% { transform: translate(0, 0) scale(1); }
   50% { transform: translate(-3%, 4%) scale(1.06); }
@@ -467,7 +467,7 @@
  * listeners still fire and nothing hangs waiting for a callback.
  *
  * JS-driven framer-motion animations are handled separately by
- * <MotionConfig reducedMotion="user"> in App.tsx — CSS cannot reach those.
+ * <MotionConfig reducedMotion="user"> in App.tsx - CSS cannot reach those.
  */
 @media (prefers-reduced-motion: reduce) {
   *,

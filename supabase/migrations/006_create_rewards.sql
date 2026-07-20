@@ -24,7 +24,7 @@ CREATE TRIGGER rewards_updated_at
   EXECUTE FUNCTION update_updated_at();
 
 -- ============================================================
--- REWARD_GROUPS (junction — group eligibility)
+-- REWARD_GROUPS (junction - group eligibility)
 -- No rows = global reward (available to all participants)
 -- ============================================================
 CREATE TABLE reward_groups (

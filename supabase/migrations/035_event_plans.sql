@@ -32,7 +32,7 @@ BEGIN
     RAISE EXCEPTION 'Event not found';
   END IF;
 
-  -- Template draft events are admin sandboxes — no plan limits
+  -- Template draft events are admin sandboxes - no plan limits
   IF EXISTS (
     SELECT 1 FROM activity_templates WHERE draft_event_id = NEW.event_id
   ) THEN
@@ -108,7 +108,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 6. Update get_all_users_admin() — remove plan field (plan is now per-event)
+-- 6. Update get_all_users_admin() - remove plan field (plan is now per-event)
 -- Must drop first because the return type changes (plan column removed)
 DROP FUNCTION IF EXISTS get_all_users_admin();
 CREATE OR REPLACE FUNCTION get_all_users_admin()

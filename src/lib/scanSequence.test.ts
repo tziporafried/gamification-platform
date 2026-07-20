@@ -83,7 +83,7 @@ test('an action scanned first is refused, not armed', () => {
   })
 })
 
-test('the reverse order never pairs — the action is rejected each time', () => {
+test('the reverse order never pairs - the action is rejected each time', () => {
   const outcomes = scanSequence([
     { raw: actionCard('A-1') },
     { raw: participantCard('P-1'), now: T0 + 1_000 },

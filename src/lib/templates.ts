@@ -433,7 +433,7 @@ export async function applyActivityTemplate(
     }
   }
 
-  // Trial mode no longer clips template content — import the full template.
+  // Trial mode no longer clips template content - import the full template.
   // `isFreePlan` kept for call-site API compatibility.
   void isFreePlan
 

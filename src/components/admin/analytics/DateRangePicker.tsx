@@ -18,7 +18,7 @@ interface DateRangePickerProps {
   onPresetChange: (preset: AnalyticsDatePreset) => void
   onCustomChange: (start: string, end: string) => void
   disabled?: boolean
-  /** YYYY-MM-DD — max selectable day (usually today in Israel). */
+  /** YYYY-MM-DD - max selectable day (usually today in Israel). */
   maxDate?: string
 }
 

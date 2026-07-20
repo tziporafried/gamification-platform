@@ -4,7 +4,7 @@ export interface CardCounts {
   split: number
 }
 
-/** Only the fields the deck maths needs — keeps this usable from tests. */
+/** Only the fields the deck maths needs - keeps this usable from tests. */
 export interface CountableParticipant {
   groupIds: string[]
 }
@@ -30,7 +30,7 @@ export function isActionRelevantTo(action: CountableAction, participantGroupIds:
  * The combined deck is deliberately not `participants × actions`: group
  * targeting means many pairings never get printed, so it has to be summed
  * per participant. Callers must not substitute a flat multiplication, and must
- * not feed this inactive actions — pass the same rows that will be printed.
+ * not feed this inactive actions - pass the same rows that will be printed.
  */
 export function computeCardCounts(
   participants: CountableParticipant[],

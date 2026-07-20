@@ -119,15 +119,15 @@ export function LiveStatsCaption({
   const activeItem = items[activeIndex] ?? items[0]
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 bottom-1 z-20 flex justify-center px-4">
-      <div className="pointer-events-auto w-full max-w-md">
+    <div className="pointer-events-none fixed inset-x-0 bottom-3 z-20 flex justify-center px-4">
+      <div className="w-full max-w-sm">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={activeItem.type}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.28, ease: 'easeInOut' }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
           >
             <SummaryCard
               type={activeItem.type}
@@ -428,24 +428,22 @@ function SummaryCard({
 
   if (toast) {
     return (
-      <div className="relative overflow-hidden rounded-xl shadow-lg backdrop-blur-md">
-        <div
-          className={cn(
-            'absolute inset-0',
-            ready ? variantStyles.cardHighlight : variantStyles.card,
-            'opacity-90',
-          )}
+      <div
+        role="status"
+        aria-live="polite"
+        className={cn(
+          'flex items-center justify-center gap-2',
+          'rounded-lg border border-border/30 bg-white/35 px-3 py-1.5',
+          'shadow-[0_4px_18px_rgba(46,34,30,0.06)] backdrop-blur-md',
+        )}
+      >
+        <Icon
+          size={13}
+          strokeWidth={2}
+          className={cn('shrink-0 opacity-80', accent.iconText)}
           aria-hidden="true"
         />
-        <div className="relative flex items-center justify-center gap-2.5 px-4 py-3 text-center">
-          <Icon
-            size={iconSize}
-            strokeWidth={2.25}
-            className={cn('shrink-0 opacity-95', variantStyles.text)}
-            aria-hidden="true"
-          />
-          <span className={cn('text-base font-semibold', variantStyles.text)}>{label}</span>
-        </div>
+        <span className="text-xs font-medium leading-snug text-foreground/75">{label}</span>
       </div>
     )
   }

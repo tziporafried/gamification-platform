@@ -116,7 +116,7 @@ interface TrendLineChartProps {
   days: AnalyticsTimeSeriesDay[]
   loading?: boolean
   unavailable?: boolean
-  /** Chart height in px — hero dashboard uses a larger value */
+  /** Chart height in px - hero dashboard uses a larger value */
   height?: number
   granularity?: 'day' | 'hour'
 }

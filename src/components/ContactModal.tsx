@@ -18,7 +18,7 @@ interface ContactModalProps {
 
 /**
  * Neutral Contact Intent modal.
- * Never use this for plan selection / activation leads — those use PlansModal.
+ * Never use this for plan selection / activation leads - those use PlansModal.
  */
 export function ContactModal({
   isOpen,

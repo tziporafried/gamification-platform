@@ -175,7 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { status: 'error', reason: 'network' }
     }
 
-    // Sign-in failed for a reason other than a network/server issue — most likely there's no
+    // Sign-in failed for a reason other than a network/server issue - most likely there's no
     // account yet for this email, so try creating one. If an account does exist, Supabase will
     // reject this with an "already registered" style error, which we treat as wrong credentials
     // rather than creating a duplicate account.

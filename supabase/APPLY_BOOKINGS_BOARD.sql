@@ -1,5 +1,5 @@
 -- Apply on remote if migrations are not auto-run:
---   psql / Supabase SQL editor — paste this file
+--   psql / Supabase SQL editor - paste this file
 -- Idempotent where possible.
 
 ALTER TABLE scanner_bookings

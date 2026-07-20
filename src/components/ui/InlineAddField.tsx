@@ -9,7 +9,7 @@ interface InlineAddFieldProps {
   onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void
   placeholder?: string
   /**
-   * Accessible name for the input. A placeholder is not a label — it is not
+   * Accessible name for the input. A placeholder is not a label - it is not
    * exposed as one and disappears on typing (WCAG 1.3.1 / 3.3.2), so this
    * falls back to the placeholder only as a last resort.
    */

@@ -16,7 +16,7 @@ export function injectPack(template: string, pack: GamePack): string {
     throw new OfflineExportError('קובץ הנגן טרם נבנה. הרץ npm run build:offline.')
   }
   if (!DATA_TAG_RE.test(template)) {
-    throw new OfflineExportError('תבנית הנגן פגומה — לא נמצא מיקום להטמעת הנתונים.')
+    throw new OfflineExportError('תבנית הנגן פגומה - לא נמצא מיקום להטמעת הנתונים.')
   }
 
   const json = JSON.stringify(pack).replace(/[<>\u2028\u2029]/g, (ch) => {

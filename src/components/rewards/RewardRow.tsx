@@ -267,7 +267,7 @@ export function RewardRow({
             hidden={editingName || !isNameTruncated}
             className="w-full"
           >
-            {/* Real button when idle — see GroupCard for the same fix. */}
+            {/* Real button when idle - see GroupCard for the same fix. */}
             <div className="flex h-9 w-full min-w-0 items-center justify-center">
               {editingName ? (
                 <input

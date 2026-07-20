@@ -106,7 +106,7 @@ export function AdminFinancePanel() {
   }, [entries, filterAdminId])
 
   function adminLabel(id: string | null): string {
-    if (!id) return '—'
+    if (!id) return '-'
     const a = admins.find((x) => x.id === id)
     return a?.display_name || a?.email || 'אדמין'
   }

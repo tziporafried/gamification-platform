@@ -1,4 +1,4 @@
--- Migration 069: Partial payment on bookings — amount paid + debt (future income).
+-- Migration 069: Partial payment on bookings - amount paid + debt (future income).
 
 ALTER TABLE scanner_bookings
   ADD COLUMN IF NOT EXISTS amount_paid NUMERIC(12, 2)

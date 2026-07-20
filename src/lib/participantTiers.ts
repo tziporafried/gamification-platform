@@ -7,7 +7,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-/** Participant card hue — translucent warning gold from palette */
+/** Participant card hue - translucent warning gold from palette */
 export const PARTICIPANT_CARD_GRADIENT = 'gradient-participant-card'
 
 const PARTICIPANT_ICONS: LucideIcon[] = [

@@ -20,7 +20,7 @@ export interface ContactFormProps {
   intent?: ContactIntent
   /** Stored on the request row for admin routing / labeling. Overrides intent default when set. */
   limitType?: string
-  /** GA `plan_name` / lead name — must not include PII. */
+  /** GA `plan_name` / lead name - must not include PII. */
   analyticsPlanName?: string
   eventId?: string | null
   eventName?: string | null
@@ -52,7 +52,7 @@ function defaultHeading(intent: ContactIntent, hasEvent: boolean): string {
     case 'organization_lead':
       return 'בואו נתאים את Gamify לארגון שלכם'
     case 'plan_independent':
-      return 'מעולה — נחזור אליכם להשלמת ההפעלה'
+      return 'מעולה - נחזור אליכם להשלמת ההפעלה'
     case 'plan_offline':
       return 'מעולה! נשלח לכם את המשחק שרץ בלי אינטרנט 📴'
   }
@@ -93,7 +93,7 @@ export function ContactForm({
   const hasEvent = Boolean(eventId)
   const compactPlanLead = intent === 'plan_lead' && hasEvent
 
-  // Ids so each visible label is programmatically tied to its control —
+  // Ids so each visible label is programmatically tied to its control -
   // they read as labels only when associated (WCAG 1.3.1 / 4.1.2).
   const fid = useId()
   const [fullName, setFullName] = useState(profile?.display_name || '')
@@ -121,7 +121,7 @@ export function ContactForm({
   const resolvedAnalyticsName = analyticsPlanName ?? source ?? resolvedLimitType
   const resolvedHeading = heading ?? defaultHeading(intent, hasEvent)
   const resolvedSubmit = submitLabel ?? defaultSubmitLabel(intent, hasEvent)
-  // Same contact fields as the general form — including pricing / plan leads.
+  // Same contact fields as the general form - including pricing / plan leads.
   const showEmailField = true
   const showDirectContact = true
   const emailRequired = false

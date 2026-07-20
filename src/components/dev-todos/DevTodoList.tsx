@@ -223,7 +223,7 @@ function TodoRow({
         <StatusIcon size={18} />
       </button>
 
-      {/* Real button when idle — role="button" with tabIndex={-1} announced a
+      {/* Real button when idle - role="button" with tabIndex={-1} announced a
           control that keyboard users could not reach. */}
       <div className="min-w-0 flex-1">
         {editing ? (

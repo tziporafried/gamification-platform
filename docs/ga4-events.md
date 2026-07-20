@@ -1,4 +1,4 @@
-# Gamify Platform — GA4 Events Inventory
+# Gamify Platform - GA4 Events Inventory
 
 Build verified: `npm run build` passes.
 
@@ -14,7 +14,7 @@ Build verified: `npm run build` passes.
 | `login` | Successful login | `method` (`email` \| `google`) | `Login.tsx`, `AuthContext` |
 | `sign_up` | Successful sign-up | `method` (`email` \| `google`) | `Login.tsx`, `AuthContext` |
 | `view_plans` | User opens the Plans / activation modal | `page_path` (`plans_modal`), `has_linked_event` | `PlansModal.tsx` |
-| `contact_click` | Plan option chosen (opened contact form) | — | **Replaced by `select_plan`** (same trigger) |
+| `contact_click` | Plan option chosen (opened contact form) | - | **Replaced by `select_plan`** (same trigger) |
 
 ---
 
@@ -27,10 +27,10 @@ Build verified: `npm run build` passes.
 | `select_plan` | User chooses a plan card (opens contact form) | `plan_name`, `has_linked_event` | `PlansModal.tsx` |
 | `contact_form_open` | Contact / plan lead form opened | `contact_source`, `cta_location` | `FloatingContactButton`, `Landing`, `PlansModal`, `MyEvents` |
 | `generate_lead` | Contact / upgrade form submitted successfully | `plan_name`, `has_linked_event`, optional `contact_source` | `ContactForm` |
-| `login_view` | Login screen opened | — | `Login.tsx` |
+| `login_view` | Login screen opened | - | `Login.tsx` |
 | `login_start` | User starts a login attempt | `method` | `Login.tsx` |
 | `login_error` | Login fails | `error_type`, `method` | `Login.tsx` |
-| `event_creation_start` | User clicks create event | — | `MyEvents.tsx`, `PlansModal.tsx` |
+| `event_creation_start` | User clicks create event | - | `MyEvents.tsx`, `PlansModal.tsx` |
 | `event_created` | Event row inserted successfully | `creation_method` (`new` \| `scratch` \| `template`) | `MyEvents.tsx` |
 | `wizard_step_view` | Wizard step shown | `step_number`, `step_name` | `EventWizard.tsx` |
 | `wizard_step_complete` | User advances / finishes a step | `step_number`, `step_name` | `EventWizard.tsx`, `StepReviewGenerate.tsx` |
@@ -38,8 +38,8 @@ Build verified: `npm run build` passes.
 | `wizard_exit` | User leaves wizard without finishing | `step_number`, `step_name` | `AnalyticsListener` |
 | `event_open` | Manager opens control center or resumes wizard | `destination` (`control` \| `wizard`) | `EventControlCenter.tsx`, `EventBySlug.tsx`, `MyEvents.tsx` |
 | `event_edit_start` | Edit started from control center | `was_active` | `ControlCenter.tsx` |
-| `event_updated` | Event details saved successfully | — | `StepEventDetails.tsx` |
-| `event_deleted` | Event archived successfully | — | `MyEvents.tsx` |
+| `event_updated` | Event details saved successfully | - | `StepEventDetails.tsx` |
+| `event_deleted` | Event archived successfully | - | `MyEvents.tsx` |
 | `scanner_view` | Kiosk / scanner screen opened | `plan` | `EventKioskPage.tsx` |
 | `scan_success` | Successful QR scan or manual entry | `source` (`qr_scan` \| `manual_entry`) | `EventKioskPage.tsx` |
 | `scan_failed` | Scan / score submit failed | `error_type`, `source` | `EventKioskPage.tsx` |
@@ -50,12 +50,12 @@ Build verified: `npm run build` passes.
 | `trial_activated` | Event left trial for a real activation mode | `event_id`, `activation_mode`, `trial_scans_used` | `AdminPanel.tsx` (after `update_event_plan`) |
 | `trial_data_reset` | Trial runtime scores/rewards wiped on activation | `event_id` | `AdminPanel.tsx` |
 | `prize_revealed` | Prize celebration after successful scan | `prize_type` (`milestone`), `prize_count` | `EventKioskPage.tsx` |
-| `leaderboard_view` | Leaderboard / display screen opened | — | `EventDisplay.tsx` |
+| `leaderboard_view` | Leaderboard / display screen opened | - | `EventDisplay.tsx` |
 | `app_error` | Significant failure in a core flow | `error_area`, `error_type` | plans / event creation / scanner |
 | `event_start_method` | User chooses scratch vs template in the wizard picker | `method` (`scratch` \| `template`) | `EventWizard.tsx` |
 | `faq_open` | User expands an FAQ item on the landing page | `question` (full question text), `question_index` | `Landing.tsx` |
 
-### `activation_options_viewed` — `source` values
+### `activation_options_viewed` - `source` values
 
 | Value | Entry point |
 |---|---|
@@ -80,13 +80,13 @@ Main question the dashboard answers: interest → where it starts → where it d
 ### Layout (business-first)
 
 1. Date filter  
-2. **דורש תשומת לב** — up to 3 derived insights (unique-user cohorts only)  
-3. **מסלול ההמרה** — visitors → video → plans → form open → lead (cohort comparison, not sequential funnel)  
-4. **סקירה כללית** — visitors, video, plans, leads, lead conversion, event creators  
-5. **ביצועי הסרטון** — start → 25/50/75 → complete (+ largest drop insight)  
-6. **עניין בדף הבית** — top FAQ + CTA × location  
-7. **מחירים ויצירת קשר** — plans → form open → lead  
-8. **שימוש במוצר** — login / event creation (separate from marketing funnel)
+2. **דורש תשומת לב** - up to 3 derived insights (unique-user cohorts only)  
+3. **מסלול ההמרה** - visitors → video → plans → form open → lead (cohort comparison, not sequential funnel)  
+4. **סקירה כללית** - visitors, video, plans, leads, lead conversion, event creators  
+5. **ביצועי הסרטון** - start → 25/50/75 → complete (+ largest drop insight)  
+6. **עניין בדף הבית** - top FAQ + CTA × location  
+7. **מחירים ויצירת קשר** - plans → form open → lead  
+8. **שימוש במוצר** - login / event creation (separate from marketing funnel)
 
 ### Section: מחירים ויצירת קשר
 
@@ -99,7 +99,7 @@ Main question the dashboard answers: interest → where it starts → where it d
 | בחירת מסלול לפי תוכנית | `select_plan` × `customEvent:plan_name` |
 | לידים לפי מקור פנייה | `generate_lead` × `customEvent:contact_source` |
 
-> Note: stage ratios compare independent unique-user cohorts in the date range — not a closed sequential funnel. Lead users include all `generate_lead` sources.
+> Note: stage ratios compare independent unique-user cohorts in the date range - not a closed sequential funnel. Lead users include all `generate_lead` sources.
 
 ### Section: ביצועי הסרטון
 
@@ -207,7 +207,7 @@ supabase functions deploy ga4-dashboard
 - `prize_revealed` never sends user-authored prize text
 - `wizard_exit` only on explicit leave (not when finishing into control)
 - `activation_options_viewed` is fired once from `PlansModal` (entry points should not double-fire it)
-- Tracking limited to meaningful CTAs and core product flows — not every click
+- Tracking limited to meaningful CTAs and core product flows - not every click
 
 ---
 

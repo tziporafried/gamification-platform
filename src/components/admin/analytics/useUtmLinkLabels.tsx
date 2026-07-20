@@ -285,7 +285,7 @@ export function UtmShareLinkGenerator({
   >
   generating?: boolean
   error?: string | null
-  /** Inline row next to date filter — less vertical space */
+  /** Inline row next to date filter - less vertical space */
   compact?: boolean
 }) {
   const [name, setName] = useState('')
@@ -326,7 +326,7 @@ export function UtmShareLinkGenerator({
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2000)
     } catch {
-      setLocalError('לא ניתן להעתיק — העתיקו ידנית מהשדה')
+      setLocalError('לא ניתן להעתיק - העתיקו ידנית מהשדה')
     }
   }
 
@@ -387,7 +387,7 @@ export function UtmShareLinkGenerator({
         <h3 className="text-sm font-semibold text-foreground">יצירת לינק שיתוף</h3>
       </div>
       <p className="text-[11px] text-muted">
-        מקלידים שם (למשל שם איש קשר) — המערכת יוצרת מזהה לא מזוהה, שומרת את המיפוי מיד, ומעתיקה
+        מקלידים שם (למשל שם איש קשר) - המערכת יוצרת מזהה לא מזוהה, שומרת את המיפוי מיד, ומעתיקה
         לינק לדף הבית עם <span className="font-mono">utm_source=share</span>
       </p>
       <form
@@ -438,11 +438,11 @@ export function LinkLabelEditor({
   onSave,
 }: {
   contentCode: string
-  /** When several codes share one name — edit each code separately to split. */
+  /** When several codes share one name - edit each code separately to split. */
   contentCodes?: string[]
   displayLabel: string | null
   saving?: boolean
-  /** Apply display names — same name keeps merge, different names split. */
+  /** Apply display names - same name keeps merge, different names split. */
   onSave: (updates: { code: string; name: string }[]) => Promise<void>
 }) {
   const codes = contentCodes?.length ? contentCodes : [contentCode]
@@ -493,7 +493,7 @@ export function LinkLabelEditor({
           {displayLabel ? (
             <span className="font-medium">{displayLabel}</span>
           ) : (
-            <span className="text-muted">ללא שם — לחצו לעריכה</span>
+            <span className="text-muted">ללא שם - לחצו לעריכה</span>
           )}
           <span className="mx-1.5 text-muted/50">·</span>
           <span className="font-mono text-[11px] text-muted" dir="ltr" title={codesLabel}>

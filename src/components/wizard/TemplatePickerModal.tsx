@@ -8,7 +8,7 @@ import type { ActivityTemplateWithContent, GroupType, UserPlan } from '@/types'
 
 interface TemplatePickerModalProps {
   eventId: string
-  /** Event activation mode — reserved for call-site compatibility. */
+  /** Event activation mode - reserved for call-site compatibility. */
   plan: UserPlan
   isOpen: boolean
   onChooseScratch: () => void
@@ -99,7 +99,7 @@ export function TemplatePickerModal({
               </div>
               <div>
                 <p className="font-medium text-foreground">התחל מתבנית</p>
-                <p className="mt-0.5 text-xs text-muted">קבוצות ומשימות מוכנות — התאימו אחר כך</p>
+                <p className="mt-0.5 text-xs text-muted">קבוצות ומשימות מוכנות - התאימו אחר כך</p>
               </div>
             </div>
           </button>

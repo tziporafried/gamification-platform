@@ -47,24 +47,24 @@ Presets: `today` | `7d` | `14d` | `28d` | `custom`
 
 ## Reports
 
-1. Core events by `eventName` (totalUsers + eventCount) — includes `video_progress`, `event_creation_start`
+1. Core events by `eventName` (totalUsers + eventCount) - includes `video_progress`, `event_creation_start`
 2. Homepage `page_view` with `pagePath = /`
-3. FAQ questions (`customEvent:question`) — soft-fail, limit 50
-4. CTA by name (`customEvent:cta_name`) — soft-fail
-5. CTA by location (`customEvent:cta_location`) — soft-fail
-6. CTA name × location matrix — soft-fail
-7. Video progress milestones (`customEvent:progress_percent`) — soft-fail
-8. Event creation method (`customEvent:creation_method`) — soft-fail
-9. Lead / contact open by `contact_source` — soft-fail
-10. Select plan by `plan_name` — soft-fail
-11. Activation options by `source` — soft-fail
-12. Daily time series — homepage visitors by `date` + events (`video_view`, `view_plans`, `generate_lead`) by `date`×`eventName`
-13. Traffic sources by `sessionSource` (grouped into ישיר / Google / הפניה / קמפיינים / אחר) — soft-fail
-14. UTM tagged visitors + `utm_source` / `utm_campaign` / `utm_content` breakdowns + link performance (video / plans / leads by `utm_content`) — soft-fail; returns `unavailableParams` when Custom Dimensions are missing
+3. FAQ questions (`customEvent:question`) - soft-fail, limit 50
+4. CTA by name (`customEvent:cta_name`) - soft-fail
+5. CTA by location (`customEvent:cta_location`) - soft-fail
+6. CTA name × location matrix - soft-fail
+7. Video progress milestones (`customEvent:progress_percent`) - soft-fail
+8. Event creation method (`customEvent:creation_method`) - soft-fail
+9. Lead / contact open by `contact_source` - soft-fail
+10. Select plan by `plan_name` - soft-fail
+11. Activation options by `source` - soft-fail
+12. Daily time series - homepage visitors by `date` + events (`video_view`, `view_plans`, `generate_lead`) by `date`×`eventName`
+13. Traffic sources by `sessionSource` (grouped into ישיר / Google / הפניה / קמפיינים / אחר) - soft-fail
+14. UTM tagged visitors + `utm_source` / `utm_campaign` / `utm_content` breakdowns + link performance (video / plans / leads by `utm_content`) - soft-fail; returns `unavailableParams` when Custom Dimensions are missing
 
 ## Response extras
 
-- `timeSeries.days[]` — `{ date, visitors, videoView, viewPlans, generateLead }`
-- `trafficSources.items[]` — `{ label, users }` + `totalUsers`
-- `utm` — `{ taggedVisitors, sourceBreakdown, campaignBreakdown, contentBreakdown, linkPerformance, unavailable, unavailableParams }`
+- `timeSeries.days[]` - `{ date, visitors, videoView, viewPlans, generateLead }`
+- `trafficSources.items[]` - `{ label, users }` + `totalUsers`
+- `utm` - `{ taggedVisitors, sourceBreakdown, campaignBreakdown, contentBreakdown, linkPerformance, unavailable, unavailableParams }`
 

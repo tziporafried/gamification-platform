@@ -1,4 +1,4 @@
-/** App design tokens — semantic token class strings for app-wide styling. */
+/** App design tokens - semantic token class strings for app-wide styling. */
 export const theme = {
   // Page shells
   pageBg: 'bg-app-radial',
@@ -11,7 +11,7 @@ export const theme = {
   bgCardMuted: 'bg-surface-elevated',
   bgInset: 'bg-surface-elevated',
   border: 'border-border',
-  /** Gray bordered surfaces — uniform default + orange hover (wizard & lists) */
+  /** Gray bordered surfaces - uniform default + orange hover (wizard & lists) */
   borderInteractive: 'border border-border transition-colors hover:border-accent',
   borderInteractiveDashed:
     'border border-dashed border-border transition-colors hover:border-accent',
@@ -23,7 +23,7 @@ export const theme = {
   accentBorder: 'border-accent',
   accentBg: 'bg-surface-elevated',
   /**
-   * WCAG 2.4.7 — this used to be `focus:outline-none focus-visible:outline-none`,
+   * WCAG 2.4.7 - this used to be `focus:outline-none focus-visible:outline-none`,
    * which stripped the browser default and put nothing back, leaving keyboard
    * users with no focus indicator at all. The offset ring reads against every
    * surface and only shows for keyboard focus, so pointer users see no change.
@@ -58,7 +58,7 @@ export const theme = {
   surfaceInteractive:
     'transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5 hover:border-accent',
 
-  /** Wizard list rows — base shadow + subtle hover lift */
+  /** Wizard list rows - base shadow + subtle hover lift */
   wizardListRowHover:
     'shadow-lift transition-[box-shadow,transform] duration-[180ms] ease-out hover:-translate-y-px hover:scale-[1.002] hover:shadow-card-hover before:pointer-events-none before:absolute before:inset-0 before:rounded-xl before:bg-black/0 before:transition-colors before:duration-[180ms] hover:before:bg-black/[0.04] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:hover:translate-y-0 motion-reduce:hover:before:bg-black/0',
 

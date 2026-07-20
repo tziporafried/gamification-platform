@@ -47,7 +47,7 @@ export function useCelebrationSound() {
         osc.stop(chordStart + 1.2)
       })
     } catch {
-      // Web Audio API not supported or blocked — silent failure
+      // Web Audio API not supported or blocked - silent failure
     }
   }, [])
 

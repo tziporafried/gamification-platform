@@ -5,7 +5,7 @@ const LANDING_REFERRER_KEY = 'gamify_landing_referrer'
 const PENDING_AUTH_METHOD_KEY = 'gamify_pending_auth_method'
 /** First-touch / claim + URL display (may include profile restore). */
 const UTM_ATTRIBUTION_KEY = 'gamify_utm_attribution'
-/** This-visit URL capture only — attached to GA events (never profile restore). */
+/** This-visit URL capture only - attached to GA events (never profile restore). */
 const UTM_HIT_KEY = 'gamify_utm_hit'
 /** Set when we inject UTMs into the URL for display; next matching capture skips HIT. */
 const UTM_DISPLAY_INJECT_KEY = 'gamify_utm_display_inject'
@@ -145,7 +145,7 @@ export function getUtmHitAttribution(): UtmAttribution {
 
 /**
  * Restore first-touch attribution into session storage when the URL/session
- * has none — e.g. returning logged-in user so homepage keeps affiliate UTMs.
+ * has none - e.g. returning logged-in user so homepage keeps affiliate UTMs.
  * Does not overwrite an attribution already captured this session.
  * Does not write GA hit attribution (returning visits must not re-tag acquisition).
  */
@@ -173,7 +173,7 @@ export function initAnalytics() {
 
   window.dataLayer = window.dataLayer || []
   // Must push the Arguments object (not a rest-params Array). gtag.js reads the
-  // pre-load queue and silently drops plain arrays — which stopped all hits after
+  // pre-load queue and silently drops plain arrays - which stopped all hits after
   // the inline index.html snippet was removed in the security CSP change.
   if (!window.gtag) {
     window.gtag = function gtag() {
@@ -221,7 +221,7 @@ export function trackPageView(path: string) {
   })
 }
 
-/** Generic GA4 event helper — attaches persisted UTM attribution when present. */
+/** Generic GA4 event helper - attaches persisted UTM attribution when present. */
 export function trackEvent(eventName: string, params?: AnalyticsParams) {
   if (!isEnabled()) return
   if (!window.gtag) initAnalytics()
@@ -319,7 +319,7 @@ export function trackSelectPlan(planName: string, hasLinkedEvent = false) {
   })
 }
 
-/** @deprecated Alias — fires `select_plan` (replaces legacy `contact_click` name). */
+/** @deprecated Alias - fires `select_plan` (replaces legacy `contact_click` name). */
 export function trackContactClick(planOption: string, eventId?: string | null) {
   trackSelectPlan(planOption, Boolean(eventId))
 }
@@ -347,12 +347,12 @@ export function trackLoginStart(method: 'email' | 'google') {
   trackEvent('login_start', { method })
 }
 
-/** GA4 recommended event — successful login. */
+/** GA4 recommended event - successful login. */
 export function trackLogin(method: 'email' | 'google') {
   trackEvent('login', { method })
 }
 
-/** GA4 recommended event — successful sign-up / account creation. */
+/** GA4 recommended event - successful sign-up / account creation. */
 export function trackSignUp(method: 'email' | 'google') {
   trackEvent('sign_up', { method })
 }
@@ -560,7 +560,7 @@ export function trackTrialDataReset(eventId: string) {
   })
 }
 
-/** Prize celebration after a successful scan — no user-authored prize text. */
+/** Prize celebration after a successful scan - no user-authored prize text. */
 export function trackPrizeRevealed(prizeCount: number) {
   trackEvent('prize_revealed', {
     prize_type: 'milestone',
@@ -572,7 +572,7 @@ export function trackLeaderboardView() {
   trackEventDeduped('leaderboard_view', 'leaderboard_view')
 }
 
-// ─── Errors (sparse — not an error monitoring system) ────────────────────────
+// ─── Errors (sparse - not an error monitoring system) ────────────────────────
 
 export function trackAppError(
   errorArea: 'auth' | 'event_creation' | 'scanner' | 'pricing',

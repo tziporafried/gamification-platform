@@ -15,7 +15,7 @@ type PlanLimits = Record<LimitableEntity, PlanLimitInfo> & {
 }
 
 function makeLimitInfo(current: number, entity: LimitableEntity, plan: UserPlan): PlanLimitInfo {
-  // Trial (`free`) no longer caps wizard entities — only trial scans are limited.
+  // Trial (`free`) no longer caps wizard entities - only trial scans are limited.
   if (plan === 'free' || !Number.isFinite(FREE_PLAN_LIMITS[entity])) {
     return { current, limit: null, isAtLimit: false, isNearLimit: false, plan }
   }

@@ -22,7 +22,7 @@ export function ImpersonationBanner() {
         <UserRound size={16} className="shrink-0" aria-hidden="true" />
         <p className="truncate">
           מחוברת כלקוח: <span className="font-semibold">{label}</span>
-          <span className="hidden sm:inline"> — את רואה בדיוק מה שהלקוח רואה</span>
+          <span className="hidden sm:inline"> - את רואה בדיוק מה שהלקוח רואה</span>
         </p>
       </div>
       <button

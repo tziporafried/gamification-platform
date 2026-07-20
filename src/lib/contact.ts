@@ -1,4 +1,4 @@
-/** Product intent — never mix contact help with activation/plan leads. */
+/** Product intent - never mix contact help with activation/plan leads. */
 export type ContactIntent =
   | 'contact'
   | 'plan_lead'

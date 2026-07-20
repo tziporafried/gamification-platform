@@ -26,19 +26,19 @@ Phase 1 established the application foundation: project scaffolding, Supabase cl
 | `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT `now()` |
 
 **Indexes:**
-- `idx_events_owner` — UNIQUE on `owner_admin_id`. Enforces one event per admin.
-- `idx_events_slug` — UNIQUE on `slug`. Enforces globally unique slugs.
+- `idx_events_owner` - UNIQUE on `owner_admin_id`. Enforces one event per admin.
+- `idx_events_slug` - UNIQUE on `slug`. Enforces globally unique slugs.
 
 **Functions:**
-- `update_updated_at()` — Generic trigger function that sets `NEW.updated_at = now()`. Reused by later phases.
+- `update_updated_at()` - Generic trigger function that sets `NEW.updated_at = now()`. Reused by later phases.
 
 **Triggers:**
-- `events_updated_at` — Calls `update_updated_at()` BEFORE UPDATE on `events`.
+- `events_updated_at` - Calls `update_updated_at()` BEFORE UPDATE on `events`.
 
 **RLS Policies (on `events`):**
-- `Admins can view own event` — SELECT where `auth.uid() = owner_admin_id`
-- `Admins can create own event` — INSERT where `auth.uid() = owner_admin_id`
-- `Admins can update own event` — UPDATE where `auth.uid() = owner_admin_id`
+- `Admins can view own event` - SELECT where `auth.uid() = owner_admin_id`
+- `Admins can create own event` - INSERT where `auth.uid() = owner_admin_id`
+- `Admins can update own event` - UPDATE where `auth.uid() = owner_admin_id`
 - No DELETE policy exists. Event deletion is denied by default.
 
 **Storage (commented out in migration, manual setup):**
@@ -69,7 +69,7 @@ Phase 1 established the application foundation: project scaffolding, Supabase cl
 - Link to login page
 
 ### Dashboard Page (`src/pages/Dashboard.tsx`)
-- Protected by `ProtectedRoute` — redirects to `/login` if unauthenticated
+- Protected by `ProtectedRoute` - redirects to `/login` if unauthenticated
 - Header with admin email and "Log Out" button
 - On load: queries `events` table for the current admin's event
 - If no event exists: shows `EventForm` for creation
@@ -78,28 +78,28 @@ Phase 1 established the application foundation: project scaffolding, Supabase cl
 ## Components
 
 ### Auth Components
-- **`AuthContext`** (`src/contexts/AuthContext.tsx`) — React context providing `user`, `loading`, `signUp`, `signIn`, `signOut`. Initializes session from Supabase on mount. Subscribes to `onAuthStateChange`.
-- **`ProtectedRoute`** (`src/components/ProtectedRoute.tsx`) — Renders children if authenticated, redirects to `/login` if not. Shows spinner while loading.
-- **`AuthRedirect`** (`src/components/AuthRedirect.tsx`) — Redirects authenticated users to `/dashboard`. Used on `/`, `/login`, `/register`.
+- **`AuthContext`** (`src/contexts/AuthContext.tsx`) - React context providing `user`, `loading`, `signUp`, `signIn`, `signOut`. Initializes session from Supabase on mount. Subscribes to `onAuthStateChange`.
+- **`ProtectedRoute`** (`src/components/ProtectedRoute.tsx`) - Renders children if authenticated, redirects to `/login` if not. Shows spinner while loading.
+- **`AuthRedirect`** (`src/components/AuthRedirect.tsx`) - Redirects authenticated users to `/dashboard`. Used on `/`, `/login`, `/register`.
 
 ### Event Components
-- **`EventForm`** (`src/components/dashboard/EventForm.tsx`) — Create/edit form for events. Fields: name, slug (auto-generated from name unless manually edited), theme color (via `ColorPicker`), logo upload, status (edit mode only). Logo uploads to Supabase Storage bucket `event-logos`. Detects duplicate slug (error code `23505`). Detects duplicate event per admin.
-- **`EventSection`** (`src/components/dashboard/EventSection.tsx`) — Toggles between `EventDetails` (view) and `EventForm` (edit).
-- **`EventDetails`** (`src/components/dashboard/EventDetails.tsx`) — Displays event card with colored top bar, logo or initials avatar, name, slug, status badge, theme color swatch, creation date, and edit button.
-- **`DashboardTabs`** (`src/components/dashboard/DashboardTabs.tsx`) — Tab navigation bar. Tabs: Event, Participants, Groups, Actions, Score, Leaderboards. Shows count badges for participants, groups, and actions.
+- **`EventForm`** (`src/components/dashboard/EventForm.tsx`) - Create/edit form for events. Fields: name, slug (auto-generated from name unless manually edited), theme color (via `ColorPicker`), logo upload, status (edit mode only). Logo uploads to Supabase Storage bucket `event-logos`. Detects duplicate slug (error code `23505`). Detects duplicate event per admin.
+- **`EventSection`** (`src/components/dashboard/EventSection.tsx`) - Toggles between `EventDetails` (view) and `EventForm` (edit).
+- **`EventDetails`** (`src/components/dashboard/EventDetails.tsx`) - Displays event card with colored top bar, logo or initials avatar, name, slug, status badge, theme color swatch, creation date, and edit button.
+- **`DashboardTabs`** (`src/components/dashboard/DashboardTabs.tsx`) - Tab navigation bar. Tabs: Event, Participants, Groups, Actions, Score, Leaderboards. Shows count badges for participants, groups, and actions.
 
 ### UI Components (all created in Phase 1)
-- **`Button`** — Variants: primary, secondary, outline, ghost, danger. Sizes: sm, md, lg. Loading state with spinner.
-- **`Input`** — Labeled input with optional error text. Forwarded ref.
-- **`Card`** — Bordered container with shadow. Forwarded ref.
-- **`Modal`** — Portal-rendered dialog. Backdrop click and Escape key to close. Body scroll lock.
-- **`Badge`** — Colored label with hex color background at 20% opacity.
-- **`ColorPicker`** — 8 preset colors + custom hex input.
-- **`EmptyState`** — Dashed border container with icon, title, description, and optional action.
+- **`Button`** - Variants: primary, secondary, outline, ghost, danger. Sizes: sm, md, lg. Loading state with spinner.
+- **`Input`** - Labeled input with optional error text. Forwarded ref.
+- **`Card`** - Bordered container with shadow. Forwarded ref.
+- **`Modal`** - Portal-rendered dialog. Backdrop click and Escape key to close. Body scroll lock.
+- **`Badge`** - Colored label with hex color background at 20% opacity.
+- **`ColorPicker`** - 8 preset colors + custom hex input.
+- **`EmptyState`** - Dashed border container with icon, title, description, and optional action.
 
 ### Utilities
-- **`supabase.ts`** (`src/lib/supabase.ts`) — Initializes Supabase client from environment variables.
-- **`utils.ts`** (`src/lib/utils.ts`) — `slugify()` for URL-safe slug generation. `cn()` for conditional class name joining.
+- **`supabase.ts`** (`src/lib/supabase.ts`) - Initializes Supabase client from environment variables.
+- **`utils.ts`** (`src/lib/utils.ts`) - `slugify()` for URL-safe slug generation. `cn()` for conditional class name joining.
 
 ## APIs / Supabase Queries
 

@@ -9,12 +9,12 @@ import type { ScanMode } from '@/types'
 
 interface ScanModeModalProps {
   isOpen: boolean
-  /** The mode currently in effect — preselected when the modal opens. */
+  /** The mode currently in effect - preselected when the modal opens. */
   value: ScanMode
   /** Real deck sizes from QrCardGenerator, so these match what actually prints. */
   cardCounts: CardCounts
   onCancel: () => void
-  /** Confirmed choice — the caller applies it and then reveals the cards. */
+  /** Confirmed choice - the caller applies it and then reveals the cards. */
   onConfirm: (mode: ScanMode) => void
 }
 
@@ -37,7 +37,7 @@ const OPTIONS: {
     icon: ScanLine,
     title: 'סריקה כפולה',
     description: 'כרטיס נפרד לכל משתתף ולכל משימה.',
-    scannerNote: 'בפעילות: סורקים שני כרטיסים — הנקודות נזקפות אחרי השני.',
+    scannerNote: 'בפעילות: סורקים שני כרטיסים - הנקודות נזקפות אחרי השני.',
   },
 ]
 
@@ -98,7 +98,7 @@ export function ScanModeModal({
         </div>
 
         <p className="text-xs text-muted">
-          הסורק קורא ממילא את שני סוגי הכרטיסים, אז אפשר לשנות בהמשך ולהדפיס מחדש —
+          הסורק קורא ממילא את שני סוגי הכרטיסים, אז אפשר לשנות בהמשך ולהדפיס מחדש -
           וכרטיסים שכבר הודפסו ימשיכו לעבוד.
         </p>
 

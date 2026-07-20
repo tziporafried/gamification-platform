@@ -128,7 +128,7 @@ export const ParticipantRow = memo(function ParticipantRow({
               hidden={editingName || !isNameTruncated}
               className="min-w-0 flex-1"
             >
-              {/* Real button when idle — see GroupCard for the same fix. */}
+              {/* Real button when idle - see GroupCard for the same fix. */}
               <div className="flex min-w-0 flex-1 items-center self-stretch cursor-text">
                 {editingName ? (
                   <input

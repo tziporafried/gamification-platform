@@ -12,7 +12,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-/** Single task-card hue — palette secondary turquoise */
+/** Single task-card hue - palette secondary turquoise */
 export const ACTION_CARD_GRADIENT = 'gradient-action-card'
 
 const ACTION_ICONS: LucideIcon[] = [
@@ -48,7 +48,7 @@ export function getActionIconMotion(actionId: string) {
   }
 }
 
-/** Per-card horizontal placement — left edge, small px jitter, slight outward clip */
+/** Per-card horizontal placement - left edge, small px jitter, slight outward clip */
 export function getActionIconPlacement(actionId: string) {
   let hash = 0
   for (let i = 0; i < actionId.length; i++) {

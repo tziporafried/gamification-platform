@@ -10,14 +10,14 @@ export default {
         sans: ['Heebo', 'sans-serif'],
       },
       colors: {
-        // Design system — semantic tokens (see src/styles/design-tokens.css)
+        // Design system - semantic tokens (see src/styles/design-tokens.css)
         // Note: legacy `surface` key below retains #F8F7FC; use --color-surface / bg-surface-elevated until migrated.
         background: 'var(--color-background)',
         foreground: 'var(--color-foreground)',
         muted: 'var(--color-muted)',
         border: {
           DEFAULT: 'var(--color-border)',
-          // 3:1 against every surface — for control boundaries (1.4.11).
+          // 3:1 against every surface - for control boundaries (1.4.11).
           strong: 'var(--color-border-strong)',
         },
         'surface-elevated': 'var(--color-surface-elevated)',

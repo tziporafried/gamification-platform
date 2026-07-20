@@ -13,7 +13,7 @@ interface VideoProgressTrackProps {
   insight?: { kind: 'drop' | 'positive'; text: string } | null
   unavailable?: boolean
   unavailableNote?: string
-  /** Base for relative % — typically video starters */
+  /** Base for relative % - typically video starters */
   baseUsers?: number
   startedUsers?: number
   completedUsers?: number
@@ -58,7 +58,7 @@ export function buildVideoDropoffSlices(params: {
     ].filter((s) => s.value > 0)
   }
 
-  // Cumulative — clamp so each stage ≤ previous (GA sampling can break order)
+  // Cumulative - clamp so each stage ≤ previous (GA sampling can break order)
   let p75 = params.reached75
   let p50 = params.reached50
   let p25 = params.reached25

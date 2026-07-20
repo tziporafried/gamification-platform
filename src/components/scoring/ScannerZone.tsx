@@ -4,7 +4,7 @@ import { Check, Loader2 } from 'lucide-react'
 import type { AccentRgb } from '@/lib/accentColor'
 import { rgba } from '@/lib/accentColor'
 
-// Deterministic — no Math.random on render
+// Deterministic - no Math.random on render
 const PARTICLES = Array.from({ length: 22 }, (_, i) => ({
   left:  ((i * 7.31) % 80) + 10,
   top:   ((i * 11.7) % 80) + 10,
@@ -30,7 +30,7 @@ interface Props {
 
 export function ScannerZone({ successFlash, processing = false, accent }: Props) {
     const a = accent
-    const ac = `rgba(${a.r},${a.g},${a.b}`  // partial rgba — append ,opacity)
+    const ac = `rgba(${a.r},${a.g},${a.b}`  // partial rgba - append ,opacity)
 
     const expandingRings = useMemo(() => [
       { delay: 0.00, size: 700,  color: 'rgba(34,197,94,0.35)' },

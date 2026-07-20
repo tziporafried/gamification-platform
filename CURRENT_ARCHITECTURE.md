@@ -388,13 +388,13 @@ The dashboard is a single page with 6 tabs, each rendering a different feature c
 
 All in `src/components/ui/`. These are stateless (or internally-stated) presentational components with no Supabase dependencies:
 
-- **`Button`** — 5 variants (primary, secondary, outline, ghost, danger), 3 sizes, loading spinner
-- **`Input`** — Labeled input with error state, forwarded ref
-- **`Card`** — Bordered container, forwarded ref
-- **`Modal`** — Portal-rendered, Escape to close, backdrop click to close, body scroll lock
-- **`Badge`** — Colored pill with semi-transparent background
-- **`ColorPicker`** — 8 preset colors + custom hex input
-- **`EmptyState`** — Centered placeholder with icon, title, description, action
+- **`Button`** - 5 variants (primary, secondary, outline, ghost, danger), 3 sizes, loading spinner
+- **`Input`** - Labeled input with error state, forwarded ref
+- **`Card`** - Bordered container, forwarded ref
+- **`Modal`** - Portal-rendered, Escape to close, backdrop click to close, body scroll lock
+- **`Badge`** - Colored pill with semi-transparent background
+- **`ColorPicker`** - 8 preset colors + custom hex input
+- **`EmptyState`** - Centered placeholder with icon, title, description, action
 
 ## Key Hooks
 
@@ -412,11 +412,11 @@ All in `src/components/ui/`. These are stateless (or internally-stated) presenta
 | `get_group_leaderboard()` | None | `(group_id, group_name, group_color, total_points)[]` | SECURITY INVOKER | Ranked group leaderboard. Resolves event via `auth.uid()`. |
 
 Both functions:
-- Accept no event_id parameter — they determine the admin's event via `WHERE owner_admin_id = auth.uid()`.
+- Accept no event_id parameter - they determine the admin's event via `WHERE owner_admin_id = auth.uid()`.
 - Use `SECURITY INVOKER` to keep RLS active.
 - Are marked `STABLE` (no side effects, safe for read replicas).
 - Return empty result set if no event exists for the calling user.
-- Compute totals live from `point_transactions` — no stored/cached scores.
+- Compute totals live from `point_transactions` - no stored/cached scores.
 
 ## RLS Policies
 

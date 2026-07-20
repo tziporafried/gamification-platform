@@ -1,4 +1,4 @@
--- Migration 064: Bookings board — optional scanner, admin reset event scans
+-- Migration 064: Bookings board - optional scanner, admin reset event scans
 --
 -- 1) Allow scanner_bookings without a physical scanner (calendar / game bookings)
 -- 2) Super-admin RPC to wipe runtime scans/rewards for a linked game event

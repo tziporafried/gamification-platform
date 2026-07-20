@@ -548,7 +548,7 @@
   flex-direction: column;
   justify-content: flex-start;
   overflow: visible;
-  /* Tight to banner top — trophy/badge hang via overflow + panel clip-path */
+  /* Tight to banner top - trophy/badge hang via overflow + panel clip-path */
   padding: 12px 0 12px;
   box-sizing: border-box;
   width: 100%;
@@ -1365,7 +1365,7 @@
 @keyframes kiosk-rayspin { to { transform:rotate(360deg); } }
 @keyframes kiosk-medalSpin { 0% { transform:rotateY(0deg); } 100% { transform:rotateY(360deg); } }
 
-/* Center column — fixed-gap stack */
+/* Center column - fixed-gap stack */
 .kiosk-centerStack {
   flex: 1;
   display: flex;
@@ -1383,7 +1383,7 @@
   max-width: 620px;
 }
 
-/* Scanner — shrinks when vertical space is tight */
+/* Scanner - shrinks when vertical space is tight */
 .kiosk-scannerSlot {
   flex: 1 1 0;
   min-height: 0;
@@ -1405,7 +1405,7 @@
   aspect-ratio: 1 / 1;
   container-type: inline-size;
 }
-/* Inner scanner visuals — proportional to frame (460px reference) */
+/* Inner scanner visuals - proportional to frame (460px reference) */
 .kiosk-scannerBorderOuter { border-radius: 9.6cqw; }
 .kiosk-scannerBorderInner { border-radius: 8.7cqw; }
 .kiosk-scannerParticipantCard {

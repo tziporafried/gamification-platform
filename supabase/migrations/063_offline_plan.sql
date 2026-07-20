@@ -1,6 +1,6 @@
 -- Migration 063: add the 'offline' plan.
 --
--- Same product as 'full' — same 70-participant cap, same live scanning — the
+-- Same product as 'full' - same 70-participant cap, same live scanning - the
 -- only difference is delivery: the game is exported to a self-contained file and
 -- handed to the customer, so it runs with no network at the venue. There is no
 -- self-service download; a super admin sends the file after a plan-offline
@@ -10,7 +10,7 @@
 --
 -- NOTE: both functions below re-declare `SET search_path = public, pg_temp`.
 -- Migration 062 pinned it with ALTER FUNCTION, but CREATE OR REPLACE rewrites a
--- function's settings wholesale — omitting the clause here would silently strip
+-- function's settings wholesale - omitting the clause here would silently strip
 -- that hardening off these two SECURITY DEFINER functions.
 
 -- ─── 1. Allow the new value ──────────────────────────────────────────────────
@@ -40,7 +40,7 @@ BEGIN
     RAISE EXCEPTION 'Event not found';
   END IF;
 
-  -- Template draft events are admin sandboxes — no plan limits
+  -- Template draft events are admin sandboxes - no plan limits
   IF EXISTS (
     SELECT 1 FROM activity_templates WHERE draft_event_id = NEW.event_id
   ) THEN
@@ -70,7 +70,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- free (trial) plan: no entity insert limits — scan quota is enforced separately
+  -- free (trial) plan: no entity insert limits - scan quota is enforced separately
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;

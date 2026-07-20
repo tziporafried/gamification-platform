@@ -1,10 +1,10 @@
 /**
  * Design Token System
  *
- * Layer 1 — Primitives: exact approved palette values (single source of truth)
- * Layer 2 — Semantics: role-based tokens mapped only to approved palette values
+ * Layer 1 - Primitives: exact approved palette values (single source of truth)
+ * Layer 2 - Semantics: role-based tokens mapped only to approved palette values
  *
- * Do not reference primitives directly in components — use semantic tokens.
+ * Do not reference primitives directly in components - use semantic tokens.
  */
 
 :root {
@@ -56,23 +56,23 @@
    *
    * The palette above is tuned for fills, borders and decoration, where it
    * works. As *text or icon* colour on our surfaces most of it lands between
-   * 1.65:1 and 3.7:1 — well under the 4.5:1 that 1.4.3 requires.
+   * 1.65:1 and 3.7:1 - well under the 4.5:1 that 1.4.3 requires.
    *
    * These are the same hues darkened (hue and saturation preserved) to the
-   * lightest value that clears 4.5:1 against all three surfaces —
+   * lightest value that clears 4.5:1 against all three surfaces -
    * background/surface #FFF8F3, surface-elevated #FFF1EC and modal #FFFFFF.
    *
    * Use `--color-*-text` whenever the colour carries text or a meaningful
    * icon. Keep the plain token for fills, bars, dots and other decoration.
    */
-  --color-primary-text: #D42F00;   /* from #D83000 — 4.39:1 on surface-elevated */
-  --color-success-text: #21803B;   /* from #45CF6B — was 1.92:1 */
-  --color-warning-text: #916900;   /* from #FFB800 — was 1.65:1 */
-  --color-danger-text: #E10000;    /* from #FF4D4D — was 3.11:1 */
-  --color-secondary-text: #007D7D; /* from #009090 — was 3.70:1 */
-  --color-tertiary-text: #A55E00;  /* from #FC9000 — was 2.19:1 */
+  --color-primary-text: #D42F00;   /* from #D83000 - 4.39:1 on surface-elevated */
+  --color-success-text: #21803B;   /* from #45CF6B - was 1.92:1 */
+  --color-warning-text: #916900;   /* from #FFB800 - was 1.65:1 */
+  --color-danger-text: #E10000;    /* from #FF4D4D - was 3.11:1 */
+  --color-secondary-text: #007D7D; /* from #009090 - was 3.70:1 */
+  --color-tertiary-text: #A55E00;  /* from #FC9000 - was 2.19:1 */
   --color-accent-text: #A55E00;    /* accent aliases tertiary */
-  --color-primary-accent-text: #CD3B03; /* from #FC6024 — was 2.92:1 */
+  --color-primary-accent-text: #CD3B03; /* from #FC6024 - was 2.92:1 */
 
   /* muted cleared 4.5:1 on #FFF8F3 but not on #FFF1EC (4.33:1) */
   --color-muted: #7A6D67;
@@ -92,7 +92,7 @@
   --color-border-strong: #B5816C;
 
   /*
-   * Page background — warm cream base; corner glows via AtmosphericBackground orbs
+   * Page background - warm cream base; corner glows via AtmosphericBackground orbs
    */
   --gradient-background:
     radial-gradient(ellipse 105% 85% at 82% -4%, color-mix(in srgb, var(--palette-brand-accent) 20%, var(--palette-surface-elevated)) 0%, transparent 66%),
@@ -106,18 +106,18 @@
   --atmosphere-orb-bottom-right: color-mix(in srgb, var(--palette-secondary) 22%, transparent);
   --atmosphere-orb-bottom-teal-wash: color-mix(in srgb, var(--palette-secondary) 9%, transparent);
 
-  /* Wizard step card — glowing orb accents */
+  /* Wizard step card - glowing orb accents */
   --gradient-wizard-panel-orb-primary: color-mix(in srgb, var(--palette-brand-accent) 42%, transparent);
   --gradient-wizard-panel-orb-secondary: color-mix(in srgb, var(--palette-warning) 36%, transparent);
 
-  /* Wizard chrome spacing — gap around the step panel + fixed footer clearance */
+  /* Wizard chrome spacing - gap around the step panel + fixed footer clearance */
   --wizard-chrome-gap-top: 0.5rem;
   --wizard-chrome-gap-bottom: 0.85rem;
   --wizard-footer-bar-height: 4.75rem;
   --wizard-footer-height: calc(var(--wizard-footer-bar-height) + var(--wizard-chrome-gap-bottom));
 
   /*
-   * Design review required — no approved palette value yet:
+   * Design review required - no approved palette value yet:
    *
    * --color-primary-active
    * --color-secondary-hover

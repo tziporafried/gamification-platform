@@ -19,7 +19,7 @@ interface SpinnerProps {
 export function Spinner({ size = 'md', className, label = 'טוען…' }: SpinnerProps) {
   return (
     <div
-      // The spinner was purely visual — screen reader users got silence during
+      // The spinner was purely visual - screen reader users got silence during
       // every load. role="status" announces the label politely (WCAG 4.1.3).
       role={label ? 'status' : undefined}
       className={cn(

@@ -237,7 +237,7 @@ export const ActionRow = memo(function ActionRow({
         />
 
         <div className="relative z-10 flex flex-col gap-2 py-2 pl-9 pr-3">
-          {/* A real button when idle — the old role="button" tabIndex={-1}
+          {/* A real button when idle - the old role="button" tabIndex={-1}
               wrapper announced a button that keyboard users could not reach.
               Mirrors the points field just below. */}
           <div className="flex min-w-0 items-start">

@@ -1,11 +1,11 @@
 /**
- * Vercel Routing Middleware — runs at the edge before any static file is served.
+ * Vercel Routing Middleware - runs at the edge before any static file is served.
  *
  * Two jobs:
  *   1. Reject self-identifying AI crawlers with 403.
  *   2. Best-effort per-IP rate limiting on document requests.
  *
- * IMPORTANT — what this is and is not:
+ * IMPORTANT - what this is and is not:
  *
  * User-Agent is a client-supplied string and is trivially forged. Everything
  * here only stops crawlers that honestly announce themselves, which the major
@@ -65,7 +65,7 @@ const RATE_LIMIT_MAX_REQUESTS = 60
  * Per-instance request counters.
  *
  * This is intentionally weak. Edge instances are ephemeral, per-region and not
- * shared, so a client spread across regions — or hitting a cold instance — gets
+ * shared, so a client spread across regions - or hitting a cold instance - gets
  * a fresh budget. It catches naive single-source hammering and nothing more.
  * Durable, trustworthy rate limiting has to come from Vercel WAF; see
  * SECURITY_SETUP.md.
@@ -102,7 +102,7 @@ export default function middleware(request: Request): Response | undefined {
   const blockedAgent = BLOCKED_AI_AGENTS.find((agent) => normalizedAgent.includes(agent))
 
   if (blockedAgent) {
-    // UA and path only — never log headers, cookies or tokens.
+    // UA and path only - never log headers, cookies or tokens.
     console.log(
       JSON.stringify({ event: 'ai_agent_blocked', agent: blockedAgent, path: pathname }),
     )

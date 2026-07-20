@@ -8,7 +8,7 @@ export function containsHebrew(text: string): boolean {
   return HEBREW_RE.test(text)
 }
 
-/** JSON QR should start with `{` — Hebrew layout scrambles braces and letters. */
+/** JSON QR should start with `{` - Hebrew layout scrambles braces and letters. */
 export function looksLikeHebrewLayoutScan(text: string): boolean {
   if (containsHebrew(text)) return true
   const t = text.trim()
@@ -39,7 +39,7 @@ export function layoutHintFromKeyEvent(e: KeyboardEvent): KeyboardLayout {
   return 'unknown'
 }
 
-/** Best-effort layout detection — reliable in Chromium; unknown in Safari/Firefox. */
+/** Best-effort layout detection - reliable in Chromium; unknown in Safari/Firefox. */
 export async function detectKeyboardLayout(): Promise<KeyboardLayout> {
   try {
     const keyboard = (navigator as NavigatorWithKeyboard).keyboard

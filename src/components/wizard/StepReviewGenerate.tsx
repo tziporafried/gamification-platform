@@ -59,7 +59,7 @@ export function StepReviewGenerate({
   const [cardsGenerated, setCardsGenerated] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
-  // Print-time preference only — nothing persists it, because the scanner reads
+  // Print-time preference only - nothing persists it, because the scanner reads
   // both kinds of card and no other screen branches on the choice.
   const [scanMode, setScanMode] = useState<ScanMode>('combined')
   const [scanModeOpen, setScanModeOpen] = useState(false)
@@ -79,7 +79,7 @@ export function StepReviewGenerate({
 
   /** Confirmed in the modal: take the mode, then reveal the cards. */
   const handleScanModeConfirm = useCallback((next: ScanMode) => {
-    // Safe to set and generate together — QrCardGenerator derives its sheets
+    // Safe to set and generate together - QrCardGenerator derives its sheets
     // from the prop rather than snapshotting them on the generate call.
     setScanMode(next)
     setScanModeOpen(false)
@@ -148,7 +148,7 @@ export function StepReviewGenerate({
       <WizardStepWrapper
         title={isTemplate ? 'סיכום התבנית' : 'מוכנים לצאת לדרך?'}
         subtitle={isTemplate
-          ? 'השינויים נשמרים אוטומטית — בדקו שהכל נראה טוב'
+          ? 'השינויים נשמרים אוטומטית - בדקו שהכל נראה טוב'
           : 'עברו על הסיכום האחרון. אם הכול נראה תקין, אפשר להתחיל את המשחק ולהזמין את המשתתפים.'}
         currentStep={6}
         canAdvance={ready && !saving}
@@ -231,7 +231,7 @@ export function StepReviewGenerate({
                     />
                   </ReadyCelebrationBanner>
                 </div>
-                {/* Keep one QrCardGenerator instance — remounting would reset generated/print UI */}
+                {/* Keep one QrCardGenerator instance - remounting would reset generated/print UI */}
                 <ScrollContainer className="flex-1 px-0" stableGutter={false}>
                   <QrCardGenerator
                     event={event}

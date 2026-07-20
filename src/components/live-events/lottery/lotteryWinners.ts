@@ -2,7 +2,7 @@ import type { LotteryWinnerRecord } from '../types'
 
 const storageKey = (eventId: string) => `lottery-winners:${eventId}`
 
-/** Persisted previous lottery winners — ready for eligibility filtering later. */
+/** Persisted previous lottery winners - ready for eligibility filtering later. */
 export function getLotteryWinners(eventId: string): LotteryWinnerRecord[] {
   try {
     const raw = localStorage.getItem(storageKey(eventId))

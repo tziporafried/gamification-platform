@@ -8,7 +8,7 @@ import { parseQrPayload } from '@/lib/qrPayload'
 export const SPLIT_SCAN_TIMEOUT_MS = 30_000
 
 export const SCAN_SEQUENCE_MESSAGES = {
-  actionBeforeParticipant: 'סרקתם כרטיס משימה בלבד — יש לסרוק קודם את כרטיס המשתתף.',
+  actionBeforeParticipant: 'סרקתם כרטיס משימה בלבד - יש לסרוק קודם את כרטיס המשתתף.',
 } as const
 
 /** A participant card waiting on its action card. */
@@ -19,7 +19,7 @@ export interface PendingParticipant {
 }
 
 export type ScanOutcome =
-  /** Both codes known — score it. */
+  /** Both codes known - score it. */
   | { kind: 'pair'; participantCode: string; actionCode: string; pending: null }
   /** Participant card accepted; waiting on the action card. */
   | { kind: 'armed'; pending: PendingParticipant }
@@ -43,7 +43,7 @@ export function expirePending(
  * action scanned on its own is refused rather than armed, so the operator is
  * told immediately instead of discovering the problem 30 seconds later.
  *
- * The event's configured scan mode deliberately plays no part here — it decides
+ * The event's configured scan mode deliberately plays no part here - it decides
  * which cards get printed, not what the scanner is willing to read, so a deck
  * printed either way (or a mix of both) always works.
  *
@@ -65,7 +65,7 @@ export function resolveScan({
 
   const parsed = parseQrPayload(raw)
   if (!parsed.ok) {
-    // An unreadable read is a misfire, not an intent to cancel — the armed
+    // An unreadable read is a misfire, not an intent to cancel - the armed
     // participant stays armed so the operator can just rescan the action card.
     return { kind: 'error', message: parsed.error, pending: live }
   }
@@ -82,7 +82,7 @@ export function resolveScan({
         pending: null,
       }
 
-    // Rescanning a participant re-arms from scratch rather than erroring —
+    // Rescanning a participant re-arms from scratch rather than erroring -
     // that is how an operator corrects picking up the wrong card.
     case 'participant':
       return {

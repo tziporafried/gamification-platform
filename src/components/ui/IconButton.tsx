@@ -9,7 +9,7 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /**
    * Required: the button renders an icon only, so without this it reaches
    * screen readers as an unnamed "button" (WCAG 4.1.2). `title` alone is not
-   * enough — it is unreliable on touch and with several screen readers.
+   * enough - it is unreliable on touch and with several screen readers.
    */
   'aria-label': string
 }

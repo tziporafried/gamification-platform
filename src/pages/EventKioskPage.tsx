@@ -87,7 +87,7 @@ function formatActivityRelativeTime(createdAt: string, reference = new Date()): 
 }
 
 // Generates the decorative QR matrix shown in the scanner frame.
-// Deterministic LCG seeded to 41 — same result every render.
+// Deterministic LCG seeded to 41 - same result every render.
 function makeQrMatrix(n: number, seed: number): number[][] {
   let s = seed >>> 0
   const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff }
@@ -223,7 +223,7 @@ function toTopPrizeRow(
   }
 }
 
-/** Next active rewards someone can still earn — skips tiers fully claimed. */
+/** Next active rewards someone can still earn - skips tiers fully claimed. */
 function pickNextClaimableTopPrizes(
   rewards: ClaimableRewardDef[],
   participants: { id: string; groupIds: string[] }[],
@@ -248,7 +248,7 @@ function pickNextClaimableTopPrizes(
   return result
 }
 
-/** Each participant is assigned to exactly one prize — the lowest tier they still pursue. */
+/** Each participant is assigned to exactly one prize - the lowest tier they still pursue. */
 function buildParticipantChaseAssignments(
   prizes: TopPrizeRow[],
   participants: PrizeChaseParticipant[],
@@ -318,7 +318,7 @@ const PRIZE_CHASE_NUDGES_LEAD = ['כמעט שם!', 'עוד נקודה!', 'הפר
 const PRIZE_CHASE_NUDGES_MID = ['לא עוצרים!', 'עוד דחיפה!', 'בדרך לפרס!'] as const
 const PRIZE_CHASE_NUDGES_CHASE = ['במרוץ לפרס!', 'כל נקודה קרבה!', 'זה אפשרי!'] as const
 
-/** Teal + warm yellow — lighter = farther, deeper + more gold = closer. */
+/** Teal + warm yellow - lighter = farther, deeper + more gold = closer. */
 const PRIZE_CHASE_ACCENTS = {
   chase: '#8FCEC8',
   mid: '#58B5AD',
@@ -883,7 +883,7 @@ function AwaitingSecondScanOverlay({
   seconds,
   progress,
 }: {
-  /** Null when the code matched no participant — greeting falls back to neutral. */
+  /** Null when the code matched no participant - greeting falls back to neutral. */
   participantName: string | null
   seconds: number
   progress: number
@@ -945,7 +945,7 @@ function AwaitingSecondScanOverlay({
         </span>
       </div>
 
-      {/* The two slots — participant filled, task still waiting */}
+      {/* The two slots - participant filled, task still waiting */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 6,
@@ -1019,7 +1019,7 @@ function ScannerFrame({
           {/* Dot grid texture */}
           <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle,rgba(255,147,102,0.09) 1.5px,transparent 1.6px)', backgroundSize: '26px 26px' }} />
 
-          {/* QR card — scales with scanner frame */}
+          {/* QR card - scales with scanner frame */}
           <div className="kiosk-wobble kiosk-scannerParticipantCard" style={{
             background: '#fff',
             boxShadow: '0 16px 40px rgba(171,53,0,0.18)',
@@ -1062,7 +1062,7 @@ function ScannerFrame({
             </div>
           )}
 
-          {/* Participant scanned — holding for their task card */}
+          {/* Participant scanned - holding for their task card */}
           {awaiting && !processing && !locked && (
             <AwaitingSecondScanOverlay
               participantName={awaitingName ?? null}
@@ -1071,7 +1071,7 @@ function ScannerFrame({
             />
           )}
 
-          {/* Locked overlay — scanning not included in this plan */}
+          {/* Locked overlay - scanning not included in this plan */}
           {locked && (
             <div style={{
               position: 'absolute', inset: 0, zIndex: 15,
@@ -1096,9 +1096,9 @@ function ScannerFrame({
   )
 }
 
-// ─── Inline manual-entry panel (independent plan — no scanner) ───────────────
+// ─── Inline manual-entry panel (independent plan - no scanner) ───────────────
 // The independent plan never scans, so instead of a locked scanner we surface the
-// manual-entry inputs directly — no button, styled to match the festive kiosk.
+// manual-entry inputs directly - no button, styled to match the festive kiosk.
 function KioskManualEntryPanel({
   eventId, submitting, onSubmit, catalog, availability, gameStarted,
 }: {
@@ -1117,7 +1117,7 @@ function KioskManualEntryPanel({
       maxWidth: '100%',
       flexShrink: 0,
     }}>
-      {/* Rotating conic glow ring — echoes the scanner frame */}
+      {/* Rotating conic glow ring - echoes the scanner frame */}
       <div className="kiosk-hueRing" style={{
         position: 'absolute', inset: '-7%', borderRadius: 34,
         background: 'conic-gradient(from 0deg,#FF9366,#F2B33C,#FFCB9A,#8FCFA0,#5FB3AA,#FF9366)',
@@ -1146,12 +1146,12 @@ function KioskManualEntryPanel({
             <div style={{ fontSize: 'clamp(20px, 2vw, 24px)', fontWeight: 900, color: '#2E221E' }}>הזנה ידנית</div>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#7D706A', lineHeight: 1.4 }}>
               {gameStarted
-                ? 'בחרו שחקן ומשימה — הנקודות נזקפות מיד'
+                ? 'בחרו שחקן ומשימה - הנקודות נזקפות מיד'
                 : 'בחרו את המשתתף הראשון כדי לפתוח את התחרות'}
             </div>
           </div>
 
-          {/* The inputs — always visible, no button to reveal them */}
+          {/* The inputs - always visible, no button to reveal them */}
           <ManualEntryForm
             eventId={eventId}
             accent={KIOSK_ACCENT}
@@ -1339,14 +1339,14 @@ function RewardCelebration({
         overflow: 'hidden', cursor: 'pointer',
       }}
     >
-      {/* Layer 1 — glow background */}
+      {/* Layer 1 - glow background */}
       <div style={{
         position: 'absolute', inset: 0,
         background: 'radial-gradient(circle at 50% 46%,rgba(255,236,190,0.94),rgba(255,248,200,0.75) 60%,rgba(255,220,160,0.85) 100%)',
         animation: reducedMotion ? 'none' : 'kiosk-glowPulse 2.4s ease-in-out infinite',
       }} />
 
-      {/* Layer 2 — rotating rays */}
+      {/* Layer 2 - rotating rays */}
       {!reducedMotion && (
         <div style={{
           position: 'absolute', top: '50%', left: '50%',
@@ -1360,7 +1360,7 @@ function RewardCelebration({
         }} />
       )}
 
-      {/* Layer 3 — confetti rain */}
+      {/* Layer 3 - confetti rain */}
       {!reducedMotion && CONFETTI_PARTICLES.map(p => (
         <div key={p.id} style={{
           position: 'absolute', top: -20,
@@ -1374,7 +1374,7 @@ function RewardCelebration({
         }} />
       ))}
 
-      {/* Layer 4 — coin burst from center */}
+      {/* Layer 4 - coin burst from center */}
       {!reducedMotion && (
         <div style={{ position: 'absolute', top: '50%', left: '50%', pointerEvents: 'none' }}>
           {COIN_PARTICLES.map(c => (
@@ -1389,7 +1389,7 @@ function RewardCelebration({
         </div>
       )}
 
-      {/* Layer 5 — center content */}
+      {/* Layer 5 - center content */}
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -1961,7 +1961,7 @@ function ActivityView({
       return
     }
 
-    // Data arrived after initial empty state — treat as baseline, not new scans.
+    // Data arrived after initial empty state - treat as baseline, not new scans.
     if (prev.size === 0 && currentIds.length > 0) {
       seedExistingRows(currentIds)
       return
@@ -3264,7 +3264,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const hasAwardedRewards = rewards.length > 0
   const hasConfiguredRewards = configuredRewardsCount > 0
 
-  // Recommended mission — prioritises time-window tasks while they are active
+  // Recommended mission - prioritises time-window tasks while they are active
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     const tick = () => setNow(new Date())
@@ -3406,7 +3406,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   }, [showNextReward, refetch])
 
   const logScoreSubmit = useCallback((source: 'qr_scan' | 'manual_entry', result: ScoreSubmitResult) => {
-    // Dev only — this prints participant name and code, which should not land in
+    // Dev only - this prints participant name and code, which should not land in
     // an operator's browser console on a shared kiosk machine.
     if (!import.meta.env.DEV) return
     console.log('[kiosk score submit]', {
@@ -3465,15 +3465,15 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     reset: resetScanSequence,
   } = useScanSequence({ onPair: handlePair, onError: handleScanError })
 
-  // Greet the waiting participant by name. Unknown codes still arm — the code
-  // is only validated on submit — so this stays null and the copy falls back.
+  // Greet the waiting participant by name. Unknown codes still arm - the code
+  // is only validated on submit - so this stays null and the copy falls back.
   const pendingParticipantName = useMemo(() => {
     if (!pendingScan) return null
     const match = catalog.participants.find((p) => p.externalId === pendingScan.participantCode)
     return match?.name ?? null
   }, [pendingScan, catalog.participants])
 
-  // Switching to manual entry (or hitting the trial wall) abandons the flow —
+  // Switching to manual entry (or hitting the trial wall) abandons the flow -
   // an armed participant must not survive to pair with a later action scan.
   useEffect(() => {
     if (showManual || trialLimitOpen) resetScanSequence()
@@ -3521,7 +3521,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
       ].join(','),
       display: 'flex', flexDirection: 'column',
     }}>
-      {/* Hidden scanner input — captures hardware scanner keystrokes */}
+      {/* Hidden scanner input - captures hardware scanner keystrokes */}
       <input ref={bind} className="sr-only" aria-hidden="true" tabIndex={-1} />
 
       {/* Animated gradient backdrop */}
@@ -3531,7 +3531,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
         backgroundSize: '320% 320%',
       }} />
 
-      {/* Festive top strip — full bleed */}
+      {/* Festive top strip - full bleed */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2,
         height: 6, background: 'linear-gradient(90deg,#FF9366,#FFB84D,#FFD68A,#8FCFA0,#5FB3AA)',
@@ -3545,7 +3545,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
         paddingBottom: 'clamp(20px, 2.8vh, 36px)',
       }}>
 
-      {/* Body — overflow visible so mission/prize icons can hang outside side banners */}
+      {/* Body - overflow visible so mission/prize icons can hang outside side banners */}
       <div style={{
         position: 'relative', zIndex: 1, flex: 1, display: 'flex',
         gap: 'clamp(10px, 1.0vw, 20px)',
@@ -3553,7 +3553,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
         overflow: 'visible', contain: 'layout',
       }}>
 
-        {/* RIGHT PANEL — orange:
+        {/* RIGHT PANEL - orange:
             clip bottom like rewards; allow mission icons to hang on top/sides */}
         <div
           data-kiosk-panel="missions"
@@ -3569,7 +3569,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
         }}>
           <GlowingStarsOrange />
 
-          {/* Recommended / active mission hero — tight to banner top; icons hang via overflow */}
+          {/* Recommended / active mission hero - tight to banner top; icons hang via overflow */}
           <div style={{
             marginBottom: 20,
             position: 'relative',
@@ -3608,7 +3608,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           </div>
         </div>
 
-        {/* CENTER — Scanner */}
+        {/* CENTER - Scanner */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '1.57 1 0', minHeight: 0, minWidth: 0, position: 'relative', overflow: 'hidden' }}>
           {/* Confetti dots */}
           <div className="kiosk-floatY-1" style={{ position: 'absolute', top: 40, right: 80, width: 16, height: 16, borderRadius: 5, background: '#F2B33C' }} />
@@ -3701,7 +3701,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
                           padding: '14px 32px', borderRadius: 999,
                           boxShadow: '0 8px 22px rgba(255,147,102,0.42)',
                         }}>
-                        ⌨️ הזנה ידנית — שחקן · משימה
+                        ⌨️ הזנה ידנית - שחקן · משימה
                       </button>
                     ) : (
                       <div style={{ fontSize: 15, fontWeight: 900, color: '#7D706A', marginTop: 8 }}>
@@ -3720,7 +3720,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
                             textDecoration: 'underline', textUnderlineOffset: 3,
                             background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                           }}>
-                          או בחרו הזנה ידנית — שחקן · משימה
+                          או בחרו הזנה ידנית - שחקן · משימה
                         </button>
                       )}
                       {!gameStarted && (
@@ -3735,7 +3735,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             )}
           </div>
 
-          {/* Scan-success overlay — covers center column */}
+          {/* Scan-success overlay - covers center column */}
           <ScanSuccessOverlay
             result={scanResult}
             onDismiss={() => {
@@ -3747,7 +3747,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           />
         </div>
 
-        {/* LEFT PANEL — teal / rewards:
+        {/* LEFT PANEL - teal / rewards:
             clip-path clips the bottom (like orange activity) while allowing
             trophy/badges to hang outside on top and sides */}
         <div
@@ -3764,7 +3764,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
         }}>
           <GlowingStarsTeal />
 
-          {/* Prize hero — chase cards + rotating prize (2/3 of panel height) */}
+          {/* Prize hero - chase cards + rotating prize (2/3 of panel height) */}
           {hasConfiguredRewards && topPrizes.length > 0 && (
             <div style={{
               position: 'relative', zIndex: 3, flex: '2 1 0', minHeight: 0, minWidth: 0,
@@ -3781,7 +3781,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             </div>
           )}
 
-          {/* Awarded rewards feed — clip at banner bottom like orange activity list */}
+          {/* Awarded rewards feed - clip at banner bottom like orange activity list */}
           <div style={{
             position: 'relative', zIndex: 1, flex: '1 1 0', minHeight: 0,
             display: 'flex', flexDirection: 'column',
@@ -3803,7 +3803,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
       </div>
       </div>
 
-      {/* Reward celebration — full-screen takeover, z-index 40 */}
+      {/* Reward celebration - full-screen takeover, z-index 40 */}
       <RewardCelebration
         win={rewardWin}
         onDismiss={showNextReward}

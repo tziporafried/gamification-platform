@@ -17,7 +17,7 @@ import { WIZARD_STEPS } from '@/types'
 
 const WIZARD_STEP_RE = /^\/events\/[^/]+\/step\/(\d+)/
 
-/** OAuth callback owns its query string — don't inject UTMs mid-handshake. */
+/** OAuth callback owns its query string - don't inject UTMs mid-handshake. */
 const SKIP_UTM_URL_PERSIST = /^\/auth\/callback\/?$/
 
 const COMPANY_EMAIL = 'ourgamify@gmail.com'
@@ -126,7 +126,7 @@ export function AnalyticsListener() {
           },
           { replace: true },
         )
-        // Still track this view — do not wait for a second effect (short sessions).
+        // Still track this view - do not wait for a second effect (short sessions).
         // page_path is pathname-only; dedupe absorbs the follow-up after replace.
       }
     }

@@ -47,7 +47,7 @@ export function InsightCards({ insights, loading }: InsightCardsProps) {
     return (
       <Card className="border-border/80 p-4">
         <p className="text-sm text-muted">
-          אין תובנות חריגות בטווח שנבחר — הנתונים נראים יציבים יחסית.
+          אין תובנות חריגות בטווח שנבחר - הנתונים נראים יציבים יחסית.
         </p>
       </Card>
     )

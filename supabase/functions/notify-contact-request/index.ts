@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     //
     // This endpoint runs with verify_jwt = false, so it is callable by anyone
     // with no credentials. Without a guard, replaying the same requestId sends
-    // an admin email on every call — unbounded mailbox flooding and Resend quota
+    // an admin email on every call - unbounded mailbox flooding and Resend quota
     // burn. Claiming via a conditional UPDATE (rather than select-then-update)
     // makes the check atomic, so concurrent calls cannot both win the race.
     const { data: request, error: reqError } = await supabase
@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
     if (!emailRes.ok) {
       const detail = await emailRes.text()
       console.error('Resend error', emailRes.status, detail)
-      // Release the claim so the notification is not lost — a genuine retry from
+      // Release the claim so the notification is not lost - a genuine retry from
       // the admin panel can send it. Replay abuse still costs the attacker a new
       // row, which is what the claim is there to enforce.
       await supabase

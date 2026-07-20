@@ -10,7 +10,7 @@ test('with no group targeting the combined deck is participants × actions', () 
   assert.deepEqual(counts, { combined: 6, split: 5 })
 })
 
-test('a group-restricted action only prints for members — not for everyone', () => {
+test('a group-restricted action only prints for members - not for everyone', () => {
   // The bug this replaced: a flat 3 × 2 would have claimed 6 cards.
   const counts = computeCardCounts(
     [p('g1'), p('g2'), p('g2')],
@@ -34,7 +34,7 @@ test('a participant sharing one of several groups still qualifies', () => {
 test('an action targeting a group nobody is in prints nothing', () => {
   const counts = computeCardCounts([p('g1'), p('g2')], [a('g9')])
   assert.equal(counts.combined, 0)
-  // It still gets its own card in the split deck — it is a real action.
+  // It still gets its own card in the split deck - it is a real action.
   assert.equal(counts.split, 3)
 })
 

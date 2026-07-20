@@ -3,7 +3,7 @@
 -- excludes them from every group-restricted action. Assign each ungrouped participant
 -- to ALL of their event's groups ("all groups"), the new default.
 --
--- Only participants with zero memberships are touched — intentional subsets are left
+-- Only participants with zero memberships are touched - intentional subsets are left
 -- untouched. Events with no groups (group_type 'none') produce no rows via the join.
 
 INSERT INTO public.participant_groups (participant_id, group_id)

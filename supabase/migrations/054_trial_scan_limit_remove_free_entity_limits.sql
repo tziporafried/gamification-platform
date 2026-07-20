@@ -19,7 +19,7 @@ BEGIN
     RAISE EXCEPTION 'Event not found';
   END IF;
 
-  -- Template draft events are admin sandboxes — no plan limits
+  -- Template draft events are admin sandboxes - no plan limits
   IF EXISTS (
     SELECT 1 FROM activity_templates WHERE draft_event_id = NEW.event_id
   ) THEN
@@ -49,7 +49,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- free (trial) plan: no entity insert limits — scan quota is enforced separately
+  -- free (trial) plan: no entity insert limits - scan quota is enforced separately
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -68,7 +68,7 @@ BEGIN
     RAISE EXCEPTION 'Event not found';
   END IF;
 
-  -- Only trial (free) events are capped — avoid locking paid/org events
+  -- Only trial (free) events are capped - avoid locking paid/org events
   IF v_plan IS DISTINCT FROM 'free' THEN
     RETURN NEW;
   END IF;

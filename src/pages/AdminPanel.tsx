@@ -388,7 +388,7 @@ export function AdminPanel() {
     setLoadingEventsFor(prev => { const next = new Set(prev); next.delete(userId); return next })
   }
 
-  // The offline plan has no self-service download — the file is built here and
+  // The offline plan has no self-service download - the file is built here and
   // sent to the customer by hand.
   async function downloadOfflineGame(requestId: string, eventId: string) {
     setOfflineExportError(null)
@@ -877,7 +877,7 @@ export function AdminPanel() {
             {deleteTarget?.display_name || deleteTarget?.email}?
           </p>
           <p className="text-muted">
-            מחיקה תגרום לכל המידע של הלקוח להימחק — כל האירועים שלו
+            מחיקה תגרום לכל המידע של הלקוח להימחק - כל האירועים שלו
             {deleteTarget && deleteTarget.event_count > 0 && <> ({deleteTarget.event_count})</>}, כולל
             המשתתפים, הקבוצות, המשימות, הניקוד והפרסים. לא ניתן לשחזר.
           </p>

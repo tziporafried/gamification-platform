@@ -4,7 +4,7 @@ import type { GamePack, GameState } from '@/lib/offline/types'
  * localStorage persistence for a running offline game.
  *
  * Every file:// page on a machine shares one storage origin (verified), so the
- * key MUST be namespaced by event id — otherwise two exported games on the same
+ * key MUST be namespaced by event id - otherwise two exported games on the same
  * computer would overwrite each other's scans.
  */
 
@@ -44,7 +44,7 @@ export function saveGameState(pack: GamePack, state: GameState): void {
   }
 }
 
-/** Clears saved progress — used by an explicit "reset game" action. */
+/** Clears saved progress - used by an explicit "reset game" action. */
 export function clearGameState(pack: GamePack): void {
   try {
     localStorage.removeItem(storageKeyFor(pack.event.id))

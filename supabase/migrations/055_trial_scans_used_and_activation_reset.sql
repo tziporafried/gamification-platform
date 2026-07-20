@@ -1,7 +1,7 @@
 -- Migration 055: Separate trial scan quota + one-time runtime reset on activation.
 --
--- 1) events.trial_scans_used — durable quota counter (survives deleting trial txs)
--- 2) events.trial_runtime_reset_at — idempotent flag for free → activated wipe
+-- 1) events.trial_scans_used - durable quota counter (survives deleting trial txs)
+-- 2) events.trial_runtime_reset_at - idempotent flag for free → activated wipe
 -- 3) check_trial_scan_limit uses trial_scans_used (+1 under FOR UPDATE), not COUNT(txs)
 -- 4) update_event_plan wipes runtime activity once when leaving free
 

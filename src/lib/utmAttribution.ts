@@ -18,7 +18,7 @@ export function sanitizeUtmValue(raw: string | null | undefined): string | undef
   return trimmed
 }
 
-/** Read only UTM params that exist in the query string — never invent defaults. */
+/** Read only UTM params that exist in the query string - never invent defaults. */
 export function readUtmFromSearch(search: string): UtmAttribution | null {
   const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
   const next: UtmAttribution = {}
@@ -33,7 +33,7 @@ export function readUtmFromSearch(search: string): UtmAttribution | null {
   return found ? next : null
 }
 
-/** Normalize persisted attribution — only keys with real values. */
+/** Normalize persisted attribution - only keys with real values. */
 export function normalizeUtmAttribution(raw: unknown): UtmAttribution {
   if (!raw || typeof raw !== 'object') return {}
   const parsed = raw as Record<string, unknown>
@@ -60,7 +60,7 @@ export function mergeUtmAttribution(
   return out
 }
 
-/** Event params to attach — omits absent UTM keys entirely. */
+/** Event params to attach - omits absent UTM keys entirely. */
 export function utmAttributionToParams(utm: UtmAttribution): Record<string, string> {
   const params: Record<string, string> = {}
   for (const key of UTM_PARAM_KEYS) {

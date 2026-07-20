@@ -80,7 +80,7 @@ export function PlansModal({
   const [formVisible, setFormVisible] = useState(false)
   const [currentPlan, setCurrentPlan] = useState<string | null>(null)
   const [eventName, setEventName] = useState<string | null>(null)
-  /** Single visual emphasis target — moves when the user picks another plan. */
+  /** Single visual emphasis target - moves when the user picks another plan. */
   const [emphasizedPlan, setEmphasizedPlan] = useState<Option>('full')
 
   const formSectionRef = useRef<HTMLDivElement>(null)
@@ -276,7 +276,7 @@ export function PlansModal({
             </OptionCard>
           </div>
 
-          {/* Full — recommended */}
+          {/* Full - recommended */}
           <div className="relative pt-3">
             <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2">
               <span className="rounded-full bg-primary px-3.5 py-1 text-xs font-semibold text-primary-foreground shadow-sm">
@@ -344,7 +344,7 @@ export function PlansModal({
             </OptionCard>
           </div>
 
-          {/* Offline — the full game, delivered as a file that needs no network */}
+          {/* Offline - the full game, delivered as a file that needs no network */}
           <div ref={focusPlan === 'offline' ? focusedCardRef : undefined}>
             <OptionCard
               featured={emphasizeOffline}
@@ -378,7 +378,7 @@ export function PlansModal({
                 </div>
                 <p className="mt-1.5 text-xs text-muted">עד 70 משתתפים · יום נוסף ₪15</p>
                 <p className="mt-2.5 text-xs leading-relaxed text-foreground/80">
-                  כל מה שיש במשחק המלא — גם במקום בלי אינטרנט.
+                  כל מה שיש במשחק המלא - גם במקום בלי אינטרנט.
                 </p>
               </div>
 
@@ -418,7 +418,7 @@ export function PlansModal({
             </OptionCard>
           </div>
 
-          {/* Organizations — CTA card */}
+          {/* Organizations - CTA card */}
           <OptionCard
             featured={emphasizeOrg}
             label="פתרון לארגונים"

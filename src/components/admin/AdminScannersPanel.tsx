@@ -64,7 +64,7 @@ const EVENT_PLAN_OPTIONS: { value: UserPlan; label: string }[] = [
 ]
 
 function eventPlanLabel(plan: string | undefined): string {
-  return EVENT_PLAN_OPTIONS.find((p) => p.value === plan)?.label ?? plan ?? '—'
+  return EVENT_PLAN_OPTIONS.find((p) => p.value === plan)?.label ?? plan ?? '-'
 }
 
 type EventOption = {
@@ -99,7 +99,7 @@ const SCANNER_COLORS = [
   'bg-danger/70',
 ]
 
-/** High-contrast family bar colors (inline styles — reliable on calendar overlays). */
+/** High-contrast family bar colors (inline styles - reliable on calendar overlays). */
 const FAMILY_BAR_PALETTE = [
   { bg: '#0f766e', text: '#ffffff' },
   { bg: '#1d4ed8', text: '#ffffff' },
@@ -673,7 +673,7 @@ export function AdminScannersPanel() {
     }
 
     if (paid <= 0) {
-      // Entire amount is debt / future income — keep on finance_entry_id, clear debt row.
+      // Entire amount is debt / future income - keep on finance_entry_id, clear debt row.
       const res = await upsertFinanceEntry({
         existingId: financeEntryId,
         entryType: 'future_income',
@@ -1228,7 +1228,7 @@ export function AdminScannersPanel() {
                   })}
                 </div>
 
-                {/* Continuous family bars — one lane per overlapping booking */}
+                {/* Continuous family bars - one lane per overlapping booking */}
                 {weekBars.length > 0 && (
                   <div
                     className="pointer-events-none absolute inset-x-0 px-0.5"
@@ -1349,7 +1349,7 @@ export function AdminScannersPanel() {
                             isSameDay(d, new Date()) && 'ring-1 ring-secondary/40',
                           )}
                           style={{ gridColumn: dayIdx + 1 }}
-                          title={occupied ? 'לחיצה לפרטי היום' : 'פנוי — לחיצה לפרטי היום'}
+                          title={occupied ? 'לחיצה לפרטי היום' : 'פנוי - לחיצה לפרטי היום'}
                           aria-label={`${format(d, 'd/M')}${occupied ? '' : ' פנוי'}`}
                         />
                       )
@@ -1406,7 +1406,7 @@ export function AdminScannersPanel() {
             </Button>
           </div>
           {selectedDayBookings.length === 0 ? (
-            <p className="text-sm text-muted">אין הזמנות ביום זה — כל הסורקים הפעילים פנויים.</p>
+            <p className="text-sm text-muted">אין הזמנות ביום זה - כל הסורקים הפעילים פנויים.</p>
           ) : (
             <div className="space-y-2">
               {selectedDayBookings.map((b) => (
@@ -1487,10 +1487,10 @@ export function AdminScannersPanel() {
               const base = PLAN_BASE_PRICES[pkg]
               const suffix =
                 base == null
-                  ? ' — מחיר לפי הסכם'
+                  ? ' - מחיר לפי הסכם'
                   : pkg === 'full' || pkg === 'offline'
-                    ? ` — מ-${formatPriceIls(base)} (+${formatPriceIls(EXTRA_DAY_PRICE)} ליום נוסף)`
-                    : ` — ${formatPriceIls(base)}`
+                    ? ` - מ-${formatPriceIls(base)} (+${formatPriceIls(EXTRA_DAY_PRICE)} ליום נוסף)`
+                    : ` - ${formatPriceIls(base)}`
               return (
                 <option key={pkg} value={pkg}>
                   {BOOKING_PACKAGE_LABELS[pkg]}
@@ -1705,7 +1705,7 @@ export function AdminScannersPanel() {
             {activeScanners.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
-                {s.status === 'maintenance' ? ' — תחזוקה' : ''}
+                {s.status === 'maintenance' ? ' - תחזוקה' : ''}
               </option>
             ))}
           </Select>
@@ -1941,7 +1941,7 @@ function BookingDetailCard({
     { label: 'חבילה', value: packageLabel },
     {
       label: 'מחיר',
-      value: booking.amount != null ? formatPriceIls(Number(booking.amount)) : '—',
+      value: booking.amount != null ? formatPriceIls(Number(booking.amount)) : '-',
     },
     {
       label: 'תשלום',

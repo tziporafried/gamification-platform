@@ -8,7 +8,7 @@ type WizardDeleteButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'ch
   /** 'card' = colored card top-left; 'row' = inline in list rows */
   variant?: 'card' | 'row'
   containerClassName?: string
-  /** Fixed 28×28px hit target — same reserved size in every row */
+  /** Fixed 28×28px hit target - same reserved size in every row */
   fixedSize?: boolean
 }
 

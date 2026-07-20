@@ -9,7 +9,7 @@ import { fileURLToPath, URL } from 'node:url'
  *
  * The template is the output of `npm run build:offline`. If it hasn't been built
  * yet (e.g. a fresh dev server), this resolves to an empty string and the export
- * button reports that the player needs building — dev never crashes over it.
+ * button reports that the player needs building - dev never crashes over it.
  */
 function offlinePlayerTemplate(): Plugin {
   const virtualId = 'virtual:offline-player-template'
@@ -30,7 +30,7 @@ function offlinePlayerTemplate(): Plugin {
       try {
         template = readFileSync(templatePath, 'utf8')
       } catch {
-        this.warn('Offline player template not found — run `npm run build:offline`.')
+        this.warn('Offline player template not found - run `npm run build:offline`.')
       }
       return `export default ${JSON.stringify(template)}`
     },

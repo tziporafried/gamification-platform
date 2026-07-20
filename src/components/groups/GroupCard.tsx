@@ -149,7 +149,7 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
             hidden={editing || !isNameTruncated}
             className="w-full"
           >
-            {/* Real button when idle — role="button" with tabIndex={-1}
+            {/* Real button when idle - role="button" with tabIndex={-1}
                 announced a control keyboard users could not reach. */}
             <div className="flex h-9 w-full min-w-0 items-center justify-center">
               {editing ? (

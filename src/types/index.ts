@@ -121,10 +121,10 @@ export interface TemplateImportResult {
 }
 
 /**
- * Which QR deck gets printed. A print-time UI preference only — it is not
+ * Which QR deck gets printed. A print-time UI preference only - it is not
  * persisted, because the scanner reads both kinds of card regardless.
- * - `combined`: one QR holds participant + action — a single scan scores.
- * - `split`: separate participant and action QRs — participant first, then action.
+ * - `combined`: one QR holds participant + action - a single scan scores.
+ * - `split`: separate participant and action QRs - participant first, then action.
  */
 export type ScanMode = 'combined' | 'split';
 

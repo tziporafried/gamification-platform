@@ -130,7 +130,7 @@ export function ParticipantList({
   }, [showAddInput, addInputFocusRequest])
 
   const handleAdded = useCallback((participant: Participant) => {
-    // A participant must belong to at least one group — new participants default
+    // A participant must belong to at least one group - new participants default
     // to "all groups" so they're never left ungrouped.
     const defaultGroups = hasGroups ? groups : []
     setParticipants((prev) => {
@@ -215,7 +215,7 @@ export function ParticipantList({
     })
   }, [groups, loadParticipants, assignAllGroups])
 
-  // "All groups" always means membership in every group — it never clears the selection.
+  // "All groups" always means membership in every group - it never clears the selection.
   const handleSelectAllGroups = useCallback((participantId: string, currentGroupIds: Set<string>) => {
     assignAllGroups(participantId, currentGroupIds)
   }, [assignAllGroups])

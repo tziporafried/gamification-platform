@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-/** Fixed atmospheric glow orbs — asymmetric; warm merged top wash, subtle bottom accents. */
+/** Fixed atmospheric glow orbs - asymmetric; warm merged top wash, subtle bottom accents. */
 export function AtmosphericBackground({ animated = false }: { animated?: boolean } = {}) {
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">

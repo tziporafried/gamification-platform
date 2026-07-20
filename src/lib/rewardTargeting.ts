@@ -1,7 +1,7 @@
 export type RewardTargetType = 'all' | 'groups' | 'participant'
 export type RewardWinnerMode = 'all' | 'first'
 
-/** Combined UI scope — maps to target_type + winner_mode in the DB. */
+/** Combined UI scope - maps to target_type + winner_mode in the DB. */
 export type RewardScopeId =
   | 'all_all'
   | 'all_first'
@@ -114,13 +114,13 @@ export const REWARD_SCOPE_OPTIONS: {
   },
   {
     value: 'groups_all',
-    label: 'קבוצות — כולם',
+    label: 'קבוצות - כולם',
     description: 'כל מי שמגיע ליעד מתוך הקבוצות שנבחרו',
     requiresGroups: true,
   },
   {
     value: 'groups_first',
-    label: 'קבוצות — הראשון',
+    label: 'קבוצות - הראשון',
     description: 'רק הראשון שמגיע ליעד מתוך הקבוצות שנבחרו',
     requiresGroups: true,
   },

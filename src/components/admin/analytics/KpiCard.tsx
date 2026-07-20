@@ -24,7 +24,7 @@ export function formatNumber(n: number): string {
 }
 
 export function formatRate(rate: number | null): string {
-  if (rate === null) return '—'
+  if (rate === null) return '-'
   return `${rate}%`
 }
 
@@ -47,7 +47,7 @@ export function KpiCard({
         <div className="mt-3 h-8 w-16 animate-pulse rounded-md bg-surface-elevated" />
       ) : (
         <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
-          {typeof value === 'number' ? formatNumber(value) : value ?? '—'}
+          {typeof value === 'number' ? formatNumber(value) : value ?? '-'}
         </p>
       )}
       {hint && !loading && <p className="mt-1 text-[11px] text-muted">{hint}</p>}

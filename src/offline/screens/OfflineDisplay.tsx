@@ -68,7 +68,7 @@ export function OfflineDisplay({ pack, scans, onBack }: OfflineDisplayProps) {
               </div>
             </>
           ) : (
-            <div className="pl-empty">המשחק עוד לא התחיל — סרקו את הקוד הראשון כדי לפתוח את הלוח.</div>
+            <div className="pl-empty">המשחק עוד לא התחיל - סרקו את הקוד הראשון כדי לפתוח את הלוח.</div>
           )}
         </section>
 

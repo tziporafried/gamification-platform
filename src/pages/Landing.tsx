@@ -318,7 +318,7 @@ export function Landing() {
       return (
         <div className="space-y-2.5">
           <p>
-            יש כבר גרסת Gamify שרצה לגמרי בלי חיבור לאינטרנט — קובץ להפעלה מקומית עם
+            יש כבר גרסת Gamify שרצה לגמרי בלי חיבור לאינטרנט - קובץ להפעלה מקומית עם
             כל המשחק המלא. מתאים למקומות בלי רשת או עם קליטה חלשה.
           </p>
           <button
@@ -326,7 +326,7 @@ export function Landing() {
             className="font-medium text-primary-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
             onClick={handleOpenPlansOffline}
           >
-            למסלול ולמחירים — בלי אינטרנט
+            למסלול ולמחירים - בלי אינטרנט
           </button>
         </div>
       )
@@ -468,7 +468,7 @@ export function Landing() {
             </div>
           </motion.section>
 
-          {/* 3. How it works — setup flow */}
+          {/* 3. How it works - setup flow */}
           <motion.section
             ref={howItWorksRef}
             id="how-it-works"
@@ -513,9 +513,9 @@ export function Landing() {
             </div>
           </section>
 
-          {/* 5–6. Pricing + final CTA — the closing conversion block */}
+          {/* 5–6. Pricing + final CTA - the closing conversion block */}
           <div className="mb-16 text-center sm:mb-20">
-            {/* Area 1 — launch price + what's included */}
+            {/* Area 1 - launch price + what's included */}
             <motion.section className="mb-6 sm:mb-8" {...revealProps(motionSafe)}>
               <h2 className="mb-2.5 text-[34px] font-black leading-[1.1] tracking-tight text-primary-text sm:text-[46px]">
                 עכשיו במחיר השקה של ₪150 בלבד
@@ -539,7 +539,7 @@ export function Landing() {
               </p>
             </motion.section>
 
-            {/* Area 2 — primary CTA, set apart by a divider */}
+            {/* Area 2 - primary CTA, set apart by a divider */}
             <motion.section
               className="mx-auto max-w-3xl border-t border-border pt-12 sm:pt-14"
               {...revealProps(motionSafe, 0.08)}
@@ -607,7 +607,7 @@ export function Landing() {
             </motion.p>
           </section>
 
-          {/* 8. Contact fallback — after FAQ */}
+          {/* 8. Contact fallback - after FAQ */}
           <motion.section className="text-center" {...revealProps(motionSafe)}>
             <div className="mx-auto max-w-xl border-t border-border/60 pt-9">
               <p className="text-2xl font-black leading-snug text-primary-text sm:text-[30px]">
@@ -718,7 +718,7 @@ function SectionTitle({
   className,
 }: {
   children: ReactNode
-  /** Override spacing — default is tight for a subtitle directly underneath. */
+  /** Override spacing - default is tight for a subtitle directly underneath. */
   className?: string
 }) {
   const reducedMotion = useReducedMotion()

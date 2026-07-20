@@ -5,7 +5,7 @@ import { PACK_VERSION, type GamePack } from './types'
 /**
  * Gathers everything an event needs to run offline into a single GamePack.
  *
- * Mirrors the reads in EventKioskPage.fetchAll, minus the point_transactions —
+ * Mirrors the reads in EventKioskPage.fetchAll, minus the point_transactions -
  * an exported game starts from a clean slate and accrues its own local scans.
  */
 export async function buildEventPack(eventId: string): Promise<GamePack> {

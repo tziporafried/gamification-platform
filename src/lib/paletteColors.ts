@@ -1,5 +1,5 @@
 /**
- * Approved palette hex values — mirrors design-tokens.css primitives.
+ * Approved palette hex values - mirrors design-tokens.css primitives.
  * Use for colors persisted to the database (groups, templates).
  */
 

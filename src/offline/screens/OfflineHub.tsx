@@ -14,8 +14,8 @@ interface OfflineHubProps {
 /**
  * Landing screen: the two ways into a running offline game.
  *
- * Deliberately mirrors the online control center — same background, title and
- * ControlActionCards — so the exported file opens on the screen the operator
+ * Deliberately mirrors the online control center - same background, title and
+ * ControlActionCards - so the exported file opens on the screen the operator
  * already knows. The settings card and readiness checklist are left out: an
  * exported game can't be edited.
  */

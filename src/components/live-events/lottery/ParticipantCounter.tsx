@@ -23,7 +23,7 @@ export function ParticipantCounter({ count, duration = 1800 }: ParticipantCounte
       >
         {display.toLocaleString('he-IL')}
       </motion.p>
-      <p className="text-xl font-bold text-muted sm:text-2xl">משתתפים</p>
+      <p className="text-xl font-bold text-muted sm:text-2xl">פתקים בקופסה</p>
     </motion.div>
   )
 }

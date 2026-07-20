@@ -10,7 +10,7 @@ import { getParticipantTotal } from './leaderboard'
  *
  * Source of truth: src/hooks/useScoreSubmit.ts
  * Same resolution order, same eligibility rules (via the shared canPerformAction),
- * same shape of result — so the kiosk's existing celebration code is unaffected.
+ * same shape of result - so the kiosk's existing celebration code is unaffected.
  */
 
 export type OfflineSubmitResponse =

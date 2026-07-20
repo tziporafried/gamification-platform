@@ -1,4 +1,7 @@
-/** Discriminated union — add new live event kinds here as they ship. */
+import type { LucideIcon } from 'lucide-react'
+import { Gift, Sparkles, Zap } from 'lucide-react'
+
+/** Discriminated union - add new live event kinds here as they ship. */
 export type LiveEventKind = 'lottery'
 // | 'bonus-points'
 // | 'flash-challenge'
@@ -31,6 +34,52 @@ export interface LotteryWinnerRecord {
   wonAt: string
 }
 
+export type LiveEventCatalogId = 'lottery' | 'bonus-points' | 'flash-challenge'
+
+export interface LiveEventCatalogItem {
+  id: LiveEventCatalogId
+  kind?: LiveEventKind
+  title: string
+  description: string
+  icon: LucideIcon
+  available: boolean
+  cta: string
+  accent: 'legendary' | 'rich' | 'medium'
+}
+
+/** Current product catalog - all live events are upcoming teasers for now. */
+export const LIVE_EVENT_CATALOG: LiveEventCatalogItem[] = [
+  {
+    id: 'lottery',
+    kind: 'lottery',
+    title: 'הגרלה',
+    description: 'בחרו פרס, הגדירו מי משתתף - והשיקו הגרלה משלכם.',
+    icon: Gift,
+    available: false,
+    cta: 'יושק בקרוב',
+    accent: 'legendary',
+  },
+  {
+    id: 'bonus-points',
+    title: 'נקודות בונוס',
+    description: 'העניקו נקודות בונוס לשחקנים או לקבוצות שבחרתם.',
+    icon: Zap,
+    available: false,
+    cta: 'יושק בקרוב',
+    accent: 'medium',
+  },
+  {
+    id: 'flash-challenge',
+    title: 'אתגר בזק',
+    description: 'השיקו אתגר מהיר ומלהיב באמצע המשחק.',
+    icon: Sparkles,
+    available: false,
+    cta: 'יושק בקרוב',
+    accent: 'rich',
+  },
+]
+
+/** @deprecated Prefer LIVE_EVENT_CATALOG */
 export interface LiveEventTypeMeta {
   kind: LiveEventKind
   title: string
@@ -39,12 +88,13 @@ export interface LiveEventTypeMeta {
   available: boolean
 }
 
+/** @deprecated Prefer LIVE_EVENT_CATALOG */
 export const LIVE_EVENT_TYPES: LiveEventTypeMeta[] = [
   {
     kind: 'lottery',
     title: 'הגרלה',
     description: 'הגרלת פרס בין משתתפים זכאים',
     icon: '🎁',
-    available: true,
+    available: false,
   },
 ]

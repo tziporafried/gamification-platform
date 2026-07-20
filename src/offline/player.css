@@ -13,7 +13,7 @@
   --pl-danger: #C8341B;
   --pl-shadow: 0 10px 34px rgba(46, 34, 30, 0.12);
   --pl-shadow-lg: 0 20px 60px rgba(46, 34, 30, 0.18);
-  /* No webfont is fetched — the player runs offline. Heebo only if the machine
+  /* No webfont is fetched - the player runs offline. Heebo only if the machine
      already has it; otherwise the OS Hebrew stack renders cleanly. */
   --pl-font: 'Heebo', system-ui, 'Segoe UI', 'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif;
 }
@@ -144,7 +144,7 @@
 .pl-podium-col--1 .pl-podium-bar { height: 150px; background: linear-gradient(180deg, #F6C34B, #E29A24); }
 .pl-podium-col--2 .pl-podium-bar { height: 112px; background: linear-gradient(180deg, #C9CDD4, #9AA0AB); }
 .pl-podium-col--3 .pl-podium-bar { height: 88px; background: linear-gradient(180deg, #E4A579, #C67C4A); }
-/* CSS entrance — reliable across headless/slow loads where JS animation may not
+/* CSS entrance - reliable across headless/slow loads where JS animation may not
    settle. Ends fully visible; content is never hidden if it doesn't run. */
 .pl-rise { animation: plRise 0.4s ease both; }
 @keyframes plRise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }

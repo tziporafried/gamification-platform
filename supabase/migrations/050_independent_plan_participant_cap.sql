@@ -18,7 +18,7 @@ BEGIN
     RAISE EXCEPTION 'Event not found';
   END IF;
 
-  -- Template draft events are admin sandboxes — no plan limits
+  -- Template draft events are admin sandboxes - no plan limits
   IF EXISTS (
     SELECT 1 FROM activity_templates WHERE draft_event_id = NEW.event_id
   ) THEN

@@ -30,7 +30,7 @@ export function AppShell({ children, atmosphere = 'default' }: AppShellProps) {
           />
         )}
         {/*
-          Skip link (WCAG 2.4.1) — the header repeats on every route, so without
+          Skip link (WCAG 2.4.1) - the header repeats on every route, so without
           this a keyboard user tabs through it before reaching page content.
           Off-screen until focused.
         */}

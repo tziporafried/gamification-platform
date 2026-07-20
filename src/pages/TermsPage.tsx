@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { SiteFooter, OWNER_NAME } from '@/components/layout/SiteFooter'
 
 /**
- * Plain-language usage terms. General wording only — this is not legal advice
+ * Plain-language usage terms. General wording only - this is not legal advice
  * and has not been reviewed by a lawyer.
  */
 export function TermsPage() {

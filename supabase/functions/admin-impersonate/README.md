@@ -26,7 +26,7 @@ Cannot impersonate yourself or another super admin.
 ```
 
 The browser exchanges `token_hash` via `supabase.auth.verifyOtp({ type: 'email' })`.
-No email is sent — `auth.admin.generateLink` only mints the token.
+No email is sent - `auth.admin.generateLink` only mints the token.
 
 ## Deploy
 
