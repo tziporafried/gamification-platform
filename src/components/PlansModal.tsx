@@ -294,6 +294,9 @@ export function PlansModal({
                   <span className="text-base font-bold text-foreground">משחק מלא</span>
                 </div>
                 <div className="mt-3 flex items-baseline gap-1.5">
+                  <span className="text-lg font-semibold text-muted line-through decoration-2">
+                    ₪200
+                  </span>
                   <span
                     className={cn(
                       'text-3xl font-extrabold leading-none',
@@ -360,6 +363,9 @@ export function PlansModal({
                   )}
                 </div>
                 <div className="mt-3 flex items-baseline gap-1.5">
+                  <span className="text-lg font-semibold text-muted line-through decoration-2">
+                    ₪250
+                  </span>
                   <span
                     className={cn(
                       'text-3xl font-extrabold leading-none',

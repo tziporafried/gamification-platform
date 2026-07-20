@@ -10,8 +10,6 @@ import {
   Flame,
   ChevronLeft,
   ChevronDown,
-  QrCode,
-  AppWindow,
   Mail,
   Phone,
   type LucideIcon,
@@ -88,12 +86,6 @@ const EVENT_STEPS = [
     body: 'מתח, צחוק וגיבוש - האירוע הופך לחוויה שכולם מדברים עליה.',
   },
 ] as const
-
-const PRICING_VALUES: { id: string; label: string; icon: LucideIcon }[] = [
-  { id: 'access', label: 'מערכת המשחק', icon: AppWindow },
-  { id: 'qr', label: 'קובץ QR להדפסה', icon: QrCode },
-  { id: 'scanner', label: 'סורק לשימוש באירוע', icon: ScanLine },
-]
 
 const CONTACT_EMAIL = 'ourgamify@gmail.com'
 const CONTACT_PHONE = '0556738544'
@@ -521,68 +513,43 @@ export function Landing() {
             </div>
           </section>
 
-          {/* 5–6. Pricing + try CTA — one conversion block */}
+          {/* 5–6. Pricing + final CTA — the closing conversion block */}
           <div className="mb-16 text-center sm:mb-20">
-            <motion.section className="mb-8 sm:mb-9" {...revealProps(motionSafe)}>
-              <SectionTitle className="mb-4 text-center sm:mb-5">כמה זה עולה?</SectionTitle>
-              <motion.p
-                className="mb-3 text-[34px] font-black leading-[1.15] tracking-tight text-primary-text sm:text-[48px]"
-                {...revealProps(motionSafe, 0.05)}
+            {/* Area 1 — launch price + what's included */}
+            <motion.section className="mb-6 sm:mb-8" {...revealProps(motionSafe)}>
+              <h2 className="mb-2.5 text-[34px] font-black leading-[1.1] tracking-tight text-primary-text sm:text-[46px]">
+                עכשיו במחיר השקה של ₪150 בלבד
+              </h2>
+              <p className="mb-3 text-base font-semibold text-foreground sm:text-lg">
+                לזמן מוגבל, כל מערכת Gamify לאירוע אחד במחיר מיוחד.
+              </p>
+              <p className="mx-auto mb-5 max-w-xl text-[15px] leading-relaxed text-muted sm:text-base">
+                מערכת המשחק · כרטיסי QR · סריקות · ניקוד · לוח שיאנים · פרסים
+              </p>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => handleOpenPlans('pricing_section')}
+                className="!rounded-full !px-8 !py-3 !text-base !font-bold"
               >
-                משחק מלא ב־
-                <span className="whitespace-nowrap">₪150</span>
-                {' '}לאירוע
-              </motion.p>
-              <motion.p
-                className="mb-8 text-base font-semibold text-foreground sm:text-lg"
-                {...revealProps(motionSafe, 0.1)}
-              >
-                כל מה שצריך לחוויית המשחק, בלי מנוי.
-              </motion.p>
-              <ul className="mx-auto mb-9 flex max-w-2xl flex-col items-stretch justify-center gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
-                {PRICING_VALUES.map(({ id, label, icon: Icon }, index) => (
-                  <motion.li
-                    key={id}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-surface-modal px-4 py-2.5 text-sm font-medium text-foreground shadow-card sm:text-[15px]"
-                    {...revealProps(motionSafe, 0.08 + index * 0.06)}
-                  >
-                    <Icon size={16} strokeWidth={2.25} className="shrink-0 text-primary-text" aria-hidden="true" />
-                    {label}
-                  </motion.li>
-                ))}
-              </ul>
-              <motion.div
-                whileHover={motionSafe ? { scale: 1.04 } : undefined}
-                whileTap={motionSafe ? { scale: 0.97 } : undefined}
-                className="inline-block"
-                {...revealProps(motionSafe, 0.16)}
-              >
-                <Button
-                  size="lg"
-                  variant="gradient"
-                  onClick={() => handleOpenPlans('pricing_section')}
-                  className="!rounded-full !px-10 !py-3.5 !text-[17px] !font-extrabold"
-                >
-                  לכל המחירים והמסלולים
-                </Button>
-              </motion.div>
-              <motion.p
-                className="mx-auto mt-5 max-w-md text-[15px] leading-relaxed text-foreground/75"
-                {...revealProps(motionSafe, 0.2)}
-              >
+                לכל המסלולים והמחירים
+              </Button>
+              <p className="mx-auto mt-3 text-sm text-muted">
                 מחפשים משהו בסיסי יותר? יש מסלולים החל מ־₪40 לאירוע.
-              </motion.p>
+              </p>
             </motion.section>
 
-            <motion.section {...revealProps(motionSafe, 0.08)}>
-              <h2 className="mb-2.5 text-xl font-semibold leading-snug text-primary-text sm:text-[22px]">
-                רוצים קודם לראות איך זה עובד אצלכם?
+            {/* Area 2 — primary CTA, set apart by a divider */}
+            <motion.section
+              className="mx-auto max-w-3xl border-t border-border pt-12 sm:pt-14"
+              {...revealProps(motionSafe, 0.08)}
+            >
+              <h2 className="mb-3 text-[30px] font-black leading-tight text-primary-text sm:text-[38px]">
+                מוכנים להתחיל?
               </h2>
-              <p className="mx-auto mb-5 max-w-xl text-base leading-[1.65] text-muted">
-                צרו משחק, הגדירו הכול והתנסו במערכת.{' '}
-                <span className="font-semibold text-foreground">
-                  משלמים רק כשרוצים להפעיל אירוע.
-                </span>
+              <p className="mx-auto mb-7 max-w-xl text-lg leading-[1.6] text-muted sm:text-xl">
+                בנו את האירוע כולו בחינם.{' '}
+                <span className="font-semibold text-foreground">משלמים רק לפני הפעלת המשחק.</span>
               </p>
               <motion.div
                 whileHover={motionSafe ? { scale: 1.03 } : undefined}
@@ -593,14 +560,18 @@ export function Landing() {
                   size="lg"
                   variant="gradient"
                   onClick={handleCreateEventClick}
-                  className="!rounded-full !px-10 !py-3.5 !text-[17px] !font-bold"
+                  className="!rounded-full !px-12 !py-4 !text-[19px] !font-bold"
                 >
-                  צרו את המשחק הראשון שלכם
+                  צרו את האירוע הראשון שלכם
                 </Button>
               </motion.div>
-              <p className="mx-auto mt-2.5 text-sm leading-relaxed text-foreground/70">
-                ללא תשלום מראש · ללא התחייבות
-              </p>
+              <div className="mt-5 flex flex-col items-center gap-1.5 text-[15px] text-foreground/70 sm:flex-row sm:justify-center sm:gap-x-4 sm:text-base">
+                <span>פתיחת אירוע בחינם</span>
+                <span aria-hidden="true" className="hidden text-foreground/30 sm:inline">·</span>
+                <span>תשלום רק לפני הפעלת המשחק</span>
+                <span aria-hidden="true" className="hidden text-foreground/30 sm:inline">·</span>
+                <span>ללא התחייבות</span>
+              </div>
             </motion.section>
           </div>
 
