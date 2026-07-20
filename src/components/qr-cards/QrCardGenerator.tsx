@@ -131,7 +131,7 @@ export function QrCardGenerator({ event, scanMode, onReadyChange, onCardCountsCh
     const c = CARD_PALETTE.primary
 
     printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8" />
-<title>כרטיסי QR – ${event.name}</title>
+<title>כרטיסי ברקוד – ${event.name}</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm; }

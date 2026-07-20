@@ -111,7 +111,7 @@ export function OfflineScan({ pack, scans, scanCount, onSubmitCodes, onBack }: O
               <motion.div key="idle" className="pl-prompt" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="pl-prompt-badge"><Camera size={52} strokeWidth={2} /></div>
                 <div className="pl-prompt-title">מוכנים לסריקה</div>
-                <div className="pl-prompt-sub">סרקו את קוד ה־QR של המשתתף</div>
+                <div className="pl-prompt-sub">סרקו את הברקוד של המשתתף</div>
               </motion.div>
             )}
 

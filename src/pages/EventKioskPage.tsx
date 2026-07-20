@@ -3710,7 +3710,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
                     )
                   ) : (
                     <>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: '#9A8E88' }}>כוונו את כרטיס ה-QR של המשתתף למסגרת</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: '#9A8E88' }}>כוונו את כרטיס הברקוד של המשתתף למסגרת</div>
                       {gameStarted && (
                         <button
                           onClick={() => setShowManual(true)}

@@ -6,7 +6,7 @@ import {
 } from '@/lib/keyboardLayout'
 
 const PIN_MS = 60_000
-const SCANNER_INPUT_LABEL = 'קלט סורק QR'
+const SCANNER_INPUT_LABEL = 'קלט סורק ברקוד'
 
 export function useHebrewKeyboardWarning(enabled: boolean) {
   const [showWarning, setShowWarning] = useState(false)

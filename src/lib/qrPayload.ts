@@ -31,11 +31,11 @@ export function parseQrPayload(decodedText: string): ParseQrPayloadResult {
   try {
     parsed = JSON.parse(normalized)
   } catch {
-    return { ok: false, error: 'קוד QR לא תקין — לא ניתן לקרוא את התוכן.' }
+    return { ok: false, error: 'ברקוד לא תקין — לא ניתן לקרוא את התוכן.' }
   }
 
   if (typeof parsed !== 'object' || parsed === null) {
-    return { ok: false, error: 'קוד QR לא תקין — פורמט לא מזוהה.' }
+    return { ok: false, error: 'ברקוד לא תקין — פורמט לא מזוהה.' }
   }
 
   const participantCode = readCode(parsed.participantCode)
@@ -51,5 +51,5 @@ export function parseQrPayload(decodedText: string): ParseQrPayloadResult {
     return { ok: true, data: { kind: 'action', actionCode } }
   }
 
-  return { ok: false, error: 'קוד QR חסר — חסר קוד משתתף או קוד משימה.' }
+  return { ok: false, error: 'ברקוד חסר — חסר קוד משתתף או קוד משימה.' }
 }

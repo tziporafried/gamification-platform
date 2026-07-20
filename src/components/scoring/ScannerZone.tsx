@@ -305,7 +305,7 @@ export function ScannerZone({ successFlash, processing = false, accent }: Props)
                     animate={{ opacity: [0.35, 0.7, 0.35] }}
                     transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
                   >
-                    לכרטיס QR של המשתתף
+                    לכרטיס ברקוד של המשתתף
                   </motion.p>
                 </motion.div>
               )}
