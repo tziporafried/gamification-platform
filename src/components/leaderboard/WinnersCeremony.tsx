@@ -1659,12 +1659,12 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
               >
                 {phase.kind === 'suspense' && <SuspensePhase />}
                 {phase.kind === 'groupChampion' && <ChampionPhase type="group" champ={champGroup} runnerUp={groupRunnerUp} totalGroups={totalGroupCount} />}
-                {phase.kind === 'groupPodium' && <PodiumPhase title="הקבוצות המובילות" type="group" items={[champGroup, groupRunnerUp, rankedG.find((g) => g.rank === 3)]} />}
+                {phase.kind === 'groupPodium' && <PodiumPhase title="הקבוצות המובילות" type="group" items={rankedG.slice(0, 3)} />}
                 {phase.kind === 'groupLeaderboard' && (
                   <LeaderboardPhase title="טבלת הקבוצות" subtitle="דירוג מלא" type="group" items={rankedG} pgMap={pgMap} totalGroups={totalGroupCount} taskCountByP={taskCountByP} groupTaskCounts={groupTaskCounts} topPByGroup={topPByGroup} />
                 )}
                 {phase.kind === 'participantChampion' && <ChampionPhase type="participant" champ={champParticipant} runnerUp={participantRunnerUp} groups={participantGroups} totalGroups={totalGroupCount} />}
-                {phase.kind === 'participantPodium' && <PodiumPhase title="המשתתפים המובילים" type="participant" items={[champParticipant, participantRunnerUp, rankedP.find((p) => p.rank === 3)]} />}
+                {phase.kind === 'participantPodium' && <PodiumPhase title="המשתתפים המובילים" type="participant" items={rankedP.slice(0, 3)} />}
                 {phase.kind === 'participantLeaderboard' && (
                   <LeaderboardPhase title="טבלת המשתתפים" subtitle="דירוג מלא" type="participant" items={rankedP} pgMap={pgMap} totalGroups={totalGroupCount} taskCountByP={taskCountByP} groupTaskCounts={groupTaskCounts} topPByGroup={topPByGroup} />
                 )}
