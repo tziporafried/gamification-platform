@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download, Search } from 'lucide-react'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download, Search, LogIn } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
@@ -184,7 +184,7 @@ function formatLastSignIn(iso: string | null) {
 export function AdminPanel() {
   const { tab: tabParam } = useParams<{ tab: string }>()
   const navigate = useNavigate()
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, impersonateUser } = useAuth()
   const { labelFor, labelsByCode } = useUtmLinkLabels()
   const tab: AdminTab = isAdminTab(tabParam) ? tabParam : DEFAULT_ADMIN_TAB
   const [users, setUsers] = useState<AdminUser[]>([])
@@ -210,6 +210,10 @@ export function AdminPanel() {
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null)
   const [deletingUser, setDeletingUser] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  // Login-as (impersonation)
+  const [impersonatingUserId, setImpersonatingUserId] = useState<string | null>(null)
+  const [impersonateError, setImpersonateError] = useState<string | null>(null)
 
   // Upgrade request deletion
   const [deleteRequestTarget, setDeleteRequestTarget] = useState<UpgradeRequest | null>(null)
@@ -418,6 +422,18 @@ export function AdminPanel() {
     setDeleteTarget(null)
   }
 
+  async function loginAsUser(target: AdminUser) {
+    setImpersonateError(null)
+    setImpersonatingUserId(target.user_id)
+    const result = await impersonateUser(target.user_id)
+    if (result.status !== 'ok') {
+      setImpersonateError(result.message)
+      setImpersonatingUserId(null)
+      return
+    }
+    navigate('/events')
+  }
+
   async function deleteRequest() {
     if (!deleteRequestTarget) return
     const target = deleteRequestTarget
@@ -478,6 +494,11 @@ export function AdminPanel() {
           {usersError && (
             <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
               שגיאה בטעינת משתמשים: {usersError}
+            </div>
+          )}
+          {impersonateError && (
+            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              {impersonateError}
             </div>
           )}
           <div className="mb-4 flex items-center gap-2">
@@ -600,13 +621,29 @@ export function AdminPanel() {
                         </button>
                       )}
                       {user.role !== 'super_admin' && user.user_id !== currentUser?.id && (
-                        <button
-                          onClick={() => { setDeleteError(null); setDeleteTarget(user) }}
-                          title="מחק משתמש"
-                          className="flex items-center justify-center rounded-lg p-2 text-muted hover:bg-danger/10 hover:text-danger-text transition-colors"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => void loginAsUser(user)}
+                            disabled={impersonatingUserId === user.user_id}
+                            title="התחבר כלקוח"
+                            aria-label={`התחבר כלקוח ${user.display_name || user.email}`}
+                            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted hover:bg-brand-600/10 hover:text-brand-400 transition-colors disabled:opacity-50"
+                          >
+                            {impersonatingUserId === user.user_id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <LogIn size={14} />
+                            )}
+                            <span className="hidden sm:inline">התחבר כלקוח</span>
+                          </button>
+                          <button
+                            onClick={() => { setDeleteError(null); setDeleteTarget(user) }}
+                            title="מחק משתמש"
+                            className="flex items-center justify-center rounded-lg p-2 text-muted hover:bg-danger/10 hover:text-danger-text transition-colors"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>

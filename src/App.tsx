@@ -5,6 +5,7 @@ import { PlansModalProvider } from '@/contexts/PlansModalContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { AuthRedirect } from '@/components/AuthRedirect'
 import { AppShell } from '@/components/layout/AppShell'
+import { ImpersonationBanner } from '@/components/ImpersonationBanner'
 import { AnalyticsListener } from '@/components/AnalyticsListener'
 import { Landing } from '@/pages/Landing'
 import { Login } from '@/pages/Login'
@@ -29,6 +30,7 @@ export default function App() {
       <BrowserRouter>
       <AuthProvider>
         <AnalyticsListener />
+        <ImpersonationBanner />
         <PlansModalProvider>
           <Routes>
             <Route path="/" element={<Landing />} />

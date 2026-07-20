@@ -7,6 +7,12 @@ import {
   restoreUtmAttribution,
 } from '@/lib/analytics'
 import { hasUtmAttribution } from '@/lib/utmAttribution'
+import {
+  clearImpersonationState,
+  getImpersonationState,
+  setImpersonationState,
+  type ImpersonationState,
+} from '@/lib/impersonation'
 import type { UserProfile } from '@/types'
 
 export type SignInOrSignUpResult =
@@ -15,6 +21,10 @@ export type SignInOrSignUpResult =
   /** Account created but Supabase requires email confirmation before a session exists (only if "Confirm email" is enabled). */
   | { status: 'confirmation-required' }
   | { status: 'error'; reason: 'invalid-credentials' | 'network' }
+
+export type ImpersonateResult =
+  | { status: 'ok' }
+  | { status: 'error'; message: string }
 
 interface AuthContextType {
   user: User | null
@@ -26,6 +36,13 @@ interface AuthContextType {
   signOut: () => Promise<void>
   isSuperAdmin: boolean
   refreshProfile: () => Promise<void>
+  /** True while a super admin is viewing the app as another user. */
+  isImpersonating: boolean
+  impersonationTarget: { email: string; displayName: string | null } | null
+  /** Switch the current session into the given user (super_admin only). */
+  impersonateUser: (userId: string) => Promise<ImpersonateResult>
+  /** Restore the saved admin session and clear the impersonation flag. */
+  stopImpersonating: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -47,10 +64,16 @@ function applyProfileAffiliate(profile: UserProfile | null): UserProfile | null 
   return profile
 }
 
+function readImpersonationTarget(state: ImpersonationState | null) {
+  if (!state) return null
+  return { email: state.targetEmail, displayName: state.targetDisplayName }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [impersonation, setImpersonation] = useState<ImpersonationState | null>(() => getImpersonationState())
   const claimedForUserRef = useRef<string | null>(null)
 
   const fetchProfile = useCallback(async (userId: string) => {
@@ -69,6 +92,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, fetchProfile])
 
   const syncAffiliateForUser = useCallback(async (userId: string) => {
+    // Never write affiliate attribution while viewing as another user.
+    if (getImpersonationState()) {
+      claimedForUserRef.current = userId
+      return fetchProfile(userId)
+    }
+
     if (claimedForUserRef.current === userId) return
 
     await claimSessionAffiliate()
@@ -111,7 +140,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === 'SIGNED_IN') {
           claimedForUserRef.current = null
           syncAffiliateForUser(u.id)
-          consumePendingOAuthAuth(u.created_at)
+          if (!getImpersonationState()) {
+            consumePendingOAuthAuth(u.created_at)
+          }
         } else {
           fetchProfile(u.id)
         }
@@ -173,19 +204,110 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { status: 'signed-up' }
   }, [])
 
-  // TODO: add resetPasswordForEmail() / updateUser({ password }) helpers here once a "forgot
-  // password" / "set password" flow is built — not all existing users (Google-only)
-  // have a password set yet.
-
   const signOut = useCallback(async () => {
+    clearImpersonationState()
+    setImpersonation(null)
     await supabase.auth.signOut()
     setProfile(null)
   }, [])
 
+  const impersonateUser = useCallback(async (userId: string): Promise<ImpersonateResult> => {
+    const { data: { session: adminSession } } = await supabase.auth.getSession()
+    if (!adminSession?.access_token || !adminSession.refresh_token) {
+      return { status: 'error', message: 'אין סשן אדמין פעיל. התחברי מחדש.' }
+    }
+
+    const { data, error } = await supabase.functions.invoke('admin-impersonate', {
+      body: { userId },
+    })
+
+    if (error) {
+      const status = (error as { context?: Response }).context?.status
+      if (status === 401) return { status: 'error', message: 'יש להתחבר מחדש.' }
+      if (status === 403) return { status: 'error', message: 'אין הרשאה להתחבר כלקוח.' }
+      return { status: 'error', message: 'ההתחברות כלקוח נכשלה. נסי שוב.' }
+    }
+
+    const payload = data as {
+      token_hash?: string
+      email?: string
+      display_name?: string | null
+      error?: string
+    } | null
+
+    if (!payload?.token_hash || !payload.email) {
+      return { status: 'error', message: payload?.error || 'ההתחברות כלקוח נכשלה.' }
+    }
+
+    const nextState: ImpersonationState = {
+      adminAccessToken: adminSession.access_token,
+      adminRefreshToken: adminSession.refresh_token,
+      adminEmail: adminSession.user.email ?? '',
+      targetUserId: userId,
+      targetEmail: payload.email,
+      targetDisplayName: payload.display_name ?? null,
+      startedAt: new Date().toISOString(),
+    }
+    setImpersonationState(nextState)
+    setImpersonation(nextState)
+
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      token_hash: payload.token_hash,
+      type: 'email',
+    })
+
+    if (verifyError) {
+      clearImpersonationState()
+      setImpersonation(null)
+      return { status: 'error', message: 'לא הצלחנו להיכנס לחשבון הלקוח. נסי שוב.' }
+    }
+
+    return { status: 'ok' }
+  }, [])
+
+  const stopImpersonating = useCallback(async () => {
+    const state = getImpersonationState()
+    clearImpersonationState()
+    setImpersonation(null)
+
+    if (!state?.adminAccessToken || !state.adminRefreshToken) {
+      await supabase.auth.signOut()
+      setProfile(null)
+      return
+    }
+
+    const { error } = await supabase.auth.setSession({
+      access_token: state.adminAccessToken,
+      refresh_token: state.adminRefreshToken,
+    })
+
+    if (error) {
+      await supabase.auth.signOut()
+      setProfile(null)
+    }
+  }, [])
+
   const isSuperAdmin = profile?.role === 'super_admin'
+  const isImpersonating = impersonation !== null
+  const impersonationTarget = readImpersonationTarget(impersonation)
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signInOrSignUp, signOut, isSuperAdmin, refreshProfile }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        loading,
+        signInWithGoogle,
+        signInOrSignUp,
+        signOut,
+        isSuperAdmin,
+        refreshProfile,
+        isImpersonating,
+        impersonationTarget,
+        impersonateUser,
+        stopImpersonating,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )
