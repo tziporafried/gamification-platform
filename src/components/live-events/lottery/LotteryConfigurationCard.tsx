@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { Gift, Pencil, Play, Trophy, Users } from 'lucide-react'
+import { Gift, Pencil, Play, Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import {
@@ -39,16 +39,6 @@ const CONSOLE_CONTROL_BASE = cn(
   'hover:-translate-y-0.5 hover:border-white hover:bg-white/75',
   'hover:shadow-[0_8px_22px_rgba(46,34,30,0.12)]',
   'active:translate-y-0 active:scale-[0.99]',
-)
-
-const DOCK_NUMBER_INPUT = cn(
-  'rounded-md border border-black/12 bg-white px-1.5 py-0.5',
-  'text-center font-black tabular-nums text-foreground shadow-[inset_0_1px_2px_rgba(46,34,30,0.06)]',
-  'transition-[border-color,box-shadow] duration-150',
-  'hover:border-black/20',
-  'focus:outline-none focus-visible:border-secondary/45 focus-visible:ring-2 focus-visible:ring-secondary/25',
-  'disabled:cursor-not-allowed disabled:opacity-45',
-  '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
 )
 
 function ConsoleControl({
@@ -118,13 +108,11 @@ export function LotteryConfigurationCard({
   const allId = useId()
   const minId = useId()
   const prizeId = useId()
-  const winnersId = useId()
   const { playReadySting, playUiClick } = useLotteryPresentationSound()
 
   const [eligibilityMode, setEligibilityMode] = useState<LotteryEligibilityMode>('all')
   const [minPoints, setMinPoints] = useState(50)
   const [prizeName, setPrizeName] = useState('')
-  const [winnerCount, setWinnerCount] = useState(1)
   const [formError, setFormError] = useState<string | null>(null)
   const [editingPrize, setEditingPrize] = useState(true)
   const minPointsInputRef = useRef<HTMLInputElement>(null)
@@ -173,16 +161,6 @@ export function LotteryConfigurationCard({
     setMinPoints(parsed)
   }
 
-  function handleWinnerCountChange(raw: string) {
-    if (raw === '') {
-      setWinnerCount(1)
-      return
-    }
-    const parsed = Number.parseInt(raw, 10)
-    if (!Number.isFinite(parsed) || parsed < 1) return
-    setWinnerCount(Math.min(parsed, 50))
-  }
-
   function commitPrize() {
     if (!prizeName.trim()) return
     setEditingPrize(false)
@@ -202,11 +180,6 @@ export function LotteryConfigurationCard({
       trackLotteryLaunchBlocked({ eventId, reason: 'no_eligible' })
       return null
     }
-    if (winnerCount > count) {
-      setFormError(`יש רק ${count.toLocaleString('he-IL')} משתתפים זכאים`)
-      trackLotteryLaunchBlocked({ eventId, reason: 'too_many_winners' })
-      return null
-    }
     return {
       kind: 'lottery',
       eventId,
@@ -214,7 +187,6 @@ export function LotteryConfigurationCard({
       minPoints: eligibilityMode === 'all' ? 0 : minPoints,
       prizeName: trimmedPrize,
       prizeIcon: '🎁',
-      winnerCount,
     }
   }
 
@@ -228,7 +200,6 @@ export function LotteryConfigurationCard({
       eventId,
       eligibilityMode: config.eligibilityMode,
       minPoints: config.minPoints,
-      winnerCount: config.winnerCount ?? 1,
       eligibleCount: participants.length,
     })
     onLaunch({ config, participants })
@@ -387,28 +358,6 @@ export function LotteryConfigurationCard({
               </div>
             </span>
           </div>
-
-          {/* Winners */}
-          <ConsoleControl
-            htmlFor={winnersId}
-            icon={<Trophy size={20} strokeWidth={2.25} />}
-            label="זוכים"
-            className="max-w-[8rem] flex-none"
-          >
-            <input
-              id={winnersId}
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={50}
-              step={1}
-              value={winnerCount}
-              onChange={(e) => handleWinnerCountChange(e.target.value)}
-              className={cn(DOCK_NUMBER_INPUT, 'w-full text-xl')}
-              aria-label="מספר זוכים - ניתן לעריכה"
-              title="לחצו לעריכת מספר הזוכים"
-            />
-          </ConsoleControl>
 
           {/* Launch pad — scan-screen primary button language */}
           <Button

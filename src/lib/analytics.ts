@@ -634,17 +634,10 @@ export function trackLotteryPrizeConfirmed(eventId: string) {
   trackEvent('lottery_prize_confirmed', { event_id: eventId })
 }
 
-export function trackLotteryWinnersCountSet(eventId: string, winnerCount: number) {
-  trackEvent('lottery_winners_count_set', {
-    event_id: eventId,
-    winner_count: winnerCount,
-  })
-}
-
 /** Launch blocked by validation (missing prize, no eligible players, etc.). */
 export function trackLotteryLaunchBlocked(params: {
   eventId: string
-  reason: 'missing_prize' | 'no_eligible' | 'too_many_winners'
+  reason: 'missing_prize' | 'no_eligible'
 }) {
   trackEvent('lottery_launch_blocked', {
     event_id: params.eventId,
@@ -657,14 +650,12 @@ export function trackLotteryLaunched(params: {
   eventId: string
   eligibilityMode: 'all' | 'min_points'
   minPoints: number
-  winnerCount: number
   eligibleCount: number
 }) {
   trackEvent('lottery_launched', {
     event_id: params.eventId,
     eligibility_mode: params.eligibilityMode,
     min_points: params.eligibilityMode === 'min_points' ? params.minPoints : 0,
-    winner_count: params.winnerCount,
     eligible_count: params.eligibleCount,
   })
 }
@@ -685,16 +676,24 @@ export function trackLotteryDrawStart(eventId: string, eligibleCount: number) {
   })
 }
 
+/** Organizer started another draw from the winner screen. */
+export function trackLotteryRedraw(eventId: string, eligibleCount: number) {
+  trackEvent('lottery_redraw', {
+    event_id: eventId,
+    eligible_count: eligibleCount,
+  })
+}
+
 /** Winner celebration shown - no participant PII. */
 export function trackLotteryWinnerRevealed(params: {
   eventId: string
   eligibleCount: number
-  winnerCount: number
+  drawIndex: number
 }) {
   trackEvent('lottery_winner_revealed', {
     event_id: params.eventId,
     eligible_count: params.eligibleCount,
-    winner_count: params.winnerCount,
+    draw_index: params.drawIndex,
   })
 }
 

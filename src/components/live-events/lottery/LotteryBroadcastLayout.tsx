@@ -13,8 +13,7 @@ interface LotteryBroadcastLayoutProps {
 }
 
 /**
- * Lottery presentation chrome for the projector window.
- * Stage + optional organizer dock. Dock can hide during the live show.
+ * Full-bleed lottery projector shell — no max-width crop on the stage.
  */
 export function LotteryBroadcastLayout({
   stage,
@@ -27,7 +26,7 @@ export function LotteryBroadcastLayout({
   return (
     <div
       className={cn(
-        'relative flex h-[100dvh] w-full flex-col overflow-hidden',
+        'relative flex h-[100dvh] w-full min-w-0 flex-col overflow-hidden',
         'bg-app-radial font-sans text-foreground atmosphere-control',
         className,
       )}
@@ -35,17 +34,17 @@ export function LotteryBroadcastLayout({
     >
       <FloatingIconsLayer />
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-        {/* Presentation stage - visual focus for the audience */}
+      <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
         <section
-          className="relative flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10"
+          className="relative flex min-h-0 min-w-0 flex-1 flex-col"
           aria-live="polite"
         >
           <div
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_42%,rgba(69,207,107,0.1),transparent_58%)]"
             aria-hidden="true"
           />
-          <div className="relative z-10 flex w-full max-w-4xl flex-1 flex-col items-center justify-center">
+          {/* Full viewport stage — no max-w square crop */}
+          <div className="relative z-10 flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
             {stage}
           </div>
         </section>

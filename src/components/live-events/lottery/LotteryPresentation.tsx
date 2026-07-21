@@ -4,6 +4,7 @@ import {
   trackLotteryDrawStart,
   trackLotteryExit,
   trackLotteryIntroStart,
+  trackLotteryRedraw,
   trackLotteryWinnerRevealed,
 } from '@/lib/analytics'
 import { useLotteryPresentationSound } from '@/hooks/useLotteryPresentationSound'
@@ -13,21 +14,13 @@ import { LotteryIntroShow, type IntroBeat, type IntroRuleCard } from './LotteryI
 import { GiftBoxLotteryDraw } from './GiftBoxLotteryDraw'
 import { pickRandomWinner } from './lotteryUtils'
 import { recordLotteryWinner } from './lotteryWinners'
-import { WinnerReveal } from './WinnerReveal'
 
-type ShowStage = 'intro' | 'draw' | 'silence' | 'winner'
+type ShowStage = 'intro' | 'draw'
 
 interface LotteryPresentationProps {
   config: LotteryConfig
   participants: EligibleParticipant[]
   onClose: () => void
-}
-
-const SILENCE_BEFORE_WINNER_MS = 250
-
-function winnersLabel(count: number): string {
-  if (count <= 1) return 'זוכה אחד'
-  return `${count.toLocaleString('he-IL')} זוכים`
 }
 
 function eligibilityLabel(config: LotteryConfig): string {
@@ -36,8 +29,8 @@ function eligibilityLabel(config: LotteryConfig): string {
 }
 
 /**
- * Live lottery show: cinematic intro → draw → winner.
- * Dock stays visible but locked during the intro opening act.
+ * Live lottery show: cinematic intro → raffle ceremony (through finished controls).
+ * «הגרל שוב» replays intro + draw from the start (previous winners stay excluded).
  */
 export function LotteryPresentation({
   config,
@@ -47,6 +40,7 @@ export function LotteryPresentation({
   const [stage, setStage] = useState<ShowStage>('intro')
   const [drawnIds, setDrawnIds] = useState<string[]>([])
   const [winner, setWinner] = useState<EligibleParticipant | null>(null)
+  const [drawIndex, setDrawIndex] = useState(0)
   const recordedRef = useRef(false)
   const {
     play,
@@ -67,8 +61,6 @@ export function LotteryPresentation({
     return remaining.length > 0 ? remaining : participants
   }, [participants, drawnIds])
 
-  const winnerCount = Math.max(1, config.winnerCount ?? 1)
-
   const introCards = useMemo<IntroRuleCard[]>(
     () => [
       {
@@ -83,17 +75,10 @@ export function LotteryPresentation({
         label: 'משתתפים',
         value: eligibilityLabel(config),
       },
-      {
-        id: 'winners',
-        icon: '🏆',
-        label: 'זוכים',
-        value: winnersLabel(winnerCount),
-      },
     ],
-    [config, winnerCount],
+    [config],
   )
 
-  // Opening act setup — bed starts after "הגרלה / הכל מוכן" exits (prize beat).
   useEffect(() => {
     if (stage !== 'intro') return
     setWinner(pickRandomWinner(pool))
@@ -114,23 +99,17 @@ export function LotteryPresentation({
       cancelled = true
       stop()
     }
-  }, [stage, fadeOut, play, stop, config.eventId, pool.length])
+  }, [stage, drawIndex, fadeOut, play, stop, config.eventId, pool.length])
 
-  useEffect(() => {
-    if (stage !== 'silence') return
-    stop()
-    const t = window.setTimeout(() => setStage('winner'), SILENCE_BEFORE_WINNER_MS)
-    return () => window.clearTimeout(t)
-  }, [stage, stop])
-
-  useEffect(() => {
-    if (stage !== 'winner' || !winner || recordedRef.current) return
+  const handleWinnerRevealed = useCallback(() => {
+    if (!winner || recordedRef.current) return
     recordedRef.current = true
+    stop()
     playWinnerFanfare()
     trackLotteryWinnerRevealed({
       eventId: config.eventId,
       eligibleCount: participants.length,
-      winnerCount,
+      drawIndex,
     })
     recordLotteryWinner(config.eventId, {
       participantId: winner.id,
@@ -140,13 +119,30 @@ export function LotteryPresentation({
       wonAt: new Date().toISOString(),
     })
     setDrawnIds((ids) => (ids.includes(winner.id) ? ids : [...ids, winner.id]))
-  }, [stage, config, winner, playWinnerFanfare, participants.length, winnerCount])
+  }, [winner, stop, playWinnerFanfare, config, participants.length, drawIndex])
 
   const handleExit = useCallback(() => {
     trackLotteryExit({ eventId: config.eventId, stage })
     stop()
     onClose()
   }, [stop, onClose, config.eventId, stage])
+
+  const handleDrawAgain = useCallback(() => {
+    const nextPool = (() => {
+      const excluded = new Set(drawnIds)
+      if (winner) excluded.add(winner.id)
+      const remaining = participants.filter((p) => !excluded.has(p.id))
+      return remaining.length > 0 ? remaining : participants
+    })()
+
+    playUiClick()
+    stop()
+    recordedRef.current = false
+    setWinner(pickRandomWinner(nextPool))
+    setDrawIndex((i) => i + 1)
+    trackLotteryRedraw(config.eventId, nextPool.length)
+    setStage('intro')
+  }, [drawnIds, winner, participants, playUiClick, stop, config.eventId])
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -168,7 +164,6 @@ export function LotteryPresentation({
           playWhoosh()
           break
         case 'participants':
-        case 'winners':
           playWhoosh()
           break
         case 'count3':
@@ -196,54 +191,35 @@ export function LotteryPresentation({
         <AnimatePresence mode="wait">
           {stage === 'intro' && (
             <motion.div
-              key="intro"
-              className="flex min-h-0 w-full flex-1"
+              key={`intro-${drawIndex}`}
+              className="flex min-h-0 w-full min-w-0 flex-1"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0, scale: 1.04, filter: 'blur(8px)' }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             >
-              <LotteryIntroShow
-                cards={introCards}
-                onBeat={handleIntroBeat}
-              />
+              <LotteryIntroShow cards={introCards} onBeat={handleIntroBeat} />
             </motion.div>
           )}
 
           {stage === 'draw' && winner && (
             <motion.div
-              key="draw"
-              className="flex min-h-0 w-full flex-1"
-              initial={{ opacity: 0, scale: 0.96, filter: 'blur(10px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+              key={`draw-${drawIndex}`}
+              className="flex min-h-0 w-full min-w-0 flex-1"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             >
               <GiftBoxLotteryDraw
                 participants={pool}
                 winnerName={winner.name}
                 prizeName={config.prizeName}
                 prizeIcon={config.prizeIcon || '🎁'}
-                onComplete={() => setStage('silence')}
+                onWinnerRevealed={handleWinnerRevealed}
+                onDrawAgain={handleDrawAgain}
+                onFinish={handleExit}
               />
-            </motion.div>
-          )}
-
-          {(stage === 'silence' || stage === 'winner') && (
-            <motion.div
-              key="winner"
-              className="min-h-0 w-full flex-1"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: stage === 'silence' ? 0 : 1 }}
-              transition={{ duration: stage === 'silence' ? 0 : 0.35 }}
-            >
-              {stage === 'winner' && winner && (
-                <WinnerReveal
-                  winnerName={winner.name}
-                  prizeName={config.prizeName}
-                  prizeIcon={config.prizeIcon}
-                />
-              )}
             </motion.div>
           )}
         </AnimatePresence>

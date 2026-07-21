@@ -4,7 +4,7 @@ import { Gift } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface IntroRuleCard {
-  id: 'prize' | 'participants' | 'winners'
+  id: 'prize' | 'participants'
   icon: string
   label: string
   value: string
@@ -21,7 +21,6 @@ export type IntroBeat =
   | 'ready'
   | 'prize'
   | 'participants'
-  | 'winners'
   | 'ask'
   | 'count3'
   | 'count2'
@@ -33,7 +32,6 @@ type IntroPhase =
   | 'ready'
   | 'prize'
   | 'participants'
-  | 'winners'
   | 'ask'
   | 'count3'
   | 'count2'
@@ -44,13 +42,12 @@ type IntroPhase =
 /** Intro pacing aligned to ~20s intro bed (from prize beat). */
 const HOLD: Record<IntroPhase, number> = {
   ready: 2_800,
-  prize: 3_400,
-  participants: 3_400,
-  winners: 3_400,
-  ask: 2_000,
-  count3: 1_900,
-  count2: 1_900,
-  count1: 1_700,
+  prize: 4_500,
+  participants: 4_500,
+  ask: 3_000,
+  count3: 2_100,
+  count2: 2_100,
+  count1: 1_900,
   flash: 520,
   blast: 960,
 }
@@ -58,8 +55,7 @@ const HOLD: Record<IntroPhase, number> = {
 const NEXT: Partial<Record<IntroPhase, IntroPhase>> = {
   ready: 'prize',
   prize: 'participants',
-  participants: 'winners',
-  winners: 'ask',
+  participants: 'ask',
   ask: 'count3',
   count3: 'count2',
   count2: 'count1',
@@ -128,7 +124,7 @@ const CARD_TONES = {
   },
 } as const
 
-type CardTone = keyof typeof CARD_TONES
+type CardTone = 'prize' | 'participants'
 
 function beatForPhase(phase: IntroPhase): IntroBeat {
   return phase
@@ -148,7 +144,6 @@ export function LotteryIntroShow({
 
   const prize = cards.find((c) => c.id === 'prize')!
   const participants = cards.find((c) => c.id === 'participants')!
-  const winners = cards.find((c) => c.id === 'winners')!
 
   const inFinale = phase === 'flash' || phase === 'blast'
   const inCountdown =
@@ -156,12 +151,10 @@ export function LotteryIntroShow({
     phase === 'count2' ||
     phase === 'count1' ||
     inFinale
-  const afterWinners =
-    phase === 'winners' || phase === 'ask' || inCountdown
-  const showPrize =
-    phase === 'prize' || phase === 'participants' || afterWinners
-  const showParticipants = phase === 'participants' || afterWinners
-  const showWinners = afterWinners
+  const afterParticipants =
+    phase === 'participants' || phase === 'ask' || inCountdown
+  const showPrize = phase === 'prize' || afterParticipants
+  const showParticipants = afterParticipants
   const isLifted = phase === 'ask' || inCountdown
   const showAsk = phase === 'ask' || inCountdown
   const isBlasting = phase === 'blast'
@@ -281,7 +274,7 @@ export function LotteryIntroShow({
               >
                 <motion.div
                   className={cn(
-                    'mb-6 flex h-28 w-28 items-center justify-center rounded-[1.75rem]',
+                    'mb-6 flex h-36 w-36 items-center justify-center rounded-[2rem] sm:h-40 sm:w-40',
                     'bg-gradient-to-br from-[#FC6024] to-[#D83000]',
                   )}
                   animate={
@@ -299,7 +292,7 @@ export function LotteryIntroShow({
                   transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 0.55 }}
                   style={{ boxShadow: '0 20px 48px rgba(252,96,36,0.38)' }}
                 >
-                  <Gift size={52} className="text-white" strokeWidth={2.25} aria-hidden="true" />
+                  <Gift size={68} className="text-white" strokeWidth={2.25} aria-hidden="true" />
                 </motion.div>
               </motion.div>
             </motion.div>
@@ -337,7 +330,7 @@ export function LotteryIntroShow({
                 variant="slide"
                 reduceMotion={!!reduceMotion}
                 delay={0.55}
-                className="mt-4 text-xl font-bold text-foreground/80 sm:text-2xl"
+                className="mt-4 text-3xl font-black text-foreground sm:text-4xl md:text-5xl"
               />
             </motion.div>
           </motion.div>
@@ -362,7 +355,7 @@ export function LotteryIntroShow({
                         ? { opacity: 1 }
                         : isLifted
                           ? { y: 0, scale: 0.78, opacity: 1 }
-                          : showWinners
+                          : showParticipants
                             ? { y: 0, scale: 0.9, opacity: 1 }
                             : { y: 0, scale: 1, opacity: 1 }
                     }
@@ -417,32 +410,6 @@ export function LotteryIntroShow({
                           value={participants.value}
                           tone="participants"
                           featured={phase === 'participants'}
-                        />
-                      </motion.div>
-                    )}
-                    {showWinners && (
-                      <motion.div
-                        animate={
-                          isBlasting
-                            ? {
-                                x: 40,
-                                y: -320,
-                                rotate: 10,
-                                scale: 0.28,
-                                opacity: 0,
-                                filter: 'blur(10px)',
-                              }
-                            : { x: 0, y: 0, rotate: 0, scale: 1, opacity: 1, filter: 'blur(0px)' }
-                        }
-                        transition={{ ...BLAST_OUT, delay: 0.08 }}
-                      >
-                        <RuleCard
-                          layoutId="intro-winners"
-                          icon={winners.icon}
-                          label="מספר הזוכים"
-                          value={winners.value}
-                          tone="winners"
-                          featured={phase === 'winners'}
                         />
                       </motion.div>
                     )}
@@ -772,10 +739,14 @@ function RuleCard({
         >
           <p
             className={cn(
-              'font-black leading-tight',
+              'whitespace-nowrap font-black leading-tight',
               featured
-                ? 'text-5xl sm:text-6xl md:text-7xl'
-                : 'text-xl sm:text-2xl md:text-3xl',
+                ? value.length > 14
+                  ? 'text-3xl sm:text-4xl md:text-5xl'
+                  : 'text-5xl sm:text-6xl md:text-7xl'
+                : value.length > 14
+                  ? 'text-base sm:text-lg md:text-xl'
+                  : 'text-xl sm:text-2xl md:text-3xl',
             )}
             style={{ color: palette.ink }}
           >

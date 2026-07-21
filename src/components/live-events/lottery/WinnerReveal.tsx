@@ -1,4 +1,6 @@
 import { motion } from 'framer-motion'
+import { Dices } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { ConfettiOverlay } from './ConfettiOverlay'
 
@@ -6,6 +8,7 @@ interface WinnerRevealProps {
   winnerName: string
   prizeName: string
   prizeIcon: string
+  onDrawAgain?: () => void
 }
 
 /**
@@ -15,9 +18,10 @@ export function WinnerReveal({
   winnerName,
   prizeName,
   prizeIcon,
+  onDrawAgain,
 }: WinnerRevealProps) {
   return (
-    <div className="relative flex h-full flex-col items-center justify-center px-4 py-8">
+    <div className="relative flex h-full flex-col items-center justify-center px-4 pb-28 pt-8 sm:pb-32">
       <div
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_45%,rgba(46,34,30,0.18),transparent_65%)]"
         aria-hidden="true"
@@ -93,6 +97,29 @@ export function WinnerReveal({
           </motion.div>
         </motion.div>
       </motion.div>
+
+      {onDrawAgain && (
+        <motion.div
+          className="absolute inset-x-0 bottom-6 z-20 flex justify-center px-4 sm:bottom-8"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55, type: 'spring', stiffness: 180, damping: 18 }}
+        >
+          <Button
+            type="button"
+            size="lg"
+            variant="primary"
+            onClick={onDrawAgain}
+            className={cn(
+              'min-w-[12rem] gap-2 rounded-2xl px-8 text-lg font-black shadow-[0_14px_36px_rgba(46,34,30,0.18)]',
+              'active:scale-[0.97]',
+            )}
+          >
+            <Dices size={22} strokeWidth={2.25} aria-hidden="true" />
+            הגרל שוב
+          </Button>
+        </motion.div>
+      )}
     </div>
   )
 }

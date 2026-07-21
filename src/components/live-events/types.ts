@@ -22,8 +22,6 @@ export interface LotteryConfig {
   minPoints: number
   prizeName: string
   prizeIcon: string
-  /** How many winners to draw (presentation may still reveal one at a time). */
-  winnerCount?: number
 }
 
 export interface LotteryWinnerRecord {
