@@ -85,7 +85,7 @@ export function RaffleWinnerReveal({ winnerName, prizeName }: RaffleWinnerReveal
           animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
           transition={{ duration: 0.55, delay: 0.65, ease: [0.22, 1, 0.36, 1] }}
         >
-          {winnerName}{' '}זכה ב {prizeName}!
+          {winnerName}{' '}זכה ב{prizeName}!
         </motion.p>
       </div>
     </div>
