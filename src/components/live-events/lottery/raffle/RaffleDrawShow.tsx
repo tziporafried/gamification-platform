@@ -45,36 +45,36 @@ function buildTickets(participants: EligibleParticipant[]): RaffleTicketData[] {
     let startY = 40
     switch (zone) {
       case 0: // left
-        startX = -6 + Math.random() * 10
-        startY = 6 + Math.random() * 78
+        startX = 2 + Math.random() * 8
+        startY = 8 + Math.random() * 74
         break
       case 1: // right
-        startX = 90 + Math.random() * 12
-        startY = 6 + Math.random() * 78
+        startX = 90 + Math.random() * 8
+        startY = 8 + Math.random() * 74
         break
       case 2: // top
-        startX = 4 + Math.random() * 92
-        startY = -8 + Math.random() * 14
+        startX = 6 + Math.random() * 88
+        startY = 2 + Math.random() * 8
         break
       case 3: // bottom
-        startX = 4 + Math.random() * 92
-        startY = 86 + Math.random() * 16
+        startX = 6 + Math.random() * 88
+        startY = 90 + Math.random() * 8
         break
       case 4: // top-left
-        startX = -4 + Math.random() * 22
-        startY = -6 + Math.random() * 22
+        startX = 2 + Math.random() * 16
+        startY = 2 + Math.random() * 16
         break
       case 5: // top-right
-        startX = 78 + Math.random() * 24
-        startY = -6 + Math.random() * 22
+        startX = 82 + Math.random() * 16
+        startY = 2 + Math.random() * 16
         break
       case 6: // bottom-left
-        startX = -4 + Math.random() * 24
-        startY = 72 + Math.random() * 28
+        startX = 2 + Math.random() * 16
+        startY = 82 + Math.random() * 16
         break
       default: // bottom-right
-        startX = 76 + Math.random() * 26
-        startY = 72 + Math.random() * 28
+        startX = 82 + Math.random() * 16
+        startY = 82 + Math.random() * 16
         break
     }
     const enterDelay = (i / Math.max(pool.length - 1, 1)) * 3.2 + Math.random() * 0.55
@@ -262,7 +262,6 @@ export function RaffleDrawShow({
           <motion.div
             ref={boxWrapRef}
             animate={{
-              scale: showBanner ? 0.82 : 1,
               opacity: showBanner ? 0.72 : 1,
               y: showBanner ? 16 : 0,
             }}

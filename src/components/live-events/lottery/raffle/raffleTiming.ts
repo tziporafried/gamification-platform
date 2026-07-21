@@ -8,7 +8,8 @@ export const RAFFLE_TIMING = {
   ticketRain: 3_600,
   /** Slow magnetic pull into the box. */
   collecting: 4_800,
-  closeBox: 700,
+  /** Lid-close crossfade (~550ms) plus a beat of pause before the shake starts. */
+  closeBox: 1_800,
   shake: 2_400,
   stop: 800,
   winner: 2_200,

@@ -41,7 +41,7 @@ type IntroPhase =
 
 /** Intro pacing aligned to ~20s intro bed (from prize beat). */
 const HOLD: Record<IntroPhase, number> = {
-  ready: 2_800,
+  ready: 3_400,
   prize: 4_500,
   participants: 4_500,
   ask: 3_000,
@@ -139,6 +139,7 @@ export function LotteryIntroShow({
 }: LotteryIntroShowProps) {
   const reduceMotion = useReducedMotion()
   const [phase, setPhase] = useState<IntroPhase>('ready')
+  const [headlineSettled, setHeadlineSettled] = useState(false)
   const onBeatRef = useRef(onBeat)
   onBeatRef.current = onBeat
 
@@ -158,6 +159,10 @@ export function LotteryIntroShow({
   const isLifted = phase === 'ask' || inCountdown
   const showAsk = phase === 'ask' || inCountdown
   const isBlasting = phase === 'blast'
+
+  useEffect(() => {
+    if (reduceMotion) setHeadlineSettled(true)
+  }, [reduceMotion])
 
   useEffect(() => {
     onBeatRef.current?.(beatForPhase(phase))
@@ -191,6 +196,86 @@ export function LotteryIntroShow({
         filter: phase === 'ready' ? undefined : 'brightness(0.96)',
       }}
     >
+      {/* Full-stage blur spotlight behind the 3-2-1 countdown digits */}
+      <AnimatePresence>
+        {(phase === 'count3' || phase === 'count2' || phase === 'count1') && (
+          <motion.div
+            key="countdown-blur"
+            className="pointer-events-none absolute inset-0 z-30 bg-[#2E221E]/25 backdrop-blur-xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Big centered 3-2-1 countdown digit — full-stage, above the blur spotlight */}
+      {inCountdown && (
+        <div
+          className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center"
+          aria-live="polite"
+        >
+          <AnimatePresence mode="wait" initial={false}>
+            {countLabel && (
+              <motion.div
+                key={`count-${countLabel}`}
+                className="relative flex items-center justify-center"
+                initial={{ opacity: 0, scale: 0.55, filter: 'blur(8px)' }}
+                animate={
+                  isBlasting
+                    ? { opacity: 0, scale: 2.4, y: -120, filter: 'blur(16px)' }
+                    : { opacity: 1, scale: [0.55, 1.08, 1], filter: 'blur(0px)', y: 0 }
+                }
+                exit={{ opacity: 0, scale: 0.88, filter: 'blur(6px)' }}
+                transition={
+                  isBlasting ? BLAST_OUT : { type: 'spring', stiffness: 120, damping: 18 }
+                }
+              >
+                <motion.span
+                  className="absolute rounded-full blur-3xl"
+                  style={{
+                    width: '65vmin',
+                    height: '65vmin',
+                    background: `radial-gradient(circle, ${
+                      countLabel === '3'
+                        ? 'rgba(252,96,36,0.55)'
+                        : countLabel === '2'
+                          ? 'rgba(0,144,144,0.5)'
+                          : 'rgba(232,163,61,0.55)'
+                    }, transparent 70%)`,
+                  }}
+                  animate={{ opacity: [0.5, 0.9, 0.5], scale: [0.92, 1.08, 0.92] }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
+                  aria-hidden="true"
+                />
+                <p
+                  className="relative font-black tabular-nums"
+                  style={{
+                    fontSize: 'clamp(8rem, 32vw, 19rem)',
+                    color:
+                      countLabel === '3'
+                        ? '#FC6024'
+                        : countLabel === '2'
+                          ? '#009090'
+                          : '#E8A33D',
+                    textShadow:
+                      countLabel === '3'
+                        ? '0 0 40px rgba(255,255,255,0.9), 0 0 100px rgba(252,96,36,0.85)'
+                        : countLabel === '2'
+                          ? '0 0 40px rgba(255,255,255,0.9), 0 0 100px rgba(0,144,144,0.8)'
+                          : '0 0 40px rgba(255,255,255,0.9), 0 0 100px rgba(232,163,61,0.85)',
+                  }}
+                >
+                  {countLabel}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
       {/* Full-stage flash after "1" */}
       <AnimatePresence>
         {phase === 'flash' && (
@@ -300,39 +385,50 @@ export function LotteryIntroShow({
             <motion.div variants={readyItemVariants}>
               <motion.h1
                 dir="rtl"
-                className="text-5xl font-black tracking-tight text-foreground sm:text-6xl md:text-7xl"
+                className="text-6xl font-black tracking-tight text-foreground sm:text-7xl md:text-8xl"
                 initial={
                   reduceMotion
                     ? false
-                    : { opacity: 0, scale: 2.1, rotate: -8, filter: 'blur(16px)' }
+                    : { opacity: 0, scale: 3.6, rotate: -12, filter: 'blur(24px)' }
                 }
-                animate={{ opacity: 1, scale: 1, rotate: 0, filter: 'blur(0px)' }}
+                animate={
+                  reduceMotion
+                    ? { opacity: 1, scale: 1, rotate: 0, filter: 'blur(0px)' }
+                    : {
+                        opacity: 1,
+                        scale: [3.6, 3.4, 1.18, 0.9, 1.05, 1],
+                        rotate: [-12, -6, 3, -1.5, 0, 0],
+                        filter: ['blur(24px)', 'blur(4px)', 'blur(0px)', 'blur(0px)', 'blur(0px)', 'blur(0px)'],
+                      }
+                }
                 transition={
                   reduceMotion
                     ? { duration: 0.2 }
                     : {
-                        type: 'spring',
-                        stiffness: 160,
-                        damping: 14,
-                        mass: 0.9,
+                        duration: 1.1,
+                        times: [0, 0.2, 0.56, 0.74, 0.9, 1],
+                        ease: [0.22, 1, 0.36, 1],
                         delay: 0.2,
                       }
                 }
+                onAnimationComplete={() => setHeadlineSettled(true)}
               >
                 הגרלה
               </motion.h1>
             </motion.div>
 
-            <motion.div variants={readyItemVariants}>
-              <LetterCascade
-                text="הכל מוכן…"
-                as="p"
-                variant="slide"
-                reduceMotion={!!reduceMotion}
-                delay={0.55}
-                className="mt-4 text-3xl font-black text-foreground sm:text-4xl md:text-5xl"
-              />
-            </motion.div>
+            {headlineSettled && (
+              <motion.div variants={readyItemVariants}>
+                <LetterCascade
+                  text="הכל מוכן…"
+                  as="p"
+                  variant="slide"
+                  reduceMotion={!!reduceMotion}
+                  delay={0.1}
+                  className="mt-4 text-3xl font-black text-foreground sm:text-4xl md:text-5xl"
+                />
+              </motion.div>
+            )}
           </motion.div>
         ) : (
           <motion.div
@@ -420,50 +516,6 @@ export function LotteryIntroShow({
                   <WordBounceAskText blasting={isBlasting} reduceMotion={!!reduceMotion} />
                 )}
 
-                {inCountdown && (
-                  <div
-                    className="relative z-20 mt-0 flex h-[min(28vw,9.5rem)] w-full shrink-0 items-center justify-center sm:h-[11rem] md:h-[12.5rem]"
-                    aria-live="polite"
-                  >
-                    <AnimatePresence mode="wait" initial={false}>
-                      {countLabel && (
-                        <motion.p
-                          key={`count-${countLabel}`}
-                          className="absolute inset-0 flex items-center justify-center font-black tabular-nums"
-                          style={{
-                            fontSize: 'clamp(4.5rem, 18vw, 10rem)',
-                            color:
-                              countLabel === '3'
-                                ? '#FC6024'
-                                : countLabel === '2'
-                                  ? '#009090'
-                                  : '#E8A33D',
-                            textShadow:
-                              countLabel === '3'
-                                ? '0 0 56px rgba(252,96,36,0.55)'
-                                : countLabel === '2'
-                                  ? '0 0 56px rgba(0,144,144,0.5)'
-                                  : '0 0 56px rgba(232,163,61,0.55)',
-                          }}
-                          initial={{ opacity: 0, scale: 0.55, filter: 'blur(8px)' }}
-                          animate={
-                            isBlasting
-                              ? { opacity: 0, scale: 2.4, y: -120, filter: 'blur(16px)' }
-                              : { opacity: 1, scale: [0.55, 1.08, 1], filter: 'blur(0px)', y: 0 }
-                          }
-                          exit={{ opacity: 0, scale: 0.88, filter: 'blur(6px)' }}
-                          transition={
-                            isBlasting
-                              ? BLAST_OUT
-                              : { type: 'spring', stiffness: 120, damping: 18 }
-                          }
-                        >
-                          {countLabel}
-                        </motion.p>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
               </AnimatePresence>
             </LayoutGroup>
           </motion.div>
