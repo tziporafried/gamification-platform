@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 import { Dices, Flag } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
@@ -59,6 +59,25 @@ interface RaffleWinnerRevealProps {
   prizeIcon: string
 }
 
+/** Jitter-style blurred slide-up for the whole winner line, then a perpetual gentle pulse — animated as one unit. */
+const winnerLineVariants: Variants = {
+  hidden: { opacity: 0, y: 28, scale: 0.85, filter: 'blur(8px)' },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    filter: 'blur(0px)',
+    transition: { duration: 0.55, delay: 0.65, ease: [0.22, 1, 0.36, 1] as const },
+  },
+  idle: {
+    opacity: 1,
+    y: 0,
+    scale: [1, 1.05, 1],
+    filter: 'blur(0px)',
+    transition: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
+  },
+}
+
 /**
  * Floating congrats banner — sits above the hero ticket (highest z).
  * "מזל טוב!!" lands with a tada-style overshoot (animate.style), the
@@ -66,11 +85,12 @@ interface RaffleWinnerRevealProps {
  */
 export function RaffleWinnerReveal({ winnerName, prizeName }: RaffleWinnerRevealProps) {
   const [settled, setSettled] = useState(false)
+  const [lineSettled, setLineSettled] = useState(false)
   return (
     <div className="pointer-events-none absolute inset-x-0 top-4 z-[60] flex justify-center px-4 sm:top-6">
       <div className="max-w-2xl text-center">
         <motion.p
-          className="text-5xl font-black text-secondary [text-shadow:0_6px_24px_rgba(0,144,144,0.4)] sm:text-7xl md:text-8xl"
+          className="text-5xl font-black text-warning [text-shadow:0_6px_24px_color-mix(in_srgb,var(--color-warning)_45%,transparent)] sm:text-7xl md:text-8xl"
           initial={{ opacity: 0, scale: 0.2, rotate: -12 }}
           animate={
             settled
@@ -96,9 +116,12 @@ export function RaffleWinnerReveal({ winnerName, prizeName }: RaffleWinnerReveal
         </motion.p>
         <motion.p
           className="mt-3 flex flex-wrap items-baseline justify-center gap-x-2 font-black text-foreground"
-          initial={{ opacity: 0, y: 28, scale: 0.85, filter: 'blur(8px)' }}
-          animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-          transition={{ duration: 0.55, delay: 0.65, ease: [0.22, 1, 0.36, 1] }}
+          variants={winnerLineVariants}
+          initial="hidden"
+          animate={lineSettled ? 'idle' : 'visible'}
+          onAnimationComplete={(definition) => {
+            if (definition === 'visible') setLineSettled(true)
+          }}
         >
           <span className="text-4xl sm:text-5xl md:text-6xl">{winnerName}</span>
           <span className="text-2xl sm:text-3xl md:text-4xl">זכה ב{prizeName}!</span>

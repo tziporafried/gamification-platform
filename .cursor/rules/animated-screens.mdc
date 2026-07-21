@@ -1,0 +1,14 @@
+---
+description: Animation reference libraries to draw from when building or polishing an animated/cinematic screen
+globs: src/components/live-events/**,src/components/**/*.tsx
+alwaysApply: false
+---
+
+# Animated Screens
+
+When asked to build, rework, or polish an animated/cinematic screen ("מסך מונפש"), draw the motion choreography from:
+
+- **[animate.style](https://animate.style/)** — named CSS animation patterns (`tada`, `rubberBand`, `bounceInUp`, `bounceOutUp`, `heartBeat`, `flash`, etc.) for punchy entrance/exit/attention effects.
+- **[jitter.video](https://jitter.video/)** — reference for slicker, staggered, spring-based motion-design choreography (blur-in, scale + offset staggering, elastic overshoot).
+
+Implement with `framer-motion`, echoing these libraries' named effects and choreography style rather than inventing timing/easing from scratch. Example: the raffle draw winner reveal (`src/components/live-events/lottery/raffle/WinnerReveal.tsx`) uses a `tada`-style overshoot for the "מזל טוב!!" line and a Jitter-style blurred slide-up for the winner/prize line.

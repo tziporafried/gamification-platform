@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { RAFFLE_ASSETS, RAFFLE_SPRINGS } from './raffleTiming'
+import { RAFFLE_ASSETS, RAFFLE_SPRINGS, RAFFLE_TIMING } from './raffleTiming'
 
 interface BoxAssetProps {
   shaking?: boolean
@@ -32,14 +32,21 @@ function BoxShell({
               x: [0, -12, 14, -16, 12, -8, 6, 0],
               y: [0, -8, 5, -10, 6, -4, 2, 0],
               rotate: [0, -7, 8, -9, 6, -4, 0],
+              // Grows slowly across the whole shake — separate from the jittery repeat below.
+              scale: [1, 1.1],
             }
           : idle
-            ? { y: [0, -5, 0], rotate: [0, -0.6, 0.6, 0] }
-            : { x: 0, y: 0, rotate: 0 }
+            ? { y: [0, -5, 0], rotate: [0, -0.6, 0.6, 0], scale: 1 }
+            : { x: 0, y: 0, rotate: 0, scale: 1 }
       }
       transition={
         shaking
-          ? { ...RAFFLE_SPRINGS.shake, repeat: Infinity }
+          ? {
+              x: { ...RAFFLE_SPRINGS.shake, repeat: Infinity },
+              y: { ...RAFFLE_SPRINGS.shake, repeat: Infinity },
+              rotate: { ...RAFFLE_SPRINGS.shake, repeat: Infinity },
+              scale: { duration: RAFFLE_TIMING.shake / 1000, ease: 'easeInOut' },
+            }
           : idle
             ? { duration: 3.2, repeat: Infinity, ease: 'easeInOut' }
             : RAFFLE_SPRINGS.idle
