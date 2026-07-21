@@ -53,8 +53,8 @@ export const LIVE_EVENT_CATALOG: LiveEventCatalogItem[] = [
     title: 'הגרלה',
     description: 'בחרו פרס ומשתתפים - והשיקו הגרלה משלכם.',
     icon: Gift,
-    available: false,
-    cta: 'יושק בקרוב',
+    available: true,
+    cta: 'הפעילו הגרלה',
     accent: 'starter',
   },
   {
@@ -77,15 +77,9 @@ export const LIVE_EVENT_CATALOG: LiveEventCatalogItem[] = [
   },
 ]
 
-/**
- * Public availability from the catalog, with an admin-only preview for lottery QA.
- */
-export function isLiveEventLaunchable(
-  item: LiveEventCatalogItem,
-  opts?: { isSuperAdmin?: boolean },
-): boolean {
-  if (item.available) return true
-  return Boolean(opts?.isSuperAdmin && item.id === 'lottery')
+/** Public availability from the catalog. */
+export function isLiveEventLaunchable(item: LiveEventCatalogItem): boolean {
+  return item.available
 }
 
 /** @deprecated Prefer LIVE_EVENT_CATALOG */

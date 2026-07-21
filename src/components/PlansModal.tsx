@@ -122,6 +122,7 @@ export function PlansModal({
       'header',
       'post_wizard',
       'deep_link',
+      'lottery_trial_reveal',
     ]
     if ((known as string[]).includes(source)) {
       trackActivationOptionsViewed(eventId, source as ActivationOptionsSource)

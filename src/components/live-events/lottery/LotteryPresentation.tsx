@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
+  trackCtaClick,
   trackLotteryDrawStart,
   trackLotteryExit,
   trackLotteryIntroStart,
@@ -8,6 +9,7 @@ import {
   trackLotteryWinnerRevealed,
 } from '@/lib/analytics'
 import { useLotteryPresentationSound } from '@/hooks/useLotteryPresentationSound'
+import { usePlansModal } from '@/contexts/PlansModalContext'
 import type { EligibleParticipant, LotteryConfig } from '../types'
 import { LotteryBroadcastLayout } from './LotteryBroadcastLayout'
 import { LotteryIntroShow, type IntroBeat, type IntroRuleCard } from './LotteryIntroShow'
@@ -17,9 +19,13 @@ import { recordLotteryWinner } from './lotteryWinners'
 
 type ShowStage = 'intro' | 'draw'
 
+/** Trial events run the real ceremony but never disclose who actually won. */
+const TRIAL_WINNER_LABEL = '?'
+
 interface LotteryPresentationProps {
   config: LotteryConfig
   participants: EligibleParticipant[]
+  isTrial: boolean
   onClose: () => void
 }
 
@@ -35,6 +41,7 @@ function eligibilityLabel(config: LotteryConfig): string {
 export function LotteryPresentation({
   config,
   participants,
+  isTrial,
   onClose,
 }: LotteryPresentationProps) {
   const [stage, setStage] = useState<ShowStage>('intro')
@@ -42,6 +49,7 @@ export function LotteryPresentation({
   const [winner, setWinner] = useState<EligibleParticipant | null>(null)
   const [drawIndex, setDrawIndex] = useState(0)
   const recordedRef = useRef(false)
+  const { openPlans } = usePlansModal()
   const {
     play,
     playIntroBed,
@@ -111,15 +119,26 @@ export function LotteryPresentation({
       eligibleCount: participants.length,
       drawIndex,
     })
-    recordLotteryWinner(config.eventId, {
-      participantId: winner.id,
-      participantName: winner.name,
-      prizeName: config.prizeName,
-      prizeIcon: config.prizeIcon,
-      wonAt: new Date().toISOString(),
-    })
+    if (!isTrial) {
+      recordLotteryWinner(config.eventId, {
+        participantId: winner.id,
+        participantName: winner.name,
+        prizeName: config.prizeName,
+        prizeIcon: config.prizeIcon,
+        wonAt: new Date().toISOString(),
+      })
+    }
     setDrawnIds((ids) => (ids.includes(winner.id) ? ids : [...ids, winner.id]))
-  }, [winner, stop, playWinnerFanfare, config, participants.length, drawIndex])
+  }, [winner, stop, playWinnerFanfare, config, participants.length, drawIndex, isTrial])
+
+  const handleUpgradeClick = useCallback(() => {
+    trackCtaClick({
+      cta_name: 'view_activation_options',
+      cta_location: 'lottery_trial_reveal',
+      destination: 'plans_modal',
+    })
+    openPlans({ eventId: config.eventId, source: 'lottery_trial_reveal' })
+  }, [config.eventId, openPlans])
 
   const handleExit = useCallback(() => {
     trackLotteryExit({ eventId: config.eventId, stage })
@@ -213,9 +232,11 @@ export function LotteryPresentation({
             >
               <GiftBoxLotteryDraw
                 participants={pool}
-                winnerName={winner.name}
+                winnerName={isTrial ? TRIAL_WINNER_LABEL : winner.name}
                 prizeName={config.prizeName}
                 prizeIcon={config.prizeIcon || '🎁'}
+                isTrial={isTrial}
+                onUpgradeClick={handleUpgradeClick}
                 onWinnerRevealed={handleWinnerRevealed}
                 onDrawAgain={handleDrawAgain}
                 onFinish={handleExit}

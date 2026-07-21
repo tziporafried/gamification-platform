@@ -7,7 +7,7 @@ import { RaffleParticles } from './RaffleParticles'
 import { RaffleStatusText } from './RaffleStatusText'
 import { useRaffleStateMachine } from './StateMachine'
 import { TicketFlight } from './TicketCollector'
-import { RaffleOrganizerControls, RaffleWinnerReveal } from './WinnerReveal'
+import { RaffleOrganizerControls, RaffleTrialUpgradeBanner, RaffleWinnerReveal } from './WinnerReveal'
 import { WinnerTicket } from './WinnerTicket'
 import {
   OPEN_BOX_SLOT_Y_FRACTION,
@@ -23,6 +23,9 @@ export interface RaffleDrawShowProps {
   winnerName: string
   prizeName: string
   prizeIcon: string
+  /** Trial-plan event — winnerName is already masked; surfaces an upgrade CTA instead of the real name. */
+  isTrial?: boolean
+  onUpgradeClick?: () => void
   onWinnerRevealed?: () => void
   onDrawAgain?: () => void
   onFinish?: () => void
@@ -99,6 +102,8 @@ export function RaffleDrawShow({
   winnerName,
   prizeName,
   prizeIcon,
+  isTrial,
+  onUpgradeClick,
   onWinnerRevealed,
   onDrawAgain,
   onFinish,
@@ -231,6 +236,10 @@ export function RaffleDrawShow({
 
         {showControls && (
           <RaffleOrganizerControls onDrawAgain={onDrawAgain} onFinish={onFinish} />
+        )}
+
+        {showControls && isTrial && onUpgradeClick && (
+          <RaffleTrialUpgradeBanner onUpgradeClick={onUpgradeClick} />
         )}
 
         {!showBanner && <RaffleStatusText phase={phase} text={statusText} />}

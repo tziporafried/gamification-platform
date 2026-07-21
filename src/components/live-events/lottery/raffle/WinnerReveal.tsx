@@ -131,4 +131,50 @@ export function RaffleWinnerReveal({ winnerName, prizeName }: RaffleWinnerReveal
   )
 }
 
+interface RaffleTrialUpgradeBannerProps {
+  onUpgradeClick: () => void
+}
+
+/**
+ * Trial-plan nudge — pops up ~1s after the (masked) reveal settles, same card
+ * language as the control-center "מצב התנסות" activation banner.
+ */
+export function RaffleTrialUpgradeBanner({ onUpgradeClick }: RaffleTrialUpgradeBannerProps) {
+  return (
+    <motion.div
+      className="pointer-events-auto absolute inset-x-0 bottom-6 z-[80] flex justify-center px-4 sm:bottom-8"
+      initial={{ opacity: 0, y: 24, scale: 0.94 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ ...RAFFLE_SPRINGS.reveal, delay: 1 }}
+    >
+      <div
+        className={cn(
+          'w-full max-w-xl overflow-hidden rounded-xl border border-primary/20 text-right',
+          'bg-[color-mix(in_srgb,var(--color-primary)_7%,var(--color-surface-elevated))]',
+          'shadow-[0_18px_44px_rgba(46,34,30,0.22)] backdrop-blur-md',
+        )}
+      >
+        <div className="flex flex-col gap-4 border-s-4 border-primary p-4 sm:flex-row sm:items-center sm:gap-5 sm:ps-5">
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-xs font-bold text-primary-text">✨ מצב התנסות</p>
+            <p className="text-base font-bold leading-snug text-foreground">מי זכה? 🎉</p>
+            <p className="text-sm leading-relaxed text-foreground/85">
+              הפעילו את המשחק כדי לחשוף את שם הזוכה האמיתי ולהעניק לו את הפרס.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="gradient"
+            size="md"
+            className="w-full shrink-0 font-semibold tracking-wide sm:w-auto sm:min-w-[11rem]"
+            onClick={onUpgradeClick}
+          >
+            הפעלת המשחק
+          </Button>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
 export { RaffleWinnerReveal as WinnerReveal }

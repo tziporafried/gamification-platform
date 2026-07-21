@@ -4,7 +4,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { theme } from '@/lib/theme'
-import { useAuth } from '@/contexts/AuthContext'
 import {
   trackLiveEventSelect,
   trackLiveEventsModalClose,
@@ -236,16 +235,11 @@ export function LiveEventsSelectModal({
   eventId,
   originRect = null,
 }: LiveEventsSelectModalProps) {
-  const { isSuperAdmin } = useAuth()
   const { available, upcoming } = useMemo(() => {
-    const launchable = LIVE_EVENT_CATALOG.filter((item) =>
-      isLiveEventLaunchable(item, { isSuperAdmin }),
-    )
-    const soon = LIVE_EVENT_CATALOG.filter(
-      (item) => !isLiveEventLaunchable(item, { isSuperAdmin }),
-    )
+    const launchable = LIVE_EVENT_CATALOG.filter((item) => isLiveEventLaunchable(item))
+    const soon = LIVE_EVENT_CATALOG.filter((item) => !isLiveEventLaunchable(item))
     return { available: launchable, upcoming: soon }
-  }, [isSuperAdmin])
+  }, [])
   const reduceMotion = useReducedMotion()
   const dialogRef = useRef<HTMLDivElement>(null)
   const restoreFocusRef = useRef<HTMLElement | null>(null)

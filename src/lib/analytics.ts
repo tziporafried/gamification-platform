@@ -531,6 +531,7 @@ export type ActivationOptionsSource =
   | 'header'
   | 'post_wizard'
   | 'deep_link'
+  | 'lottery_trial_reveal'
 
 /** User opened activation options (plans modal) from a tracked entry point. */
 export function trackActivationOptionsViewed(eventId: string, source: ActivationOptionsSource) {
@@ -606,14 +607,6 @@ export function trackLiveEventSelect(params: {
 export function trackLotterySetupView(eventId: string) {
   trackEventDeduped(`lottery_setup_view:${eventId}`, 'lottery_setup_view', {
     event_id: eventId,
-  })
-}
-
-/** Non-admin hit the lottery route while it is gated as "coming soon". */
-export function trackLotteryGated(eventId: string | undefined) {
-  trackEventDeduped(`lottery_gated:${eventId ?? 'none'}`, 'lottery_gated', {
-    event_id: eventId,
-    reason: 'not_admin',
   })
 }
 

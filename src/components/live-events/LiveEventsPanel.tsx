@@ -1,6 +1,5 @@
 import { Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/contexts/AuthContext'
 import { trackLiveEventSelect } from '@/lib/analytics'
 import { LIVE_EVENT_CATALOG, isLiveEventLaunchable } from './types'
 import { LiveEventLibraryCard } from './LiveEventLibraryCard'
@@ -13,12 +12,9 @@ interface LiveEventsPanelProps {
  * Legacy live-events page UI - modal is the primary launcher from control center.
  */
 export function LiveEventsPanel({ eventId }: LiveEventsPanelProps) {
-  const { isSuperAdmin } = useAuth()
   const lottery = LIVE_EVENT_CATALOG.find((item) => item.id === 'lottery')!
-  const lotteryLaunchable = isLiveEventLaunchable(lottery, { isSuperAdmin })
-  const upcoming = LIVE_EVENT_CATALOG.filter(
-    (item) => !isLiveEventLaunchable(item, { isSuperAdmin }),
-  )
+  const lotteryLaunchable = isLiveEventLaunchable(lottery)
+  const upcoming = LIVE_EVENT_CATALOG.filter((item) => !isLiveEventLaunchable(item))
 
   function openLotteryBroadcast() {
     if (!lotteryLaunchable) return
@@ -52,11 +48,7 @@ export function LiveEventsPanel({ eventId }: LiveEventsPanelProps) {
 
       {lotteryLaunchable && (
         <div className="mx-auto mb-5 w-full max-w-xl sm:mb-6">
-          <LiveEventLibraryCard
-            item={{ ...lottery, available: true, cta: 'הפעילו הגרלה' }}
-            featured
-            onLaunch={openLotteryBroadcast}
-          />
+          <LiveEventLibraryCard item={lottery} featured onLaunch={openLotteryBroadcast} />
         </div>
       )}
 
