@@ -42,7 +42,7 @@ export function LotteryPreparingStage() {
 
   return (
     <motion.div
-      className="relative flex flex-col items-center text-center"
+      className="relative flex h-full w-full flex-1 flex-col items-center justify-center text-center"
       initial={reduceMotion ? false : { opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}

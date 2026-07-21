@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Dices, Flag } from 'lucide-react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { RAFFLE_SPRINGS } from './raffleTiming'
@@ -64,28 +65,43 @@ interface RaffleWinnerRevealProps {
  * winner line follows with a Jitter-esque blurred slide-up.
  */
 export function RaffleWinnerReveal({ winnerName, prizeName }: RaffleWinnerRevealProps) {
+  const [settled, setSettled] = useState(false)
   return (
     <div className="pointer-events-none absolute inset-x-0 top-4 z-[60] flex justify-center px-4 sm:top-6">
       <div className="max-w-2xl text-center">
         <motion.p
-          className="text-5xl font-black text-primary-text [text-shadow:0_6px_24px_rgba(212,47,0,0.4)] sm:text-7xl md:text-8xl"
+          className="text-5xl font-black text-secondary [text-shadow:0_6px_24px_rgba(0,144,144,0.4)] sm:text-7xl md:text-8xl"
           initial={{ opacity: 0, scale: 0.2, rotate: -12 }}
-          animate={{
-            opacity: 1,
-            scale: [0.2, 1.24, 0.92, 1.1, 0.97, 1.03, 1],
-            rotate: [-12, 8, -6, 4, -2, 0],
-          }}
-          transition={{ duration: 1, ease: [0.215, 0.61, 0.355, 1] }}
+          animate={
+            settled
+              ? {
+                  opacity: 1,
+                  scale: [1, 1.1, 1],
+                  rotate: [0, -3, 3, 0],
+                }
+              : {
+                  opacity: 1,
+                  scale: [0.2, 1.24, 0.92, 1.1, 0.97, 1.03, 1],
+                  rotate: [-12, 8, -6, 4, -2, 0],
+                }
+          }
+          transition={
+            settled
+              ? { duration: 2.2, repeat: Infinity, ease: 'easeInOut' }
+              : { duration: 1, ease: [0.215, 0.61, 0.355, 1] }
+          }
+          onAnimationComplete={() => setSettled(true)}
         >
           מזל טוב!!
         </motion.p>
         <motion.p
-          className="mt-3 text-2xl font-black text-foreground sm:text-3xl md:text-4xl"
+          className="mt-3 flex flex-wrap items-baseline justify-center gap-x-2 font-black text-foreground"
           initial={{ opacity: 0, y: 28, scale: 0.85, filter: 'blur(8px)' }}
           animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
           transition={{ duration: 0.55, delay: 0.65, ease: [0.22, 1, 0.36, 1] }}
         >
-          {winnerName}{' '}זכה ב{prizeName}!
+          <span className="text-4xl sm:text-5xl md:text-6xl">{winnerName}</span>
+          <span className="text-2xl sm:text-3xl md:text-4xl">זכה ב{prizeName}!</span>
         </motion.p>
       </div>
     </div>

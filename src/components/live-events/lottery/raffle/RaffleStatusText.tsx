@@ -1,4 +1,5 @@
 import { AnimatePresence, motion, type TargetAndTransition, type Transition } from 'framer-motion'
+import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import type { RafflePhase } from './raffleTiming'
 
@@ -81,11 +82,18 @@ interface RaffleStatusTextProps {
  */
 export function RaffleStatusText({ phase, text, className }: RaffleStatusTextProps) {
   if (!text) return null
+  if (typeof document === 'undefined') return null
   const presetKey = PHASE_PRESET[phase] ?? 'bounceIn'
   const preset = PRESETS[presetKey]!
 
-  return (
-    <div className="pointer-events-none absolute inset-x-0 top-5 z-[90] flex justify-center px-4 sm:top-7">
+  // Portaled to body (like TicketFlight) so its z-index is compared directly
+  // against the ticket-flight layer instead of being capped by a local
+  // stacking context — otherwise no z-index here could ever beat it.
+  return createPortal(
+    <div
+      className="pointer-events-none fixed inset-x-0 top-5 z-[90] flex justify-center px-4 sm:top-7"
+      aria-hidden="true"
+    >
       <AnimatePresence mode="wait">
         <motion.p
           key={phase}
@@ -104,6 +112,7 @@ export function RaffleStatusText({ phase, text, className }: RaffleStatusTextPro
           {text}
         </motion.p>
       </AnimatePresence>
-    </div>
+    </div>,
+    document.body,
   )
 }

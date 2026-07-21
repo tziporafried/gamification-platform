@@ -7,6 +7,8 @@ interface TicketProps {
   phase: 'rain' | 'collect' | 'hidden' | 'winnerRise' | 'winnerHero'
   isWinner?: boolean
   onEntered?: () => void
+  /** Real on-screen position of the box's opening — where tickets converge. */
+  slot?: { left: string; top: string }
 }
 
 /** Brand-palette tones cycled across floating tickets for a lively, varied stage. */
@@ -46,10 +48,13 @@ function toneForId(id: string): TicketTone {
 /**
  * Folded paper raffle ticket — no Gamify branding; spring physics only.
  */
-export function Ticket({ ticket, phase, isWinner = false, onEntered }: TicketProps) {
-  // Box sits lower on the projector stage — aim collect path at the slot.
-  const slot = { left: '50%', top: '72%' }
-
+export function Ticket({
+  ticket,
+  phase,
+  isWinner = false,
+  onEntered,
+  slot = { left: '50%', top: '72%' },
+}: TicketProps) {
   if (phase === 'hidden') return null
 
   if (phase === 'winnerRise' || phase === 'winnerHero') {
@@ -77,7 +82,7 @@ export function Ticket({ ticket, phase, isWinner = false, onEntered }: TicketPro
               }
             : {
                 top: '48%',
-                scale: 1.55,
+                scale: [1.55, 1.62, 1.55],
                 rotateZ: [0, -3, 3, 0],
                 rotateY: 0,
                 opacity: 1,
@@ -89,7 +94,7 @@ export function Ticket({ ticket, phase, isWinner = false, onEntered }: TicketPro
             ? { duration: 1.65, ease: [0.22, 1, 0.36, 1] }
             : {
                 top: { ...RAFFLE_SPRINGS.winnerHero },
-                scale: { ...RAFFLE_SPRINGS.winnerHero },
+                scale: { duration: 2.6, repeat: Infinity, ease: 'easeInOut' },
                 rotateZ: { duration: 2.6, repeat: Infinity, ease: 'easeInOut' },
                 filter: { duration: 0.4 },
               }
@@ -236,8 +241,31 @@ function TicketFace({
         clipPath:
           'polygon(0 12%, 4% 12%, 4% 0, 96% 0, 96% 12%, 100% 12%, 100% 88%, 96% 88%, 96% 100%, 4% 100%, 4% 88%, 0 88%)',
       }}
-      animate={unfolded ? { rotateY: [72, 0], scaleX: [0.52, 1] } : undefined}
-      transition={unfolded ? { ...RAFFLE_SPRINGS.unfold, delay: 0.06 } : undefined}
+      animate={
+        unfolded
+          ? {
+              rotateY: [72, 0],
+              scaleX: [0.52, 1],
+              boxShadow:
+                hero && glowing
+                  ? [
+                      '0 8px 20px rgba(46,34,30,0.2), 0 0 22px rgba(139,124,255,0.55)',
+                      '0 8px 20px rgba(46,34,30,0.2), 0 0 48px rgba(139,124,255,0.9)',
+                      '0 8px 20px rgba(46,34,30,0.2), 0 0 22px rgba(139,124,255,0.55)',
+                    ]
+                  : undefined,
+            }
+          : undefined
+      }
+      transition={
+        unfolded
+          ? {
+              rotateY: { ...RAFFLE_SPRINGS.unfold, delay: 0.06 },
+              scaleX: { ...RAFFLE_SPRINGS.unfold, delay: 0.06 },
+              boxShadow: { duration: 1.9, repeat: Infinity, ease: 'easeInOut', delay: 0.4 },
+            }
+          : undefined
+      }
     >
       {palette && (
         <motion.span

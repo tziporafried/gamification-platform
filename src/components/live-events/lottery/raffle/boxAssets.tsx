@@ -21,8 +21,9 @@ function BoxShell({
     <motion.div
       className={cn(
         'relative z-20 flex items-end justify-center',
-        // Same footprint across every box image so swaps never jump/resize.
-        'h-[20rem] w-[21rem] sm:h-[24rem] sm:w-[26rem] md:h-[28rem] md:w-[30rem]',
+        // Wide enough that every box asset (up to ~1.244 aspect) is height-bound,
+        // so every crossfade renders at the exact same height — only width letterboxes.
+        'h-[20rem] w-[25rem] sm:h-[24rem] sm:w-[30rem] md:h-[28rem] md:w-[35rem]',
         className,
       )}
       animate={

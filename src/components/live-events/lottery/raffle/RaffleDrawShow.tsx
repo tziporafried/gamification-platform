@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { LayoutGroup, motion } from 'framer-motion'
 import type { EligibleParticipant } from '../../types'
 import { ConfettiOverlay } from '../ConfettiOverlay'
@@ -10,6 +10,7 @@ import { TicketFlight } from './TicketCollector'
 import { RaffleOrganizerControls, RaffleWinnerReveal } from './WinnerReveal'
 import { WinnerTicket } from './WinnerTicket'
 import {
+  OPEN_BOX_SLOT_Y_FRACTION,
   RAFFLE_MAX_VISIBLE_TICKETS,
   RAFFLE_TIMING,
   boxKindForPhase,
@@ -122,6 +123,23 @@ export function RaffleDrawShow({
   const sfx = useRaffleDrawSfx()
   const insertTickRef = useRef(0)
   const revealedRef = useRef(false)
+  const boxWrapRef = useRef<HTMLDivElement>(null)
+  const [slot, setSlot] = useState({ left: '50%', top: '72%' })
+
+  useEffect(() => {
+    const measure = () => {
+      const el = boxWrapRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const openingY = rect.top + rect.height * OPEN_BOX_SLOT_Y_FRACTION
+      const left = ((rect.left + rect.width / 2) / window.innerWidth) * 100
+      const top = (openingY / window.innerHeight) * 100
+      setSlot({ left: `${left}%`, top: `${top}%` })
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [])
 
   useEffect(() => {
     if (phase === 'ticketRain') {
@@ -229,6 +247,7 @@ export function RaffleDrawShow({
           <TicketFlight
             tickets={tickets}
             phase={phase === 'ticketRain' ? 'rain' : 'collect'}
+            slot={slot}
           />
         )}
 
@@ -241,6 +260,7 @@ export function RaffleDrawShow({
 
         <div className="relative z-20 mt-auto flex flex-col items-center pb-4 pt-24 sm:pb-6 sm:pt-28">
           <motion.div
+            ref={boxWrapRef}
             animate={{
               scale: showBanner ? 0.82 : 1,
               opacity: showBanner ? 0.72 : 1,

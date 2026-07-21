@@ -3,13 +3,20 @@ import type { ReactNode } from 'react'
 import { Ticket } from './Ticket'
 import type { RaffleTicketData } from './raffleTiming'
 
+interface TicketSlot {
+  left: string
+  top: string
+}
+
 interface TicketCollectorProps {
   tickets: RaffleTicketData[]
   onTicketEntered?: (ticketId: string) => void
+  /** Real on-screen position of the box's opening — where tickets converge. */
+  slot?: TicketSlot
 }
 
 /** Magnetic pull — every ticket accelerates into the raffle slot. */
-export function TicketCollector({ tickets, onTicketEntered }: TicketCollectorProps) {
+export function TicketCollector({ tickets, onTicketEntered, slot }: TicketCollectorProps) {
   return (
     <TicketFlightLayer>
       {tickets.map((ticket) => (
@@ -17,6 +24,7 @@ export function TicketCollector({ tickets, onTicketEntered }: TicketCollectorPro
           key={ticket.id}
           ticket={ticket}
           phase="collect"
+          slot={slot}
           onEntered={() => onTicketEntered?.(ticket.id)}
         />
       ))}
@@ -32,10 +40,12 @@ export function TicketFlight({
   tickets,
   phase,
   onTicketEntered,
+  slot,
 }: {
   tickets: RaffleTicketData[]
   phase: 'rain' | 'collect'
   onTicketEntered?: (ticketId: string) => void
+  slot?: TicketSlot
 }) {
   return (
     <TicketFlightLayer>
@@ -44,6 +54,7 @@ export function TicketFlight({
           key={ticket.id}
           ticket={ticket}
           phase={phase}
+          slot={slot}
           onEntered={phase === 'collect' ? () => onTicketEntered?.(ticket.id) : undefined}
         />
       ))}

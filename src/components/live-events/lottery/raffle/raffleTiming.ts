@@ -38,6 +38,14 @@ export const RAFFLE_ASSETS = {
 /** Cap on-screen tickets for 60fps (all eligible still "in" the draw). */
 export const RAFFLE_MAX_VISIBLE_TICKETS = 40
 
+/**
+ * Fraction down the open-box artwork where its mouth (the front rim tickets
+ * drop through) sits — measured from raffle-box-open.png. Combined with the
+ * box's live on-screen rect, this aims the collecting ticket flight at the
+ * real opening instead of a guessed viewport position.
+ */
+export const OPEN_BOX_SLOT_Y_FRACTION = 0.42
+
 export type RafflePhase =
   | 'ready'
   | 'ticketRain'
