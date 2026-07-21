@@ -1,10 +1,16 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { theme } from '@/lib/theme'
-import { LIVE_EVENT_CATALOG, type LiveEventCatalogId, type LiveEventCatalogItem } from './types'
+import { useAuth } from '@/contexts/AuthContext'
+import {
+  LIVE_EVENT_CATALOG,
+  isLiveEventLaunchable,
+  type LiveEventCatalogId,
+  type LiveEventCatalogItem,
+} from './types'
 
 const TRANSITION_MS = 0.42
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -28,6 +34,7 @@ const CARD_GRADIENT: Record<LiveEventCatalogItem['accent'], string> = {
   legendary: 'gradient-reward-legendary',
   rich: 'gradient-reward-rich',
   medium: 'gradient-reward-medium',
+  starter: 'gradient-reward-starter',
 }
 
 const CARD_SHADOW: Record<LiveEventCatalogItem['accent'], string> = {
@@ -37,6 +44,8 @@ const CARD_SHADOW: Record<LiveEventCatalogItem['accent'], string> = {
     'shadow-[0_14px_32px_rgba(46,34,30,0.18),0_0_28px_rgba(255,184,0,0.32)]',
   medium:
     'shadow-[0_14px_32px_rgba(46,34,30,0.18),0_0_28px_rgba(0,144,144,0.28)]',
+  starter:
+    'shadow-[0_14px_32px_rgba(46,34,30,0.18),0_0_28px_rgba(69,207,107,0.32)]',
 }
 
 const CARD_SHADOW_HOVER: Record<LiveEventCatalogItem['accent'], string> = {
@@ -46,12 +55,14 @@ const CARD_SHADOW_HOVER: Record<LiveEventCatalogItem['accent'], string> = {
     'hover:shadow-[0_20px_44px_rgba(46,34,30,0.24),0_0_36px_rgba(255,184,0,0.42)]',
   medium:
     'hover:shadow-[0_20px_44px_rgba(46,34,30,0.24),0_0_36px_rgba(0,144,144,0.38)]',
+  starter:
+    'hover:shadow-[0_20px_44px_rgba(46,34,30,0.24),0_0_36px_rgba(69,207,107,0.42)]',
 }
 
 const CARD_BLURB: Record<LiveEventCatalogId, string> = {
-  lottery: 'בחרו פרס, הגדירו מי משתתף - והשיקו הגרלה משלכם.',
-  'bonus-points': 'העניקו נקודות בונוס לשחקנים או לקבוצות.',
-  'flash-challenge': 'השיקו אתגר מהיר באמצע המשחק.',
+  lottery: 'בחרו פרס ומשתתפים - והשיקו הגרלה משלכם.',
+  'bonus-points': 'העניקו נקודות בונוס לשחקנים או לקבוצות שבחרתם.',
+  'flash-challenge': 'השיקו אתגר פתע באמצע המשחק.',
 }
 
 const UPCOMING_SLOT = 'w-full sm:w-[calc((100%-0.875rem)/2)]'
@@ -190,8 +201,16 @@ export function LiveEventsSelectModal({
   eventId,
   originRect = null,
 }: LiveEventsSelectModalProps) {
-  const available = LIVE_EVENT_CATALOG.filter((item) => item.available)
-  const upcoming = LIVE_EVENT_CATALOG.filter((item) => !item.available)
+  const { isSuperAdmin } = useAuth()
+  const { available, upcoming } = useMemo(() => {
+    const launchable = LIVE_EVENT_CATALOG.filter((item) =>
+      isLiveEventLaunchable(item, { isSuperAdmin }),
+    )
+    const soon = LIVE_EVENT_CATALOG.filter(
+      (item) => !isLiveEventLaunchable(item, { isSuperAdmin }),
+    )
+    return { available: launchable, upcoming: soon }
+  }, [isSuperAdmin])
   const reduceMotion = useReducedMotion()
   const dialogRef = useRef<HTMLDivElement>(null)
   const restoreFocusRef = useRef<HTMLElement | null>(null)

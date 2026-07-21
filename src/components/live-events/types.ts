@@ -22,8 +22,8 @@ export interface LotteryConfig {
   minPoints: number
   prizeName: string
   prizeIcon: string
-  /** When true, previous winners should be excluded (filtering wired later). */
-  excludePreviousWinners: boolean
+  /** How many winners to draw (presentation may still reveal one at a time). */
+  winnerCount?: number
 }
 
 export interface LotteryWinnerRecord {
@@ -44,20 +44,20 @@ export interface LiveEventCatalogItem {
   icon: LucideIcon
   available: boolean
   cta: string
-  accent: 'legendary' | 'rich' | 'medium'
+  accent: 'legendary' | 'rich' | 'medium' | 'starter'
 }
 
-/** Current product catalog - all live events are upcoming teasers for now. */
+/** Current product catalog - Lottery is teaser for organizers; other live events too. */
 export const LIVE_EVENT_CATALOG: LiveEventCatalogItem[] = [
   {
     id: 'lottery',
     kind: 'lottery',
     title: 'הגרלה',
-    description: 'בחרו פרס, הגדירו מי משתתף - והשיקו הגרלה משלכם.',
+    description: 'בחרו פרס ומשתתפים - והשיקו הגרלה משלכם.',
     icon: Gift,
     available: false,
     cta: 'יושק בקרוב',
-    accent: 'legendary',
+    accent: 'starter',
   },
   {
     id: 'bonus-points',
@@ -71,13 +71,24 @@ export const LIVE_EVENT_CATALOG: LiveEventCatalogItem[] = [
   {
     id: 'flash-challenge',
     title: 'אתגר בזק',
-    description: 'השיקו אתגר מהיר ומלהיב באמצע המשחק.',
+    description: 'השיקו אתגר פתע באמצע המשחק.',
     icon: Sparkles,
     available: false,
     cta: 'יושק בקרוב',
     accent: 'rich',
   },
 ]
+
+/**
+ * Public availability from the catalog, with an admin-only preview for lottery QA.
+ */
+export function isLiveEventLaunchable(
+  item: LiveEventCatalogItem,
+  opts?: { isSuperAdmin?: boolean },
+): boolean {
+  if (item.available) return true
+  return Boolean(opts?.isSuperAdmin && item.id === 'lottery')
+}
 
 /** @deprecated Prefer LIVE_EVENT_CATALOG */
 export interface LiveEventTypeMeta {
@@ -98,3 +109,4 @@ export const LIVE_EVENT_TYPES: LiveEventTypeMeta[] = [
     available: false,
   },
 ]
+

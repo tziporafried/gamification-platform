@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
+import { useAuth } from '@/contexts/AuthContext'
+import { LotteryBroadcastLayout } from '@/components/live-events/lottery/LotteryBroadcastLayout'
 import { LotteryConfigurationCard } from '@/components/live-events/lottery/LotteryConfigurationCard'
+import { LotteryPreparingStage } from '@/components/live-events/lottery/LotteryPreparingStage'
 import { LotteryPresentation } from '@/components/live-events/lottery/LotteryPresentation'
 import {
   clearLotterySession,
@@ -11,13 +14,15 @@ import {
 } from '@/components/live-events/lottery/lotterySession'
 
 /**
- * Broadcast-ready lottery tab - same rules as kiosk/scan:
- * no AppShell, no GlobalHeader; opened in a dedicated window for the projector.
+ * Broadcast-ready lottery tab - no AppShell / GlobalHeader.
+ * Permanent stage + dock layout; only stage/dock content changes per state.
+ * Public launch stays "coming soon"; super admins can open for QA.
  */
 export function LotteryPresentationPage() {
   const { id } = useParams<{ id: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { isSuperAdmin, loading: authLoading } = useAuth()
   const runId = searchParams.get('run') ?? ''
   const [session, setSession] = useState<LotterySessionPayload | null | undefined>(
     runId ? undefined : null,
@@ -44,7 +49,6 @@ export function LotteryPresentationPage() {
     () => () => {
       if (runId) clearLotterySession(runId)
       window.close()
-      // Fallback if the browser blocks window.close() (e.g. tab not script-opened).
       if (id) navigate(`/events/${id}/control`, { replace: true })
     },
     [runId, id, navigate],
@@ -57,34 +61,59 @@ export function LotteryPresentationPage() {
     setSearchParams({ run: nextRunId }, { replace: true })
   }
 
-  if (!id) {
+  if (authLoading) {
+    return <FullPageLoader />
+  }
+
+  if (!isSuperAdmin) {
     return (
-      <BroadcastShell>
-        <UnavailableMessage />
-      </BroadcastShell>
+      <LotteryBroadcastLayout
+        stage={
+          <div className="max-w-md text-center">
+            <p className="text-2xl font-black text-foreground">ההגרלה בקרוב</p>
+            <p className="mt-3 text-base font-semibold text-muted">
+              ההפעלה עדיין לא זמינה לכולם.
+            </p>
+          </div>
+        }
+        dock={<p className="w-full text-center text-sm font-medium text-muted">אין פעולות זמינות</p>}
+      />
     )
   }
 
-  // Setup mode - still broadcast chrome (no platform header).
-  if (!runId) {
+  if (!id) {
     return (
-      <BroadcastShell>
-        <div className="flex min-h-screen flex-col justify-center px-4 py-8">
-          <LotteryConfigurationCard eventId={id} onLaunch={handleLaunch} />
-        </div>
-      </BroadcastShell>
+      <LotteryBroadcastLayout
+        stage={
+          <div className="max-w-md text-center">
+            <p className="text-2xl font-black text-foreground">ההגרלה אינה זמינה</p>
+            <p className="mt-3 text-base font-semibold text-muted">
+              הפעילו מחדש מתוך הפעלות בזמן אמת.
+            </p>
+          </div>
+        }
+        dock={<p className="w-full text-center text-sm font-medium text-muted">אין פעולות זמינות</p>}
+      />
     )
+  }
+
+  // Preparing / setup - same layout, stage placeholder + organizer dock.
+  if (!runId) {
+    return <LotteryConfigurationCard eventId={id} onLaunch={handleLaunch} />
   }
 
   if (session === undefined) return <FullPageLoader />
 
   if (!session) {
     return (
-      <BroadcastShell>
-        <div className="flex min-h-screen items-center justify-center px-4">
-          <UnavailableMessage />
-        </div>
-      </BroadcastShell>
+      <LotteryBroadcastLayout
+        stage={<LotteryPreparingStage />}
+        dock={
+          <p className="w-full text-center text-sm font-medium text-muted">
+            ההגרלה אינה זמינה - הפעילו מחדש מתוך הפעלות בזמן אמת.
+          </p>
+        }
+      />
     )
   }
 
@@ -94,22 +123,5 @@ export function LotteryPresentationPage() {
       participants={session.participants}
       onClose={handleClose}
     />
-  )
-}
-
-function BroadcastShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="min-h-screen bg-app-radial font-sans text-foreground" dir="rtl">
-      {children}
-    </div>
-  )
-}
-
-function UnavailableMessage() {
-  return (
-    <div className="max-w-md rounded-2xl border border-border bg-white/80 p-8 text-center shadow-card">
-      <p className="text-lg font-bold text-foreground">ההגרלה אינה זמינה</p>
-      <p className="mt-2 text-sm text-muted">הפעילו מחדש מתוך הפעלות בזמן אמת.</p>
-    </div>
   )
 }

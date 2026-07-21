@@ -1,6 +1,7 @@
 import { Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { LIVE_EVENT_CATALOG } from './types'
+import { useAuth } from '@/contexts/AuthContext'
+import { LIVE_EVENT_CATALOG, isLiveEventLaunchable } from './types'
 import { LiveEventLibraryCard } from './LiveEventLibraryCard'
 
 interface LiveEventsPanelProps {
@@ -8,9 +9,21 @@ interface LiveEventsPanelProps {
 }
 
 /**
- * Legacy live-events page UI - catalog teasers only (modal is the primary launcher).
+ * Legacy live-events page UI - modal is the primary launcher from control center.
  */
-export function LiveEventsPanel({ eventId: _eventId }: LiveEventsPanelProps) {
+export function LiveEventsPanel({ eventId }: LiveEventsPanelProps) {
+  const { isSuperAdmin } = useAuth()
+  const lottery = LIVE_EVENT_CATALOG.find((item) => item.id === 'lottery')!
+  const lotteryLaunchable = isLiveEventLaunchable(lottery, { isSuperAdmin })
+  const upcoming = LIVE_EVENT_CATALOG.filter(
+    (item) => !isLiveEventLaunchable(item, { isSuperAdmin }),
+  )
+
+  function openLotteryBroadcast() {
+    if (!lotteryLaunchable) return
+    window.open(`/events/${eventId}/lottery`, '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col">
       <header className="mb-8 flex flex-col items-center text-center sm:mb-9">
@@ -27,18 +40,32 @@ export function LiveEventsPanel({ eventId: _eventId }: LiveEventsPanelProps) {
           הפעלות בזמן אמת
         </h1>
         <p className="max-w-lg text-sm font-medium leading-relaxed text-muted sm:text-base">
-          חוויות חיות לקהל - בקרוב אצלכם.
+          השיקו רגע מיוחד לקהל - הפעלות חדשות בדרך.
         </p>
       </header>
 
-      <div className="mb-3 text-center">
-        <p className="text-xs font-bold tracking-wide text-muted">בקרוב</p>
-      </div>
-      <div className="grid grid-cols-1 items-stretch gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-        {LIVE_EVENT_CATALOG.map((item) => (
-          <LiveEventLibraryCard key={item.id} item={item} />
-        ))}
-      </div>
+      {lotteryLaunchable && (
+        <div className="mx-auto mb-5 w-full max-w-xl sm:mb-6">
+          <LiveEventLibraryCard
+            item={{ ...lottery, available: true, cta: 'הפעילו הגרלה' }}
+            featured
+            onLaunch={openLotteryBroadcast}
+          />
+        </div>
+      )}
+
+      {upcoming.length > 0 && (
+        <>
+          <div className="mb-3 text-center">
+            <p className="text-xs font-bold tracking-wide text-muted">בקרוב</p>
+          </div>
+          <div className="grid grid-cols-1 items-stretch gap-3.5 sm:grid-cols-2">
+            {upcoming.map((item) => (
+              <LiveEventLibraryCard key={item.id} item={item} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }

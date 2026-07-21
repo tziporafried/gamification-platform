@@ -6,6 +6,7 @@ const ACCENT_ICON: Record<LiveEventCatalogItem['accent'], string> = {
   legendary: 'bg-[linear-gradient(145deg,#FF9366,#F2B33C)] text-white shadow-[0_8px_20px_rgba(255,147,102,0.35)]',
   rich: 'bg-[linear-gradient(145deg,#5FB3AA,#388882)] text-white shadow-[0_8px_20px_rgba(95,179,170,0.3)]',
   medium: 'bg-[linear-gradient(145deg,#7C8CFF,#5A6AE8)] text-white shadow-[0_8px_20px_rgba(90,106,232,0.28)]',
+  starter: 'bg-[linear-gradient(145deg,#6ADB8A,#2FB85A)] text-white shadow-[0_8px_20px_rgba(69,207,107,0.35)]',
 }
 
 interface LiveEventLibraryCardProps {

@@ -1,9 +1,7 @@
-import { useId, useMemo, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { Gift, Pencil, Play, Trophy, Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Checkbox } from '@/components/ui/Checkbox'
 import { cn } from '@/lib/utils'
-import { theme } from '@/lib/theme'
 import { useLotteryPresentationSound } from '@/hooks/useLotteryPresentationSound'
 import {
   type EligibleParticipant,
@@ -11,20 +9,8 @@ import {
   type LotteryEligibilityMode,
 } from '../types'
 import { useEligibleParticipants } from '../useEligibleParticipants'
-import { getLotteryWinnerIds } from './lotteryWinners'
-import { LotterySettingStage } from './LotterySettingStage'
-
-type ConfigStep = 'welcome' | 'eligibility' | 'prize' | 'ready'
-
-const TOTAL_STEPS = 4
-
-function buildEligibilityRule(
-  mode: LotteryEligibilityMode,
-  minPoints: number,
-): string {
-  if (mode === 'all') return 'כולם במשחק!'
-  return `מי שצבר לפחות ${minPoints.toLocaleString('he-IL')} נקודות`
-}
+import { LotteryBroadcastLayout } from './LotteryBroadcastLayout'
+import { LotteryPreparingStage } from './LotteryPreparingStage'
 
 interface LotteryConfigurationCardProps {
   eventId: string
@@ -35,37 +21,131 @@ interface LotteryConfigurationCardProps {
   }) => void
 }
 
+const DOCK_TILE_H = 'h-[5.5rem]'
+
+const CONSOLE_CONTROL_BASE = cn(
+  'group flex min-w-0 flex-1 items-center gap-2 rounded-2xl',
+  DOCK_TILE_H,
+  'border border-white/70 bg-white/55 px-2.5 py-1.5',
+  'shadow-[0_4px_16px_rgba(46,34,30,0.07)] backdrop-blur-md',
+  'transition-[transform,box-shadow,background-color,border-color] duration-150 ease-out',
+  'hover:-translate-y-0.5 hover:border-white hover:bg-white/75',
+  'hover:shadow-[0_8px_22px_rgba(46,34,30,0.12)]',
+  'active:translate-y-0 active:scale-[0.99]',
+)
+
+const DOCK_NUMBER_INPUT = cn(
+  'rounded-md border border-black/12 bg-white px-1.5 py-0.5',
+  'text-center font-black tabular-nums text-foreground shadow-[inset_0_1px_2px_rgba(46,34,30,0.06)]',
+  'transition-[border-color,box-shadow] duration-150',
+  'hover:border-black/20',
+  'focus:outline-none focus-visible:border-secondary/45 focus-visible:ring-2 focus-visible:ring-secondary/25',
+  'disabled:cursor-not-allowed disabled:opacity-45',
+  '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+)
+
+function ConsoleControl({
+  icon,
+  label,
+  children,
+  className,
+  htmlFor,
+  onClick,
+  asButton,
+}: {
+  icon: ReactNode
+  label: string
+  children: ReactNode
+  className?: string
+  htmlFor?: string
+  onClick?: () => void
+  asButton?: boolean
+}) {
+  const content = (
+    <>
+      <span
+        className={cn(
+          'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
+          'border border-white/40 bg-gradient-to-br from-white/90 to-white/50',
+          'text-secondary-text shadow-sm',
+        )}
+        aria-hidden="true"
+      >
+        {icon}
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-1 text-right">
+        <span className="text-xs font-bold tracking-wide text-muted">{label}</span>
+        {children}
+      </span>
+    </>
+  )
+
+  if (asButton) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(CONSOLE_CONTROL_BASE, 'cursor-pointer text-right', className)}
+      >
+        {content}
+      </button>
+    )
+  }
+
+  const Wrapper = htmlFor ? 'label' : 'div'
+  return (
+    <Wrapper htmlFor={htmlFor} className={cn(CONSOLE_CONTROL_BASE, className)}>
+      {content}
+    </Wrapper>
+  )
+}
+
+/**
+ * Setup state for the lottery broadcast window:
+ * preparing stage (audience) + organizer console dock.
+ */
 export function LotteryConfigurationCard({
   eventId,
   onLaunch,
 }: LotteryConfigurationCardProps) {
   const allId = useId()
   const minId = useId()
-  const excludeId = useId()
-  const { playStepChime, playReadySting } = useLotteryPresentationSound()
+  const prizeId = useId()
+  const winnersId = useId()
+  const { playReadySting, playUiClick } = useLotteryPresentationSound()
 
-  const [step, setStep] = useState<ConfigStep>('welcome')
-  const [eligibilityMode, setEligibilityMode] = useState<LotteryEligibilityMode>('min_points')
+  const [eligibilityMode, setEligibilityMode] = useState<LotteryEligibilityMode>('all')
   const [minPoints, setMinPoints] = useState(50)
   const [prizeName, setPrizeName] = useState('')
-  const [excludePreviousWinners, setExcludePreviousWinners] = useState(false)
+  const [winnerCount, setWinnerCount] = useState(1)
   const [formError, setFormError] = useState<string | null>(null)
-  const [winnersVersion, setWinnersVersion] = useState(0)
-
-  const excludeIds = useMemo(() => {
-    if (!excludePreviousWinners) return undefined
-    return getLotteryWinnerIds(eventId)
-  }, [eventId, excludePreviousWinners, winnersVersion])
+  const [editingPrize, setEditingPrize] = useState(true)
+  const minPointsInputRef = useRef<HTMLInputElement>(null)
+  const prizeInputRef = useRef<HTMLInputElement>(null)
 
   const { participants, count, loading, error } = useEligibleParticipants({
     eventId,
     mode: eligibilityMode,
     minPoints,
-    excludeIds,
   })
 
   const trimmedPrize = prizeName.trim()
-  const eligibilityRule = buildEligibilityRule(eligibilityMode, minPoints)
+  const prizeConfirmed = trimmedPrize.length > 0 && !editingPrize
+
+  useEffect(() => {
+    if (editingPrize) {
+      requestAnimationFrame(() => prizeInputRef.current?.focus())
+    }
+  }, [editingPrize])
+
+  useEffect(() => {
+    if (eligibilityMode !== 'min_points') return
+    requestAnimationFrame(() => minPointsInputRef.current?.focus())
+  }, [eligibilityMode])
+
+  function selectMinPointsMode() {
+    setEligibilityMode('min_points')
+  }
 
   function handleMinPointsChange(raw: string) {
     if (raw === '') {
@@ -77,20 +157,33 @@ export function LotteryConfigurationCard({
     setMinPoints(parsed)
   }
 
-  function goNext(next: ConfigStep) {
-    playStepChime()
-    setFormError(null)
-    setStep(next)
+  function handleWinnerCountChange(raw: string) {
+    if (raw === '') {
+      setWinnerCount(1)
+      return
+    }
+    const parsed = Number.parseInt(raw, 10)
+    if (!Number.isFinite(parsed) || parsed < 1) return
+    setWinnerCount(Math.min(parsed, 50))
+  }
+
+  function commitPrize() {
+    if (prizeName.trim()) setEditingPrize(false)
   }
 
   function buildConfig(): LotteryConfig | null {
     setFormError(null)
     if (!trimmedPrize) {
       setFormError('חסר שם לפרס')
+      setEditingPrize(true)
       return null
     }
     if (count < 1) {
       setFormError('עדיין אין משתתפים בהגרלה')
+      return null
+    }
+    if (winnerCount > count) {
+      setFormError(`יש רק ${count.toLocaleString('he-IL')} משתתפים זכאים`)
       return null
     }
     return {
@@ -100,7 +193,7 @@ export function LotteryConfigurationCard({
       minPoints: eligibilityMode === 'all' ? 0 : minPoints,
       prizeName: trimmedPrize,
       prizeIcon: '🎁',
-      excludePreviousWinners,
+      winnerCount,
     }
   }
 
@@ -108,246 +201,222 @@ export function LotteryConfigurationCard({
     const config = buildConfig()
     if (!config) return
 
+    playUiClick()
     playReadySting()
-    setWinnersVersion((v) => v + 1)
     onLaunch({ config, participants })
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col items-center">
-      <AnimatePresence mode="wait">
-        {step === 'welcome' && (
-          <LotterySettingStage key="welcome" eyebrow="מוכנים??" step={1} totalSteps={TOTAL_STEPS}>
-            <motion.h2
-              className="text-5xl font-black text-foreground sm:text-6xl"
-              animate={{ scale: [1, 1.03, 1] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+    <LotteryBroadcastLayout
+      stage={<LotteryPreparingStage />}
+      dock={
+        <div className="relative flex w-full items-stretch gap-2 sm:gap-2.5">
+          {/* Prize */}
+          {prizeConfirmed ? (
+            <ConsoleControl
+              asButton
+              onClick={() => setEditingPrize(true)}
+              icon={
+                <span className="text-xl leading-none" aria-hidden="true">
+                  🎁
+                </span>
+              }
+              label="הפרס"
+              className="flex-[1.35]"
             >
-              🎁 הגרלה
-            </motion.h2>
-            <p className="mx-auto mt-4 max-w-md text-base font-semibold leading-relaxed text-muted sm:text-lg">
-              הולכת להתחיל הגרלה ענקית - מי יזכה??
-            </p>
-            <div className="mt-8">
-              <Button
-                size="lg"
-                variant="gradient"
-                className="min-w-[12rem] text-base font-black"
-                onClick={() => {
-                  playReadySting()
-                  setFormError(null)
-                  setStep('eligibility')
-                }}
-              >
-                יאללה נתחיל!
-              </Button>
-            </div>
-          </LotterySettingStage>
-        )}
-
-        {step === 'eligibility' && (
-          <LotterySettingStage key="eligibility" eyebrow="מי במשחק??" step={2} totalSteps={TOTAL_STEPS}>
-            <div className="mx-auto grid w-full max-w-xl gap-3 sm:grid-cols-2">
-              <label
-                htmlFor={allId}
-                className={cn(
-                  'flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 px-4 py-6 transition-colors',
-                  eligibilityMode === 'all'
-                    ? 'border-primary bg-white/80 shadow-sm'
-                    : 'border-border/80 bg-white/45 hover:border-accent',
-                )}
-              >
-                <input
-                  id={allId}
-                  type="radio"
-                  name="lottery-eligibility"
-                  checked={eligibilityMode === 'all'}
-                  onChange={() => setEligibilityMode('all')}
-                  className={cn('h-5 w-5 shrink-0', theme.checkbox)}
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="min-w-0 truncate text-base font-black text-foreground">
+                  {trimmedPrize}
+                </span>
+                <Pencil
+                  size={14}
+                  strokeWidth={2.25}
+                  className="shrink-0 text-muted opacity-0 transition-opacity group-hover:opacity-100"
+                  aria-hidden="true"
                 />
-                <span className="text-lg font-black text-foreground">כולם במשחק!</span>
-              </label>
-
-              <label
-                htmlFor={minId}
-                className={cn(
-                  'flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 px-4 py-6 transition-colors',
-                  eligibilityMode === 'min_points'
-                    ? 'border-primary bg-white/80 shadow-sm'
-                    : 'border-border/80 bg-white/45 hover:border-accent',
-                )}
-              >
-                <input
-                  id={minId}
-                  type="radio"
-                  name="lottery-eligibility"
-                  checked={eligibilityMode === 'min_points'}
-                  onChange={() => setEligibilityMode('min_points')}
-                  className={cn('h-5 w-5 shrink-0', theme.checkbox)}
-                />
-                <span className="text-base font-bold text-foreground">מי שצבר נקודות</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    step={1}
-                    value={minPoints}
-                    disabled={eligibilityMode !== 'min_points'}
-                    onChange={(e) => handleMinPointsChange(e.target.value)}
-                    onClick={() => setEligibilityMode('min_points')}
-                    className={cn(
-                      'w-20 rounded-xl border-2 px-2 py-2 text-center text-2xl font-black tabular-nums',
-                      theme.inputBg,
-                      theme.text,
-                      theme.inputBorder,
-                      theme.focusRing,
-                      theme.focusBorder,
-                      eligibilityMode !== 'min_points' && 'opacity-50',
-                    )}
-                    aria-label="מינימום נקודות"
-                  />
-                  <span className="text-base font-bold text-foreground">נק׳</span>
-                </div>
-              </label>
-            </div>
-
-            <div className="mx-auto mt-5 max-w-md text-start">
-              <Checkbox
-                id={excludeId}
-                label="בלי זוכים מהגרלות קודמות"
-                checked={excludePreviousWinners}
-                onChange={(e) => setExcludePreviousWinners(e.target.checked)}
-              />
-            </div>
-
-            {error && (
-              <p role="alert" className="mt-3 text-sm font-medium text-danger-text">
-                {error}
-              </p>
-            )}
-
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Button variant="ghost" size="lg" className="font-bold" onClick={() => setStep('welcome')}>
-                רגע אחורה
-              </Button>
-              <Button
-                size="lg"
-                variant="gradient"
-                className="min-w-[10rem] text-base font-black"
-                onClick={() => goNext('prize')}
-              >
-                הלאה!
-              </Button>
-            </div>
-          </LotterySettingStage>
-        )}
-
-        {step === 'prize' && (
-          <LotterySettingStage key="prize" eyebrow="ומה מרוויחים??" step={3} totalSteps={TOTAL_STEPS}>
-            <span className="mb-4 block text-5xl sm:text-6xl" aria-hidden>
-              🎁
-            </span>
-            <input
-              value={prizeName}
-              onChange={(e) => setPrizeName(e.target.value)}
-              maxLength={80}
-              placeholder="הפרס הגדול…"
-              aria-label="הפרס"
-              className={cn(
-                'mx-auto block w-full max-w-md rounded-2xl border-2 px-5 py-4 text-center text-2xl font-black',
-                'placeholder:font-semibold placeholder:text-muted',
-                theme.inputBg,
-                theme.text,
-                theme.inputBorder,
-                theme.focusRing,
-                theme.focusBorder,
-              )}
-            />
-
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="font-bold"
-                onClick={() => setStep('eligibility')}
-              >
-                רגע אחורה
-              </Button>
-              <Button
-                size="lg"
-                variant="gradient"
-                className="min-w-[10rem] text-base font-black"
-                disabled={!trimmedPrize}
-                onClick={() => {
-                  if (!trimmedPrize) {
-                    setFormError('חסר שם לפרס')
-                    return
+              </span>
+            </ConsoleControl>
+          ) : (
+            <ConsoleControl
+              htmlFor={prizeId}
+              icon={<Gift size={20} strokeWidth={2.25} />}
+              label="פרס האירוע"
+              className="flex-[1.35]"
+            >
+              <input
+                ref={prizeInputRef}
+                id={prizeId}
+                value={prizeName}
+                onChange={(e) => setPrizeName(e.target.value)}
+                onBlur={commitPrize}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    commitPrize()
                   }
-                  goNext('ready')
                 }}
-              >
-                הלאה!
-              </Button>
-            </div>
-            {formError && step === 'prize' && (
-              <p role="alert" className="mt-3 text-sm font-medium text-danger-text">
-                {formError}
-              </p>
+                maxLength={80}
+                placeholder="הקלידו שם פרס…"
+                className={cn(
+                  'w-full border-0 bg-transparent p-0 text-base font-black text-foreground',
+                  'placeholder:font-semibold placeholder:text-muted/70',
+                  'focus:outline-none focus-visible:ring-0',
+                )}
+              />
+            </ConsoleControl>
+          )}
+
+          {/* Eligibility — always-visible toggle */}
+          <div
+            className={cn(
+              CONSOLE_CONTROL_BASE,
+              'h-auto min-h-[5.5rem] flex-[1.55] items-start py-2.5',
             )}
-          </LotterySettingStage>
-        )}
+          >
+            <span
+              className={cn(
+                'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
+                'border border-white/40 bg-gradient-to-br from-white/90 to-white/50',
+                'text-secondary-text shadow-sm',
+              )}
+              aria-hidden="true"
+            >
+              <Users size={20} strokeWidth={2.25} />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col gap-1.5 text-right">
+              <span className="text-xs font-bold tracking-wide text-muted">מי משתתף?</span>
 
-        {step === 'ready' && (
-          <LotterySettingStage key="ready" eyebrow="מוכנים??" step={4} totalSteps={TOTAL_STEPS}>
-            <dl className="mx-auto w-full max-w-md space-y-4 text-center">
-              <div>
-                <dt className="text-sm font-bold text-muted">מי במשחק</dt>
-                <dd className="mt-1 text-2xl font-black text-foreground sm:text-3xl">
-                  {eligibilityRule}
-                </dd>
+              <div
+                role="radiogroup"
+                aria-label="בחירת זכאות להגרלה"
+                className="flex w-full flex-wrap items-center gap-1 rounded-xl bg-black/[0.05] p-1"
+              >
+                <button
+                  type="button"
+                  id={allId}
+                  role="radio"
+                  aria-checked={eligibilityMode === 'all'}
+                  onClick={() => setEligibilityMode('all')}
+                  className={cn(
+                    'min-w-[4.5rem] flex-1 rounded-lg px-2.5 py-1.5 text-sm font-black transition-all duration-150',
+                    'active:scale-[0.97]',
+                    eligibilityMode === 'all'
+                      ? 'border border-primary/45 bg-white text-primary shadow-sm'
+                      : 'border border-transparent text-foreground/70 hover:bg-white/70 hover:text-foreground',
+                  )}
+                >
+                  כולם
+                </button>
+                <div
+                  id={minId}
+                  role="radio"
+                  tabIndex={0}
+                  aria-checked={eligibilityMode === 'min_points'}
+                  onClick={selectMinPointsMode}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      selectMinPointsMode()
+                    }
+                  }}
+                  className={cn(
+                    'flex min-w-0 flex-[1.6] cursor-pointer items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-sm font-black transition-all duration-150',
+                    'active:scale-[0.97]',
+                    eligibilityMode === 'min_points'
+                      ? 'border border-primary/45 bg-white text-primary shadow-sm'
+                      : 'border border-transparent text-foreground/70 hover:bg-white/70 hover:text-foreground',
+                  )}
+                >
+                  <span className="shrink-0">מעל</span>
+                  {eligibilityMode === 'min_points' ? (
+                    <input
+                      ref={minPointsInputRef}
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      step={1}
+                      value={minPoints}
+                      onChange={(e) => handleMinPointsChange(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className={cn(
+                        'w-12 rounded-md border border-primary/25 bg-primary/[0.06] px-1 py-0.5',
+                        'text-center text-sm font-black tabular-nums text-primary',
+                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/25',
+                        '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+                      )}
+                      aria-label="מינימום נקודות להשתתפות"
+                    />
+                  ) : (
+                    <span className="inline-block min-w-12 text-center tabular-nums">
+                      {minPoints.toLocaleString('he-IL')}
+                    </span>
+                  )}
+                  <span className="shrink-0">נקודות</span>
+                </div>
               </div>
-              <div>
-                <dt className="text-sm font-bold text-muted">פתקים בקופסה</dt>
-                <dd className="mt-1 text-4xl font-black tabular-nums text-foreground sm:text-5xl">
-                  {loading ? '…' : count.toLocaleString('he-IL')}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-bold text-muted">הפרס</dt>
-                <dd className="mt-1 text-2xl font-black text-foreground sm:text-3xl">
-                  🎁 {trimmedPrize}
-                </dd>
-              </div>
-            </dl>
+            </span>
+          </div>
 
-            <p className="mx-auto mt-6 max-w-sm text-base font-black text-primary-text sm:text-lg">
-              יאללה… בוחרים זוכה!!
+          {/* Winners */}
+          <ConsoleControl
+            htmlFor={winnersId}
+            icon={<Trophy size={20} strokeWidth={2.25} />}
+            label="זוכים"
+            className="max-w-[8rem] flex-none"
+          >
+            <input
+              id={winnersId}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={50}
+              step={1}
+              value={winnerCount}
+              onChange={(e) => handleWinnerCountChange(e.target.value)}
+              className={cn(DOCK_NUMBER_INPUT, 'w-full text-xl')}
+              aria-label="מספר זוכים - ניתן לעריכה"
+              title="לחצו לעריכת מספר הזוכים"
+            />
+          </ConsoleControl>
+
+          {/* Launch pad — scan-screen primary button language */}
+          <Button
+            size="md"
+            variant="primary"
+            className={cn(
+              DOCK_TILE_H,
+              'w-[8.5rem] shrink-0 flex-col gap-0.5 rounded-xl border border-transparent px-2.5',
+              'text-base font-bold tracking-wide shadow-[0_10px_34px_rgba(46,34,30,0.12)]',
+              'hover:opacity-95 active:scale-[0.97]',
+              'disabled:pointer-events-none disabled:opacity-45',
+            )}
+            onClick={launchLottery}
+            disabled={loading || count < 1}
+            title={count < 1 && !loading ? 'אין זכאים להגרלה' : undefined}
+          >
+            <Play
+              size={20}
+              strokeWidth={2.5}
+              fill="currentColor"
+              className="-scale-x-100"
+              aria-hidden="true"
+            />
+            <span className="leading-tight">התחילו בהגרלה</span>
+            <span className="text-[0.7rem] font-bold tabular-nums leading-none opacity-90">
+              {loading ? '…' : `${count.toLocaleString('he-IL')} זכאים`}
+            </span>
+          </Button>
+
+          {(formError || error) && (
+            <p
+              role="alert"
+              className="absolute start-0 top-0 text-xs font-medium text-danger-text"
+            >
+              {formError || error}
             </p>
-
-            {formError && (
-              <p role="alert" className="mt-3 text-sm font-medium text-danger-text">
-                {formError}
-              </p>
-            )}
-
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Button variant="ghost" size="lg" className="font-bold" onClick={() => setStep('prize')}>
-                רגע אחורה
-              </Button>
-              <Button
-                size="lg"
-                variant="gradient"
-                className="min-w-[14rem] text-base font-black tracking-wide"
-                onClick={launchLottery}
-                disabled={loading}
-              >
-                נתחילים!!!
-              </Button>
-            </div>
-          </LotterySettingStage>
-        )}
-      </AnimatePresence>
-    </div>
+          )}
+        </div>
+      }
+    />
   )
 }
