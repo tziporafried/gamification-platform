@@ -2699,7 +2699,15 @@ function PrizeChaseStackView({
   const chaserIds = chasers.map((c) => c.participantId).join(',')
   const maxVisible = PRIZE_CHASE_MAX_VISIBLE
   const pushesNeeded = Math.max(0, chasers.length - 1)
-  const [visibleIndices, setVisibleIndices] = useState<number[]>([])
+  // Seeded from the current `chasers` snapshot this instance was mounted with.
+  // The parent re-keys this component whenever the chaser set changes (see
+  // PrizeChasePanel), so every index we ever hold is generated against - and
+  // lives no longer than - the exact `chasers` array it points into.
+  const [visibleIndices, setVisibleIndices] = useState<number[]>(() =>
+    reducedMotion && chasers.length > 0
+      ? Array.from({ length: Math.min(maxVisible, chasers.length) }, (_, i) => i)
+      : chasers.length > 0 ? [0] : [],
+  )
   const [phase, setPhase] = useState<'idle' | 'push'>('idle')
   const [rotateIncomingIdx, setRotateIncomingIdx] = useState<number | null>(null)
   const [pushesDone, setPushesDone] = useState(0)
@@ -2720,21 +2728,18 @@ function PrizeChaseStackView({
     }, dwellMs) as ReturnType<typeof setTimeout>
   }, [])
 
-  useEffect(() => {
-    if (reducedMotion && chasers.length > 0) {
-      setVisibleIndices(Array.from({ length: Math.min(maxVisible, chasers.length) }, (_, i) => i))
-    } else {
-      setVisibleIndices(chasers.length > 0 ? [0] : [])
-    }
-    setPhase('idle')
-    setRotateIncomingIdx(null)
-    setPushesDone(0)
-    cycleCompleteRef.current = false
-    if (cycleCompleteTimerRef.current !== undefined) {
-      window.clearTimeout(cycleCompleteTimerRef.current)
-      cycleCompleteTimerRef.current = undefined
-    }
-  }, [chaserIds, chasers.length, maxVisible, reducedMotion])
+  // A changed chaser set remounts this component (keyed by the parent), which
+  // resets every piece of animation state to a fresh, valid snapshot. The only
+  // thing a remount can't reclaim on its own is a still-pending cycle-complete
+  // timer, so clear that on unmount to avoid a stray prize advance.
+  useEffect(
+    () => () => {
+      if (cycleCompleteTimerRef.current !== undefined) {
+        window.clearTimeout(cycleCompleteTimerRef.current)
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!gameStarted || chasers.length === 0 || cycleCompleteRef.current) return
@@ -2862,6 +2867,11 @@ function PrizeChasePanel({
 }) {
   if (!prize) return null
 
+  // Identity of the current chaser set. Used as the stack's React key so that
+  // any change to who is chasing (or their order) remounts it with state seeded
+  // from the new array - the invariant that keeps indices from outliving it.
+  const chaserKey = chasers.map((c) => c.participantId).join(',')
+
   return (
     <div
       key={prize.id}
@@ -2873,6 +2883,7 @@ function PrizeChasePanel({
       </div>
       <div className="kiosk-prizeChaseStackArea">
         <PrizeChaseStackView
+          key={`${chaserKey}|${reducedMotion}`}
           chasers={chasers}
           gameStarted={gameStarted}
           reducedMotion={reducedMotion}
