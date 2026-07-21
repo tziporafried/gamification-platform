@@ -166,6 +166,10 @@ function normalizePayload(raw: AnalyticsDashboardData): AnalyticsDashboardData {
     payload.eventCreation.startUsers ??= 0
   }
 
+  if (!payload.lottery) {
+    payload.lottery = { pageViewUsers: 0, startedUsers: 0, startRate: null }
+  }
+
   if (!payload.timeSeries) {
     payload.timeSeries = { days: [], unavailable: true, granularity: 'day' }
   } else {

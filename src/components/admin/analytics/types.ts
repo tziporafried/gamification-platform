@@ -132,6 +132,11 @@ export interface AnalyticsDashboardData {
     templateCount: number | null
     methodUnavailable: boolean
   }
+  lottery: {
+    pageViewUsers: number
+    startedUsers: number
+    startRate: number | null
+  }
   contact: {
     openUsers: number
     leadUsers: number

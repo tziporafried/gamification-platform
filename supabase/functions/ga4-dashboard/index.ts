@@ -166,6 +166,13 @@ interface DashboardPayload {
     templateCount: number | null
     methodUnavailable: boolean
   }
+  lottery: {
+    /** Unique users who reached the lottery setup/broadcast tab. */
+    pageViewUsers: number
+    /** Unique users who launched a lottery from the setup dock. */
+    startedUsers: number
+    startRate: number | null
+  }
   contact: {
     openUsers: number
     leadUsers: number
@@ -234,6 +241,7 @@ const CTA_LOCATION_LABELS: Record<string, string> = {
   trial_scan_limit_modal: 'מודל סיום התנסות',
   plan_limit_modal: 'מודל מגבלת תוכנית',
   control_center: 'מרכז הבקרה',
+  lottery_trial_reveal: 'חשיפת זוכה בהגרלה (התנסות)',
 }
 
 const PLAN_NAME_LABELS: Record<string, string> = {
@@ -253,6 +261,7 @@ const ACTIVATION_SOURCE_LABELS: Record<string, string> = {
   header: 'כותרת עליונה',
   post_wizard: 'אחרי האשף',
   deep_link: 'קישור ישיר',
+  lottery_trial_reveal: 'חשיפת זוכה בהגרלה (התנסות)',
 }
 
 const ACTIVATION_SOURCE_ALLOW = new Set(Object.keys(ACTIVATION_SOURCE_LABELS))
@@ -292,6 +301,8 @@ const CORE_EVENTS = [
   'login',
   'sign_up',
   'login_error',
+  'lottery_setup_view',
+  'lottery_launched',
 ] as const
 
 function jsonResponse(body: unknown, status = 200) {
@@ -2615,6 +2626,8 @@ Deno.serve(async (req) => {
     const activationClicked = getEvent(events, 'activation_options_clicked').users
     const trialActivated = getEvent(events, 'trial_activated').users
     const eventCreationStart = getEvent(events, 'event_creation_start').users
+    const lotteryPageViews = getEvent(events, 'lottery_setup_view').users
+    const lotteryStarted = getEvent(events, 'lottery_launched').users
 
     const payload: DashboardPayload = {
       overview: {
@@ -2682,6 +2695,11 @@ Deno.serve(async (req) => {
         scratchCount,
         templateCount,
         methodUnavailable,
+      },
+      lottery: {
+        pageViewUsers: lotteryPageViews,
+        startedUsers: lotteryStarted,
+        startRate: rate(lotteryStarted, lotteryPageViews),
       },
       contact: {
         openUsers: contactOpenUsers,

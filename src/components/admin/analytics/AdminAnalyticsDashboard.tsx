@@ -5,6 +5,7 @@ import {
   Filter,
   ChevronDown,
   ChevronUp,
+  Gift,
   HelpCircle,
   Link2,
   LogIn,
@@ -1387,6 +1388,36 @@ export function AdminAnalyticsDashboard() {
                   />
                 </>
               )}
+            </Card>
+          </section>
+
+          {/* Lottery live event */}
+          <section className="space-y-3">
+            <SectionHeader
+              icon={<Gift size={16} className="text-secondary-text" />}
+              title="הגרלה"
+            />
+            <Card className="p-5">
+              <p className="text-xs text-muted">
+                נכנסו לדף ההגרלה:{' '}
+                <span className="font-semibold tabular-nums text-foreground">
+                  {formatNumber(data.lottery.pageViewUsers)}
+                </span>
+                {' · '}
+                התחילו הגרלה:{' '}
+                <span className="font-semibold tabular-nums text-foreground">
+                  {formatNumber(data.lottery.startedUsers)}
+                </span>
+                {data.lottery.startRate !== null && (
+                  <>
+                    {' · '}
+                    יחס התחלה:{' '}
+                    <span className="font-semibold tabular-nums text-foreground">
+                      {formatRate(data.lottery.startRate)}
+                    </span>
+                  </>
+                )}
+              </p>
             </Card>
           </section>
         </>
