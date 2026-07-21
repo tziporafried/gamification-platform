@@ -45,6 +45,7 @@ import {
 } from '@/lib/analytics'
 import { TrialScanLimitModal } from '@/components/TrialScanLimitModal'
 import { TRIAL_SCAN_LIMIT } from '@/lib/plans'
+import { playScanSuccess } from '@/lib/scanSuccessSound'
 import '@/styles/kiosk.css'
 
 const KIOSK_ACCENT = hexToRgb('#AB3500') ?? { r: 171, g: 53, b: 0 }
@@ -3375,6 +3376,9 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   }, [])
 
   const triggerScanSuccess = useCallback((result: ScoreSubmitResult, _txId: string, rm: boolean) => {
+    // Short confirmation blip the instant the scan validates - independent of the
+    // reward chime below and of reduced-motion (this is a functional audio cue).
+    playScanSuccess()
     clearTimeout(scanDismissTimer.current)
     clearTimeout(rewardDismissTimer.current)
     refetch()
