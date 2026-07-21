@@ -64,6 +64,9 @@ export type RaffleBoxKind = 'openEmpty' | 'open' | 'full' | 'empty'
 export interface RaffleTicketData {
   id: string
   name: string
+  /** Which side startX/startY are measured from — box grows inward, never past the viewport edge. */
+  anchorX?: 'left' | 'right'
+  anchorY?: 'top' | 'bottom'
   startX: number
   startY: number
   enterDelay: number

@@ -108,13 +108,17 @@ export function Ticket({
   const collectDuration = RAFFLE_SPRINGS.ticketCollect.duration + (ticket.enterDelay % 0.55)
   const tone = toneForId(ticket.id)
   const toneColors = TICKET_TONES[tone]
+  const anchorX = ticket.anchorX ?? 'left'
+  const anchorY = ticket.anchorY ?? 'top'
 
   return (
     <motion.div
       className="absolute z-30 will-change-transform"
       style={{
-        left: `${ticket.startX}%`,
-        top: `${ticket.startY}%`,
+        // Anchored from whichever side the ticket spawns nearest, so the box
+        // always grows back toward the center instead of past the edge.
+        ...(anchorX === 'right' ? { right: `${ticket.startX}%` } : { left: `${ticket.startX}%` }),
+        ...(anchorY === 'bottom' ? { bottom: `${ticket.startY}%` } : { top: `${ticket.startY}%` }),
         scale: ticket.scale,
       }}
       initial={{
@@ -122,7 +126,7 @@ export function Ticket({
         scale: ticket.scale * 0.55,
         rotate: ticket.rotate,
         x: ticket.drift,
-        y: ticket.startY < 20 ? -40 : 18,
+        y: anchorY === 'top' && ticket.startY < 20 ? -40 : 18,
         filter: 'blur(4px)',
       }}
       animate={
@@ -137,8 +141,13 @@ export function Ticket({
             }
           : {
               opacity: [1, 1, 0],
+              // Collecting always converges via left/top - clear any right/bottom
+              // anchor from the rain phase so the box doesn't get width/height-
+              // stretched by having opposite edges pinned at the same time.
               left: slot.left,
               top: slot.top,
+              right: 'auto',
+              bottom: 'auto',
               x: '-50%',
               y: 0,
               rotate: [ticket.rotate, ticket.rotate * 0.2, 16],

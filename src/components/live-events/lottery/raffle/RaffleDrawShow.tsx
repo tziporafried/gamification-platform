@@ -41,49 +41,73 @@ function buildTickets(participants: EligibleParticipant[]): RaffleTicketData[] {
           .filter((_, i) => i % Math.ceil(participants.length / RAFFLE_MAX_VISIBLE_TICKETS) === 0)
           .slice(0, RAFFLE_MAX_VISIBLE_TICKETS)
 
+  const rand = (min: number, max: number) => min + Math.random() * (max - min)
+
   return pool.map((p, i) => {
-    // 8 spawn zones — full viewport edges + corners.
+    // 8 spawn zones — full viewport edges + corners. Each measures startX/startY
+    // from whichever side (anchorX/anchorY) the ticket sits nearest, so the box
+    // always grows inward and can never render past the viewport edge.
     const zone = i % 8
+    let anchorX: 'left' | 'right' = 'left'
+    let anchorY: 'top' | 'bottom' = 'top'
     let startX = 50
     let startY = 40
     switch (zone) {
-      case 0: // left
-        startX = 2 + Math.random() * 8
-        startY = 8 + Math.random() * 74
+      case 0: // left edge
+        anchorX = 'left'
+        startX = rand(3, 12)
+        anchorY = 'top'
+        startY = rand(10, 78)
         break
-      case 1: // right
-        startX = 90 + Math.random() * 8
-        startY = 8 + Math.random() * 74
+      case 1: // right edge
+        anchorX = 'right'
+        startX = rand(3, 12)
+        anchorY = 'top'
+        startY = rand(10, 78)
         break
-      case 2: // top
-        startX = 6 + Math.random() * 88
-        startY = 2 + Math.random() * 8
+      case 2: // top edge, left half
+        anchorX = 'left'
+        startX = rand(8, 46)
+        anchorY = 'top'
+        startY = rand(3, 10)
         break
-      case 3: // bottom
-        startX = 6 + Math.random() * 88
-        startY = 90 + Math.random() * 8
+      case 3: // top edge, right half
+        anchorX = 'right'
+        startX = rand(8, 46)
+        anchorY = 'top'
+        startY = rand(3, 10)
         break
-      case 4: // top-left
-        startX = 2 + Math.random() * 16
-        startY = 2 + Math.random() * 16
+      case 4: // bottom edge, left half
+        anchorX = 'left'
+        startX = rand(8, 46)
+        anchorY = 'bottom'
+        startY = rand(6, 14)
         break
-      case 5: // top-right
-        startX = 82 + Math.random() * 16
-        startY = 2 + Math.random() * 16
+      case 5: // bottom edge, right half
+        anchorX = 'right'
+        startX = rand(8, 46)
+        anchorY = 'bottom'
+        startY = rand(6, 14)
         break
-      case 6: // bottom-left
-        startX = 2 + Math.random() * 16
-        startY = 82 + Math.random() * 16
+      case 6: // top-left corner
+        anchorX = 'left'
+        startX = rand(3, 16)
+        anchorY = 'top'
+        startY = rand(3, 16)
         break
-      default: // bottom-right
-        startX = 82 + Math.random() * 16
-        startY = 82 + Math.random() * 16
+      default: // bottom-right corner
+        anchorX = 'right'
+        startX = rand(3, 16)
+        anchorY = 'bottom'
+        startY = rand(3, 16)
         break
     }
     const enterDelay = (i / Math.max(pool.length - 1, 1)) * 3.2 + Math.random() * 0.55
     return {
       id: p.id,
       name: p.name,
+      anchorX,
+      anchorY,
       startX,
       startY,
       enterDelay,
