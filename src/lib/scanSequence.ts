@@ -1,4 +1,5 @@
 import { parseQrPayload } from '@/lib/qrPayload'
+import { looksLikeHebrewLayoutScan } from '@/lib/keyboardLayout'
 
 /**
  * How long a scanned participant card stays "armed" waiting for its action
@@ -9,6 +10,7 @@ export const SPLIT_SCAN_TIMEOUT_MS = 30_000
 
 export const SCAN_SEQUENCE_MESSAGES = {
   actionBeforeParticipant: 'סרקתם כרטיס משימה בלבד - יש לסרוק קודם את כרטיס המשתתף.',
+  hebrewKeyboardLayout: 'המקלדת במצב עברית - החליפו לאנגלית (Alt+Shift) וסרקו שוב.',
 } as const
 
 /** A participant card waiting on its action card. */
@@ -65,9 +67,15 @@ export function resolveScan({
 
   const parsed = parseQrPayload(raw)
   if (!parsed.ok) {
+    // A Hebrew keyboard layout scrambles the scanned JSON into Hebrew letters, so
+    // the "invalid barcode" that results is really an input-mode problem - name it
+    // so the operator switches to English instead of blaming the card.
+    const message = looksLikeHebrewLayoutScan(raw)
+      ? SCAN_SEQUENCE_MESSAGES.hebrewKeyboardLayout
+      : parsed.error
     // An unreadable read is a misfire, not an intent to cancel - the armed
     // participant stays armed so the operator can just rescan the action card.
-    return { kind: 'error', message: parsed.error, pending: live }
+    return { kind: 'error', message, pending: live }
   }
 
   const code = parsed.data

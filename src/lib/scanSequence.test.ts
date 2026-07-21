@@ -209,3 +209,29 @@ test('unparseable text is reported, not armed', () => {
   assert.equal(outcome.kind, 'error')
   assert.equal(outcome.pending, null)
 })
+
+test('a scan scrambled by a Hebrew keyboard layout blames the input mode, not the card', () => {
+  // What a scanner delivers for {"participantCode... when the OS input is Hebrew.
+  const outcome = scan('ותsirjuproperty...')
+  assert.deepEqual(outcome, {
+    kind: 'error',
+    message: SCAN_SEQUENCE_MESSAGES.hebrewKeyboardLayout,
+    pending: null,
+  })
+})
+
+test('a Hebrew-layout misfire keeps the participant armed like any other unreadable read', () => {
+  const outcomes = scanSequence([
+    { raw: participantCard('P-1') },
+    { raw: ']"participantCode"...', now: T0 + 1_000 },
+    { raw: actionCard('A-1'), now: T0 + 2_000 },
+  ])
+
+  assert.equal(outcomes[1].kind, 'error')
+  assert.equal(
+    outcomes[1].kind === 'error' && outcomes[1].message,
+    SCAN_SEQUENCE_MESSAGES.hebrewKeyboardLayout,
+  )
+  assert.deepEqual(outcomes[1].pending, armed('P-1'))
+  assert.equal(outcomes[2].kind, 'pair')
+})
