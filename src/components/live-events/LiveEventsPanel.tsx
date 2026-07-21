@@ -1,6 +1,7 @@
 import { Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
+import { trackLiveEventSelect } from '@/lib/analytics'
 import { LIVE_EVENT_CATALOG, isLiveEventLaunchable } from './types'
 import { LiveEventLibraryCard } from './LiveEventLibraryCard'
 
@@ -21,6 +22,11 @@ export function LiveEventsPanel({ eventId }: LiveEventsPanelProps) {
 
   function openLotteryBroadcast() {
     if (!lotteryLaunchable) return
+    trackLiveEventSelect({
+      eventId,
+      catalogId: 'lottery',
+      launchable: true,
+    })
     window.open(`/events/${eventId}/lottery`, '_blank', 'noopener,noreferrer')
   }
 

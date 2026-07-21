@@ -572,10 +572,147 @@ export function trackLeaderboardView() {
   trackEventDeduped('leaderboard_view', 'leaderboard_view')
 }
 
+// ─── Live events / lottery ───────────────────────────────────────────────────
+
+/** Organizer opened the live-events picker from control center. */
+export function trackLiveEventsModalOpen(eventId: string) {
+  trackEventDeduped(`live_events_modal_open:${eventId}`, 'live_events_modal_open', {
+    event_id: eventId,
+  })
+}
+
+/** Organizer closed the live-events picker. */
+export function trackLiveEventsModalClose(eventId: string) {
+  trackEvent('live_events_modal_close', { event_id: eventId })
+}
+
+/**
+ * Organizer chose a live-event catalog item.
+ * `launchable` false = teaser / coming-soon (should not normally fire as a launch).
+ */
+export function trackLiveEventSelect(params: {
+  eventId: string
+  catalogId: string
+  launchable: boolean
+}) {
+  trackEvent('live_event_select', {
+    event_id: params.eventId,
+    catalog_id: params.catalogId,
+    launchable: params.launchable,
+  })
+}
+
+/** Lottery broadcast tab opened on the setup / preparing dock. */
+export function trackLotterySetupView(eventId: string) {
+  trackEventDeduped(`lottery_setup_view:${eventId}`, 'lottery_setup_view', {
+    event_id: eventId,
+  })
+}
+
+/** Non-admin hit the lottery route while it is gated as "coming soon". */
+export function trackLotteryGated(eventId: string | undefined) {
+  trackEventDeduped(`lottery_gated:${eventId ?? 'none'}`, 'lottery_gated', {
+    event_id: eventId,
+    reason: 'not_admin',
+  })
+}
+
+export function trackLotteryEligibilitySet(params: {
+  eventId: string
+  mode: 'all' | 'min_points'
+  minPoints?: number
+}) {
+  trackEvent('lottery_eligibility_set', {
+    event_id: params.eventId,
+    eligibility_mode: params.mode,
+    min_points: params.mode === 'min_points' ? params.minPoints : undefined,
+  })
+}
+
+/** Prize name confirmed in the dock - never send the prize text itself. */
+export function trackLotteryPrizeConfirmed(eventId: string) {
+  trackEvent('lottery_prize_confirmed', { event_id: eventId })
+}
+
+export function trackLotteryWinnersCountSet(eventId: string, winnerCount: number) {
+  trackEvent('lottery_winners_count_set', {
+    event_id: eventId,
+    winner_count: winnerCount,
+  })
+}
+
+/** Launch blocked by validation (missing prize, no eligible players, etc.). */
+export function trackLotteryLaunchBlocked(params: {
+  eventId: string
+  reason: 'missing_prize' | 'no_eligible' | 'too_many_winners'
+}) {
+  trackEvent('lottery_launch_blocked', {
+    event_id: params.eventId,
+    reason: params.reason,
+  })
+}
+
+/** Organizer started the live lottery show from the setup dock. */
+export function trackLotteryLaunched(params: {
+  eventId: string
+  eligibilityMode: 'all' | 'min_points'
+  minPoints: number
+  winnerCount: number
+  eligibleCount: number
+}) {
+  trackEvent('lottery_launched', {
+    event_id: params.eventId,
+    eligibility_mode: params.eligibilityMode,
+    min_points: params.eligibilityMode === 'min_points' ? params.minPoints : 0,
+    winner_count: params.winnerCount,
+    eligible_count: params.eligibleCount,
+  })
+}
+
+/** Cinematic intro began on the projector stage. */
+export function trackLotteryIntroStart(eventId: string, eligibleCount: number) {
+  trackEventDeduped(`lottery_intro_start:${eventId}`, 'lottery_intro_start', {
+    event_id: eventId,
+    eligible_count: eligibleCount,
+  })
+}
+
+/** Intro finished and the gift-box draw animation started. */
+export function trackLotteryDrawStart(eventId: string, eligibleCount: number) {
+  trackEvent('lottery_draw_start', {
+    event_id: eventId,
+    eligible_count: eligibleCount,
+  })
+}
+
+/** Winner celebration shown - no participant PII. */
+export function trackLotteryWinnerRevealed(params: {
+  eventId: string
+  eligibleCount: number
+  winnerCount: number
+}) {
+  trackEvent('lottery_winner_revealed', {
+    event_id: params.eventId,
+    eligible_count: params.eligibleCount,
+    winner_count: params.winnerCount,
+  })
+}
+
+/** Organizer left / closed the lottery broadcast. */
+export function trackLotteryExit(params: {
+  eventId: string
+  stage: 'setup' | 'intro' | 'draw' | 'silence' | 'winner'
+}) {
+  trackEvent('lottery_exit', {
+    event_id: params.eventId,
+    stage: params.stage,
+  })
+}
+
 // ─── Errors (sparse - not an error monitoring system) ────────────────────────
 
 export function trackAppError(
-  errorArea: 'auth' | 'event_creation' | 'scanner' | 'pricing',
+  errorArea: 'auth' | 'event_creation' | 'scanner' | 'pricing' | 'lottery',
   errorType: string,
 ) {
   trackEventDeduped(`app_error:${errorArea}:${errorType}`, 'app_error', {

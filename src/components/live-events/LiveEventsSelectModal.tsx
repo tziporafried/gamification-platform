@@ -6,6 +6,10 @@ import { cn } from '@/lib/utils'
 import { theme } from '@/lib/theme'
 import { useAuth } from '@/contexts/AuthContext'
 import {
+  trackLiveEventSelect,
+  trackLiveEventsModalClose,
+} from '@/lib/analytics'
+import {
   LIVE_EVENT_CATALOG,
   isLiveEventLaunchable,
   type LiveEventCatalogId,
@@ -35,6 +39,10 @@ const CARD_GRADIENT: Record<LiveEventCatalogItem['accent'], string> = {
   rich: 'gradient-reward-rich',
   medium: 'gradient-reward-medium',
   starter: 'gradient-reward-starter',
+  accent: 'gradient-reward-accent',
+  tertiary: 'gradient-reward-tertiary',
+  danger: 'gradient-reward-danger',
+  muted: 'gradient-reward-muted',
 }
 
 const CARD_SHADOW: Record<LiveEventCatalogItem['accent'], string> = {
@@ -46,6 +54,14 @@ const CARD_SHADOW: Record<LiveEventCatalogItem['accent'], string> = {
     'shadow-[0_14px_32px_rgba(46,34,30,0.18),0_0_28px_rgba(0,144,144,0.28)]',
   starter:
     'shadow-[0_14px_32px_rgba(46,34,30,0.18),0_0_28px_rgba(69,207,107,0.32)]',
+  accent:
+    'shadow-[0_14px_32px_rgba(46,34,30,0.18),0_0_28px_rgba(252,96,36,0.32)]',
+  tertiary:
+    'shadow-[0_14px_32px_rgba(46,34,30,0.18),0_0_28px_rgba(252,144,0,0.32)]',
+  danger:
+    'shadow-[0_14px_32px_rgba(46,34,30,0.18),0_0_28px_rgba(255,77,77,0.32)]',
+  muted:
+    'shadow-[0_14px_32px_rgba(46,34,30,0.18),0_0_28px_rgba(125,112,106,0.28)]',
 }
 
 const CARD_SHADOW_HOVER: Record<LiveEventCatalogItem['accent'], string> = {
@@ -57,6 +73,14 @@ const CARD_SHADOW_HOVER: Record<LiveEventCatalogItem['accent'], string> = {
     'hover:shadow-[0_20px_44px_rgba(46,34,30,0.24),0_0_36px_rgba(0,144,144,0.38)]',
   starter:
     'hover:shadow-[0_20px_44px_rgba(46,34,30,0.24),0_0_36px_rgba(69,207,107,0.42)]',
+  accent:
+    'hover:shadow-[0_20px_44px_rgba(46,34,30,0.24),0_0_36px_rgba(252,96,36,0.42)]',
+  tertiary:
+    'hover:shadow-[0_20px_44px_rgba(46,34,30,0.24),0_0_36px_rgba(252,144,0,0.42)]',
+  danger:
+    'hover:shadow-[0_20px_44px_rgba(46,34,30,0.24),0_0_36px_rgba(255,77,77,0.42)]',
+  muted:
+    'hover:shadow-[0_20px_44px_rgba(46,34,30,0.24),0_0_36px_rgba(125,112,106,0.38)]',
 }
 
 const CARD_BLURB: Record<LiveEventCatalogId, string> = {
@@ -93,40 +117,43 @@ function AvailableEventCard({
       type="button"
       onClick={onLaunch}
       className={cn(
-        'group relative flex min-h-[13.25rem] w-full flex-col overflow-hidden rounded-2xl p-5 text-right',
-        'ring-1 ring-white/30',
+        'group relative flex min-h-[13.75rem] w-full flex-col overflow-hidden rounded-2xl p-5 text-right',
+        'ring-2 ring-white/45',
         CARD_SHADOW[item.accent],
         CARD_SHADOW_HOVER[item.accent],
-        'transition-[transform,box-shadow] duration-200 ease-out',
-        'hover:scale-[1.02]',
+        'brightness-[1.04] saturate-[1.08]',
+        'transition-[transform,box-shadow,filter] duration-200 ease-out',
+        'hover:scale-[1.03] hover:brightness-110',
         'active:scale-[0.99]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
       )}
     >
       <div className={cn('absolute inset-0', CARD_GRADIENT[item.accent])} aria-hidden="true" />
       <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgba(255,255,255,0.22),transparent_55%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_18%,rgba(255,255,255,0.34),transparent_52%)]"
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute inset-0 bg-white/0 transition-colors duration-200 ease-out group-hover:bg-white/12"
+        className="pointer-events-none absolute inset-0 bg-white/0 transition-colors duration-200 ease-out group-hover:bg-white/14"
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/25 blur-2xl"
+        className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-white/30 blur-2xl"
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-black/10 blur-2xl"
+        className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-black/15 blur-2xl"
         aria-hidden="true"
       />
 
       <div className="relative flex flex-1 flex-col items-center justify-center text-center">
-        <span className="mb-3.5 flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-2xl border border-white/30 bg-white/20 shadow-[0_10px_22px_rgba(0,0,0,0.2)] backdrop-blur-sm">
-          <Icon size={32} strokeWidth={2.25} className="text-white drop-shadow-sm" aria-hidden="true" />
+        <span className="mb-3.5 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl border border-white/40 bg-white/25 shadow-[0_12px_28px_rgba(0,0,0,0.22)] backdrop-blur-sm">
+          <Icon size={34} strokeWidth={2.25} className="text-white drop-shadow-md" aria-hidden="true" />
         </span>
-        <span className="text-xl font-black text-white">{item.title}</span>
-        <span className="mt-1.5 line-clamp-2 text-[13px] font-medium leading-snug text-white/80">
+        <span className="text-xl font-black tracking-tight text-white drop-shadow-sm sm:text-[1.35rem]">
+          {item.title}
+        </span>
+        <span className="mt-1.5 line-clamp-2 text-[13px] font-medium leading-snug text-white/90">
           {blurb}
         </span>
       </div>
@@ -147,31 +174,39 @@ function UpcomingEventCard({
     <div
       aria-disabled="true"
       className={cn(
-        'pointer-events-none relative flex min-h-[11.85rem] w-full cursor-default flex-col overflow-hidden rounded-2xl p-4 text-right',
-        'border border-dashed border-border/45',
-        'bg-[linear-gradient(160deg,rgba(255,255,255,0.5),rgba(246,243,240,0.42))]',
-        'shadow-[0_2px_10px_rgba(46,34,30,0.04)]',
-        'grayscale-[0.35] saturate-[0.45]',
+        'pointer-events-none relative flex min-h-[12.5rem] w-full cursor-default flex-col overflow-hidden rounded-2xl p-5 text-right',
+        'ring-1 ring-white/25',
+        'opacity-[0.72] saturate-[0.78] brightness-[0.96]',
+        'shadow-[0_8px_20px_rgba(46,34,30,0.1)]',
       )}
     >
+      <div className={cn('absolute inset-0', CARD_GRADIENT[item.accent])} aria-hidden="true" />
+      <div
+        className="pointer-events-none absolute inset-0 bg-white/25"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgba(255,255,255,0.14),transparent_55%)]"
+        aria-hidden="true"
+      />
+
       <span
         className={cn(
           'absolute start-3 top-3 z-10 inline-flex items-center gap-1',
-          'rounded-full border border-secondary/20 bg-secondary/[0.12] px-2.5 py-1',
-          'text-[10px] font-bold leading-none text-secondary-text',
-          'shadow-[0_1px_4px_rgba(46,34,30,0.06)]',
+          'rounded-full border border-white/40 bg-black/15 px-2.5 py-1 backdrop-blur-sm',
+          'text-[10px] font-bold leading-none text-white',
         )}
       >
-        <Sparkles size={9} strokeWidth={2.25} className="shrink-0 opacity-80" aria-hidden="true" />
+        <Sparkles size={9} strokeWidth={2.25} className="shrink-0 opacity-90" aria-hidden="true" />
         בקרוב
       </span>
 
       <div className="relative flex flex-1 flex-col items-center justify-center text-center">
-        <span className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-border/40 bg-white/50 text-muted/80">
-          <Icon size={26} strokeWidth={2} aria-hidden="true" />
+        <span className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/30 bg-white/15 backdrop-blur-sm">
+          <Icon size={28} strokeWidth={2.25} className="text-white drop-shadow-sm" aria-hidden="true" />
         </span>
-        <span className="text-base font-bold text-foreground/65">{item.title}</span>
-        <span className="mt-1 line-clamp-2 text-xs font-medium leading-snug text-muted/80">
+        <span className="text-lg font-black text-white/95">{item.title}</span>
+        <span className="mt-1.5 line-clamp-2 text-[13px] font-medium leading-snug text-white/75">
           {blurb}
         </span>
       </div>
@@ -219,7 +254,10 @@ export function LiveEventsSelectModal({
   const originRef = useRef(originRect)
 
   useEffect(() => {
-    onCloseRef.current = onClose
+    onCloseRef.current = () => {
+      trackLiveEventsModalClose(eventId)
+      onClose()
+    }
   })
 
   // Keep last origin for the close animation even if parent clears it.
@@ -285,8 +323,17 @@ export function LiveEventsSelectModal({
 
   function launch(id: LiveEventCatalogId) {
     if (id !== 'lottery') return
-    onClose()
+    trackLiveEventSelect({
+      eventId,
+      catalogId: id,
+      launchable: true,
+    })
+    onCloseRef.current()
     window.open(`/events/${eventId}/lottery`, '_blank', 'noopener,noreferrer')
+  }
+
+  function handleClose() {
+    onCloseRef.current()
   }
 
   const motionTransition = reduceMotion
@@ -317,7 +364,7 @@ export function LiveEventsSelectModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={motionTransition}
-            onClick={onClose}
+            onClick={handleClose}
             aria-hidden="true"
           />
 
@@ -382,7 +429,7 @@ export function LiveEventsSelectModal({
               <div className="absolute -bottom-8 -left-8 h-28 w-28 rounded-full bg-black/10 blur-2xl" />
             </motion.div>
 
-            {/* Glass surface - fades in as teal brightens away */}
+            {/* Neutral glass surface */}
             <motion.div
               className="pointer-events-none absolute inset-0 z-[1] border border-white/55 bg-white/80 backdrop-blur-xl"
               style={{ borderRadius: 'inherit' }}
@@ -420,7 +467,7 @@ export function LiveEventsSelectModal({
                 </h2>
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleClose}
                   aria-label="סגירה"
                   className={cn(
                     'shrink-0 rounded-lg p-1 transition-colors',

@@ -44,7 +44,7 @@ export interface LiveEventCatalogItem {
   icon: LucideIcon
   available: boolean
   cta: string
-  accent: 'legendary' | 'rich' | 'medium' | 'starter'
+  accent: 'legendary' | 'rich' | 'medium' | 'starter' | 'accent' | 'tertiary' | 'danger' | 'muted'
 }
 
 /** Current product catalog - Lottery is teaser for organizers; other live events too. */
@@ -66,7 +66,7 @@ export const LIVE_EVENT_CATALOG: LiveEventCatalogItem[] = [
     icon: Zap,
     available: false,
     cta: 'יושק בקרוב',
-    accent: 'medium',
+    accent: 'accent',
   },
   {
     id: 'flash-challenge',
@@ -75,7 +75,7 @@ export const LIVE_EVENT_CATALOG: LiveEventCatalogItem[] = [
     icon: Sparkles,
     available: false,
     cta: 'יושק בקרוב',
-    accent: 'rich',
+    accent: 'danger',
   },
 ]
 

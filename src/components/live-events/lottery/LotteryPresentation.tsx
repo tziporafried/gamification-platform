@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import {
+  trackLotteryDrawStart,
+  trackLotteryExit,
+  trackLotteryIntroStart,
+  trackLotteryWinnerRevealed,
+} from '@/lib/analytics'
 import { useLotteryPresentationSound } from '@/hooks/useLotteryPresentationSound'
 import type { EligibleParticipant, LotteryConfig } from '../types'
 import { LotteryBroadcastLayout } from './LotteryBroadcastLayout'
@@ -92,11 +98,13 @@ export function LotteryPresentation({
     if (stage !== 'intro') return
     setWinner(pickRandomWinner(pool))
     playUiClick()
+    trackLotteryIntroStart(config.eventId, pool.length)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- pick winner once on intro entry
   }, [stage, playUiClick])
 
   useEffect(() => {
     if (stage !== 'draw') return
+    trackLotteryDrawStart(config.eventId, pool.length)
     let cancelled = false
     fadeOut(500, () => {
       if (cancelled) return
@@ -106,7 +114,7 @@ export function LotteryPresentation({
       cancelled = true
       stop()
     }
-  }, [stage, fadeOut, play, stop])
+  }, [stage, fadeOut, play, stop, config.eventId, pool.length])
 
   useEffect(() => {
     if (stage !== 'silence') return
@@ -119,6 +127,11 @@ export function LotteryPresentation({
     if (stage !== 'winner' || !winner || recordedRef.current) return
     recordedRef.current = true
     playWinnerFanfare()
+    trackLotteryWinnerRevealed({
+      eventId: config.eventId,
+      eligibleCount: participants.length,
+      winnerCount,
+    })
     recordLotteryWinner(config.eventId, {
       participantId: winner.id,
       participantName: winner.name,
@@ -127,12 +140,13 @@ export function LotteryPresentation({
       wonAt: new Date().toISOString(),
     })
     setDrawnIds((ids) => (ids.includes(winner.id) ? ids : [...ids, winner.id]))
-  }, [stage, config, winner, playWinnerFanfare])
+  }, [stage, config, winner, playWinnerFanfare, participants.length, winnerCount])
 
   const handleExit = useCallback(() => {
+    trackLotteryExit({ eventId: config.eventId, stage })
     stop()
     onClose()
-  }, [stop, onClose])
+  }, [stop, onClose, config.eventId, stage])
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {

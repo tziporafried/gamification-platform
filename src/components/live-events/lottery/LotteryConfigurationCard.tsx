@@ -2,6 +2,13 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Gift, Pencil, Play, Trophy, Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
+import {
+  trackLotteryEligibilitySet,
+  trackLotteryLaunchBlocked,
+  trackLotteryLaunched,
+  trackLotteryPrizeConfirmed,
+  trackLotterySetupView,
+} from '@/lib/analytics'
 import { useLotteryPresentationSound } from '@/hooks/useLotteryPresentationSound'
 import {
   type EligibleParticipant,
@@ -133,6 +140,10 @@ export function LotteryConfigurationCard({
   const prizeConfirmed = trimmedPrize.length > 0 && !editingPrize
 
   useEffect(() => {
+    trackLotterySetupView(eventId)
+  }, [eventId])
+
+  useEffect(() => {
     if (editingPrize) {
       requestAnimationFrame(() => prizeInputRef.current?.focus())
     }
@@ -145,6 +156,11 @@ export function LotteryConfigurationCard({
 
   function selectMinPointsMode() {
     setEligibilityMode('min_points')
+    trackLotteryEligibilitySet({
+      eventId,
+      mode: 'min_points',
+      minPoints,
+    })
   }
 
   function handleMinPointsChange(raw: string) {
@@ -168,7 +184,9 @@ export function LotteryConfigurationCard({
   }
 
   function commitPrize() {
-    if (prizeName.trim()) setEditingPrize(false)
+    if (!prizeName.trim()) return
+    setEditingPrize(false)
+    trackLotteryPrizeConfirmed(eventId)
   }
 
   function buildConfig(): LotteryConfig | null {
@@ -176,14 +194,17 @@ export function LotteryConfigurationCard({
     if (!trimmedPrize) {
       setFormError('חסר שם לפרס')
       setEditingPrize(true)
+      trackLotteryLaunchBlocked({ eventId, reason: 'missing_prize' })
       return null
     }
     if (count < 1) {
       setFormError('עדיין אין משתתפים בהגרלה')
+      trackLotteryLaunchBlocked({ eventId, reason: 'no_eligible' })
       return null
     }
     if (winnerCount > count) {
       setFormError(`יש רק ${count.toLocaleString('he-IL')} משתתפים זכאים`)
+      trackLotteryLaunchBlocked({ eventId, reason: 'too_many_winners' })
       return null
     }
     return {
@@ -203,6 +224,13 @@ export function LotteryConfigurationCard({
 
     playUiClick()
     playReadySting()
+    trackLotteryLaunched({
+      eventId,
+      eligibilityMode: config.eligibilityMode,
+      minPoints: config.minPoints,
+      winnerCount: config.winnerCount ?? 1,
+      eligibleCount: participants.length,
+    })
     onLaunch({ config, participants })
   }
 
@@ -296,7 +324,10 @@ export function LotteryConfigurationCard({
                   id={allId}
                   role="radio"
                   aria-checked={eligibilityMode === 'all'}
-                  onClick={() => setEligibilityMode('all')}
+                  onClick={() => {
+                    setEligibilityMode('all')
+                    trackLotteryEligibilitySet({ eventId, mode: 'all' })
+                  }}
                   className={cn(
                     'min-w-[4.5rem] flex-1 rounded-lg px-2.5 py-1.5 text-sm font-black transition-all duration-150',
                     'active:scale-[0.97]',

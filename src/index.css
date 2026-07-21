@@ -89,6 +89,18 @@
   .gradient-reward-legendary {
     background-color: var(--color-primary);
   }
+  .gradient-reward-accent {
+    background-color: var(--color-accent);
+  }
+  .gradient-reward-tertiary {
+    background-color: var(--color-tertiary);
+  }
+  .gradient-reward-danger {
+    background-color: var(--color-danger);
+  }
+  .gradient-reward-muted {
+    background-color: var(--color-muted);
+  }
   .gradient-action-card {
     background-color: var(--color-secondary);
   }

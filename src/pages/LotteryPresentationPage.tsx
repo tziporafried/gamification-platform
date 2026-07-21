@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { useAuth } from '@/contexts/AuthContext'
+import { trackLotteryGated } from '@/lib/analytics'
 import { LotteryBroadcastLayout } from '@/components/live-events/lottery/LotteryBroadcastLayout'
 import { LotteryConfigurationCard } from '@/components/live-events/lottery/LotteryConfigurationCard'
 import { LotteryPreparingStage } from '@/components/live-events/lottery/LotteryPreparingStage'
@@ -66,19 +67,7 @@ export function LotteryPresentationPage() {
   }
 
   if (!isSuperAdmin) {
-    return (
-      <LotteryBroadcastLayout
-        stage={
-          <div className="max-w-md text-center">
-            <p className="text-2xl font-black text-foreground">ההגרלה בקרוב</p>
-            <p className="mt-3 text-base font-semibold text-muted">
-              ההפעלה עדיין לא זמינה לכולם.
-            </p>
-          </div>
-        }
-        dock={<p className="w-full text-center text-sm font-medium text-muted">אין פעולות זמינות</p>}
-      />
-    )
+    return <LotteryGatedView eventId={id} />
   }
 
   if (!id) {
@@ -122,6 +111,26 @@ export function LotteryPresentationPage() {
       config={session.config}
       participants={session.participants}
       onClose={handleClose}
+    />
+  )
+}
+
+function LotteryGatedView({ eventId }: { eventId: string | undefined }) {
+  useEffect(() => {
+    trackLotteryGated(eventId)
+  }, [eventId])
+
+  return (
+    <LotteryBroadcastLayout
+      stage={
+        <div className="max-w-md text-center">
+          <p className="text-2xl font-black text-foreground">ההגרלה בקרוב</p>
+          <p className="mt-3 text-base font-semibold text-muted">
+            ההפעלה עדיין לא זמינה לכולם.
+          </p>
+        </div>
+      }
+      dock={<p className="w-full text-center text-sm font-medium text-muted">אין פעולות זמינות</p>}
     />
   )
 }

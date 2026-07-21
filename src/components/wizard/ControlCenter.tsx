@@ -17,7 +17,7 @@ import { calculateReadiness, isEventReady, getWizardPrefs, resolveGroupType } fr
 import { getLockedTemplate, completeTemplateImport, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
-import { trackEventEditStart, trackCtaClick } from '@/lib/analytics'
+import { trackEventEditStart, trackCtaClick, trackLiveEventsModalOpen } from '@/lib/analytics'
 import { FloatingContactButton } from '@/components/layout/FloatingContactButton'
 import { LiveEventsSelectModal, type LiveEventsOriginRect } from '@/components/live-events/LiveEventsSelectModal'
 import type { Event, EventCounts } from '@/types'
@@ -384,6 +384,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                   cta_location: 'control_center',
                   destination: 'live_events_modal',
                 })
+                trackLiveEventsModalOpen(event.id)
                 setLiveEventsOpen(true)
               }}
               surfaceRef={liveEventsCardRef}
