@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download, Search, LogIn } from 'lucide-react'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download, Search, LogIn, Check, RotateCcw } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
@@ -156,8 +156,15 @@ interface UpgradeRequest {
 const STATUS_OPTIONS = [
   { value: 'new', label: 'חדש' },
   { value: 'contacted', label: 'נוצר קשר' },
-  { value: 'closed', label: 'נסגר' },
+  { value: 'closed', label: 'טופל' },
 ]
+
+const HANDLED_STATUS = 'closed'
+
+/** Handled leads sink to the bottom; the rest keep the newest-first order from the query. */
+function isHandled(req: { status: string }) {
+  return req.status === HANDLED_STATUS
+}
 
 const LIMIT_LABELS: Record<string, string> = {
   participants: 'משתתפים',
@@ -219,6 +226,12 @@ export function AdminPanel() {
   const [deleteRequestTarget, setDeleteRequestTarget] = useState<UpgradeRequest | null>(null)
   const [deletingRequest, setDeletingRequest] = useState(false)
   const [deleteRequestError, setDeleteRequestError] = useState<string | null>(null)
+  const [handlingRequestId, setHandlingRequestId] = useState<string | null>(null)
+
+  const sortedRequests = useMemo(
+    () => [...requests].sort((a, b) => Number(isHandled(a)) - Number(isHandled(b))),
+    [requests],
+  )
 
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true)
@@ -432,6 +445,23 @@ export function AdminPanel() {
       return
     }
     navigate('/events')
+  }
+
+  async function toggleRequestHandled(req: UpgradeRequest) {
+    if (handlingRequestId) return
+    const nextStatus = isHandled(req) ? 'new' : HANDLED_STATUS
+    setHandlingRequestId(req.id)
+    const { error } = await supabase
+      .from('contact_upgrade_requests')
+      .update({ status: nextStatus })
+      .eq('id', req.id)
+    if (!error) {
+      setRequests(prev => prev.map(r => (r.id === req.id ? { ...r, status: nextStatus } : r)))
+      setNewRequestCount(prev =>
+        nextStatus === 'new' ? prev + 1 : req.status === 'new' ? Math.max(0, prev - 1) : prev,
+      )
+    }
+    setHandlingRequestId(null)
   }
 
   async function deleteRequest() {
@@ -783,10 +813,18 @@ export function AdminPanel() {
             />
 
             <div className="space-y-3">
-              {requests.map(req => {
+              {sortedRequests.map(req => {
                 const statusOption = STATUS_OPTIONS.find(s => s.value === req.status) || STATUS_OPTIONS[0]
+                const handled = isHandled(req)
                 return (
-                  <Card key={req.id} className={cn('p-4', req.status === 'new' && 'border-warning')}>
+                  <Card
+                    key={req.id}
+                    className={cn(
+                      'p-4 transition-opacity',
+                      req.status === 'new' && 'border-warning',
+                      handled && 'opacity-55 grayscale',
+                    )}
+                  >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0 flex-1 space-y-1.5">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -834,6 +872,27 @@ export function AdminPanel() {
                             {offlineExportError.message}
                           </p>
                         )}
+                        <button
+                          onClick={() => toggleRequestHandled(req)}
+                          type="button"
+                          disabled={handlingRequestId === req.id}
+                          title={handled ? 'החזירו את הליד לרשימת הפעילים' : 'סמנו שהליד טופל'}
+                          className={cn(
+                            'flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs transition-colors disabled:opacity-50',
+                            handled
+                              ? 'text-muted hover:bg-surface-elevated hover:text-foreground'
+                              : 'text-success-text hover:bg-success/10',
+                          )}
+                        >
+                          {handlingRequestId === req.id ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : handled ? (
+                            <RotateCcw size={14} />
+                          ) : (
+                            <Check size={14} />
+                          )}
+                          {handled ? 'החזר לפעיל' : 'סמן כטופל'}
+                        </button>
                         <button
                           onClick={() => { setDeleteRequestError(null); setDeleteRequestTarget(req) }}
                           type="button"
