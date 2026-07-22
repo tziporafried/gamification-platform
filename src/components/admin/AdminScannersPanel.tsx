@@ -53,7 +53,12 @@ import { TrialActivationResetModal } from '@/components/TrialActivationResetModa
 import { exportOfflineGame, OfflineExportError } from '@/lib/offline/exportGame'
 import { trackTrialActivated, trackTrialDataReset } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
-import type { BookingPackage, Scanner, ScannerBooking, UserPlan } from '@/types'
+import type { BarcodeType, BookingPackage, Scanner, ScannerBooking, UserPlan } from '@/types'
+
+const BARCODE_TYPE_OPTIONS: { value: BarcodeType; label: string; hint: string }[] = [
+  { value: 'qr', label: 'דו-ממדי (QR)', hint: 'ברירת מחדל' },
+  { value: 'code128', label: 'חד-ממדי', hint: 'ברקוד ליניארי' },
+]
 
 const EVENT_PLAN_OPTIONS: { value: UserPlan; label: string }[] = [
   { value: 'free', label: 'התנסות' },
@@ -75,6 +80,7 @@ type EventOption = {
   owner_admin_id: string
   owner_name: string
   owner_email: string
+  barcode_type: BarcodeType
 }
 
 function ownerDisplayName(displayName: string | null, email: string) {
@@ -285,6 +291,11 @@ export function AdminScannersPanel() {
     newPlan: UserPlan
   } | null>(null)
   const [activatingPlan, setActivatingPlan] = useState(false)
+  const [pendingBarcodeChange, setPendingBarcodeChange] = useState<{
+    eventId: string
+    newType: BarcodeType
+  } | null>(null)
+  const [updatingBarcode, setUpdatingBarcode] = useState(false)
 
   // booking form
   const [formScannerId, setFormScannerId] = useState('')
@@ -321,7 +332,7 @@ export function AdminScannersPanel() {
           .order('start_date', { ascending: true }),
         supabase
           .from('events')
-          .select('id, name, plan, status, owner_admin_id')
+          .select('id, name, plan, status, owner_admin_id, barcode_type')
           .neq('status', 'archived')
           .order('created_at', { ascending: false }),
         fetchTemplateDraftEventIds(),
@@ -344,6 +355,7 @@ export function AdminScannersPanel() {
           plan: string
           status: string
           owner_admin_id: string
+          barcode_type: BarcodeType
         }>) ?? []).filter((e) => !draftSet.has(e.id))
         const ownerIds = [...new Set(rows.map((r) => r.owner_admin_id))]
         const { data: profiles } = ownerIds.length
@@ -367,6 +379,7 @@ export function AdminScannersPanel() {
               owner_admin_id: row.owner_admin_id,
               owner_name: profile ? ownerDisplayName(profile.display_name, email) : 'משתמש לא ידוע',
               owner_email: email,
+              barcode_type: row.barcode_type ?? 'qr',
             }
           }),
         )
@@ -927,7 +940,7 @@ export function AdminScannersPanel() {
   }
 
   function closeEventActions() {
-    if (updatingEventPlan || exportingOffline || activatingPlan) return
+    if (updatingEventPlan || exportingOffline || activatingPlan || updatingBarcode) return
     setEventActionsBooking(null)
     setEventActionError(null)
     setOfflineExportError(null)
@@ -992,6 +1005,35 @@ export function AdminScannersPanel() {
       return
     }
     setSuccessMsg(`תוכנית המשחק עודכנה ל־${eventPlanLabel(newPlan)}`)
+  }
+
+  // Changing symbology invalidates every already-printed card, so the choice is
+  // gated behind a confirmation before it touches the event.
+  function requestBarcodeChange(eventId: string, currentType: BarcodeType, newType: BarcodeType) {
+    if (currentType === newType) return
+    setEventActionError(null)
+    setPendingBarcodeChange({ eventId, newType })
+  }
+
+  async function confirmBarcodeChange() {
+    if (!pendingBarcodeChange) return
+    const { eventId, newType } = pendingBarcodeChange
+    setUpdatingBarcode(true)
+    const { error: rpcError } = await supabase.rpc('update_event_barcode_type', {
+      p_event_id: eventId,
+      p_barcode_type: newType,
+    })
+    setUpdatingBarcode(false)
+    setPendingBarcodeChange(null)
+    if (rpcError) {
+      setEventActionError(rpcError.message)
+      return
+    }
+    setEvents((prev) =>
+      prev.map((ev) => (ev.id === eventId ? { ...ev, barcode_type: newType } : ev)),
+    )
+    const label = BARCODE_TYPE_OPTIONS.find((o) => o.value === newType)?.label ?? newType
+    setSuccessMsg(`סוג הברקוד עודכן ל־${label}. יש להדפיס כרטיסים חדשים.`)
   }
 
   async function downloadLinkedOfflineGame(eventId: string) {
@@ -1800,6 +1842,7 @@ export function AdminScannersPanel() {
           const eventId = eventActionsBooking.event_id
           const linked = eventById.get(eventId)
           const currentPlan = (linked?.plan ?? 'free') as UserPlan
+          const currentBarcodeType: BarcodeType = linked?.barcode_type ?? 'qr'
           return (
             <div className="space-y-4">
               <div className="rounded-xl border border-border bg-surface px-3 py-3 text-sm">
@@ -1812,6 +1855,37 @@ export function AdminScannersPanel() {
                 </p>
                 <p className="mt-1 text-xs text-muted">
                   תוכנית נוכחית: {eventPlanLabel(currentPlan)}
+                </p>
+              </div>
+
+              <div>
+                <span className="mb-1.5 block text-sm font-medium text-foreground">סוג ברקוד</span>
+                <div role="radiogroup" aria-label="סוג ברקוד" className="grid grid-cols-2 gap-2">
+                  {BARCODE_TYPE_OPTIONS.map((opt) => {
+                    const isSelected = currentBarcodeType === opt.value
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        disabled={updatingBarcode}
+                        onClick={() => requestBarcodeChange(eventId, currentBarcodeType, opt.value)}
+                        className={cn(
+                          'rounded-xl border p-2.5 text-center transition-colors disabled:opacity-60',
+                          isSelected
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border bg-surface hover:bg-surface-elevated',
+                        )}
+                      >
+                        <span className="block text-sm font-semibold text-foreground">{opt.label}</span>
+                        <span className="mt-0.5 block text-[11px] text-muted">{opt.hint}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
+                  שינוי הסוג מצריך הדפסת כרטיסים חדשים.
                 </p>
               </div>
 
@@ -1890,6 +1964,18 @@ export function AdminScannersPanel() {
         }}
         onContinue={() => void confirmPendingPlanChange()}
         loading={activatingPlan}
+      />
+
+      <ConfirmModal
+        isOpen={pendingBarcodeChange !== null}
+        onClose={() => {
+          if (!updatingBarcode) setPendingBarcodeChange(null)
+        }}
+        onConfirm={() => void confirmBarcodeChange()}
+        title="שינוי סוג הברקוד"
+        description="שינוי סוג הברקוד ידרוש הדפסת כרטיסים חדשים — הכרטיסים שכבר הודפסו לא יתאימו לסורק. להמשיך?"
+        confirmLabel="שנה סוג והמשך"
+        loading={updatingBarcode}
       />
 
       <ConfirmModal

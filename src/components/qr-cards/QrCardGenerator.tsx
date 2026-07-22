@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
+import Barcode from 'react-barcode'
 import { QrCode, Printer, ChevronDown, ChevronUp, User, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
@@ -8,9 +9,10 @@ import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { PanelCard } from '@/components/ui/PanelCard'
 import { theme } from '@/lib/theme'
 import { computeCardCounts, isActionRelevantTo, type CardCounts } from '@/lib/cardCounts'
+import { encodeCardPayload } from '@/lib/cardPayload'
 
 export type { CardCounts }
-import type { Action, Group, ParticipantWithGroups, Event, ScanMode } from '@/types'
+import type { Action, Group, ParticipantWithGroups, Event, ScanMode, BarcodeType } from '@/types'
 
 interface QrCardGeneratorProps {
   event: Event
@@ -382,6 +384,104 @@ function SplitPages({
   )
 }
 
+/**
+ * The scannable code inside a card. A QR holds the JSON payload as always; a
+ * `code128` event renders a one-dimensional barcode of the compact string
+ * instead - wide and short, with the human-readable code beneath it so an
+ * operator can always type it in if a print is too faint to scan.
+ */
+function CardCode({
+  value,
+  type,
+  wizardPreview,
+}: {
+  value: string
+  type: BarcodeType
+  wizardPreview: boolean
+}) {
+  if (type === 'code128') {
+    return (
+      <Barcode
+        value={value}
+        format="CODE128"
+        renderer="svg"
+        width={wizardPreview ? 1.2 : 1.5}
+        height={wizardPreview ? 44 : 54}
+        margin={4}
+        background="transparent"
+        lineColor={CARD_PALETTE.foreground}
+        displayValue={false}
+      />
+    )
+  }
+  return <QRCodeSVG value={value} size={wizardPreview ? 72 : 90} level="M" fgColor={CARD_PALETTE.foreground} />
+}
+
+/**
+ * Shared card chrome. QR events keep the code in a fixed side column; a linear
+ * barcode is too wide for that, so `code128` stacks it full-width across the top
+ * with the details below. Info content is passed in by each caller.
+ */
+function CardFrame({
+  type,
+  wizardPreview,
+  codeValue,
+  scanHint,
+  children,
+}: {
+  type: BarcodeType
+  wizardPreview: boolean
+  codeValue: string
+  scanHint: string
+  children: ReactNode
+}) {
+  const c = CARD_PALETTE.primary
+  const stacked = type === 'code128'
+
+  return (
+    <div
+      className="card"
+      style={{
+        width: wizardPreview ? '100%' : '310px',
+        minWidth: 0,
+        borderRadius: '16px',
+        border: `1.5px solid ${CARD_PALETTE.border}`,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: stacked ? 'column' : 'row',
+        direction: 'ltr',
+        background: CARD_PALETTE.surface,
+        breakInside: 'avoid',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+      }}
+    >
+      <div
+        className="qr-side"
+        style={{
+          flexShrink: 0,
+          width: stacked ? '100%' : wizardPreview ? '96px' : '120px',
+          padding: wizardPreview ? '10px' : '14px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          background: `linear-gradient(135deg, ${c}08 0%, ${c}03 100%)`,
+          borderLeft: stacked ? 'none' : `3px solid ${c}`,
+          borderBottom: stacked ? `3px solid ${c}` : 'none',
+        }}
+      >
+        <CardCode value={codeValue} type={type} wizardPreview={wizardPreview} />
+        <span className="scan-text" style={{ fontSize: '7px', color: CARD_PALETTE.muted, textAlign: 'center', direction: 'rtl', letterSpacing: '0.3px' }}>{scanHint}</span>
+      </div>
+
+      <div className="info-side" style={{ flex: 1, padding: wizardPreview ? '10px 12px' : '14px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center', direction: 'rtl', minWidth: 0, gap: '2px' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 /** One split-mode card - same chrome as the combined card, single code inside. */
 function QrCard({
   event,
@@ -403,44 +503,28 @@ function QrCard({
   const c = CARD_PALETTE.primary
 
   return (
-    <div
-      className="card"
-      style={{
-        width: wizardPreview ? '100%' : '310px',
-        minWidth: 0,
-        borderRadius: '16px',
-        border: `1.5px solid ${CARD_PALETTE.border}`,
-        overflow: 'hidden',
-        display: 'flex',
-        direction: 'ltr',
-        background: CARD_PALETTE.surface,
-        breakInside: 'avoid',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-      }}
+    <CardFrame
+      type={event.barcode_type}
+      wizardPreview={wizardPreview}
+      codeValue={encodeCardPayload(payload, event.barcode_type)}
+      scanHint={scanHint}
     >
-      <div className="qr-side" style={{ flexShrink: 0, width: wizardPreview ? '96px' : '120px', padding: wizardPreview ? '10px' : '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', background: `linear-gradient(135deg, ${c}08 0%, ${c}03 100%)`, borderLeft: `3px solid ${c}` }}>
-        <QRCodeSVG value={JSON.stringify(payload)} size={wizardPreview ? 72 : 90} level="M" fgColor={CARD_PALETTE.foreground} />
-        <span className="scan-text" style={{ fontSize: '7px', color: CARD_PALETTE.muted, textAlign: 'center', direction: 'rtl', letterSpacing: '0.3px' }}>{scanHint}</span>
+      <div className="event-row" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+        {event.logo_url && <img src={event.logo_url} alt="" className="event-logo" style={{ width: '18px', height: '18px', borderRadius: '4px', objectFit: 'cover' }} />}
+        <span className="event-label" style={{ fontSize: '9px', color: CARD_PALETTE.muted }}>{event.name}</span>
       </div>
 
-      <div className="info-side" style={{ flex: 1, padding: wizardPreview ? '10px 12px' : '14px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center', direction: 'rtl', minWidth: 0, gap: '2px' }}>
-        <div className="event-row" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-          {event.logo_url && <img src={event.logo_url} alt="" className="event-logo" style={{ width: '18px', height: '18px', borderRadius: '4px', objectFit: 'cover' }} />}
-          <span className="event-label" style={{ fontSize: '9px', color: CARD_PALETTE.muted }}>{event.name}</span>
-        </div>
-
-        <div className="participant-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: `${c}12`, border: `1px solid ${c}25`, borderRadius: '20px', padding: '3px 10px', fontSize: '10px', fontWeight: 600, color: CARD_PALETTE.foreground, width: 'fit-content', marginBottom: '6px' }}>
-          <span className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: c }} />
-          {eyebrow}
-        </div>
-
-        <div className="action-name" style={{ fontSize: wizardPreview ? '14px' : '16px', fontWeight: 800, color: CARD_PALETTE.foreground, marginBottom: '4px', lineHeight: 1.2 }}>
-          {title}
-        </div>
-
-        {footer}
+      <div className="participant-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: `${c}12`, border: `1px solid ${c}25`, borderRadius: '20px', padding: '3px 10px', fontSize: '10px', fontWeight: 600, color: CARD_PALETTE.foreground, width: 'fit-content', marginBottom: '6px' }}>
+        <span className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: c }} />
+        {eyebrow}
       </div>
-    </div>
+
+      <div className="action-name" style={{ fontSize: wizardPreview ? '14px' : '16px', fontWeight: 800, color: CARD_PALETTE.foreground, marginBottom: '4px', lineHeight: 1.2 }}>
+        {title}
+      </div>
+
+      {footer}
+    </CardFrame>
   )
 }
 
@@ -477,62 +561,39 @@ function ParticipantPage({
         }}
       >
         {actions.map((action) => (
-          <div
+          <CardFrame
             key={action.id}
-            className="card"
-            style={{
-              width: wizardPreview ? '100%' : '310px',
-              minWidth: 0,
-              borderRadius: '16px',
-              border: `1.5px solid ${CARD_PALETTE.border}`,
-              overflow: 'hidden',
-              display: 'flex',
-              direction: 'ltr',
-              background: CARD_PALETTE.surface,
-              breakInside: 'avoid',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-            }}
+            type={event.barcode_type}
+            wizardPreview={wizardPreview}
+            codeValue={encodeCardPayload({ participantCode: participant.external_id, actionCode: action.code }, event.barcode_type)}
+            scanHint="סרקו לקבלת הנקודות"
           >
-            {/* QR side */}
-            <div className="qr-side" style={{ flexShrink: 0, width: wizardPreview ? '96px' : '120px', padding: wizardPreview ? '10px' : '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', background: `linear-gradient(135deg, ${c}08 0%, ${c}03 100%)`, borderLeft: `3px solid ${c}` }}>
-              <QRCodeSVG
-                value={JSON.stringify({ participantCode: participant.external_id, actionCode: action.code })}
-                size={wizardPreview ? 72 : 90}
-                level="M"
-                fgColor={CARD_PALETTE.foreground}
-              />
-              <span className="scan-text" style={{ fontSize: '7px', color: CARD_PALETTE.muted, textAlign: 'center', direction: 'rtl', letterSpacing: '0.3px' }}>סרקו לקבלת הנקודות</span>
+            {/* Event row */}
+            <div className="event-row" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+              {event.logo_url && <img src={event.logo_url} alt="" className="event-logo" style={{ width: '18px', height: '18px', borderRadius: '4px', objectFit: 'cover' }} />}
+              <span className="event-label" style={{ fontSize: '9px', color: CARD_PALETTE.muted }}>{event.name}</span>
             </div>
 
-            {/* Info side */}
-            <div className="info-side" style={{ flex: 1, padding: wizardPreview ? '10px 12px' : '14px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center', direction: 'rtl', minWidth: 0, gap: '2px' }}>
-              {/* Event row */}
-              <div className="event-row" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                {event.logo_url && <img src={event.logo_url} alt="" className="event-logo" style={{ width: '18px', height: '18px', borderRadius: '4px', objectFit: 'cover' }} />}
-                <span className="event-label" style={{ fontSize: '9px', color: CARD_PALETTE.muted }}>{event.name}</span>
-              </div>
-
-              {/* Task title */}
-              <div className="action-name" style={{ fontSize: wizardPreview ? '14px' : '16px', fontWeight: 800, color: CARD_PALETTE.foreground, marginBottom: '4px', lineHeight: 1.2 }}>
-                {action.name}
-              </div>
-
-              {/* Participant badge */}
-              <div className="participant-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: `${c}12`, border: `1px solid ${c}25`, borderRadius: '20px', padding: '3px 10px', fontSize: '10px', fontWeight: 600, color: CARD_PALETTE.foreground, width: 'fit-content', marginBottom: '6px' }}>
-                <span className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: c }} />
-                {participant.name}
-              </div>
-
-              {/* Points */}
-              <div className="points-row" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
-                <span className="points-icon" style={{ fontSize: '14px' }}>⭐</span>
-                <span className="points-value" style={{ fontSize: wizardPreview ? '16px' : '18px', fontWeight: 900, color: c, letterSpacing: '-0.5px' }}>
-                  +{action.points}
-                </span>
-                <span className="points-label" style={{ fontSize: '10px', color: CARD_PALETTE.muted, fontWeight: 500 }}>נקודות</span>
-              </div>
+            {/* Task title */}
+            <div className="action-name" style={{ fontSize: wizardPreview ? '14px' : '16px', fontWeight: 800, color: CARD_PALETTE.foreground, marginBottom: '4px', lineHeight: 1.2 }}>
+              {action.name}
             </div>
-          </div>
+
+            {/* Participant badge */}
+            <div className="participant-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: `${c}12`, border: `1px solid ${c}25`, borderRadius: '20px', padding: '3px 10px', fontSize: '10px', fontWeight: 600, color: CARD_PALETTE.foreground, width: 'fit-content', marginBottom: '6px' }}>
+              <span className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: c }} />
+              {participant.name}
+            </div>
+
+            {/* Points */}
+            <div className="points-row" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
+              <span className="points-icon" style={{ fontSize: '14px' }}>⭐</span>
+              <span className="points-value" style={{ fontSize: wizardPreview ? '16px' : '18px', fontWeight: 900, color: c, letterSpacing: '-0.5px' }}>
+                +{action.points}
+              </span>
+              <span className="points-label" style={{ fontSize: '10px', color: CARD_PALETTE.muted, fontWeight: 500 }}>נקודות</span>
+            </div>
+          </CardFrame>
         ))}
       </div>
     </div>

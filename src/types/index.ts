@@ -128,6 +128,14 @@ export interface TemplateImportResult {
  */
 export type ScanMode = 'combined' | 'split';
 
+/**
+ * Card barcode symbology, chosen per event by an admin.
+ * - `qr`: two-dimensional QR (the default; carries JSON).
+ * - `code128`: one-dimensional linear barcode (carries a compact string).
+ * The scanner reads either kind of card; this governs only how cards print.
+ */
+export type BarcodeType = 'qr' | 'code128';
+
 export interface Event {
   id: string;
   owner_admin_id: string;
@@ -136,6 +144,7 @@ export interface Event {
   logo_url: string | null;
   status: EventStatus;
   plan: UserPlan;
+  barcode_type: BarcodeType;
   created_at: string;
   updated_at: string;
 }

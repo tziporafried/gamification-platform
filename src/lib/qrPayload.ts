@@ -1,3 +1,5 @@
+import { COMPACT_SEPARATOR } from '@/lib/cardPayload'
+
 /**
  * A decoded card. `combined` carries both codes (single-scan events); the other
  * two are the halves printed for split-scan events.
@@ -44,12 +46,37 @@ function readCode(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
+/**
+ * The one-dimensional (Code128) cards carry a compact `participant*action`
+ * string instead of JSON - see `encodeCardPayload`. Exactly one separator, with
+ * a missing half left empty, so it splits cleanly back into the same two codes.
+ * Returns null when the text is not a compact payload, so `parseQrPayload` can
+ * fall through to its diagnostics.
+ */
+function parseCompactPayload(normalized: string): ScannedCode | null {
+  if (normalized.includes('{') || !normalized.includes(COMPACT_SEPARATOR)) return null
+
+  const parts = normalized.split(COMPACT_SEPARATOR)
+  if (parts.length !== 2) return null
+
+  const participantCode = readCode(parts[0])
+  const actionCode = readCode(parts[1])
+
+  if (participantCode && actionCode) return { kind: 'combined', participantCode, actionCode }
+  if (participantCode) return { kind: 'participant', participantCode }
+  if (actionCode) return { kind: 'action', actionCode }
+  return null
+}
+
 export function parseQrPayload(decodedText: string): ParseQrPayloadResult {
   const normalized = normalizeScanRaw(decodedText)
   let parsed: Record<string, unknown>
   try {
     parsed = JSON.parse(normalized)
   } catch {
+    // Not JSON - it may be a 1D card's compact payload before we give up.
+    const compact = parseCompactPayload(normalized)
+    if (compact) return { ok: true, data: compact }
     logScanDiagnostics(decodedText, normalized, 'JSON.parse failed — content is not valid JSON')
     return { ok: false, error: 'ברקוד לא תקין - לא ניתן לקרוא את התוכן.' }
   }
