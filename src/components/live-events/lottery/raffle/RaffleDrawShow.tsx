@@ -288,6 +288,7 @@ export function RaffleDrawShow({
           <WinnerTicket
             ticket={winnerTicket}
             phase={phase === 'winner' ? 'winnerRise' : 'winnerHero'}
+            slot={slot}
           />
         )}
 

@@ -57,6 +57,11 @@ export function Ticket({
 }: TicketProps) {
   if (phase === 'hidden') return null
 
+  // The slot in each anchor's own space, so a ticket never has to animate a
+  // property that starts at `auto`.
+  const slotLeftPct = parseFloat(slot.left)
+  const slotTopPct = parseFloat(slot.top)
+
   if (phase === 'winnerRise' || phase === 'winnerHero') {
     return (
       <motion.div
@@ -64,21 +69,30 @@ export function Ticket({
         className="absolute left-1/2 z-40"
         style={{ x: '-50%', y: '-50%' }}
         initial={{
-          top: '62%',
-          scale: 0.72,
-          rotateZ: -14,
-          rotateY: 28,
-          opacity: 0.9,
+          // Starts at the real slot, small and invisible, so it reads as being
+          // drawn out of the box rather than appearing in mid-air.
+          top: slot.top,
+          scale: 0.26,
+          rotateZ: -10,
+          rotateY: 26,
+          opacity: 0,
         }}
         animate={
           phase === 'winnerRise'
             ? {
-                top: ['62%', '48%', '52%'],
-                scale: [0.72, 1.4, 1.5],
-                rotateZ: [-14, 8, 0],
-                rotateY: [28, -8, 0],
-                opacity: 1,
-                filter: ['brightness(1)', 'brightness(1.35)', 'brightness(1.25)'],
+                // Two beats: a slow emergence through the slot, then the float
+                // up to the hero position.
+                top: [slot.top, `${slotTopPct - 6}%`, '48%', '52%'],
+                scale: [0.26, 0.62, 1.46, 1.5],
+                rotateZ: [-10, -6, 6, 0],
+                rotateY: [26, 14, -8, 0],
+                opacity: [0, 1, 1, 1],
+                filter: [
+                  'brightness(1)',
+                  'brightness(1.1)',
+                  'brightness(1.35)',
+                  'brightness(1.25)',
+                ],
               }
             : {
                 top: '48%',
@@ -91,7 +105,11 @@ export function Ticket({
         }
         transition={
           phase === 'winnerRise'
-            ? { duration: 1.65, ease: [0.22, 1, 0.36, 1] }
+            ? {
+                duration: 1.9,
+                times: [0, 0.32, 0.86, 1],
+                ease: [0.22, 1, 0.36, 1],
+              }
             : {
                 top: { ...RAFFLE_SPRINGS.winnerHero },
                 scale: { duration: 2.6, repeat: Infinity, ease: 'easeInOut' },
@@ -141,14 +159,16 @@ export function Ticket({
             }
           : {
               opacity: [1, 1, 0],
-              // Collecting always converges via left/top - clear any right/bottom
-              // anchor from the rain phase so the box doesn't get width/height-
-              // stretched by having opposite edges pinned at the same time.
-              left: slot.left,
-              top: slot.top,
-              right: 'auto',
-              bottom: 'auto',
-              x: '-50%',
+              // Converge along whichever edge the ticket is anchored from.
+              // Animating left/top for every ticket meant right/bottom-anchored
+              // ones interpolated from `auto`, which framer cannot measure - it
+              // resolved to NaN and flung those tickets across the screen.
+              ...(anchorX === 'right'
+                ? { right: `${100 - slotLeftPct}%`, x: '50%' }
+                : { left: slot.left, x: '-50%' }),
+              ...(anchorY === 'bottom'
+                ? { bottom: `${100 - slotTopPct}%` }
+                : { top: slot.top }),
               y: 0,
               rotate: [ticket.rotate, ticket.rotate * 0.2, 16],
               scale: [ticket.scale, ticket.scale * 0.7, 0.16],
