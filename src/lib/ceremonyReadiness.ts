@@ -1,37 +1,30 @@
-export const CEREMONY_PARTICIPATION_THRESHOLD = 0.6
+// The ceremony/leaderboard unlocks once at least this many distinct participants
+// have scanned at least once. (Previously a 60% participation rate.)
+export const CEREMONY_MIN_PARTICIPANTS = 2
 
 export interface CeremonyReadiness {
   totalParticipants: number
   participatingParticipants: number
-  participationRate: number
-  participationPercent: number
-  threshold: number
-  thresholdPercent: number
-  remainingPercent: number
+  minParticipants: number
   isReady: boolean
 }
 
 export function calculateCeremonyReadiness(
   totalParticipants: number,
   participatingParticipants: number,
-  threshold = CEREMONY_PARTICIPATION_THRESHOLD,
+  minParticipants = CEREMONY_MIN_PARTICIPANTS,
 ): CeremonyReadiness {
   const safeTotal = Math.max(0, totalParticipants)
   const safeParticipating = Math.max(0, participatingParticipants)
   const cappedParticipating = safeTotal === 0 ? 0 : Math.min(safeParticipating, safeTotal)
-  const participationRate = safeTotal === 0 ? 0 : cappedParticipating / safeTotal
-  const participationPercent = Math.round(participationRate * 100)
-  const thresholdPercent = Math.round(threshold * 100)
-  const remainingPercent = safeTotal === 0 ? thresholdPercent : Math.max(0, Math.round((threshold - participationRate) * 100))
+  // Never require more scanners than there are participants, so a tiny event
+  // (e.g. a single participant) can still reach its ceremony.
+  const required = Math.min(minParticipants, safeTotal)
 
   return {
     totalParticipants: safeTotal,
     participatingParticipants: cappedParticipating,
-    participationRate,
-    participationPercent,
-    threshold,
-    thresholdPercent,
-    remainingPercent,
-    isReady: safeTotal > 0 && participationRate >= threshold,
+    minParticipants,
+    isReady: safeTotal > 0 && cappedParticipating >= required,
   }
 }

@@ -8,7 +8,7 @@ import { computeRanks } from '@/lib/missionUtils'
 import { cn } from '@/lib/utils'
 import { useSound } from '@/hooks/useSound'
 import { useCelebrationSound } from '@/hooks/useCelebrationSound'
-import { calculateCeremonyReadiness, CEREMONY_PARTICIPATION_THRESHOLD } from '@/lib/ceremonyReadiness'
+import { calculateCeremonyReadiness, CEREMONY_MIN_PARTICIPANTS } from '@/lib/ceremonyReadiness'
 import { SoundToggle } from './SoundToggle'
 import { LeaderboardEmptyState } from './LeaderboardEmptyState'
 import { AvatarCircle } from '@/components/ui/AvatarCircle'
@@ -328,7 +328,7 @@ function useLeaderboardData(eventId: string) {
   const participatingParticipants = useMemo(() => new Set(transactions.map((tx) => tx.participant_id)).size, [transactions])
   const totalPointsEarned = useMemo(() => transactions.reduce((sum, tx) => sum + (tx.points || 0), 0), [transactions])
   const ceremonyReadiness = useMemo(
-    () => calculateCeremonyReadiness(totalParticipants, participatingParticipants, CEREMONY_PARTICIPATION_THRESHOLD),
+    () => calculateCeremonyReadiness(totalParticipants, participatingParticipants, CEREMONY_MIN_PARTICIPANTS),
     [participatingParticipants, totalParticipants],
   )
 
