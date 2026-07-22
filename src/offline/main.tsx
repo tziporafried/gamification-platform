@@ -84,6 +84,10 @@ function OfflineApp({ pack }: { pack: GamePack }) {
   )
 }
 
+// Build marker: confirms the offline file was produced from the latest template.
+// Look for this line in the browser console after opening a downloaded game.
+console.log('%c[offline-player] template build check ✅', 'color:#16a34a;font-weight:bold')
+
 const pack = readEmbeddedPack()
 if (pack && pack.version === PACK_VERSION) initOfflineData(pack)
 
