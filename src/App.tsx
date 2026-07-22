@@ -7,6 +7,7 @@ import { AuthRedirect } from '@/components/AuthRedirect'
 import { AppShell } from '@/components/layout/AppShell'
 import { ImpersonationBanner } from '@/components/ImpersonationBanner'
 import { AnalyticsListener } from '@/components/AnalyticsListener'
+import { LotteryAnnouncementModal } from '@/components/LotteryAnnouncementModal'
 import { Landing } from '@/pages/Landing'
 import { Login } from '@/pages/Login'
 import { MyEvents } from '@/pages/MyEvents'
@@ -32,6 +33,7 @@ export default function App() {
         <AnalyticsListener />
         <ImpersonationBanner />
         <PlansModalProvider>
+          <LotteryAnnouncementModal />
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/welcome" element={<Navigate to="/" replace />} />

@@ -17,6 +17,17 @@ interface ModalProps {
   headerClassName?: string
   /** Optional override for the scrollable content area. */
   contentClassName?: string
+  /**
+   * Drop the header bar for full-bleed illustrated dialogs. The title is kept
+   * for assistive tech and the close button floats over the content, so the
+   * dialog reads as a designed panel rather than a system alert.
+   */
+  chromeless?: boolean
+  /**
+   * 'corner' pins the dialog to the bottom-right instead of centring it, for
+   * announcements that should not take over the screen.
+   */
+  placement?: 'center' | 'corner'
 }
 
 /** Elements that can hold focus inside the dialog, in DOM order. */
@@ -39,6 +50,8 @@ export function Modal({
   dialogClassName,
   headerClassName,
   contentClassName,
+  chromeless = false,
+  placement = 'center',
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   // The element that had focus when the dialog opened, so it can be restored.
@@ -104,20 +117,28 @@ export function Modal({
     }
 
     document.addEventListener('keydown', handleKey)
-    document.body.style.overflow = 'hidden'
+    // A corner dialog deliberately leaves the page usable behind it, so it must
+    // not freeze scrolling the way a centred, screen-covering one does.
+    const locksScroll = placement === 'center'
+    if (locksScroll) document.body.style.overflow = 'hidden'
 
     return () => {
       document.removeEventListener('keydown', handleKey)
-      document.body.style.overflow = ''
+      if (locksScroll) document.body.style.overflow = ''
       // Return focus to whatever opened the dialog (WCAG 2.4.3).
       restoreFocusRef.current?.focus?.()
     }
-  }, [isOpen])
+  }, [isOpen, placement])
 
   if (!isOpen) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4">
+    <div
+      className={cn(
+        'fixed inset-0 z-[200]',
+        placement === 'center' && 'flex items-center justify-center p-3 sm:p-4',
+      )}
+    >
       <div
         className={cn(
           'absolute inset-0 bg-[rgba(40,25,20,0.4)] backdrop-blur-[1px]',
@@ -136,32 +157,56 @@ export function Modal({
           // Default max-w-md only when callers don't override width - `cn` does not
           // tailwind-merge, so a hard-coded max-w-md would beat dialogClassName.
           // Cap height so long content scrolls inside the body instead of clipping.
-          'relative z-10 flex w-full max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden rounded-2xl border border-border bg-modal shadow-modal animate-scale-in focus:outline-none motion-reduce:animate-none',
+          'z-10 flex max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden rounded-2xl border border-border bg-modal shadow-modal animate-scale-in focus:outline-none motion-reduce:animate-none',
+          placement === 'corner'
+            // `right`/`bottom` are physical, so they are not flipped by the
+            // app's dir="rtl" - this stays in the bottom-right corner.
+            ? 'absolute bottom-3 right-3 w-[calc(100vw-1.5rem)] sm:bottom-5 sm:right-5'
+            : 'relative w-full',
           dialogClassName ?? 'max-w-md',
         )}
       >
-        <div
-          className={cn(
-            'flex shrink-0 items-center justify-between border-b bg-modal px-6 py-4',
-            theme.border,
-            headerClassName,
-          )}
-        >
-          <h2 id={titleId} className={titleClassName ?? cn('text-lg font-semibold', theme.text)}>{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="סגירה"
+        {chromeless ? (
+          <>
+            <h2 id={titleId} className="sr-only">{title}</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="סגירה"
+              className={cn(
+                'absolute left-3 top-3 z-20 rounded-full bg-white/85 p-1.5 text-[#6b5a52] shadow-sm transition-colors hover:bg-white hover:text-[#2e221e]',
+                theme.focusRing,
+              )}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true" focusable="false">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </>
+        ) : (
+          <div
             className={cn(
-              'shrink-0 rounded-lg p-1 transition-colors',
-              theme.textSubtle, theme.hoverSurface, theme.hoverText, theme.focusRing,
+              'flex shrink-0 items-center justify-between border-b bg-modal px-6 py-4',
+              theme.border,
+              headerClassName,
             )}
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true" focusable="false">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+            <h2 id={titleId} className={titleClassName ?? cn('text-lg font-semibold', theme.text)}>{title}</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="סגירה"
+              className={cn(
+                'shrink-0 rounded-lg p-1 transition-colors',
+                theme.textSubtle, theme.hoverSurface, theme.hoverText, theme.focusRing,
+              )}
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true" focusable="false">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
         <div
           className={cn(
             'min-h-0 flex-1 overflow-y-auto overscroll-contain bg-modal px-6 py-4',
