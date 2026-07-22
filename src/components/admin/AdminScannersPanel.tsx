@@ -163,8 +163,44 @@ function hashString(value: string): number {
   return h
 }
 
-function colorForFamily(customerName: string): { bg: string; text: string } {
-  return FAMILY_BAR_PALETTE[hashString(customerName.trim()) % FAMILY_BAR_PALETTE.length]
+type FamilyColor = { bg: string; text: string }
+
+/** Beyond the curated palette, golden-angle hues keep generated colors apart. */
+function generatedFamilyColor(offset: number): FamilyColor {
+  const hue = Math.round((offset * 137.508) % 360)
+  return { bg: `hsl(${hue} 58% ${offset % 2 === 0 ? 34 : 27}%)`, text: '#ffffff' }
+}
+
+function familyColorAt(slot: number): FamilyColor {
+  return slot < FAMILY_BAR_PALETTE.length
+    ? FAMILY_BAR_PALETTE[slot]
+    : generatedFamilyColor(slot - FAMILY_BAR_PALETTE.length)
+}
+
+/**
+ * One color per family, never shared. The hash picks the preferred slot so a
+ * family keeps its color as bookings come and go; collisions probe forward to
+ * the next free slot, and the slot count grows with the number of families.
+ */
+function buildFamilyColors(customerNames: string[]): Map<string, FamilyColor> {
+  const names = [...new Set(customerNames.map((n) => n.trim()).filter(Boolean))].sort()
+  const slots = Math.max(FAMILY_BAR_PALETTE.length, names.length)
+  const taken = new Set<number>()
+  const colors = new Map<string, FamilyColor>()
+  for (const name of names) {
+    let slot = hashString(name) % slots
+    while (taken.has(slot)) slot = (slot + 1) % slots
+    taken.add(slot)
+    colors.set(name, familyColorAt(slot))
+  }
+  return colors
+}
+
+function colorForFamily(
+  colors: Map<string, FamilyColor>,
+  customerName: string,
+): FamilyColor {
+  return colors.get(customerName.trim()) ?? FAMILY_BAR_PALETTE[0]
 }
 
 function chunkWeeks(days: Date[]): Date[][] {
@@ -453,6 +489,11 @@ export function AdminScannersPanel() {
     if (!selectedDay) return []
     return bookings.filter((b) => bookingCoversDay(b, selectedDay))
   }, [bookings, selectedDay])
+
+  const familyColors = useMemo(
+    () => buildFamilyColors(bookings.map((b) => b.customer_name)),
+    [bookings],
+  )
 
   const calendarWeeks = useMemo(() => chunkWeeks(calendarDays), [calendarDays])
 
@@ -1280,7 +1321,7 @@ export function AdminScannersPanel() {
                       const continuesBefore = bar.booking.start_date < dayISO(week[0])
                       const continuesAfter = bar.booking.end_date > dayISO(week[6])
                       const multiDay = bar.booking.start_date !== bar.booking.end_date
-                      const colors = colorForFamily(bar.booking.customer_name)
+                      const colors = colorForFamily(familyColors, bar.booking.customer_name)
                       const colPct = 100 / 7
                       return (
                         <button
@@ -1397,7 +1438,7 @@ export function AdminScannersPanel() {
                       )
                     })}
                     {spans.map(({ booking, start, span }) => {
-                      const colors = colorForFamily(booking.customer_name)
+                      const colors = colorForFamily(familyColors, booking.customer_name)
                       return (
                         <button
                           key={booking.id}
@@ -1455,6 +1496,7 @@ export function AdminScannersPanel() {
                 <BookingDetailCard
                   key={b.id}
                   booking={b}
+                  familyColors={familyColors}
                   scannerLabel={scannerLabel(b.scanner_id)}
                   eventLabel={eventLabel(b.event_id)}
                   packageLabel={packageLabel(b.booking_package)}
@@ -1480,6 +1522,7 @@ export function AdminScannersPanel() {
         {selectedBooking && (
           <BookingDetailCard
             booking={selectedBooking}
+            familyColors={familyColors}
             scannerLabel={scannerLabel(selectedBooking.scanner_id)}
             eventLabel={eventLabel(selectedBooking.event_id)}
             packageLabel={packageLabel(selectedBooking.booking_package)}
@@ -2007,6 +2050,7 @@ export function AdminScannersPanel() {
 
 function BookingDetailCard({
   booking,
+  familyColors,
   scannerLabel,
   eventLabel,
   packageLabel,
@@ -2015,6 +2059,7 @@ function BookingDetailCard({
   onEventActions,
 }: {
   booking: ScannerBooking
+  familyColors: Map<string, FamilyColor>
   scannerLabel: string
   eventLabel: string
   packageLabel: string
@@ -2056,7 +2101,7 @@ function BookingDetailCard({
   if (booking.customer_email) rows.push({ label: 'אימייל', value: booking.customer_email })
   if (booking.notes) rows.push({ label: 'הערות', value: booking.notes })
 
-  const familyColor = colorForFamily(booking.customer_name)
+  const familyColor = colorForFamily(familyColors, booking.customer_name)
 
   return (
     <div className="space-y-3">
