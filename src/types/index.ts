@@ -339,6 +339,8 @@ export interface ScannerBooking {
   finance_entry_id: string | null;
   /** Linked future_income row for unpaid remainder (debt), if any. */
   debt_finance_entry_id: string | null;
+  /** Admin whose account the payment lands in - mirrored onto the finance rows. */
+  collected_by: string | null;
   notes: string | null;
   created_by: string;
   created_at: string;

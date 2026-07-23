@@ -51,6 +51,9 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { TrialActivationResetModal } from '@/components/TrialActivationResetModal'
 import { exportOfflineGame, OfflineExportError } from '@/lib/offline/exportGame'
+import { adminLabel, type FinanceAdmin } from '@/lib/financeSplit'
+
+type BookingAdmin = Pick<FinanceAdmin, 'id' | 'email' | 'display_name'>
 import { trackTrialActivated, trackTrialDataReset } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 import type { BarcodeType, BookingPackage, Scanner, ScannerBooking, UserPlan } from '@/types'
@@ -348,6 +351,8 @@ export function AdminScannersPanel() {
   const [formPhone, setFormPhone] = useState('')
   const [formEmail, setFormEmail] = useState('')
   const [formNotes, setFormNotes] = useState('')
+  const [formCollectedBy, setFormCollectedBy] = useState('')
+  const [admins, setAdmins] = useState<BookingAdmin[]>([])
 
   // scanner form
   const [newName, setNewName] = useState('')
@@ -356,7 +361,7 @@ export function AdminScannersPanel() {
 
   useEffect(() => {
     async function fetchData() {
-      const [scannersRes, bookingsRes, eventsRes, draftIds] = await Promise.all([
+      const [scannersRes, bookingsRes, eventsRes, adminsRes, draftIds] = await Promise.all([
         supabase
           .from('scanners')
           .select('*')
@@ -371,8 +376,15 @@ export function AdminScannersPanel() {
           .select('id, name, plan, status, owner_admin_id, barcode_type')
           .neq('status', 'archived')
           .order('created_at', { ascending: false }),
+        supabase
+          .from('user_profiles')
+          .select('id, email, display_name')
+          .eq('role', 'super_admin')
+          .order('display_name', { ascending: true }),
         fetchTemplateDraftEventIds(),
       ])
+
+      setAdmins((adminsRes.data as BookingAdmin[]) ?? [])
 
       if (scannersRes.error) setError(scannersRes.error.message)
       else setScanners((scannersRes.data as Scanner[]) ?? [])
@@ -532,6 +544,12 @@ export function AdminScannersPanel() {
     setSelectedBooking(null)
   }
 
+  /** Whoever is filling the form is the likeliest one taking the payment. */
+  function defaultCollector(): string {
+    if (user?.id && admins.some((a) => a.id === user.id)) return user.id
+    return admins[0]?.id ?? ''
+  }
+
   function closeBookingForm() {
     setBookingOpen(false)
     setEditingBookingId(null)
@@ -560,6 +578,7 @@ export function AdminScannersPanel() {
     setFormAmount(String(calculateBookingPrice('full', iso, iso) ?? 150))
     setFormPaid(false)
     setFormAmountPaid('')
+    setFormCollectedBy(defaultCollector())
     setError(null)
     closeDetail()
     setBookingOpen(true)
@@ -583,6 +602,7 @@ export function AdminScannersPanel() {
     const paid = booking.amount_paid != null ? Number(booking.amount_paid) : booking.is_paid ? Number(booking.amount ?? 0) : 0
     setFormPaid(paid > 0 || booking.is_paid)
     setFormAmountPaid(paid > 0 ? String(paid) : booking.is_paid && booking.amount != null ? String(booking.amount) : '')
+    setFormCollectedBy(booking.collected_by ?? defaultCollector())
     setError(null)
     closeDetail()
     setBookingOpen(true)
@@ -621,8 +641,9 @@ export function AdminScannersPanel() {
     entryType: 'income' | 'future_income'
     amount: number
     description: string
+    collectedBy: string | null
   }): Promise<{ id: string | null; error: string | null; createdNew: boolean }> {
-    const { existingId, entryType, amount, description } = options
+    const { existingId, entryType, amount, description, collectedBy } = options
     if (existingId) {
       const { error: financeError } = await supabase
         .from('admin_finance_entries')
@@ -631,6 +652,7 @@ export function AdminScannersPanel() {
           amount,
           description,
           entry_date: formStart,
+          admin_user_id: collectedBy,
         })
         .eq('id', existingId)
       if (financeError) {
@@ -655,7 +677,7 @@ export function AdminScannersPanel() {
         amount,
         description,
         entry_date: formStart,
-        admin_user_id: null,
+        admin_user_id: collectedBy,
         created_by: user.id,
       })
       .select('id')
@@ -687,12 +709,14 @@ export function AdminScannersPanel() {
     amountPaid: number
     customer: string
     pkg: BookablePackage
+    collectedBy: string | null
   }): Promise<{
     financeEntryId: string | null
     debtFinanceEntryId: string | null
     error: string | null
   }> {
-    const { existingFinanceId, existingDebtFinanceId, amount, amountPaid, customer, pkg } = options
+    const { existingFinanceId, existingDebtFinanceId, amount, amountPaid, customer, pkg, collectedBy } =
+      options
     const pkgLabel = BOOKING_PACKAGE_LABELS[pkg]
     const base = `הזמנה: ${customer} · ${pkgLabel} · ${formatRange(formStart, formEnd)}`
     const total = amount != null && amount > 0 ? amount : 0
@@ -717,6 +741,7 @@ export function AdminScannersPanel() {
         entryType: 'income',
         amount: paid,
         description: debt > 0 ? `${base} · שולם חלקית` : base,
+        collectedBy,
       })
       if (res.error) return { financeEntryId: null, debtFinanceEntryId: null, error: res.error }
       financeEntryId = res.id
@@ -733,6 +758,7 @@ export function AdminScannersPanel() {
         entryType: 'future_income',
         amount: total,
         description: base,
+        collectedBy,
       })
       if (res.error) {
         for (const id of createdIds) await deleteFinanceEntry(id)
@@ -754,6 +780,7 @@ export function AdminScannersPanel() {
         entryType: 'future_income',
         amount: debt,
         description: `${base} · לא שולם`,
+        collectedBy,
       })
       if (res.error) {
         for (const id of createdIds) await deleteFinanceEntry(id)
@@ -846,6 +873,7 @@ export function AdminScannersPanel() {
       amountPaid,
       customer,
       pkg: formPackage,
+      collectedBy: formCollectedBy || null,
     })
     if (financeSyncError) {
       setError(financeSyncError)
@@ -862,6 +890,7 @@ export function AdminScannersPanel() {
       is_paid: amountPaid > 0,
       finance_entry_id: financeEntryId,
       debt_finance_entry_id: debtFinanceEntryId,
+      collected_by: formCollectedBy || null,
       start_date: formStart,
       end_date: formEnd,
       customer_name: customer,
@@ -883,9 +912,11 @@ export function AdminScannersPanel() {
           updateError?.message?.includes('scanner_bookings_no_overlap') ||
             updateError?.message?.includes('exclusion')
             ? 'הסורק כבר תפוס בתאריכים האלה'
-            : updateError?.message?.includes('amount_paid') ||
-                updateError?.message?.includes('debt_finance')
-              ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PARTIAL_PAYMENT.sql)'
+            : updateError?.message?.includes('collected_by')
+              ? 'יש להריץ את עדכון מסד הנתונים (APPLY_FINANCE_INCOME_ATTRIBUTION.sql)'
+              : updateError?.message?.includes('amount_paid') ||
+                  updateError?.message?.includes('debt_finance')
+                ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PARTIAL_PAYMENT.sql)'
               : updateError?.message ?? 'שגיאה בעדכון',
         )
         setSaving(false)
@@ -923,7 +954,9 @@ export function AdminScannersPanel() {
       setError(
         msg.includes('scanner_bookings_no_overlap') || msg.includes('exclusion')
           ? 'הסורק כבר תפוס בתאריכים האלה'
-          : msg.includes('amount_paid') || msg.includes('debt_finance')
+          : msg.includes('collected_by')
+            ? 'יש להריץ את עדכון מסד הנתונים (APPLY_FINANCE_INCOME_ATTRIBUTION.sql)'
+            : msg.includes('amount_paid') || msg.includes('debt_finance')
             ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PARTIAL_PAYMENT.sql)'
             : msg.includes('booking_package') || msg.includes('amount') || msg.includes('finance_entry')
               ? 'יש להריץ את עדכון מסד הנתונים (APPLY_BOOKING_PACKAGE_PRICE.sql)'
@@ -1500,6 +1533,7 @@ export function AdminScannersPanel() {
                   scannerLabel={scannerLabel(b.scanner_id)}
                   eventLabel={eventLabel(b.event_id)}
                   packageLabel={packageLabel(b.booking_package)}
+                  collectorLabel={adminLabel(admins, b.collected_by)}
                   onEdit={() => openEditBooking(b)}
                   onDelete={() => {
                     closeDetail()
@@ -1526,6 +1560,7 @@ export function AdminScannersPanel() {
             scannerLabel={scannerLabel(selectedBooking.scanner_id)}
             eventLabel={eventLabel(selectedBooking.event_id)}
             packageLabel={packageLabel(selectedBooking.booking_package)}
+            collectorLabel={adminLabel(admins, selectedBooking.collected_by)}
             onEdit={() => openEditBooking(selectedBooking)}
             onDelete={() => {
               const id = selectedBooking.id
@@ -1700,6 +1735,29 @@ export function AdminScannersPanel() {
               </div>
             )}
           </div>
+          {admins.length > 0 && (
+            <div className="space-y-1">
+              <Select
+                id="booking-collected-by"
+                label="הכסף נכנס ל"
+                value={formCollectedBy}
+                onChange={(e) => setFormCollectedBy(e.target.value)}
+              >
+                <option value="">ללא שיוך</option>
+                {admins.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.display_name || a.email}
+                  </option>
+                ))}
+              </Select>
+              <p className="text-[11px] text-muted">
+                {formCollectedBy
+                  ? 'ההכנסה (וגם חוב שנשאר) תשויך לאדמין הזה בדף הכנסות והוצאות'
+                  : 'בלי שיוך לא נדע איך לחלק את הכסף - מומלץ לבחור'}
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <label htmlFor="booking-event-link" className="block text-sm font-medium text-foreground">
               משחק מקושר (אופציונלי)
@@ -2054,6 +2112,7 @@ function BookingDetailCard({
   scannerLabel,
   eventLabel,
   packageLabel,
+  collectorLabel,
   onEdit,
   onDelete,
   onEventActions,
@@ -2063,6 +2122,7 @@ function BookingDetailCard({
   scannerLabel: string
   eventLabel: string
   packageLabel: string
+  collectorLabel: string
   onEdit: () => void
   onDelete: () => void
   onEventActions?: () => void
@@ -2093,6 +2153,7 @@ function BookingDetailCard({
           : `שולם ${formatPriceIls(paid)}`
       })(),
     },
+    { label: 'הכסף נכנס ל', value: collectorLabel },
     { label: 'משחק', value: eventLabel },
     { label: 'סורק', value: scannerLabel },
     { label: 'תאריכים', value: formatRange(booking.start_date, booking.end_date) },
