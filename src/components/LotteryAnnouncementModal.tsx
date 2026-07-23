@@ -69,18 +69,23 @@ function wasDismissed(): boolean {
   }
 }
 
-/** Loops of the illustration to play before it freezes (each ~6.5s). */
-const PLAY_MS = 13000
+// The illustration plays one loop, then rests on a static frame, then plays
+// again. Continuous looping was the popup's dominant GPU cost and only crashed
+// while open; the rest gaps give the GPU real idle time between plays instead.
+// Stops right at the trophy reveal rather than running the full loop back to
+// the empty box - each play ends on the win, and the poster underneath is that
+// same trophy frame, so the hand-off to the resting image is seamless.
+const PLAY_MS = 5800
+const REST_MS = 4500 // static pause before it replays
 
 export function LotteryAnnouncementModal() {
   const { pathname } = useLocation()
   // 'pending' renders nothing for the first paint, so localStorage decides the
   // starting view instead of the dialog flashing open and snapping shut.
   const [view, setView] = useState<'pending' | 'open' | 'collapsed'>('pending')
-  // The looping illustration is the popup's dominant continuous GPU cost, and
-  // it only crashed while open. After a couple of loops we freeze it to a
-  // static frame, so an open popup left on screen stops doing perpetual work.
-  const [settled, setSettled] = useState(false)
+  const [playing, setPlaying] = useState(false)
+  // Bumped each play so the animated image remounts and restarts from frame 0.
+  const [cycle, setCycle] = useState(0)
 
   useEffect(() => {
     setView(wasDismissed() ? 'collapsed' : 'open')
@@ -88,11 +93,38 @@ export function LotteryAnnouncementModal() {
 
   useEffect(() => {
     if (view !== 'open') {
-      setSettled(false)
+      setPlaying(false)
       return
     }
-    const id = window.setTimeout(() => setSettled(true), PLAY_MS)
-    return () => window.clearTimeout(id)
+    // Reduced motion: never auto-play; the static poster stands in.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setPlaying(false)
+      return
+    }
+
+    let timer = 0
+    const play = () => {
+      setCycle((c) => c + 1)
+      setPlaying(true)
+      timer = window.setTimeout(rest, PLAY_MS)
+    }
+    const rest = () => {
+      setPlaying(false)
+      timer = window.setTimeout(play, REST_MS)
+    }
+    // Don't animate an off-screen tab - it wastes GPU and cannot be seen.
+    const onVisibility = () => {
+      window.clearTimeout(timer)
+      if (document.hidden) setPlaying(false)
+      else play()
+    }
+
+    play()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [view])
 
   function collapse() {
@@ -212,19 +244,19 @@ export function LotteryAnnouncementModal() {
                 // No blur filter: a 0.5px blur is imperceptible but forces a
                 // dedicated GPU layer per particle, and this loops forever.
               }}
-              animate={settled ? { y: 0, opacity: 0.4 } : { y: [0, -14, 0], opacity: [0.25, 0.75, 0.25] }}
+              animate={playing ? { y: [0, -14, 0], opacity: [0.25, 0.75, 0.25] } : { y: 0, opacity: 0.4 }}
               transition={
-                settled
-                  ? { duration: 0.6, ease: 'easeOut' }
-                  : { duration: p.duration, delay: p.delay, repeat: Infinity, ease: 'easeInOut' }
+                playing
+                  ? { duration: p.duration, delay: p.delay, repeat: Infinity, ease: 'easeInOut' }
+                  : { duration: 0.6, ease: 'easeOut' }
               }
             />
           ))}
 
           <motion.div
             className="relative z-10"
-            animate={settled ? { y: 0 } : { y: [0, -7, 0] }}
-            transition={settled ? { duration: 0.6 } : { duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+            animate={playing ? { y: [0, -7, 0] } : { y: 0 }}
+            transition={playing ? { duration: 5, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.6 }}
           >
             {/*
               Soft ground shadow. A radial-gradient paints it without a `blur`
@@ -239,41 +271,42 @@ export function LotteryAnnouncementModal() {
                   'radial-gradient(ellipse at center, rgba(120,90,200,0.22), rgba(120,90,200,0) 70%)',
               }}
             />
-            {settled ? (
-              // Frozen: a plain static frame, so an open popup left on screen
-              // does no perpetual decode/compositing work.
+            {/* Sizing wrapper: the poster defines the box, the overlay fills it. */}
+            <div className="relative z-10 mx-auto w-full max-w-[280px]">
+              {/*
+                The static poster is always mounted and sets the box's size. It
+                also describes the whole scene for assistive tech, since the
+                animated overlay above it is decorative and comes and goes.
+              */}
               <img
                 src="/images/lottery-announcement/lottery-poster.png"
-                alt=""
-                aria-hidden="true"
+                alt="תיבת הגרלה שקופה שאליה עפים פתקים מקופלים, מתנערת, ומתוכה עולה פתק זוכה שנפתח וחושף גביע"
                 width={480}
                 height={480}
-                className="relative z-10 mx-auto block h-auto w-full max-w-[280px]"
+                // Hidden (but still sizing the box) while the overlay plays, or
+                // its trophy card would ghost through the animation's alpha.
+                className="block h-auto w-full"
+                style={{ opacity: playing ? 0 : 1 }}
                 decoding="async"
               />
-            ) : (
-              <picture>
-                {/*
-                  First matching source wins, so the reduced-motion still comes
-                  first. It also renders the static poster, matching the frozen
-                  state - the opt-out for WCAG 2.2.2 (motion over five seconds).
-                */}
-                <source
-                  media="(prefers-reduced-motion: reduce)"
-                  srcSet="/images/lottery-announcement/lottery-poster.png"
-                  type="image/png"
-                />
-                <source srcSet="/images/lottery-announcement/lottery.webp" type="image/webp" />
-                <img
-                  src="/images/lottery-announcement/lottery.gif"
-                  alt="תיבת הגרלה שקופה שאליה עפים פתקים מקופלים, מתנערת, ומתוכה עולה פתק זוכה שנפתח וחושף גביע"
-                  width={480}
-                  height={480}
-                  className="relative z-10 mx-auto block h-auto w-full max-w-[280px]"
-                  decoding="async"
-                />
-              </picture>
-            )}
+              {playing && (
+                // Overlaid on the poster and remounted each cycle (key) so it
+                // restarts from frame 0. Between cycles it unmounts, so the
+                // popup rests on the static poster and the GPU goes idle.
+                <picture key={cycle}>
+                  <source srcSet="/images/lottery-announcement/lottery.webp" type="image/webp" />
+                  <img
+                    src="/images/lottery-announcement/lottery.gif"
+                    alt=""
+                    aria-hidden="true"
+                    width={480}
+                    height={480}
+                    className="absolute inset-0 h-full w-full object-contain"
+                    decoding="async"
+                  />
+                </picture>
+              )}
+            </div>
           </motion.div>
         </div>
 
