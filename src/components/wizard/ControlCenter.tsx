@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trophy, Crown, ScanLine, Pencil, Zap, Gift } from 'lucide-react'
+import { Trophy, Crown, ScanLine, Pencil, Zap, Gift, HelpCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { ControlActionCard, FloatingActionIcon } from './ControlActionCard'
@@ -246,6 +246,21 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                   <Pencil size={12} strokeWidth={2} aria-hidden="true" />
                   עריכת משחק
                 </button>
+                <a
+                  href={`/offline-instructions?event=${event.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    'inline-flex shrink-0 items-center gap-1 rounded-md',
+                    'px-1.5 py-0.5 text-[11px] font-medium text-muted sm:text-xs',
+                    'transition-[background-color,color] duration-150',
+                    'hover:bg-white/40 hover:text-foreground',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+                  )}
+                >
+                  <HelpCircle size={12} strokeWidth={2} aria-hidden="true" />
+                  הוראות הפעלה
+                </a>
               </div>
             </div>
 

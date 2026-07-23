@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Crown, Gift, ScanLine, Trophy, WifiOff } from 'lucide-react'
+import { Crown, Gift, ScanLine, Trophy, WifiOff, HelpCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { ControlActionCard, FloatingActionIcon } from '@/components/wizard/ControlActionCard'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
@@ -10,6 +10,7 @@ interface OfflineHubProps {
   onScan: () => void
   onBoard: () => void
   onLottery?: () => void
+  onInstructions?: () => void
 }
 
 /**
@@ -20,7 +21,7 @@ interface OfflineHubProps {
  * already knows. The settings card and readiness checklist are left out: an
  * exported game can't be edited.
  */
-export function OfflineHub({ pack, onScan, onBoard, onLottery }: OfflineHubProps) {
+export function OfflineHub({ pack, onScan, onBoard, onLottery, onInstructions }: OfflineHubProps) {
   // Desynchronised animation phases, exactly as the control center does it, so
   // the cards never float in lockstep.
   const cardAnim = useMemo(() => ({
@@ -57,9 +58,21 @@ export function OfflineHub({ pack, onScan, onBoard, onLottery }: OfflineHubProps
             {pack.event.name}
           </h1>
 
-          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-secondary/25 bg-secondary/10 px-4 py-1.5 text-sm font-bold text-secondary-text">
-            <WifiOff size={15} strokeWidth={2.5} />
-            מצב לא מקוון
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-secondary/25 bg-secondary/10 px-4 py-1.5 text-sm font-bold text-secondary-text">
+              <WifiOff size={15} strokeWidth={2.5} />
+              מצב לא מקוון
+            </span>
+            {onInstructions && (
+              <button
+                type="button"
+                onClick={onInstructions}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-1.5 text-sm font-bold text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                <HelpCircle size={15} strokeWidth={2.5} />
+                הוראות הפעלה
+              </button>
+            )}
           </div>
         </motion.div>
 

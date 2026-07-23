@@ -3,6 +3,33 @@ import type { Action, Group, Participant, Reward } from '@/types'
 import { PACK_VERSION, type GamePack } from './types'
 
 /**
+ * Turns the event's logo URL into a self-contained data URI so it renders from
+ * file:// with no network. The rest of the player is inlined at build time, but
+ * the logo is per-event runtime data (a Supabase Storage URL), so it must be
+ * inlined here, at export time, while we're still online.
+ *
+ * Best-effort: an already-inlined logo is returned untouched, and any fetch/read
+ * failure falls back to the original URL so the export never breaks (that logo
+ * just degrades to how it behaved before - broken only on a disconnected machine).
+ */
+async function inlineLogo(url: string | null): Promise<string | null> {
+  if (!url || url.startsWith('data:')) return url
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return url
+    const blob = await res.blob()
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = () => reject(reader.error)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return url
+  }
+}
+
+/**
  * Gathers everything an event needs to run offline into a single GamePack.
  *
  * Mirrors the reads in EventKioskPage.fetchAll, minus the point_transactions -
@@ -50,13 +77,16 @@ export async function buildEventPack(eventId: string): Promise<GamePack> {
   if (firstError) throw firstError
   if (!eventRes.data) throw new Error('האירוע לא נמצא.')
 
+  // Inline the logo now (online) so the offline file needs no network for it.
+  const logoDataUri = await inlineLogo(eventRes.data.logo_url)
+
   return {
     version: PACK_VERSION,
     exportedAt: new Date().toISOString(),
     event: {
       id: eventRes.data.id,
       name: eventRes.data.name,
-      logo_url: eventRes.data.logo_url,
+      logo_url: logoDataUri,
     },
     groups: (groupsRes.data ?? []) as Group[],
     participants: (participantsRes.data ?? []) as Participant[],

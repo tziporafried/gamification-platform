@@ -6,6 +6,7 @@ import { PlansModalProvider } from '@/contexts/PlansModalContext'
 import { EventKioskPage } from '@/pages/EventKioskPage'
 import { EventDisplayPage } from '@/pages/EventDisplay'
 import { LotteryPresentationPage } from '@/pages/LotteryPresentationPage'
+import { OfflineInstructionsPage } from '@/pages/OfflineInstructionsPage'
 import type { GamePack } from '@/lib/offline/types'
 import { PACK_VERSION } from '@/lib/offline/types'
 import { initOfflineData } from './shim/data'
@@ -51,6 +52,7 @@ function HubRoute({ pack }: { pack: GamePack }) {
       onScan={() => navigate(`${base}/kiosk`)}
       onBoard={() => navigate(`${base}/display`)}
       onLottery={() => navigate(`${base}/lottery`)}
+      onInstructions={() => navigate('/instructions')}
     />
   )
 }
@@ -69,6 +71,16 @@ function OfflineApp({ pack }: { pack: GamePack }) {
         <PlansModalProvider>
         <Routes>
           <Route path="/" element={<HubRoute pack={pack} />} />
+          <Route
+            path="/instructions"
+            element={
+              <OfflineInstructionsPage
+                backTo="/"
+                backLabel="חזרה למסך הבית"
+                showFooter={false}
+              />
+            }
+          />
           <Route
             path="/events/:id/kiosk"
             element={<EventGuard pack={pack}><EventKioskPage /></EventGuard>}

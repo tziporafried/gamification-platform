@@ -22,6 +22,7 @@ import { EventBySlugControl } from '@/pages/EventBySlug'
 import { AuthCallback } from '@/pages/AuthCallback'
 import { PlansPage } from '@/pages/PlansPage'
 import { TermsPage } from '@/pages/TermsPage'
+import { OfflineInstructionsPage } from '@/pages/OfflineInstructionsPage'
 
 export default function App() {
   // reducedMotion="user" makes every framer-motion component honour the OS
@@ -55,6 +56,7 @@ export default function App() {
             {/* Legacy / deep-link entry - opens plans modal, then leaves /plans */}
             <Route path="/plans" element={<PlansPage />} />
             <Route path="/terms" element={<TermsPage />} />
+            <Route path="/offline-instructions" element={<OfflineInstructionsPage />} />
 
             {/* Backward compat */}
             <Route path="/dashboard" element={<Navigate to="/events" replace />} />
