@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Crown, ScanLine, Trophy, WifiOff } from 'lucide-react'
+import { Crown, Gift, ScanLine, Trophy, WifiOff } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { ControlActionCard, FloatingActionIcon } from '@/components/wizard/ControlActionCard'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
@@ -9,6 +9,7 @@ interface OfflineHubProps {
   pack: GamePack
   onScan: () => void
   onBoard: () => void
+  onLottery?: () => void
 }
 
 /**
@@ -19,12 +20,13 @@ interface OfflineHubProps {
  * already knows. The settings card and readiness checklist are left out: an
  * exported game can't be edited.
  */
-export function OfflineHub({ pack, onScan, onBoard }: OfflineHubProps) {
+export function OfflineHub({ pack, onScan, onBoard, onLottery }: OfflineHubProps) {
   // Desynchronised animation phases, exactly as the control center does it, so
-  // the two cards never float in lockstep.
+  // the cards never float in lockstep.
   const cardAnim = useMemo(() => ({
     kioskFloat: Math.random(),
     displayFloat: Math.random(),
+    lotteryFloat: Math.random(),
     scanLine: -3 * Math.random(),
     borderPulse: -3 * Math.random(),
     crown: -(2.2 + 2.5 * Math.random()),
@@ -120,6 +122,35 @@ export function OfflineHub({ pack, onScan, onBoard }: OfflineHubProps) {
             }
           />
           </div>
+
+          {/* Full-width below the two: a featured row for the lottery ceremony. */}
+          {onLottery && (
+          <div className="sm:col-span-2" data-hub-action="lottery">
+          <ControlActionCard
+            onClick={onLottery}
+            gradient="gradient-reward-starter"
+            title="🎁 הגרלה"
+            description="הגרילו זוכה בטקס חגיגי"
+            cta="פתח ←"
+            decoration={
+              <motion.div
+                className="pointer-events-none absolute inset-3 rounded-[1.35rem] border border-white/20"
+                animate={{ boxShadow: [
+                  '0 0 0 0 color-mix(in srgb, white 0%, transparent)',
+                  '0 0 0 6px color-mix(in srgb, white 14%, transparent)',
+                  '0 0 0 0 color-mix(in srgb, white 0%, transparent)',
+                ] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: cardAnim.borderPulse }}
+              />
+            }
+            icon={
+              <FloatingActionIcon phase={cardAnim.lotteryFloat} pulsePhase={cardAnim.pulseGlow} pulse>
+                <Gift size={32} className="text-white" strokeWidth={2.25} />
+              </FloatingActionIcon>
+            }
+          />
+          </div>
+          )}
         </div>
       </main>
     </div>

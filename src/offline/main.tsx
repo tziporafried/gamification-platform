@@ -5,6 +5,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { PlansModalProvider } from '@/contexts/PlansModalContext'
 import { EventKioskPage } from '@/pages/EventKioskPage'
 import { EventDisplayPage } from '@/pages/EventDisplay'
+import { LotteryPresentationPage } from '@/pages/LotteryPresentationPage'
 import type { GamePack } from '@/lib/offline/types'
 import { PACK_VERSION } from '@/lib/offline/types'
 import { initOfflineData } from './shim/data'
@@ -49,6 +50,7 @@ function HubRoute({ pack }: { pack: GamePack }) {
       pack={pack}
       onScan={() => navigate(`${base}/kiosk`)}
       onBoard={() => navigate(`${base}/display`)}
+      onLottery={() => navigate(`${base}/lottery`)}
     />
   )
 }
@@ -74,6 +76,10 @@ function OfflineApp({ pack }: { pack: GamePack }) {
           <Route
             path="/events/:id/display"
             element={<EventGuard pack={pack}><EventDisplayPage /></EventGuard>}
+          />
+          <Route
+            path="/events/:id/lottery"
+            element={<EventGuard pack={pack}><LotteryPresentationPage /></EventGuard>}
           />
           {/* The real pages navigate here on error; send it home offline. */}
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,6 +1,51 @@
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
+
+/**
+ * Inlines public assets referenced by absolute-URL string literals (e.g. the
+ * lottery's `/images/lottery/*.png` box artwork and `/sounds/lottery-*.mp3`
+ * tracks) as base64 data URIs. Vite only inlines *imported* assets; these are
+ * plain runtime URLs, so a file:// page would try to fetch them and fail. This
+ * runs pre-transform so the raw source strings are swapped before transpile,
+ * keeping the offline player fully self-contained with zero network requests.
+ */
+function inlinePublicAssets(): Plugin {
+  const MIME: Record<string, string> = {
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp',
+    svg: 'image/svg+xml', gif: 'image/gif', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg',
+  }
+  const ASSET_RE = /(["'`])(\/(?:images|sounds)\/[^"'`]+?\.(png|jpe?g|webp|svg|gif|mp3|wav|ogg))\1/g
+  const cache = new Map<string, string>()
+
+  return {
+    name: 'inline-public-assets',
+    enforce: 'pre',
+    transform(code, id) {
+      if (id.includes('node_modules') || !/\.[jt]sx?$/.test(id)) return null
+      if (!code.includes('/images/') && !code.includes('/sounds/')) return null
+      let changed = false
+      const out = code.replace(ASSET_RE, (whole, quote, urlPath, ext) => {
+        let uri = cache.get(urlPath)
+        if (!uri) {
+          try {
+            const buf = readFileSync(fileURLToPath(new URL('./public' + urlPath, import.meta.url)))
+            const mime = MIME[String(ext).toLowerCase()] ?? 'application/octet-stream'
+            uri = `data:${mime};base64,${buf.toString('base64')}`
+            cache.set(urlPath, uri)
+          } catch {
+            this.warn(`[inline-public-assets] could not inline ${urlPath}`)
+            return whole
+          }
+        }
+        changed = true
+        return quote + uri + quote
+      })
+      return changed ? { code: out, map: null } : null
+    },
+  }
+}
 
 /**
  * Inlines the Heebo webfont as @font-face data URIs so the offline player matches
@@ -99,7 +144,7 @@ function inlineSingleFile(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [inlineHeebo(), react(), inlineSingleFile()],
+  plugins: [inlinePublicAssets(), inlineHeebo(), react(), inlineSingleFile()],
   resolve: {
     alias: [
       // Swap the data layer so the real kiosk/display components run from the
