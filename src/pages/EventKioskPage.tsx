@@ -855,6 +855,14 @@ function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () 
     overflow: 'visible',
   } as const
 
+  // With a logo the name sits just above it rather than across it, so neither
+  // covers the other. It stays absolutely positioned - the logo keeps its place
+  // in the stack - and the wrapper reserves the height it floats into, because
+  // the centre stack clips anything above its top edge.
+  const namePlacement: React.CSSProperties = hasLogo
+    ? { bottom: 'calc(100% + 10px)', transform: 'translateX(-50%)' }
+    : { top: '50%', transform: 'translate(-50%, -50%)' }
+
   return (
     <div className="kiosk-fadeUp" style={{
       flexShrink: 0,
@@ -862,6 +870,7 @@ function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () 
       display: 'inline-block',
       overflow: 'visible',
       maxWidth: '100%',
+      paddingTop: hasLogo ? 'clamp(56px, 8vh, 78px)' : undefined,
     }}>
       <button
         type="button"
@@ -881,8 +890,7 @@ function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () 
         <span style={{
           position: 'absolute',
           left: '50%',
-          top: '50%',
-          transform: 'translate(-50%, -50%)',
+          ...namePlacement,
           display: 'block',
           width: nameSlotStyle.width,
           fontWeight: 900,
