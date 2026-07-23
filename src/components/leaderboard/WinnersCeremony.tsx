@@ -14,6 +14,7 @@ import { AvatarCircle } from '@/components/ui/AvatarCircle'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Spinner } from '@/components/ui/Spinner'
+import { ScreenControlsExtra, screenControlClass } from '@/components/ui/ScreenControls'
 import type { GroupLeaderboardEntry, ParticipantLeaderboardEntry } from '@/types'
 
 interface WinnersCeremonyProps {
@@ -60,7 +61,6 @@ type PhaseKind =
 interface PhaseDef {
   kind: PhaseKind
   duration: number
-  dot: number
 }
 
 interface MissionWinner {
@@ -356,16 +356,16 @@ function useLeaderboardData(eventId: string) {
 
 function buildPhases(hasGroups: boolean): PhaseDef[] {
   const all: PhaseDef[] = [
-    { kind: 'suspense', duration: 3000, dot: 0 },
-    { kind: 'groupChampion', duration: 5500, dot: 1 },
-    { kind: 'groupPodium', duration: 5500, dot: 2 },
-    { kind: 'groupLeaderboard', duration: 9000, dot: 3 },
-    { kind: 'participantChampion', duration: 5500, dot: 4 },
-    { kind: 'participantPodium', duration: 5500, dot: 5 },
-    { kind: 'participantLeaderboard', duration: 9000, dot: 6 },
-    { kind: 'groupMissions', duration: 6500, dot: 7 },
-    { kind: 'participantMissions', duration: 6500, dot: 8 },
-    { kind: 'finalSummary', duration: 12000, dot: 9 },
+    { kind: 'suspense', duration: 3000 },
+    { kind: 'groupChampion', duration: 5500 },
+    { kind: 'groupPodium', duration: 5500 },
+    { kind: 'groupLeaderboard', duration: 9000 },
+    { kind: 'participantChampion', duration: 5500 },
+    { kind: 'participantPodium', duration: 5500 },
+    { kind: 'participantLeaderboard', duration: 9000 },
+    { kind: 'groupMissions', duration: 6500 },
+    { kind: 'participantMissions', duration: 6500 },
+    { kind: 'finalSummary', duration: 12000 },
   ]
   return hasGroups ? all : all.filter((p) => !p.kind.startsWith('group'))
 }
@@ -472,6 +472,9 @@ function AmbientBackdrop() {
   )
 }
 
+/** Height the stage reserves for {@link StageHeader}, so main can fill the rest. */
+const HEADER_HEIGHT = 184
+
 function StageHeader({
   eventName,
   eventLogoUrl,
@@ -480,24 +483,46 @@ function StageHeader({
   eventLogoUrl?: string | null
 }) {
   // Fullscreen / sound now live in the viewport-level ScreenControls toolbar,
-  // not in this scaled header - so it only carries the centered event title.
+  // not in this scaled header - so it only carries the event branding. The logo
+  // and the resort name are the room's anchor for the whole ceremony, so they
+  // sit bare on the backdrop at full size: no card, no border, nothing that
+  // reads as chrome around them.
   return (
-    <header className="relative z-20 flex h-24 items-start justify-center px-6 pt-5 md:px-10">
-      <div className="pointer-events-none flex flex-col items-center gap-2 text-center">
-        <div className="flex items-center gap-3">
+    <header className="relative z-20 flex items-center justify-center px-6 pt-4 md:px-10" style={{ height: HEADER_HEIGHT }}>
+      <motion.div
+        className="pointer-events-none flex items-center gap-8"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <motion.div
+          className="relative shrink-0"
+          animate={{ y: [0, -6, 0] }}
+          transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <div className="absolute inset-[-22px] rounded-full bg-[#FFB800]/25 blur-3xl" />
           {eventLogoUrl ? (
-            <img src={eventLogoUrl} alt={eventName || ''} className="h-14 w-14 rounded-2xl object-cover shadow-[0_0_28px_rgba(255,107,53,0.24)]" />
+            <img
+              src={eventLogoUrl}
+              alt={eventName || ''}
+              className="relative h-36 w-36 rounded-[34px] object-cover drop-shadow-[0_16px_34px_rgba(46,34,30,0.24)]"
+            />
           ) : (
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 text-xl font-black text-primary-text shadow-[0_0_28px_rgba(255,107,53,0.2)]">
+            <div className="relative flex h-36 w-36 items-center justify-center rounded-[34px] bg-[linear-gradient(135deg,#FFF1D2,#FFB84D)] text-[52px] font-black text-[#2E221E] drop-shadow-[0_16px_34px_rgba(46,34,30,0.24)]">
               {(eventName || '🏆').slice(0, 2)}
             </div>
           )}
-          <div>
-            <p className="text-[13px] font-black uppercase tracking-[0.24em] text-primary-text">טקס הסיום</p>
-            <h1 className="text-3xl font-black text-foreground md:text-4xl">{eventName || 'תוצאות התחרות'}</h1>
-          </div>
+        </motion.div>
+
+        <div className="min-w-0 text-right">
+          <p className="text-[52px] font-black leading-none tracking-[-0.01em] text-[#EF8A4E]">טקס הסיום</p>
+          {/* Capped so an unusually long resort name truncates instead of
+              running off the stage. */}
+          <h1 className="mt-2 max-w-[1150px] truncate text-[72px] font-black leading-[1.05] text-[#2E221E] [text-shadow:0_3px_24px_rgba(255,184,0,0.3)]">
+            {eventName || 'תוצאות התחרות'}
+          </h1>
         </div>
-      </div>
+      </motion.div>
     </header>
   )
 }
@@ -1367,25 +1392,9 @@ function ArenaNotReadyScreen({
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-app-radial font-sans text-foreground" dir="rtl">
       <AmbientBackdrop />
-      <header className="relative z-20 flex h-24 items-start justify-center px-6 pt-5 md:px-10">
-        <div className="pointer-events-none flex flex-col items-center gap-2 text-center">
-          <div className="flex items-center gap-3">
-            {eventLogoUrl ? (
-              <img src={eventLogoUrl} alt={eventName || ''} className="h-14 w-14 rounded-2xl object-cover shadow-[0_0_28px_rgba(255,107,53,0.24)]" />
-            ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 text-xl font-black text-primary-text shadow-[0_0_28px_rgba(255,107,53,0.2)]">
-                {(eventName || '🏆').slice(0, 2)}
-              </div>
-            )}
-            <div>
-              <p className="text-[13px] font-black uppercase tracking-[0.24em] text-primary-text">טקס הסיום</p>
-              <h1 className="text-3xl font-black text-foreground md:text-4xl">{eventName || 'תוצאות התחרות'}</h1>
-            </div>
-          </div>
-        </div>
-      </header>
+      <StageHeader eventName={eventName} eventLogoUrl={eventLogoUrl} />
 
-      <main className="absolute inset-x-6 bottom-[112px] top-[156px] z-10 flex items-center justify-center px-2 md:inset-x-10">
+      <main className="absolute inset-x-6 bottom-[72px] top-[212px] z-10 flex items-center justify-center px-2 md:inset-x-10">
         <motion.section
           className="relative flex w-full max-w-[920px] max-h-[720px] flex-col items-center overflow-hidden rounded-[38px] border-2 border-[#F2B33C]/55 bg-[linear-gradient(150deg,#FFFDF7,#FFF4E6)] px-7 py-10 text-center shadow-[0_24px_72px_rgba(46,34,30,0.16)] md:px-12 md:py-12"
           initial={{ opacity: 0, scale: 0.98, y: 14 }}
@@ -1424,26 +1433,27 @@ function ArenaNotReadyScreen({
   )
 }
 
-function ProgressChrome({ activeDot, count, onReplay, paused, onTogglePause }: { activeDot: number; count: number; onReplay: () => void; paused: boolean; onTogglePause: () => void }) {
+/**
+ * Replay / pause, portalled into the top-right toolbar next to the sound
+ * toggle. They used to sit on a bar at the bottom of the stage together with a
+ * dot per phase; the dots only told you which slide was showing, which nobody
+ * watching the ceremony needs, so the bar is gone and the two buttons that do
+ * matter joined the rest of the screen controls.
+ */
+function CeremonyControls({ onReplay, paused, onTogglePause }: { onReplay: () => void; paused: boolean; onTogglePause: () => void }) {
+  const controlClass = cn(screenControlClass, 'flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold')
+
   return (
-    <div className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-center gap-5 px-6 pb-6">
-      <button onClick={onReplay} className="flex items-center gap-2 rounded-full border border-border bg-white/65 px-4 py-2 text-sm font-black text-muted shadow-sm backdrop-blur transition hover:text-primary-text">
-        <RotateCcw size={15} />
-        הצג שוב
+    <ScreenControlsExtra>
+      <button type="button" onClick={onTogglePause} className={controlClass} title={paused ? 'המשך' : 'השהה'}>
+        {paused ? <Play size={14} strokeWidth={2.25} className="text-neutral-400" /> : <Pause size={14} strokeWidth={2.25} className="text-neutral-400" />}
+        <span>{paused ? 'המשך' : 'השהה'}</span>
       </button>
-      <button
-        onClick={onTogglePause}
-        className="flex items-center gap-2 rounded-full border border-border bg-white/65 px-4 py-2 text-sm font-black text-muted shadow-sm backdrop-blur transition hover:text-primary-text"
-      >
-        {paused ? <Play size={15} /> : <Pause size={15} />}
-        {paused ? 'המשך' : 'השהה'}
+      <button type="button" onClick={onReplay} className={controlClass} title="הצג שוב">
+        <RotateCcw size={14} strokeWidth={2.25} className="text-neutral-400" />
+        <span>הצג שוב</span>
       </button>
-      <div className="flex items-center gap-2 rounded-full border border-white/70 bg-white/55 px-4 py-3 shadow-sm backdrop-blur">
-        {Array.from({ length: count }, (_, i) => (
-          <span key={i} className={cn('h-2.5 rounded-full transition-all duration-500', activeDot === i ? 'w-11 bg-primary' : 'w-2.5 bg-primary/25')} />
-        ))}
-      </div>
-    </div>
+    </ScreenControlsExtra>
   )
 }
 
@@ -1575,7 +1585,8 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
           style={{ transform: `translate(-50%, -50%) scale(${CONTENT_SCALE})` }}
         >
           <StageHeader eventName={eventName} eventLogoUrl={eventLogoUrl} />
-          <main className="relative z-10 h-[928px] px-2 pb-16">
+          {/* Fills whatever the header leaves of the 1080px stage. */}
+          <main className="relative z-10 px-2 pb-8" style={{ height: 1080 - HEADER_HEIGHT }}>
             <AnimatePresence mode="wait">
               <motion.section
                 key={phase.kind}
@@ -1619,13 +1630,7 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
               </motion.section>
             </AnimatePresence>
           </main>
-          <ProgressChrome
-            activeDot={phase.dot}
-            count={phases.length}
-            onReplay={handleReplay}
-            paused={paused}
-            onTogglePause={() => setPaused((p) => !p)}
-          />
+          <CeremonyControls onReplay={handleReplay} paused={paused} onTogglePause={() => setPaused((p) => !p)} />
           <span className="sr-only">{taskStats.length} סוגי משימות נספרו</span>
         </div>
       </div>

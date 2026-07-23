@@ -131,6 +131,34 @@
 
 /* ============ DISPLAY (live leaderboard) ============ */
 .pl-display { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
+
+/* Branding header: logo + resort name carry the screen, no frame around them. */
+.pl-display-head { position: relative; display: flex; justify-content: center; padding: 30px 28px 22px; }
+.pl-display-back { position: absolute; top: 22px; right: 28px; }
+.pl-hero { display: flex; align-items: center; gap: 26px; min-width: 0; }
+.pl-hero-logo {
+  height: 118px; width: 118px; flex-shrink: 0; border-radius: 30px; object-fit: cover;
+  filter: drop-shadow(0 14px 30px rgba(46, 34, 30, 0.22));
+}
+.pl-hero-logo--fallback {
+  display: grid; place-items: center; font-size: 42px; font-weight: 900;
+  background: linear-gradient(135deg, #FFF1D2, #FFB84D); color: var(--pl-ink);
+}
+.pl-hero-text { min-width: 0; }
+/* Nearly as large as the resort name - the two read as one title block. */
+.pl-hero-eyebrow {
+  margin: 0; line-height: 1; font-weight: 900; color: var(--pl-primary);
+  font-size: clamp(27px, 3.6vw, 46px); letter-spacing: -0.01em;
+}
+.pl-hero-name {
+  margin: 8px 0 0; font-size: clamp(38px, 5vw, 64px); font-weight: 900; line-height: 1.05;
+  letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+@media (max-width: 700px) {
+  .pl-display-head { padding-top: 74px; }
+  .pl-hero { gap: 16px; }
+  .pl-hero-logo { height: 76px; width: 76px; border-radius: 20px; }
+}
 .pl-display-body { padding: 28px clamp(20px, 4vw, 56px) 48px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 34px; align-items: start; }
 @media (max-width: 900px) { .pl-display-body { grid-template-columns: 1fr; } }
 .pl-section-title { font-size: 15px; font-weight: 800; letter-spacing: 0.08em; color: var(--pl-muted); margin: 0 0 18px; display: flex; align-items: center; gap: 10px; }

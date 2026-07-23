@@ -23,16 +23,26 @@ export function OfflineDisplay({ pack, scans, onBack }: OfflineDisplayProps) {
 
   return (
     <div className="pl-display">
-      <div className="pl-topbar">
-        <div className="pl-brand">
-          <button className="pl-btn" onClick={onBack}>
-            <ArrowRight size={18} strokeWidth={2.5} />
-            חזרה
-          </button>
-          <span className="pl-brand-name">{pack.event.name}</span>
+      {/* The logo and the resort name lead this screen the same way they lead
+          the online ceremony - full size, bare on the backdrop, with the back
+          button tucked into the corner so it doesn't compete. */}
+      <header className="pl-display-head">
+        <button className="pl-btn pl-display-back" onClick={onBack}>
+          <ArrowRight size={18} strokeWidth={2.5} />
+          חזרה
+        </button>
+        <div className="pl-hero">
+          {pack.event.logo_url ? (
+            <img className="pl-hero-logo" src={pack.event.logo_url} alt="" />
+          ) : (
+            <div className="pl-hero-logo pl-hero-logo--fallback">{pack.event.name.slice(0, 2)}</div>
+          )}
+          <div className="pl-hero-text">
+            <p className="pl-hero-eyebrow">שיאים בלייב</p>
+            <h1 className="pl-hero-name">{pack.event.name}</h1>
+          </div>
         </div>
-        <span className="pl-chip">שיאים בלייב</span>
-      </div>
+      </header>
 
       <div className="pl-display-body">
         <section>

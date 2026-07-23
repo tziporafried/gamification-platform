@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowRight, Maximize2, Minimize2, Volume2, VolumeX } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -107,6 +108,29 @@ export function ScreenControls({ to, onBack, soundScope, label = 'חזרה', cla
           <Volume2 size={15} strokeWidth={2.25} aria-hidden="true" />
         )}
       </button>
+
+      <div id={EXTRA_SLOT_ID} className="flex items-center gap-2" />
     </div>
   )
+}
+
+const EXTRA_SLOT_ID = 'screen-controls-extra'
+
+/**
+ * Adds screen-specific controls (e.g. the ceremony's replay / pause) to the end
+ * of the toolbar row - right after the sound toggle - from anywhere in the tree.
+ *
+ * The presentation screens scale their whole stage inside a transformed box, so
+ * controls rendered there would shrink with it; portalling into the toolbar
+ * keeps them viewport-sized and in one row with back / fullscreen / sound.
+ * Style children with {@link screenControlClass} so they match.
+ */
+export function ScreenControlsExtra({ children }: { children: ReactNode }) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null)
+
+  // The slot lives in a sibling <ScreenControls>; both are in the DOM by the
+  // time effects run, so a single lookup on mount is enough.
+  useEffect(() => setSlot(document.getElementById(EXTRA_SLOT_ID)), [])
+
+  return slot ? createPortal(children, slot) : null
 }
