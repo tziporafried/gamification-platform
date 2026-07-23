@@ -4,7 +4,6 @@ import { supabase } from '@/lib/supabase'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { ScreenControls } from '@/components/ui/ScreenControls'
 import { computeRanks } from '@/lib/missionUtils'
-import { isSoundMuted } from '@/lib/soundMuted'
 import { ManualEntryForm, type ManualEntryAvailability } from '@/components/scoring/ManualEntryForm'
 import { useHardwareScanner } from '@/hooks/useHardwareScanner'
 import { usePlanPermissions } from '@/hooks/usePlanPermissions'
@@ -48,6 +47,7 @@ import {
 import { TrialScanLimitModal } from '@/components/TrialScanLimitModal'
 import { TRIAL_SCAN_LIMIT } from '@/lib/plans'
 import { playScanSuccess } from '@/lib/scanSuccessSound'
+import { playRewardFanfare, primeRewardFanfare, stopRewardFanfare } from '@/lib/rewardFanfareSound'
 import '@/styles/kiosk.css'
 
 const KIOSK_ACCENT = hexToRgb('#AB3500') ?? { r: 171, g: 53, b: 0 }
@@ -412,31 +412,6 @@ function useReducedMotion(): boolean {
     return () => mq.removeEventListener('change', handler)
   }, [])
   return reduced
-}
-
-function playSuccessChime() {
-  if (isSoundMuted('scan')) return
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext
-    if (!Ctx) return
-    const ctx = new Ctx() as AudioContext
-    const freqs = [523.25, 659.25, 783.99, 1046.5, 1318.5]
-    freqs.forEach((freq, i) => {
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.type = 'triangle'
-      osc.frequency.value = freq
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      const t = ctx.currentTime + i * 0.11
-      gain.gain.setValueAtTime(0, t)
-      gain.gain.linearRampToValueAtTime(0.2, t + 0.03)
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55)
-      osc.start(t)
-      osc.stop(t + 0.55)
-    })
-  } catch { /* ignore WebAudio errors */ }
 }
 
 // Seeded PRNG for stable module-level particle arrays
@@ -3362,12 +3337,18 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     clearTimeout(toastTimerRef.current)
     clearTimeout(scanDismissTimer.current)
     clearTimeout(rewardDismissTimer.current)
+    stopRewardFanfare()
   }, [])
+
+  // Fetch the win fanfare while the screen is idle, so the first prize of the
+  // day fires instantly instead of waiting on the download.
+  useEffect(() => { primeRewardFanfare() }, [])
 
   useEffect(() => {
     if (gameStarted) return
     clearTimeout(scanDismissTimer.current)
     clearTimeout(rewardDismissTimer.current)
+    stopRewardFanfare()
     rewardQueueRef.current = []
     setScanResult(null)
     setRewardWin(null)
@@ -3384,7 +3365,8 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const showNextReward = useCallback(() => {
     clearTimeout(rewardDismissTimer.current)
     const next = rewardQueueRef.current.shift()
-    if (!next) { setRewardWin(null); return }
+    // Last celebration closed - cut the fanfare if it is somehow still running.
+    if (!next) { stopRewardFanfare(); setRewardWin(null); return }
     setRewardWin(next)
     rewardDismissTimer.current = setTimeout(() => showNextReward(), 6200)
   }, [])
@@ -3412,7 +3394,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     scanDismissTimer.current = setTimeout(() => {
       setScanResult(null)
       if (celebrationRewards.length > 0) {
-        if (!rm) playSuccessChime()
+        if (!rm) playRewardFanfare()
         const wins = celebrationRewards.map(rw => {
           const { icon } = rewardTier(rw.out_required_points)
           return { emoji: icon, title: rw.out_reward_name, sub: result.participantName, points: rw.out_required_points }
