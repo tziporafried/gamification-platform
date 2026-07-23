@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { trackLiveEventSelect } from '@/lib/analytics'
@@ -12,6 +13,7 @@ interface LiveEventsPanelProps {
  * Legacy live-events page UI - modal is the primary launcher from control center.
  */
 export function LiveEventsPanel({ eventId }: LiveEventsPanelProps) {
+  const navigate = useNavigate()
   const lottery = LIVE_EVENT_CATALOG.find((item) => item.id === 'lottery')!
   const lotteryLaunchable = isLiveEventLaunchable(lottery)
   const upcoming = LIVE_EVENT_CATALOG.filter((item) => !isLiveEventLaunchable(item))
@@ -23,7 +25,7 @@ export function LiveEventsPanel({ eventId }: LiveEventsPanelProps) {
       catalogId: 'lottery',
       launchable: true,
     })
-    window.open(`/events/${eventId}/lottery`, '_blank', 'noopener,noreferrer')
+    navigate(`/events/${eventId}/lottery`)
   }
 
   return (

@@ -107,7 +107,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
       cta_location: 'control_center',
       destination: `/events/${event.id}/${route}`,
     })
-    window.open(`/events/${event.id}/${route}`, '_blank', 'noopener,noreferrer')
+    navigate(`/events/${event.id}/${route}`)
   }
 
   function handleSettings() {

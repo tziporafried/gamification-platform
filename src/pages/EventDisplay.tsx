@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { WinnersCeremony } from '@/components/leaderboard/WinnersCeremony'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
+import { ScreenControls } from '@/components/ui/ScreenControls'
 import { trackLeaderboardView } from '@/lib/analytics'
 import type { Event } from '@/types'
 
@@ -42,6 +43,7 @@ export function EventDisplayPage() {
 
   return (
     <div className="relative min-h-screen bg-app-radial">
+      <ScreenControls to={`/events/${event.id}/control`} />
       <FloatingIconsLayer />
       <WinnersCeremony
         eventId={event.id}

@@ -1,9 +1,11 @@
 import { useCallback, useRef } from 'react'
+import { isSoundMuted } from '@/lib/soundMuted'
 
 export function useCelebrationSound() {
   const ctxRef = useRef<AudioContext | null>(null)
 
   const play = useCallback(() => {
+    if (isSoundMuted()) return
     try {
       if (!ctxRef.current) {
         ctxRef.current = new AudioContext()

@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef } from 'react'
+import { toggleSoundMuted, useSoundMuted } from '@/lib/soundMuted'
 
 function createNoiseBuffer(ctx: AudioContext, duration: number): AudioBuffer {
   const sampleRate = ctx.sampleRate
@@ -14,9 +15,8 @@ function createNoiseBuffer(ctx: AudioContext, duration: number): AudioBuffer {
 export function useSound() {
   const ctxRef = useRef<AudioContext | null>(null)
   const noiseBufferRef = useRef<AudioBuffer | null>(null)
-  const [muted, setMuted] = useState(() => {
-    return localStorage.getItem('leaderboard-sound-muted') === 'true'
-  })
+  // App-wide mute, shared with every other screen and the presentation toolbar.
+  const muted = useSoundMuted()
 
   function getCtx(): AudioContext | null {
     try {
@@ -109,11 +109,7 @@ export function useSound() {
   }, [muted])
 
   const toggleMute = useCallback(() => {
-    setMuted((prev) => {
-      const next = !prev
-      localStorage.setItem('leaderboard-sound-muted', String(next))
-      return next
-    })
+    toggleSoundMuted()
   }, [])
 
   return { play, playApplause, muted, toggleMute }

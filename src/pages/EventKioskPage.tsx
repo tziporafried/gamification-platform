@@ -2,7 +2,9 @@ import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } fr
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
+import { ScreenControls } from '@/components/ui/ScreenControls'
 import { computeRanks } from '@/lib/missionUtils'
+import { isSoundMuted } from '@/lib/soundMuted'
 import { ManualEntryForm, type ManualEntryAvailability } from '@/components/scoring/ManualEntryForm'
 import { useHardwareScanner } from '@/hooks/useHardwareScanner'
 import { usePlanPermissions } from '@/hooks/usePlanPermissions'
@@ -413,6 +415,7 @@ function useReducedMotion(): boolean {
 }
 
 function playSuccessChime() {
+  if (isSoundMuted()) return
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext
@@ -3556,7 +3559,9 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
         position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column',
         minHeight: 0, boxSizing: 'border-box',
         paddingInline: 'clamp(12px, 1.2vw, 24px)',
-        paddingTop: 'calc(6px + clamp(12px, 1.2vw, 24px))',
+        // Extra top clearance so the fixed ScreenControls toolbar (top-right)
+        // never overlaps the missions panel - pushes all content a bit lower.
+        paddingTop: 'calc(6px + clamp(12px, 1.2vw, 24px) + clamp(24px, 3vh, 40px))',
         paddingBottom: 'clamp(20px, 2.8vh, 36px)',
       }}>
 
@@ -4018,5 +4023,10 @@ export function EventKioskPage() {
     )
   }
 
-  return <KioskViewport event={event} data={data} gameStarted={gameStarted} />
+  return (
+    <>
+      <ScreenControls to={`/events/${event.id}/control`} />
+      <KioskViewport event={event} data={data} gameStarted={gameStarted} />
+    </>
+  )
 }

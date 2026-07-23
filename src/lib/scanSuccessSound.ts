@@ -19,6 +19,8 @@
  * Only call playScanSuccess() AFTER a scan has actually validated and saved.
  */
 
+import { isSoundMuted } from '@/lib/soundMuted'
+
 // ── Tunables ──────────────────────────────────────────────────────────────────
 const DURATION_S = 0.13 // total buffer length (~130ms; both beeps + tiny tail)
 const ATTACK_S = 0.004 // fast, click-free ramp up
@@ -123,6 +125,7 @@ export function primeScanSuccess(): void {
 
 /** Play the confirmation double beep. Call only after a scan has validated and saved. */
 export function playScanSuccess(): void {
+  if (isSoundMuted()) return
   const audioCtx = getCtx()
   if (!audioCtx) return
   try {

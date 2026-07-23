@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react'
+import { isSoundMuted } from '@/lib/soundMuted'
 
 function tone(
   ctx: AudioContext,
@@ -62,6 +63,7 @@ export function useRaffleDrawSfx() {
   const ctxRef = useRef<AudioContext | null>(null)
 
   function getCtx(): AudioContext | null {
+    if (isSoundMuted()) return null
     try {
       if (!ctxRef.current) ctxRef.current = new AudioContext()
       if (ctxRef.current.state === 'suspended') void ctxRef.current.resume()

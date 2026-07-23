@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Award, ClipboardCheck, Crown, Gift, Maximize2, Minimize2, Pause, Play, RotateCcw, ScanLine, Sparkles, Trophy, Users, X } from 'lucide-react'
+import { Award, ClipboardCheck, Crown, Gift, Minimize2, Pause, Play, RotateCcw, ScanLine, Sparkles, Trophy, Users, X } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { he } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils'
 import { useSound } from '@/hooks/useSound'
 import { useCelebrationSound } from '@/hooks/useCelebrationSound'
 import { calculateCeremonyReadiness, CEREMONY_MIN_PARTICIPANTS } from '@/lib/ceremonyReadiness'
-import { SoundToggle } from './SoundToggle'
 import { LeaderboardEmptyState } from './LeaderboardEmptyState'
 import { AvatarCircle } from '@/components/ui/AvatarCircle'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
@@ -476,32 +475,15 @@ function AmbientBackdrop() {
 function StageHeader({
   eventName,
   eventLogoUrl,
-  muted,
-  onToggleMute,
-  fullscreen,
-  onToggleFullscreen,
 }: {
   eventName?: string
   eventLogoUrl?: string | null
-  muted: boolean
-  onToggleMute: () => void
-  fullscreen: boolean
-  onToggleFullscreen: () => void
 }) {
+  // Fullscreen / sound now live in the viewport-level ScreenControls toolbar,
+  // not in this scaled header - so it only carries the centered event title.
   return (
-    <header className="relative z-20 flex h-24 items-start justify-between px-6 pt-5 md:px-10">
-      <div className="flex items-center gap-3">
-        <SoundToggle muted={muted} onToggle={onToggleMute} />
-        <button
-          type="button"
-          onClick={onToggleFullscreen}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-white/65 text-muted shadow-sm backdrop-blur transition hover:text-primary-text"
-          title={fullscreen ? 'יציאה ממסך מלא' : 'מסך מלא'}
-        >
-          {fullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
-        </button>
-      </div>
-      <div className="pointer-events-none absolute left-1/2 top-5 flex -translate-x-1/2 flex-col items-center gap-2 text-center">
+    <header className="relative z-20 flex h-24 items-start justify-center px-6 pt-5 md:px-10">
+      <div className="pointer-events-none flex flex-col items-center gap-2 text-center">
         <div className="flex items-center gap-3">
           {eventLogoUrl ? (
             <img src={eventLogoUrl} alt={eventName || ''} className="h-14 w-14 rounded-2xl object-cover shadow-[0_0_28px_rgba(255,107,53,0.24)]" />
@@ -516,7 +498,6 @@ function StageHeader({
           </div>
         </div>
       </div>
-      <div className="w-10" />
     </header>
   )
 }
@@ -1379,34 +1360,15 @@ function FinalSummaryPhase({
 function ArenaNotReadyScreen({
   eventName,
   eventLogoUrl,
-  muted,
-  onToggleMute,
-  fullscreen,
-  onToggleFullscreen,
 }: {
   eventName?: string
   eventLogoUrl?: string | null
-  muted: boolean
-  onToggleMute: () => void
-  fullscreen: boolean
-  onToggleFullscreen: () => void
 }) {
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-app-radial font-sans text-foreground" dir="rtl">
       <AmbientBackdrop />
-      <header className="relative z-20 flex h-24 items-start justify-between px-6 pt-5 md:px-10">
-        <div className="flex items-center gap-3">
-          <SoundToggle muted={muted} onToggle={onToggleMute} />
-          <button
-            type="button"
-            onClick={onToggleFullscreen}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-white/65 text-muted shadow-sm backdrop-blur transition hover:text-primary-text"
-            title={fullscreen ? 'יציאה ממסך מלא' : 'מסך מלא'}
-          >
-            {fullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
-          </button>
-        </div>
-        <div className="pointer-events-none absolute left-1/2 top-5 flex -translate-x-1/2 flex-col items-center gap-2 text-center">
+      <header className="relative z-20 flex h-24 items-start justify-center px-6 pt-5 md:px-10">
+        <div className="pointer-events-none flex flex-col items-center gap-2 text-center">
           <div className="flex items-center gap-3">
             {eventLogoUrl ? (
               <img src={eventLogoUrl} alt={eventName || ''} className="h-14 w-14 rounded-2xl object-cover shadow-[0_0_28px_rgba(255,107,53,0.24)]" />
@@ -1421,7 +1383,6 @@ function ArenaNotReadyScreen({
             </div>
           </div>
         </div>
-        <div className="w-10" />
       </header>
 
       <main className="absolute inset-x-6 bottom-[112px] top-[156px] z-10 flex items-center justify-center px-2 md:inset-x-10">
@@ -1488,13 +1449,12 @@ function ProgressChrome({ activeDot, count, onReplay, paused, onTogglePause }: {
 
 export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCeremonyProps) {
   const { rankedP, rankedG, hasGroups, totalGroupCount, taskCountByP, groupTaskCounts, txByParticipant, txByGroup, topPByGroup, taskStats, pgMap, totalScans, totalParticipants, totalPointsEarned, totalRewardsAwarded, ceremonyReadiness, loading, error } = useLeaderboardData(eventId)
-  const { play, playApplause, muted, toggleMute } = useSound()
+  const { playApplause, muted } = useSound()
   const { play: playFanfare } = useCelebrationSound()
   const [phaseIndex, setPhaseIndex] = useState(0)
   const [replayNonce, setReplayNonce] = useState(0)
   const [paused, setPaused] = useState(false)
   const [summaryInteracting, setSummaryInteracting] = useState(false)
-  const [fullscreen, setFullscreen] = useState(false)
   const stageRef = useRef<HTMLDivElement | null>(null)
   const applausePhaseRef = useRef<string | null>(null)
   const stageScale = useCeremonyScale()
@@ -1524,14 +1484,6 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
   }, [autoLoop, error, loading, paused, summaryInteracting, phase, phases.length, rankedP.length, replayNonce, revealSpeed])
 
   useEffect(() => {
-    function handleFullscreenChange() {
-      setFullscreen(Boolean(document.fullscreenElement))
-    }
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
-  }, [])
-
-  useEffect(() => {
     if (!phase || !isChampionPhase || applausePhaseRef.current === phase.kind) return undefined
     applausePhaseRef.current = phase.kind
     const timer = window.setTimeout(() => {
@@ -1540,23 +1492,6 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
     }, 200)
     return () => window.clearTimeout(timer)
   }, [isChampionPhase, muted, phase, playApplause, playFanfare])
-
-  function handleSoundToggle() {
-    toggleMute()
-    if (muted) play()
-  }
-
-  function handleToggleFullscreen() {
-    try {
-      if (document.fullscreenElement) {
-        document.exitFullscreen()
-      } else {
-        stageRef.current?.requestFullscreen()
-      }
-    } catch {
-      // Fullscreen can be blocked by browser policy; display mode still works.
-    }
-  }
 
   function handleReplay() {
     applausePhaseRef.current = null
@@ -1612,14 +1547,7 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
 
   if (!ceremonyReadiness.isReady) {
     return (
-      <ArenaNotReadyScreen
-        eventName={eventName}
-        eventLogoUrl={eventLogoUrl}
-        muted={muted}
-        onToggleMute={handleSoundToggle}
-        fullscreen={fullscreen}
-        onToggleFullscreen={handleToggleFullscreen}
-      />
+      <ArenaNotReadyScreen eventName={eventName} eventLogoUrl={eventLogoUrl} />
     )
   }
 
@@ -1646,7 +1574,7 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
           className="absolute left-1/2 top-1/2 h-[1080px] w-[1920px] origin-center"
           style={{ transform: `translate(-50%, -50%) scale(${CONTENT_SCALE})` }}
         >
-          <StageHeader eventName={eventName} eventLogoUrl={eventLogoUrl} muted={muted} onToggleMute={handleSoundToggle} fullscreen={fullscreen} onToggleFullscreen={handleToggleFullscreen} />
+          <StageHeader eventName={eventName} eventLogoUrl={eventLogoUrl} />
           <main className="relative z-10 h-[928px] px-2 pb-16">
             <AnimatePresence mode="wait">
               <motion.section

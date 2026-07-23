@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
+import { ScreenControls } from '@/components/ui/ScreenControls'
 import { supabase } from '@/lib/supabase'
 import { LotteryBroadcastLayout } from '@/components/live-events/lottery/LotteryBroadcastLayout'
 import { LotteryConfigurationCard } from '@/components/live-events/lottery/LotteryConfigurationCard'
@@ -66,11 +67,13 @@ export function LotteryPresentationPage() {
     setSession(loaded)
   }, [id, runId])
 
+  // The screen runs in the same tab now (no longer its own window), so leaving
+  // means navigating back to the control center rather than closing the tab.
   const handleClose = useMemo(
     () => () => {
       if (runId) clearLotterySession(runId)
-      window.close()
-      if (id) navigate(`/events/${id}/control`, { replace: true })
+      if (id) navigate(`/events/${id}/control`)
+      else navigate('/events')
     },
     [runId, id, navigate],
   )
@@ -88,46 +91,60 @@ export function LotteryPresentationPage() {
 
   if (!id) {
     return (
-      <LotteryBroadcastLayout
-        stage={
-          <div className="max-w-md text-center">
-            <p className="text-2xl font-black text-foreground">ההגרלה אינה זמינה</p>
-            <p className="mt-3 text-base font-semibold text-muted">
-              הפעילו מחדש מתוך הפעלות בזמן אמת.
-            </p>
-          </div>
-        }
-        dock={<p className="w-full text-center text-sm font-medium text-muted">אין פעולות זמינות</p>}
-      />
+      <>
+        <ScreenControls to="/events" />
+        <LotteryBroadcastLayout
+          stage={
+            <div className="max-w-md text-center">
+              <p className="text-2xl font-black text-foreground">ההגרלה אינה זמינה</p>
+              <p className="mt-3 text-base font-semibold text-muted">
+                הפעילו מחדש מתוך הפעלות בזמן אמת.
+              </p>
+            </div>
+          }
+          dock={<p className="w-full text-center text-sm font-medium text-muted">אין פעולות זמינות</p>}
+        />
+      </>
     )
   }
 
   // Preparing / setup - same layout, stage placeholder + organizer dock.
   if (!runId) {
-    return <LotteryConfigurationCard eventId={id} onLaunch={handleLaunch} />
+    return (
+      <>
+        <ScreenControls onBack={handleClose} />
+        <LotteryConfigurationCard eventId={id} onLaunch={handleLaunch} />
+      </>
+    )
   }
 
   if (session === undefined) return <FullPageLoader />
 
   if (!session) {
     return (
-      <LotteryBroadcastLayout
-        stage={<LotteryPreparingStage />}
-        dock={
-          <p className="w-full text-center text-sm font-medium text-muted">
-            ההגרלה אינה זמינה - הפעילו מחדש מתוך הפעלות בזמן אמת.
-          </p>
-        }
-      />
+      <>
+        <ScreenControls onBack={handleClose} />
+        <LotteryBroadcastLayout
+          stage={<LotteryPreparingStage />}
+          dock={
+            <p className="w-full text-center text-sm font-medium text-muted">
+              ההגרלה אינה זמינה - הפעילו מחדש מתוך הפעלות בזמן אמת.
+            </p>
+          }
+        />
+      </>
     )
   }
 
   return (
-    <LotteryPresentation
-      config={session.config}
-      participants={session.participants}
-      isTrial={isTrial}
-      onClose={handleClose}
-    />
+    <>
+      <ScreenControls onBack={handleClose} />
+      <LotteryPresentation
+        config={session.config}
+        participants={session.participants}
+        isTrial={isTrial}
+        onClose={handleClose}
+      />
+    </>
   )
 }

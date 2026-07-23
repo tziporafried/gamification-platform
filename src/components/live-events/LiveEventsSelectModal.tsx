@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -241,6 +242,7 @@ export function LiveEventsSelectModal({
     return { available: launchable, upcoming: soon }
   }, [])
   const reduceMotion = useReducedMotion()
+  const navigate = useNavigate()
   const dialogRef = useRef<HTMLDivElement>(null)
   const restoreFocusRef = useRef<HTMLElement | null>(null)
   const titleId = useId()
@@ -323,7 +325,7 @@ export function LiveEventsSelectModal({
       launchable: true,
     })
     onCloseRef.current()
-    window.open(`/events/${eventId}/lottery`, '_blank', 'noopener,noreferrer')
+    navigate(`/events/${eventId}/lottery`)
   }
 
   function handleClose() {

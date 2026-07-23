@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { isSoundMuted, subscribeSoundMuted } from '@/lib/soundMuted'
 
 /** Single continuous intro bed (trimmed + full, ~20.08s). */
 export const LOTTERY_INTRO_BED_SOUND_SRC = '/sounds/lottery-intro-bed.mp3'
@@ -91,7 +92,19 @@ export function useLotteryPresentationSound() {
 
   useEffect(() => () => stop(), [stop])
 
+  // Toggling mute silences (or restores) music that is already playing - the
+  // track keeps running at volume 0 rather than stopping, so its onEnded timing
+  // is untouched.
+  useEffect(
+    () =>
+      subscribeSoundMuted(() => {
+        if (audioRef.current) audioRef.current.muted = isSoundMuted()
+      }),
+    [],
+  )
+
   function getCtx(): AudioContext | null {
+    if (isSoundMuted()) return null
     try {
       if (!ctxRef.current) ctxRef.current = new AudioContext()
       if (ctxRef.current.state === 'suspended') void ctxRef.current.resume()
@@ -282,6 +295,10 @@ export function useLotteryPresentationSound() {
         const src = track === 'draw' ? LOTTERY_DRAW_SOUND_SRC : LOTTERY_INTRO_BED_SOUND_SRC
         const audio = new Audio(src)
         audio.volume = options?.volume ?? (track === 'draw' ? 0.78 : 0.7)
+        // Stay muted-but-playing rather than skipped: the ceremony advances on
+        // this track's onEnded (the intro bed gates the draw), so it must still
+        // run its full length even with sound off.
+        audio.muted = isSoundMuted()
         audio.loop = options?.loop ?? false
         audioRef.current = audio
         if (options?.onEnded) {
