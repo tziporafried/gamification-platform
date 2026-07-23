@@ -29,7 +29,12 @@ const NOTES = [523.25, 659.25, 783.99, 1046.5, 1318.5]
 const NOTE_GAP_S = 0.11 // spacing between note onsets
 const ATTACK_S = 0.03 // linear ramp up - soft, click-free
 const TAIL_S = 0.55 // exponential decay to silence
-const PEAK = 0.2 // per-note linear peak
+/**
+ * Per-note linear peak. The five tails overlap, so the summed signal peaks at
+ * ~0.49 - loud and dominant in a noisy room, still ~2dB under the prize fanfare
+ * so a win stays the bigger moment. Raising this to 0.5 makes the two equal.
+ */
+const PEAK = 0.4
 
 // ── Singletons ────────────────────────────────────────────────────────────────
 type WindowWithWebkit = Window & { webkitAudioContext?: typeof AudioContext }
