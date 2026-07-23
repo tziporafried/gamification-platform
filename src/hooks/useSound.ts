@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react'
-import { toggleSoundMuted, useSoundMuted } from '@/lib/soundMuted'
+import { toggleSoundMuted, useSoundMuted, type SoundScope } from '@/lib/soundMuted'
 
 function createNoiseBuffer(ctx: AudioContext, duration: number): AudioBuffer {
   const sampleRate = ctx.sampleRate
@@ -12,11 +12,11 @@ function createNoiseBuffer(ctx: AudioContext, duration: number): AudioBuffer {
   return buffer
 }
 
-export function useSound() {
+export function useSound(scope: SoundScope = 'leaderboard') {
   const ctxRef = useRef<AudioContext | null>(null)
   const noiseBufferRef = useRef<AudioBuffer | null>(null)
-  // App-wide mute, shared with every other screen and the presentation toolbar.
-  const muted = useSoundMuted()
+  // Per-screen mute (this screen's own toggle), shared with the toolbar.
+  const muted = useSoundMuted(scope)
 
   function getCtx(): AudioContext | null {
     try {
@@ -109,8 +109,8 @@ export function useSound() {
   }, [muted])
 
   const toggleMute = useCallback(() => {
-    toggleSoundMuted()
-  }, [])
+    toggleSoundMuted(scope)
+  }, [scope])
 
   return { play, playApplause, muted, toggleMute }
 }

@@ -43,7 +43,7 @@ export function EventDisplayPage() {
 
   return (
     <div className="relative min-h-screen bg-app-radial">
-      <ScreenControls to={`/events/${event.id}/control`} />
+      <ScreenControls to={`/events/${event.id}/control`} soundScope="leaderboard" />
       <FloatingIconsLayer />
       <WinnersCeremony
         eventId={event.id}

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, Maximize2, Minimize2, Volume2, VolumeX } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { toggleSoundMuted, useSoundMuted } from '@/lib/soundMuted'
+import { toggleSoundMuted, useSoundMuted, type SoundScope } from '@/lib/soundMuted'
 
 /**
  * Shared look for the fullscreen-screen controls (back / fullscreen / sound):
@@ -25,6 +25,8 @@ interface ScreenControlsProps {
   to?: string
   /** Overrides back navigation entirely - e.g. to clean up session state first. */
   onBack?: () => void
+  /** Which screen's independent sound mute the speaker toggles. */
+  soundScope: SoundScope
   label?: string
   className?: string
 }
@@ -54,9 +56,9 @@ function toggleFullscreen() {
  * and sound are self-contained: fullscreen drives the document element, and the
  * speaker toggles the app-wide mute that every screen's audio honours.
  */
-export function ScreenControls({ to, onBack, label = 'חזרה', className }: ScreenControlsProps) {
+export function ScreenControls({ to, onBack, soundScope, label = 'חזרה', className }: ScreenControlsProps) {
   const navigate = useNavigate()
-  const muted = useSoundMuted()
+  const muted = useSoundMuted(soundScope)
   const [fullscreen, setFullscreen] = useState(false)
 
   useEffect(() => {
@@ -94,7 +96,7 @@ export function ScreenControls({ to, onBack, label = 'חזרה', className }: Sc
 
       <button
         type="button"
-        onClick={toggleSoundMuted}
+        onClick={() => toggleSoundMuted(soundScope)}
         aria-label={muted ? 'הפעלת סאונד' : 'השתקת סאונד'}
         title={muted ? 'הפעלת סאונד' : 'השתקת סאונד'}
         className={iconButtonClass}

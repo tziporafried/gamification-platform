@@ -63,7 +63,7 @@ export function useRaffleDrawSfx() {
   const ctxRef = useRef<AudioContext | null>(null)
 
   function getCtx(): AudioContext | null {
-    if (isSoundMuted()) return null
+    if (isSoundMuted('lottery')) return null
     try {
       if (!ctxRef.current) ctxRef.current = new AudioContext()
       if (ctxRef.current.state === 'suspended') void ctxRef.current.resume()

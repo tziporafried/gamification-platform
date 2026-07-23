@@ -98,13 +98,13 @@ export function useLotteryPresentationSound() {
   useEffect(
     () =>
       subscribeSoundMuted(() => {
-        if (audioRef.current) audioRef.current.muted = isSoundMuted()
+        if (audioRef.current) audioRef.current.muted = isSoundMuted('lottery')
       }),
     [],
   )
 
   function getCtx(): AudioContext | null {
-    if (isSoundMuted()) return null
+    if (isSoundMuted('lottery')) return null
     try {
       if (!ctxRef.current) ctxRef.current = new AudioContext()
       if (ctxRef.current.state === 'suspended') void ctxRef.current.resume()
@@ -298,7 +298,7 @@ export function useLotteryPresentationSound() {
         // Stay muted-but-playing rather than skipped: the ceremony advances on
         // this track's onEnded (the intro bed gates the draw), so it must still
         // run its full length even with sound off.
-        audio.muted = isSoundMuted()
+        audio.muted = isSoundMuted('lottery')
         audio.loop = options?.loop ?? false
         audioRef.current = audio
         if (options?.onEnded) {

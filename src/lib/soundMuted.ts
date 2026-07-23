@@ -1,52 +1,48 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * App-wide sound mute, shared by every presentation screen (leaderboard,
- * scanner, lottery). One flag so the toolbar's speaker toggle silences whatever
- * page you're on, and the choice persists across screens and reloads.
+ * Per-screen sound mute. Each fullscreen presentation screen keeps its own
+ * independent on/off, so muting the scanner does not silence the lottery or the
+ * leaderboard.
  *
- * The key predates this store - the leaderboard already persisted its mute here
- * (see the old useSound), so reusing it carries that preference over.
+ * Deliberately in-memory only: it is NOT persisted, so every page load / refresh
+ * resets sound back ON (unmuted) for every screen. The toggle only lives for the
+ * current session.
  */
-const STORAGE_KEY = 'leaderboard-sound-muted'
+export type SoundScope = 'scan' | 'lottery' | 'leaderboard'
 
-function readInitial(): boolean {
-  try {
-    return localStorage.getItem(STORAGE_KEY) === 'true'
-  } catch {
-    return false
-  }
+const state: Record<SoundScope, boolean> = {
+  scan: false,
+  lottery: false,
+  leaderboard: false,
 }
-
-let muted = readInitial()
 const listeners = new Set<() => void>()
 
-export function isSoundMuted(): boolean {
-  return muted
+export function isSoundMuted(scope: SoundScope): boolean {
+  return state[scope]
 }
 
-export function setSoundMuted(next: boolean): void {
-  if (next === muted) return
-  muted = next
-  try {
-    localStorage.setItem(STORAGE_KEY, String(next))
-  } catch {
-    // Storage blocked - the in-memory flag still drives this session.
-  }
+export function setSoundMuted(scope: SoundScope, next: boolean): void {
+  if (next === state[scope]) return
+  state[scope] = next
   listeners.forEach((fn) => fn())
 }
 
-export function toggleSoundMuted(): void {
-  setSoundMuted(!muted)
+export function toggleSoundMuted(scope: SoundScope): void {
+  setSoundMuted(scope, !state[scope])
 }
 
-/** Run `fn` whenever the mute flag flips; returns an unsubscribe. */
+/** Run `fn` whenever any scope's mute flips; returns an unsubscribe. */
 export function subscribeSoundMuted(fn: () => void): () => void {
   listeners.add(fn)
   return () => listeners.delete(fn)
 }
 
 /** Reactive read for components (e.g. the toolbar speaker icon). */
-export function useSoundMuted(): boolean {
-  return useSyncExternalStore(subscribeSoundMuted, isSoundMuted, isSoundMuted)
+export function useSoundMuted(scope: SoundScope): boolean {
+  return useSyncExternalStore(
+    subscribeSoundMuted,
+    () => state[scope],
+    () => state[scope],
+  )
 }

@@ -415,7 +415,7 @@ function useReducedMotion(): boolean {
 }
 
 function playSuccessChime() {
-  if (isSoundMuted()) return
+  if (isSoundMuted('scan')) return
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext
@@ -4025,7 +4025,7 @@ export function EventKioskPage() {
 
   return (
     <>
-      <ScreenControls to={`/events/${event.id}/control`} />
+      <ScreenControls to={`/events/${event.id}/control`} soundScope="scan" />
       <KioskViewport event={event} data={data} gameStarted={gameStarted} />
     </>
   )

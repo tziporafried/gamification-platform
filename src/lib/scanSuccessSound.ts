@@ -125,7 +125,7 @@ export function primeScanSuccess(): void {
 
 /** Play the confirmation double beep. Call only after a scan has validated and saved. */
 export function playScanSuccess(): void {
-  if (isSoundMuted()) return
+  if (isSoundMuted('scan')) return
   const audioCtx = getCtx()
   if (!audioCtx) return
   try {

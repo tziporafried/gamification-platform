@@ -92,7 +92,7 @@ export function LotteryPresentationPage() {
   if (!id) {
     return (
       <>
-        <ScreenControls to="/events" />
+        <ScreenControls to="/events" soundScope="lottery" />
         <LotteryBroadcastLayout
           stage={
             <div className="max-w-md text-center">
@@ -112,7 +112,7 @@ export function LotteryPresentationPage() {
   if (!runId) {
     return (
       <>
-        <ScreenControls onBack={handleClose} />
+        <ScreenControls onBack={handleClose} soundScope="lottery" />
         <LotteryConfigurationCard eventId={id} onLaunch={handleLaunch} />
       </>
     )
@@ -123,7 +123,7 @@ export function LotteryPresentationPage() {
   if (!session) {
     return (
       <>
-        <ScreenControls onBack={handleClose} />
+        <ScreenControls onBack={handleClose} soundScope="lottery" />
         <LotteryBroadcastLayout
           stage={<LotteryPreparingStage />}
           dock={
@@ -138,7 +138,7 @@ export function LotteryPresentationPage() {
 
   return (
     <>
-      <ScreenControls onBack={handleClose} />
+      <ScreenControls onBack={handleClose} soundScope="lottery" />
       <LotteryPresentation
         config={session.config}
         participants={session.participants}

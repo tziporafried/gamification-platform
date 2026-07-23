@@ -1,11 +1,11 @@
 import { useCallback, useRef } from 'react'
-import { isSoundMuted } from '@/lib/soundMuted'
+import { isSoundMuted, type SoundScope } from '@/lib/soundMuted'
 
-export function useCelebrationSound() {
+export function useCelebrationSound(scope: SoundScope = 'leaderboard') {
   const ctxRef = useRef<AudioContext | null>(null)
 
   const play = useCallback(() => {
-    if (isSoundMuted()) return
+    if (isSoundMuted(scope)) return
     try {
       if (!ctxRef.current) {
         ctxRef.current = new AudioContext()
@@ -51,7 +51,7 @@ export function useCelebrationSound() {
     } catch {
       // Web Audio API not supported or blocked - silent failure
     }
-  }, [])
+  }, [scope])
 
   return { play }
 }
