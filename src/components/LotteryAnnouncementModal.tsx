@@ -193,7 +193,8 @@ export function LotteryAnnouncementModal() {
                 width: p.size,
                 height: p.size,
                 background: p.color,
-                filter: 'blur(0.5px)',
+                // No blur filter: a 0.5px blur is imperceptible but forces a
+                // dedicated GPU layer per particle, and this loops forever.
               }}
               animate={{ y: [0, -14, 0], opacity: [0.25, 0.75, 0.25] }}
               transition={{
@@ -211,14 +212,17 @@ export function LotteryAnnouncementModal() {
             transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
           >
             {/*
-              Static stand-in for what used to be a `drop-shadow` filter on the
-              image itself. A CSS filter on a looping animated image is
-              re-rasterised on every one of its frames, forever, on every page -
-              this draws once instead.
+              Soft ground shadow. A radial-gradient paints it without a `blur`
+              filter, so it costs no extra GPU layer under the looping image -
+              a CSS filter here would re-rasterise on every frame, forever.
             */}
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute bottom-[14%] left-1/2 h-6 w-[52%] -translate-x-1/2 rounded-[50%] bg-[rgba(120,90,200,0.20)] blur-lg"
+              className="pointer-events-none absolute bottom-[13%] left-1/2 h-8 w-[58%] -translate-x-1/2"
+              style={{
+                background:
+                  'radial-gradient(ellipse at center, rgba(120,90,200,0.22), rgba(120,90,200,0) 70%)',
+              }}
             />
             <picture>
               {/*
