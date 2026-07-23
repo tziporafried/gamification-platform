@@ -1,15 +1,15 @@
-import { useMemo } from 'react'
-import { Crown, Gift, ScanLine, Trophy, WifiOff, HelpCircle } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { Crown, ScanLine, Trophy, WifiOff, HelpCircle, Zap } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { ControlActionCard, FloatingActionIcon } from '@/components/wizard/ControlActionCard'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
+import { LiveEventsSelectModal, type LiveEventsOriginRect } from '@/components/live-events/LiveEventsSelectModal'
 import type { GamePack } from '@/lib/offline/types'
 
 interface OfflineHubProps {
   pack: GamePack
   onScan: () => void
   onBoard: () => void
-  onLottery?: () => void
   onInstructions?: () => void
 }
 
@@ -21,24 +21,38 @@ interface OfflineHubProps {
  * already knows. The settings card and readiness checklist are left out: an
  * exported game can't be edited.
  */
-export function OfflineHub({ pack, onScan, onBoard, onLottery, onInstructions }: OfflineHubProps) {
+export function OfflineHub({ pack, onScan, onBoard, onInstructions }: OfflineHubProps) {
   // Desynchronised animation phases, exactly as the control center does it, so
   // the cards never float in lockstep.
   const cardAnim = useMemo(() => ({
     kioskFloat: Math.random(),
     displayFloat: Math.random(),
-    lotteryFloat: Math.random(),
+    liveFloat: Math.random(),
     scanLine: -3 * Math.random(),
     borderPulse: -3 * Math.random(),
+    borderPulseLive: { duration: 2.8, delay: -2.8 * Math.random() },
     crown: -(2.2 + 2.5 * Math.random()),
     pulseGlow: -2.5 * Math.random(),
   }), [])
+
+  // The live-events launcher, same as online: the card opens a popup that
+  // expands out of its own bounds, and the lottery is launched from inside it.
+  const [liveEventsOpen, setLiveEventsOpen] = useState(false)
+  const [liveEventsOrigin, setLiveEventsOrigin] = useState<LiveEventsOriginRect | null>(null)
+  const liveEventsCardRef = useRef<HTMLDivElement>(null)
 
   return (
     <div className="relative min-h-screen overflow-y-auto bg-app-radial" dir="rtl">
       <FloatingIconsLayer />
 
-      <main className="relative z-10 mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center px-4 py-8">
+      <LiveEventsSelectModal
+        isOpen={liveEventsOpen}
+        onClose={() => setLiveEventsOpen(false)}
+        eventId={pack.event.id}
+        originRect={liveEventsOrigin}
+      />
+
+      <main className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center px-4 py-8">
         <motion.div className="mb-14 flex shrink-0 flex-col items-center text-center" initial={false}>
           {pack.event.logo_url && (
             <img
@@ -76,7 +90,7 @@ export function OfflineHub({ pack, onScan, onBoard, onLottery, onInstructions }:
           </div>
         </motion.div>
 
-        <div className="grid shrink-0 items-stretch gap-5 sm:grid-cols-2">
+        <div className="grid shrink-0 items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {/* `contents` keeps the button itself the grid item; the wrapper only
               carries a stable hook for scripts/shoot.mjs and verify-offline-player.mjs. */}
           <div className="contents" data-hub-action="scan">
@@ -136,15 +150,23 @@ export function OfflineHub({ pack, onScan, onBoard, onLottery, onInstructions }:
           />
           </div>
 
-          {/* Full-width below the two: a featured row for the lottery ceremony. */}
-          {onLottery && (
-          <div className="sm:col-span-2" data-hub-action="lottery">
+          {/* Third card, exactly as online: opens the live-events picker popup
+              (the lottery is launched from inside it), not a screen of its own. */}
+          <div className="contents" data-hub-action="live-events">
           <ControlActionCard
-            onClick={onLottery}
-            gradient="gradient-reward-starter"
-            title="🎁 הגרלה"
-            description="הגרילו זוכה בטקס חגיגי"
-            cta="פתח ←"
+            onClick={() => {
+              const rect = liveEventsCardRef.current?.getBoundingClientRect()
+              setLiveEventsOrigin(rect
+                ? { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
+                : null)
+              setLiveEventsOpen(true)
+            }}
+            surfaceRef={liveEventsCardRef}
+            surfaceHidden={liveEventsOpen}
+            gradient="gradient-reward-medium"
+            title="הפעלות בזמן אמת"
+            description="הפעילו הגרלות, בונוסים ואירועים מיוחדים במהלך המשחק."
+            cta="בחרו הפעלה ←"
             decoration={
               <motion.div
                 className="pointer-events-none absolute inset-3 rounded-[1.35rem] border border-white/20"
@@ -153,17 +175,21 @@ export function OfflineHub({ pack, onScan, onBoard, onLottery, onInstructions }:
                   '0 0 0 6px color-mix(in srgb, white 14%, transparent)',
                   '0 0 0 0 color-mix(in srgb, white 0%, transparent)',
                 ] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: cardAnim.borderPulse }}
+                transition={{
+                  duration: cardAnim.borderPulseLive.duration,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                  delay: cardAnim.borderPulseLive.delay,
+                }}
               />
             }
             icon={
-              <FloatingActionIcon phase={cardAnim.lotteryFloat} pulsePhase={cardAnim.pulseGlow} pulse>
-                <Gift size={32} className="text-white" strokeWidth={2.25} />
+              <FloatingActionIcon phase={cardAnim.liveFloat} pulsePhase={cardAnim.pulseGlow} pulse>
+                <Zap size={32} className="text-white" strokeWidth={2.25} />
               </FloatingActionIcon>
             }
           />
           </div>
-          )}
         </div>
       </main>
     </div>

@@ -51,7 +51,6 @@ function HubRoute({ pack }: { pack: GamePack }) {
       pack={pack}
       onScan={() => navigate(`${base}/kiosk`)}
       onBoard={() => navigate(`${base}/display`)}
-      onLottery={() => navigate(`${base}/lottery`)}
       onInstructions={() => navigate('/instructions')}
     />
   )
