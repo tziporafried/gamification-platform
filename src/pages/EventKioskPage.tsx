@@ -855,12 +855,12 @@ function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () 
     overflow: 'visible',
   } as const
 
-  // With a logo the name sits just above it rather than across it, so neither
-  // covers the other. It stays absolutely positioned - the logo keeps its place
-  // in the stack - and the wrapper reserves the height it floats into, because
-  // the centre stack clips anything above its top edge.
+  // With a logo the name rides at the very top of the centre column, level with
+  // the top edge of the side banners, and the logo tucks in just under it. It
+  // is absolutely positioned and the wrapper reserves no room for it, so the
+  // name costs the scanner card nothing.
   const namePlacement: React.CSSProperties = hasLogo
-    ? { bottom: 'calc(100% + 10px)', transform: 'translateX(-50%)' }
+    ? { top: 0, transform: 'translateX(-50%)' }
     : { top: '50%', transform: 'translate(-50%, -50%)' }
 
   return (
@@ -870,7 +870,6 @@ function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () 
       display: 'inline-block',
       overflow: 'visible',
       maxWidth: '100%',
-      paddingTop: hasLogo ? 'clamp(56px, 8vh, 78px)' : undefined,
     }}>
       <button
         type="button"
