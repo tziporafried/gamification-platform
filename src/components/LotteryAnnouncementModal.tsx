@@ -69,15 +69,31 @@ function wasDismissed(): boolean {
   }
 }
 
+/** Loops of the illustration to play before it freezes (each ~6.5s). */
+const PLAY_MS = 13000
+
 export function LotteryAnnouncementModal() {
   const { pathname } = useLocation()
   // 'pending' renders nothing for the first paint, so localStorage decides the
   // starting view instead of the dialog flashing open and snapping shut.
   const [view, setView] = useState<'pending' | 'open' | 'collapsed'>('pending')
+  // The looping illustration is the popup's dominant continuous GPU cost, and
+  // it only crashed while open. After a couple of loops we freeze it to a
+  // static frame, so an open popup left on screen stops doing perpetual work.
+  const [settled, setSettled] = useState(false)
 
   useEffect(() => {
     setView(wasDismissed() ? 'collapsed' : 'open')
   }, [])
+
+  useEffect(() => {
+    if (view !== 'open') {
+      setSettled(false)
+      return
+    }
+    const id = window.setTimeout(() => setSettled(true), PLAY_MS)
+    return () => window.clearTimeout(id)
+  }, [view])
 
   function collapse() {
     setView('collapsed')
@@ -196,20 +212,19 @@ export function LotteryAnnouncementModal() {
                 // No blur filter: a 0.5px blur is imperceptible but forces a
                 // dedicated GPU layer per particle, and this loops forever.
               }}
-              animate={{ y: [0, -14, 0], opacity: [0.25, 0.75, 0.25] }}
-              transition={{
-                duration: p.duration,
-                delay: p.delay,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
+              animate={settled ? { y: 0, opacity: 0.4 } : { y: [0, -14, 0], opacity: [0.25, 0.75, 0.25] }}
+              transition={
+                settled
+                  ? { duration: 0.6, ease: 'easeOut' }
+                  : { duration: p.duration, delay: p.delay, repeat: Infinity, ease: 'easeInOut' }
+              }
             />
           ))}
 
           <motion.div
             className="relative z-10"
-            animate={{ y: [0, -7, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+            animate={settled ? { y: 0 } : { y: [0, -7, 0] }}
+            transition={settled ? { duration: 0.6 } : { duration: 5, repeat: Infinity, ease: 'easeInOut' }}
           >
             {/*
               Soft ground shadow. A radial-gradient paints it without a `blur`
@@ -224,27 +239,41 @@ export function LotteryAnnouncementModal() {
                   'radial-gradient(ellipse at center, rgba(120,90,200,0.22), rgba(120,90,200,0) 70%)',
               }}
             />
-            <picture>
-              {/*
-                First matching source wins, so the reduced-motion still comes
-                first. The loop runs forever with no pause control, which fails
-                WCAG 2.2.2 for motion over five seconds - this is the opt-out.
-              */}
-              <source
-                media="(prefers-reduced-motion: reduce)"
-                srcSet="/images/lottery-announcement/lottery-poster.png"
-                type="image/png"
-              />
-              <source srcSet="/images/lottery-announcement/lottery.webp" type="image/webp" />
+            {settled ? (
+              // Frozen: a plain static frame, so an open popup left on screen
+              // does no perpetual decode/compositing work.
               <img
-                src="/images/lottery-announcement/lottery.gif"
-                alt="תיבת הגרלה שקופה שאליה עפים פתקים מקופלים, מתנערת, ומתוכה עולה פתק זוכה שנפתח וחושף גביע"
+                src="/images/lottery-announcement/lottery-poster.png"
+                alt=""
+                aria-hidden="true"
                 width={480}
                 height={480}
                 className="relative z-10 mx-auto block h-auto w-full max-w-[280px]"
                 decoding="async"
               />
-            </picture>
+            ) : (
+              <picture>
+                {/*
+                  First matching source wins, so the reduced-motion still comes
+                  first. It also renders the static poster, matching the frozen
+                  state - the opt-out for WCAG 2.2.2 (motion over five seconds).
+                */}
+                <source
+                  media="(prefers-reduced-motion: reduce)"
+                  srcSet="/images/lottery-announcement/lottery-poster.png"
+                  type="image/png"
+                />
+                <source srcSet="/images/lottery-announcement/lottery.webp" type="image/webp" />
+                <img
+                  src="/images/lottery-announcement/lottery.gif"
+                  alt="תיבת הגרלה שקופה שאליה עפים פתקים מקופלים, מתנערת, ומתוכה עולה פתק זוכה שנפתח וחושף גביע"
+                  width={480}
+                  height={480}
+                  className="relative z-10 mx-auto block h-auto w-full max-w-[280px]"
+                  decoding="async"
+                />
+              </picture>
+            )}
           </motion.div>
         </div>
 
