@@ -267,6 +267,11 @@
   color: transparent;
   animation: kiosk-missionNameFlash 3.5s ease-in-out infinite 0.5s;
 }
+/* Emoji keep their own colors instead of being clipped to the shimmer gradient. */
+.kiosk-textEmoji {
+  color: #2E221E;
+  -webkit-text-fill-color: #2E221E;
+}
 .kiosk-wobble { animation: kiosk-wobble 5s ease-in-out infinite; }
 .kiosk-crownPop { animation: kiosk-crownPop 2.4s ease-in-out infinite; }
 .kiosk-tickTap { animation: kiosk-tickTap 1.6s ease-in-out infinite; }

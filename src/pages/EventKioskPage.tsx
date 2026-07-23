@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, type ReactNode } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
@@ -203,6 +203,28 @@ type PrizePanelSnapshot = {
 
 function isGameStarted(event: Event): boolean {
   return event.status === 'active'
+}
+
+// `background-clip: text` paints color emoji as flat gradient blobs, so emoji runs
+// are split out and rendered with their own fill.
+const EMOJI_CHAR = '(?:\\p{Extended_Pictographic}|[\\u{1F1E6}-\\u{1F1FF}]|[#*0-9]\\u{FE0F}?\\u{20E3})'
+const EMOJI_RUN = new RegExp(
+  `(?:${EMOJI_CHAR}[\\u{FE0E}\\u{FE0F}\\u{1F3FB}-\\u{1F3FF}]*(?:\\u{200D}${EMOJI_CHAR}[\\u{FE0E}\\u{FE0F}\\u{1F3FB}-\\u{1F3FF}]*)*)+`,
+  'gu',
+)
+
+function ShimmerText({ text }: { text: string }) {
+  const parts: ReactNode[] = []
+  let last = 0
+  EMOJI_RUN.lastIndex = 0
+  for (let m = EMOJI_RUN.exec(text); m; m = EMOJI_RUN.exec(text)) {
+    if (m.index > last) parts.push(text.slice(last, m.index))
+    parts.push(<span key={m.index} className="kiosk-textEmoji">{m[0]}</span>)
+    last = m.index + m[0].length
+  }
+  if (!parts.length) return <>{text}</>
+  if (last < text.length) parts.push(text.slice(last))
+  return <>{parts}</>
 }
 
 function rewardTier(pts: number): { icon: string; accent: string } {
@@ -2624,7 +2646,7 @@ function TopPrizeCard({
             }
             style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.15 }}
           >
-            {prize?.name ?? '---'}
+            <ShimmerText text={prize?.name ?? '---'} />
           </div>
           {prize && (prize.targetType !== 'all' || prize.winnerMode === 'first') && (
             <div style={{ marginTop: 6, fontSize: 11, fontWeight: 700, color: '#5A8F89', lineHeight: 1.3 }}>
@@ -3257,7 +3279,7 @@ function RecommendedMissionCard({
             }
             style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.15 }}
           >
-            {action?.name ?? '---'}
+            <ShimmerText text={action?.name ?? '---'} />
           </div>
         </div>
 
@@ -3835,7 +3857,6 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
                     )
                   ) : (
                     <>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: '#9A8E88' }}>כוונו את כרטיס הברקוד של המשתתף למסגרת</div>
                       {gameStarted && (
                         <button
                           onClick={() => setShowManual(true)}
