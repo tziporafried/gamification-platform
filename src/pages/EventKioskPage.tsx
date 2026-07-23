@@ -189,6 +189,16 @@ interface KioskData {
   loading: boolean
   error: boolean
   refetch: () => void
+  /** Freeze the prize panels so a win never lands in the banner before its celebration. */
+  holdPrizeReveal: (hold: boolean) => void
+}
+
+/** Everything the teal panel renders about prizes - applied together, or held together. */
+type PrizePanelSnapshot = {
+  awardedPairs: { participant_id: string; reward_id: string }[]
+  chaseParticipants: PrizeChaseParticipant[] | null
+  rewards: RewardRow[] | null
+  allClaimable: TopPrizeRow[] | null
 }
 
 function isGameStarted(event: Event): boolean {
@@ -467,6 +477,48 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
+  // While a scan is on its way to a prize celebration the teal panel must not
+  // spoil the win: fetches keep running, but their prize half is parked here
+  // and applied the moment the celebration takes over the screen.
+  const prizeHoldRef = useRef(false)
+  const pendingPrizeSnapshotRef = useRef<PrizePanelSnapshot | null>(null)
+  const pendingNewestRewardIdRef = useRef<string | null>(null)
+
+  const applyPrizeSnapshot = useCallback((snap: PrizePanelSnapshot) => {
+    if (prizeHoldRef.current) {
+      pendingPrizeSnapshotRef.current = snap
+      return
+    }
+    setPrizeAwardedPairs(snap.awardedPairs)
+    if (snap.chaseParticipants) setPrizeChaseParticipants(snap.chaseParticipants)
+    if (snap.rewards) setRewardsData(snap.rewards)
+    if (snap.allClaimable) {
+      setAllClaimablePrizesData(snap.allClaimable)
+      setTopPrizesData(snap.allClaimable.slice(0, 3))
+    }
+  }, [])
+
+  const flashNewestReward = useCallback((id: string) => {
+    if (prizeHoldRef.current) {
+      pendingNewestRewardIdRef.current = id
+      return
+    }
+    clearTimeout(newestClearTimer.current)
+    setNewestRewardId(id)
+    newestClearTimer.current = setTimeout(() => setNewestRewardId(null), 2200)
+  }, [])
+
+  const holdPrizeReveal = useCallback((hold: boolean) => {
+    prizeHoldRef.current = hold
+    if (hold) return
+    const snap = pendingPrizeSnapshotRef.current
+    const newest = pendingNewestRewardIdRef.current
+    pendingPrizeSnapshotRef.current = null
+    pendingNewestRewardIdRef.current = null
+    if (snap) applyPrizeSnapshot(snap)
+    if (newest) flashNewestReward(newest)
+  }, [applyPrizeSnapshot, flashNewestReward])
+
   const fetchAll = useCallback(async () => {
     if (!eventId) return
     try {
@@ -580,7 +632,12 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
         participant_id: r.participant_id as string,
         reward_id: r.reward_id as string,
       }))
-      setPrizeAwardedPairs(awardedPairs)
+      const prizeSnapshot: PrizePanelSnapshot = {
+        awardedPairs,
+        chaseParticipants: null,
+        rewards: null,
+        allClaimable: null,
+      }
 
       const pointsByParticipant = new Map<string, number>()
       if (pRes.data) {
@@ -590,7 +647,7 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
       }
       if (partRes.data) {
         const seenParticipantIds = new Set<string>()
-        setPrizeChaseParticipants(partRes.data.flatMap((p) => {
+        prizeSnapshot.chaseParticipants = partRes.data.flatMap((p) => {
           const id = p.id as string
           if (seenParticipantIds.has(id)) return []
           seenParticipantIds.add(id)
@@ -601,11 +658,11 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
             groupIds: joins.map((join) => join.group_id).filter(Boolean),
             totalPoints: pointsByParticipant.get(id) ?? 0,
           }]
-        }))
+        })
       }
 
       if (rwRes.data) {
-        setRewardsData(allAwardRows.slice(0, 5).map(r => {
+        prizeSnapshot.rewards = allAwardRows.slice(0, 5).map(r => {
           const reward = Array.isArray(r.reward) ? r.reward[0] : r.reward
           const participant = Array.isArray(r.participant) ? r.participant[0] : r.participant
           const pts: number = reward?.required_points ?? 0
@@ -619,7 +676,7 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
             accent,
             createdAt: (r.awarded_at as string) ?? '',
           }
-        }))
+        })
       }
 
       if (activeRewardsRes.data) {
@@ -650,16 +707,17 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
           groupNames,
           100,
         )
-        setAllClaimablePrizesData(allClaimable)
-        setTopPrizesData(allClaimable.slice(0, 3))
+        prizeSnapshot.allClaimable = allClaimable
       }
+
+      applyPrizeSnapshot(prizeSnapshot)
       setConfiguredRewardsCount(configuredRwRes.count ?? 0)
     } catch {
       setError(true)
     } finally {
       setLoading(false)
     }
-  }, [eventId])
+  }, [eventId, applyPrizeSnapshot])
 
   useEffect(() => { fetchAll() }, [fetchAll])
   useEffect(() => {
@@ -697,9 +755,7 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
         { event: 'INSERT', schema: 'public', table: 'participant_rewards', filter: `event_id=eq.${eventId}` },
         async (payload) => {
           const id: string = (payload.new as { id: string }).id
-          clearTimeout(newestClearTimer.current)
-          setNewestRewardId(id)
-          newestClearTimer.current = setTimeout(() => setNewestRewardId(null), 2200)
+          flashNewestReward(id)
           fetchAll()
         }
       )
@@ -771,7 +827,7 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
     kioskParticipants,
     actionCompletionIndex,
     stats, totalScans: txCount,
-    loading, error, refetch: fetchAll,
+    loading, error, refetch: fetchAll, holdPrizeReveal,
   }
 }
 
@@ -3248,7 +3304,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const {
     recentActivity, rewards, topPrizes, allClaimablePrizes, prizeChaseParticipants, prizeAwardedPairs,
     configuredRewardsCount, newestRewardId,
-    stats, actions, kioskParticipants, actionCompletionIndex, refetch,
+    stats, actions, kioskParticipants, actionCompletionIndex, refetch, holdPrizeReveal,
   } = data
   const hasActivity = recentActivity.length > 0
   const hasAwardedRewards = rewards.length > 0
@@ -3326,11 +3382,12 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const [rewardWin, setRewardWin] = useState<RewardWinDisplay | null>(null)
   const [showManual, setShowManual] = useState(false)
   const [trialLimitOpen, setTrialLimitOpen] = useState(false)
-  const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ text: string; icon: string } | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const scanDismissTimer = useRef<ReturnType<typeof setTimeout>>()
   const rewardDismissTimer = useRef<ReturnType<typeof setTimeout>>()
   const rewardQueueRef = useRef<RewardWinDisplay[]>([])
+  const pendingWinsRef = useRef<{ wins: RewardWinDisplay[]; reducedMotion: boolean } | null>(null)
 
   // Clean up timers on unmount
   useEffect(() => () => {
@@ -3350,16 +3407,29 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     clearTimeout(rewardDismissTimer.current)
     stopRewardFanfare()
     rewardQueueRef.current = []
+    pendingWinsRef.current = null
     setScanResult(null)
     setRewardWin(null)
     setShowManual(false)
-  }, [gameStarted])
+    // No celebration is coming to release it.
+    holdPrizeReveal(false)
+  }, [gameStarted, holdPrizeReveal])
 
-  const showToast = useCallback((msg: string) => {
+  const showToast = useCallback((msg: string, opts?: { icon?: string; ms?: number }) => {
     clearTimeout(toastTimerRef.current)
-    setToastMsg(msg)
-    toastTimerRef.current = setTimeout(() => setToastMsg(null), 4000)
+    setToast({ text: msg, icon: opts?.icon ?? '⚠️' })
+    toastTimerRef.current = setTimeout(() => setToast(null), opts?.ms ?? 4000)
   }, [])
+
+  // A scan landing while a popup is up would yank the card away from the
+  // participant standing there - the operator gets a nudge instead.
+  const popupBusy = scanResult !== null || rewardWin !== null
+  const popupBusyRef = useRef(false)
+  popupBusyRef.current = popupBusy
+
+  const rejectScanWhileBusy = useCallback(() => {
+    showToast('חכה שהסריקה הקודמת תסתיים', { icon: '⏳', ms: 2400 })
+  }, [showToast])
 
   // Pops the next queued celebration or clears the overlay
   const showNextReward = useCallback(() => {
@@ -3367,9 +3437,29 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     const next = rewardQueueRef.current.shift()
     // Last celebration closed - cut the fanfare if it is somehow still running.
     if (!next) { stopRewardFanfare(); setRewardWin(null); return }
+    // The takeover now covers the banners, so the win may land in the feed.
+    holdPrizeReveal(false)
     setRewardWin(next)
     rewardDismissTimer.current = setTimeout(() => showNextReward(), 6200)
-  }, [])
+  }, [holdPrizeReveal])
+
+  // Closes the scan card and hands over to the prize celebration it queued.
+  // Runs both on the timer and when the operator taps the card away, so a
+  // pending win is never dropped - and the banner hold is always released.
+  const finishScanCard = useCallback(() => {
+    clearTimeout(scanDismissTimer.current)
+    setScanResult(null)
+    const pending = pendingWinsRef.current
+    pendingWinsRef.current = null
+    if (pending && pending.wins.length > 0) {
+      if (!pending.reducedMotion) playRewardFanfare()
+      rewardQueueRef.current.push(...pending.wins)
+      showNextReward()
+    } else {
+      holdPrizeReveal(false)
+    }
+    refetch()
+  }, [showNextReward, refetch, holdPrizeReveal])
 
   const triggerScanSuccess = useCallback((result: ScoreSubmitResult, _txId: string, rm: boolean) => {
     // Short confirmation blip the instant the scan validates - independent of the
@@ -3377,6 +3467,11 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     playScanSuccess()
     clearTimeout(scanDismissTimer.current)
     clearTimeout(rewardDismissTimer.current)
+    const { celebrationRewards } = result
+    // A win must not surface in the rewards banner while the scan card is still
+    // up - the prize takeover reveals it first, and releases the hold. Nothing
+    // won here means nothing to protect, so the banners resume at once.
+    if (celebrationRewards.length === 0) holdPrizeReveal(false)
     refetch()
     setScanResult({
       name: result.participantName,
@@ -3387,23 +3482,18 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
       totalPoints: result.participantTotalPoints,
       tone: '#EF8A4E',
     })
-    const { celebrationRewards } = result
+    pendingWinsRef.current = {
+      reducedMotion: rm,
+      wins: celebrationRewards.map(rw => {
+        const { icon } = rewardTier(rw.out_required_points)
+        return { emoji: icon, title: rw.out_reward_name, sub: result.participantName, points: rw.out_required_points }
+      }),
+    }
     if (celebrationRewards.length > 0) {
       trackPrizeRevealed(celebrationRewards.length)
     }
-    scanDismissTimer.current = setTimeout(() => {
-      setScanResult(null)
-      if (celebrationRewards.length > 0) {
-        if (!rm) playRewardFanfare()
-        const wins = celebrationRewards.map(rw => {
-          const { icon } = rewardTier(rw.out_required_points)
-          return { emoji: icon, title: rw.out_reward_name, sub: result.participantName, points: rw.out_required_points }
-        })
-        rewardQueueRef.current.push(...wins)
-        showNextReward()
-      }
-    }, SCAN_SUCCESS_MS)
-  }, [showNextReward, refetch])
+    scanDismissTimer.current = setTimeout(finishScanCard, SCAN_SUCCESS_MS)
+  }, [finishScanCard, refetch, holdPrizeReveal])
 
   const logScoreSubmit = useCallback((source: 'qr_scan' | 'manual_entry', result: ScoreSubmitResult) => {
     // Dev only - this prints participant name and code, which should not land in
@@ -3422,6 +3512,17 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     })
   }, [])
 
+  // The prize half of the banners freezes from the moment a scan is sent: the
+  // reward row (and its realtime echo) can land before we know whether this scan
+  // won anything, and a win belongs to the celebration first. Released here on
+  // failure, in triggerScanSuccess when nothing was won, and by the celebration.
+  const submitScan = useCallback(async (participantCode: string, actionCode: string) => {
+    holdPrizeReveal(true)
+    const response = await submit(participantCode, actionCode)
+    if (!response.ok) holdPrizeReveal(false)
+    return response
+  }, [submit, holdPrizeReveal])
+
   const handleTrialLimit = useCallback(() => {
     trackTrialScanLimitReached(event.id, TRIAL_SCAN_LIMIT)
     trackScanFailed('trial_scan_limit', 'qr_scan')
@@ -3434,7 +3535,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
       showToast('התחרות עדיין לא התחילה')
       return
     }
-    const response = await submit(participantCode, actionCode)
+    const response = await submitScan(participantCode, actionCode)
     if (!response.ok) {
       if (response.code === 'TRIAL_SCAN_LIMIT_REACHED') {
         handleTrialLimit()
@@ -3450,7 +3551,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     }
     logScoreSubmit('qr_scan', response.result)
     triggerScanSuccess(response.result, response.result.transactionId, reducedMotion)
-  }, [gameStarted, submit, showToast, logScoreSubmit, triggerScanSuccess, reducedMotion, handleTrialLimit, isTrial, event.id])
+  }, [gameStarted, submitScan, showToast, logScoreSubmit, triggerScanSuccess, reducedMotion, handleTrialLimit, isTrial, event.id])
 
   const handleScanError = useCallback((message: string) => {
     trackScanFailed('invalid_qr', 'qr_scan')
@@ -3464,6 +3565,16 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     waitProgress,
     reset: resetScanSequence,
   } = useScanSequence({ onPair: handlePair, onError: handleScanError })
+
+  // Swallow reads while the scan card or a prize celebration owns the screen,
+  // so the running sequence is never cut short by the next participant.
+  const handleScanGuarded = useCallback((raw: string) => {
+    if (popupBusyRef.current) {
+      rejectScanWhileBusy()
+      return
+    }
+    handleScan(raw)
+  }, [handleScan, rejectScanWhileBusy])
 
   // Greet the waiting participant by name. Unknown codes still arm - the code
   // is only validated on submit - so this stays null and the copy falls back.
@@ -3479,7 +3590,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     if (showManual || trialLimitOpen) resetScanSequence()
   }, [showManual, trialLimitOpen, resetScanSequence])
 
-  const bind = useHardwareScanner(gameStarted && !showManual && !submitting && !noScan && !trialLimitOpen, handleScan)
+  const bind = useHardwareScanner(gameStarted && !showManual && !submitting && !noScan && !trialLimitOpen, handleScanGuarded)
 
   const handleManualSubmit = useCallback(async (participantCode: string, actionCode: string) => {
     if (!gameStarted) {
@@ -3487,7 +3598,12 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
       showToast('התחרות עדיין לא התחילה')
       return
     }
-    const response = await submit(participantCode, actionCode)
+    // Same rule as the scanner - one participant on screen at a time.
+    if (popupBusyRef.current) {
+      rejectScanWhileBusy()
+      return
+    }
+    const response = await submitScan(participantCode, actionCode)
     if (!response.ok) {
       if (response.code === 'TRIAL_SCAN_LIMIT_REACHED') {
         trackTrialScanLimitReached(event.id, TRIAL_SCAN_LIMIT)
@@ -3507,7 +3623,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     logScoreSubmit('manual_entry', response.result)
     setShowManual(false)
     triggerScanSuccess(response.result, response.result.transactionId, reducedMotion)
-  }, [gameStarted, submit, showToast, logScoreSubmit, triggerScanSuccess, reducedMotion, isTrial, event.id])
+  }, [gameStarted, submitScan, showToast, rejectScanWhileBusy, logScoreSubmit, triggerScanSuccess, reducedMotion, isTrial, event.id])
 
   return (
     <div style={{
@@ -3740,11 +3856,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           {/* Scan-success overlay - covers center column */}
           <ScanSuccessOverlay
             result={scanResult}
-            onDismiss={() => {
-              clearTimeout(scanDismissTimer.current)
-              setScanResult(null)
-              refetch()
-            }}
+            onDismiss={finishScanCard}
             reducedMotion={reducedMotion}
           />
         </div>
@@ -3848,8 +3960,8 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
         </div>
       )}
 
-      {/* Error toast */}
-      {toastMsg && (
+      {/* Error / nudge toast - above every popup, so it reads mid-celebration */}
+      {toast && (
         <div style={{
           position: 'absolute', bottom: 48, left: '50%', transform: 'translateX(-50%)',
           zIndex: 60, background: '#2E221E', color: '#fff',
@@ -3858,7 +3970,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
           whiteSpace: 'nowrap',
         }}>
-          ⚠️ {toastMsg}
+          {toast.icon} {toast.text}
         </div>
       )}
 
