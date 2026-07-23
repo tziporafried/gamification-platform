@@ -17,12 +17,12 @@ import { cn } from '@/lib/utils'
 const STORAGE_KEY = 'announcement-seen:lottery-2026-07'
 
 /**
- * Fullscreen presentation routes. These are projected in front of an audience,
- * so a popup must never cover them. They sit outside AppShell for the same
- * reason, but this component mounts at the router root and would otherwise
- * reach them.
+ * Only the landing page and the events list show the announcement. It mounts at
+ * the router root, so an allowlist keeps it off every other route - including
+ * the event workspace and the fullscreen presentation screens (lottery /
+ * display / kiosk) that are projected in front of an audience.
  */
-const PRESENTATION_ROUTE = /^\/events\/[^/]+\/(lottery|display|kiosk)$/
+const ALLOWED_ROUTES = new Set(['/', '/events'])
 
 /** Drifting motes around the illustration. Positions are percentages. */
 const PARTICLES = [
@@ -88,7 +88,7 @@ export function LotteryAnnouncementModal() {
     }
   }
 
-  if (PRESENTATION_ROUTE.test(pathname)) return null
+  if (!ALLOWED_ROUTES.has(pathname)) return null
 
   return (
     <>
