@@ -590,9 +590,13 @@ function ChampionPhase({
             👑
           </motion.div>
           <p className="text-2xl font-black text-primary-text">{isGroup ? '🏆 אליפות הקבוצות' : 'אלוף המשתתפים'}</p>
-          <div className="mx-auto mt-5 flex h-32 w-32 items-center justify-center rounded-full border-[8px] border-white text-5xl font-black text-white shadow-[0_16px_46px_rgba(46,34,30,0.2)] md:h-40 md:w-40 md:text-6xl" style={{ background: `linear-gradient(135deg, ${color}, ${isGroup ? ORANGE : GOLD})` }}>
-            {isGroup && <Users size={72} />}
-          </div>
+          {/* The medallion carries the group icon. A participant has nothing to
+              put in it, so it is left out rather than shown empty. */}
+          {isGroup && (
+            <div className="mx-auto mt-5 flex h-32 w-32 items-center justify-center rounded-full border-[8px] border-white text-5xl font-black text-white shadow-[0_16px_46px_rgba(46,34,30,0.2)] md:h-40 md:w-40 md:text-6xl" style={{ background: `linear-gradient(135deg, ${color}, ${ORANGE})` }}>
+              <Users size={72} />
+            </div>
+          )}
           <p className="mt-5 text-xl font-black text-muted">{isGroup ? 'הקבוצה המנצחת' : getParticipantGroupSummary(participantGroups, totalGroups)}</p>
           <h2 className="mx-auto mt-2 max-w-[14ch] truncate text-[clamp(4.2rem,8.5vw,7.25rem)] font-black leading-none text-foreground">{name}</h2>
           {!isGroup && (
@@ -645,22 +649,28 @@ function PodiumPhase({ title, items, type }: { title: string; items: (RankedGrou
               transition={{ delay: rank === 1 ? 0.05 : 0.22 + idx * 0.1, type: 'spring', stiffness: 180, damping: 18 }}
             >
               {rank === 1 && <Crown size={52} className="mb-2 animate-crown-glow text-warning-text" fill="currentColor" />}
-              <div className="relative">
-                <div
-                  className="absolute -inset-5 animate-halo-pulse rounded-full blur-xl"
-                  style={{ background: `radial-gradient(circle, ${rank === 1 ? GOLD : color} 0%, transparent 70%)` }}
-                />
-                <div
-                  className={cn(
-                    'relative z-10 flex h-24 w-24 items-center justify-center rounded-full border-[6px] border-white text-3xl font-black text-white md:h-32 md:w-32',
-                    rank === 1 ? 'animate-glow-pulse-gold' : 'animate-glow-pulse',
-                  )}
-                  style={{ background: `linear-gradient(135deg, ${color}, ${rank === 1 ? GOLD : ORANGE})` }}
-                >
-                  {isGroup && <Users size={50} />}
+              {/* Groups get the glowing medallion with their icon; a participant
+                  has nothing to put inside one, so the medal itself is the head. */}
+              {isGroup ? (
+                <div className="relative">
+                  <div
+                    className="absolute -inset-5 animate-halo-pulse rounded-full blur-xl"
+                    style={{ background: `radial-gradient(circle, ${rank === 1 ? GOLD : color} 0%, transparent 70%)` }}
+                  />
+                  <div
+                    className={cn(
+                      'relative z-10 flex h-24 w-24 items-center justify-center rounded-full border-[6px] border-white text-3xl font-black text-white md:h-32 md:w-32',
+                      rank === 1 ? 'animate-glow-pulse-gold' : 'animate-glow-pulse',
+                    )}
+                    style={{ background: `linear-gradient(135deg, ${color}, ${rank === 1 ? GOLD : ORANGE})` }}
+                  >
+                    <Users size={50} />
+                  </div>
+                  <span className="absolute -bottom-2 -right-2 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-white text-3xl shadow-lg">{MEDALS[rank - 1] || rank}</span>
                 </div>
-                <span className="absolute -bottom-2 -right-2 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-white text-3xl shadow-lg">{MEDALS[rank - 1] || rank}</span>
-              </div>
+              ) : (
+                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-4xl shadow-lg md:h-20 md:w-20 md:text-5xl">{MEDALS[rank - 1] || rank}</span>
+              )}
               <h3 className="mt-5 w-full truncate text-center text-3xl font-black text-foreground md:text-4xl">{name}</h3>
               <p className="mt-1 text-2xl font-black text-primary-text tabular-nums">{item.total_points.toLocaleString('he-IL')} נק׳</p>
               <motion.div
@@ -1121,12 +1131,14 @@ function EntryTasksOverlay({ entry, transactions, onClose }: { entry: SelectedEn
         </button>
 
         <div className="relative mb-6 flex items-center gap-5">
-          <div
-            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-[6px] border-white text-white shadow-[0_16px_46px_rgba(46,34,30,.2)]"
-            style={{ background: `linear-gradient(135deg, ${entry.color || TEAL}, #FFB800)` }}
-          >
-            {isGroup && <Users size={34} />}
-          </div>
+          {isGroup && (
+            <div
+              className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-[6px] border-white text-white shadow-[0_16px_46px_rgba(46,34,30,.2)]"
+              style={{ background: `linear-gradient(135deg, ${entry.color || TEAL}, #FFB800)` }}
+            >
+              <Users size={34} />
+            </div>
+          )}
           <div className="min-w-0">
             <p className="text-lg font-black text-[#EF8A4E]">{isGroup ? 'כל המשימות שהקבוצה ביצעה' : 'כל המשימות שהמשתתף ביצע'}</p>
             <h3 className="truncate text-[3rem] font-black leading-none text-[#2E221E]">{entry.name}</h3>
