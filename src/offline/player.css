@@ -44,7 +44,8 @@
   backdrop-filter: blur(6px);
 }
 .pl-brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
-.pl-logo { height: 44px; width: 44px; border-radius: 12px; object-fit: cover; border: 1px solid var(--pl-border); }
+/* Height is fixed, width follows the uploaded artwork - never cropped. */
+.pl-logo { height: 44px; width: auto; max-width: 180px; border-radius: 12px; object-fit: contain; border: 1px solid var(--pl-border); }
 .pl-brand-name { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pl-chip {
   font-size: 11px; font-weight: 800; letter-spacing: 0.06em;
@@ -137,10 +138,12 @@
 .pl-display-back { position: absolute; top: 22px; right: 28px; }
 .pl-hero { display: flex; align-items: center; gap: 26px; min-width: 0; }
 .pl-hero-logo {
-  height: 118px; width: 118px; flex-shrink: 0; border-radius: 30px; object-fit: cover;
+  height: 118px; width: auto; max-width: min(38vw, 420px);
+  flex-shrink: 0; border-radius: 30px; object-fit: contain;
   filter: drop-shadow(0 14px 30px rgba(46, 34, 30, 0.22));
 }
 .pl-hero-logo--fallback {
+  width: 118px;
   display: grid; place-items: center; font-size: 42px; font-weight: 900;
   background: linear-gradient(135deg, #FFF1D2, #FFB84D); color: var(--pl-ink);
 }
@@ -157,7 +160,8 @@
 @media (max-width: 700px) {
   .pl-display-head { padding-top: 74px; }
   .pl-hero { gap: 16px; }
-  .pl-hero-logo { height: 76px; width: 76px; border-radius: 20px; }
+  .pl-hero-logo { height: 76px; width: auto; max-width: 46vw; border-radius: 20px; }
+  .pl-hero-logo--fallback { width: 76px; }
 }
 .pl-display-body { padding: 28px clamp(20px, 4vw, 56px) 48px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 34px; align-items: start; }
 @media (max-width: 900px) { .pl-display-body { grid-template-columns: 1fr; } }

@@ -835,13 +835,17 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
 // ─── Event branding above scanner ─────────────────────────────────────────────
 function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () => void }) {
   const hasLogo = !!event.logo_url
-  const logoSize = 'clamp(120px, 22vh, 220px)'
+  // The uploaded logo keeps its own proportions: the height is what we fix, the
+  // width follows the artwork, and a cap stops a very wide banner from pushing
+  // the name slot off the screen (`contain` letterboxes only in that case).
+  const logoHeight = 'clamp(120px, 22vh, 220px)'
   const logoStyle = {
-    width: logoSize,
-    height: logoSize,
+    height: logoHeight,
+    width: 'auto',
+    maxWidth: 'min(86vw, clamp(200px, 34vw, 460px))',
     borderRadius: 30,
     opacity: 0.82,
-    boxShadow: '0 10px 32px rgba(255,147,102,0.24)',
+    filter: 'drop-shadow(0 10px 24px rgba(255,147,102,0.28))',
   } as const
   const nameSlotStyle = {
     width: 'clamp(220px, 33vw, 520px)',
@@ -882,7 +886,7 @@ function EventBrandMark({ event, onLogoClick }: { event: Event; onLogoClick: () 
           <img
             src={event.logo_url!}
             alt=""
-            style={{ ...logoStyle, objectFit: 'cover', display: 'block' }}
+            style={{ ...logoStyle, objectFit: 'contain', display: 'block' }}
           />
         ) : (
           <div aria-hidden="true" style={{ ...nameSlotStyle, visibility: 'hidden' }} />

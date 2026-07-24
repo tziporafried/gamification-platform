@@ -215,7 +215,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
               <img
                 src={event.logo_url}
                 alt={event.name}
-                className="mb-2 h-14 w-14 rounded-2xl border border-border object-cover shadow-card"
+                className="mb-2 h-14 w-auto max-w-[220px] rounded-2xl border border-border object-contain shadow-card"
               />
             )}
 

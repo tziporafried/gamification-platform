@@ -505,11 +505,13 @@ function StageHeader({
             <img
               src={eventLogoUrl}
               alt={eventName || ''}
-              className="relative h-36 w-36 rounded-[34px] object-cover drop-shadow-[0_16px_34px_rgba(46,34,30,0.24)]"
+              className="relative h-36 w-auto max-w-[420px] rounded-[34px] object-contain drop-shadow-[0_16px_34px_rgba(46,34,30,0.24)]"
             />
           ) : (
-            <div className="relative flex h-36 w-36 items-center justify-center rounded-[34px] bg-[linear-gradient(135deg,#FFF1D2,#FFB84D)] text-[52px] font-black text-[#2E221E] drop-shadow-[0_16px_34px_rgba(46,34,30,0.24)]">
-              {(eventName || '🏆').slice(0, 2)}
+            /* No uploaded logo - a crown reads as the ceremony, initials read
+               as a typo. */
+            <div className="relative flex h-36 w-36 items-center justify-center rounded-[34px] bg-[linear-gradient(135deg,#FFF1D2,#FFB84D)] text-[#2E221E] drop-shadow-[0_16px_34px_rgba(46,34,30,0.24)]">
+              <Crown size={68} strokeWidth={2} fill="currentColor" className="opacity-90" />
             </div>
           )}
         </motion.div>

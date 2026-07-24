@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { ArrowRight, Trophy, Users } from 'lucide-react'
+import { ArrowRight, Crown, Trophy, Users } from 'lucide-react'
 import { getGroupLeaderboard, getParticipantLeaderboard } from '@/lib/offline/leaderboard'
 import type { GamePack, LocalScan } from '@/lib/offline/types'
 
@@ -35,7 +35,10 @@ export function OfflineDisplay({ pack, scans, onBack }: OfflineDisplayProps) {
           {pack.event.logo_url ? (
             <img className="pl-hero-logo" src={pack.event.logo_url} alt="" />
           ) : (
-            <div className="pl-hero-logo pl-hero-logo--fallback">{pack.event.name.slice(0, 2)}</div>
+            /* No uploaded logo - a crown, not the first two letters of the name. */
+            <div className="pl-hero-logo pl-hero-logo--fallback">
+              <Crown size={58} strokeWidth={2} fill="currentColor" />
+            </div>
           )}
           <div className="pl-hero-text">
             <p className="pl-hero-eyebrow">שיאים בלייב</p>

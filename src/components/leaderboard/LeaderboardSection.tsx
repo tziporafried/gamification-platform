@@ -183,14 +183,18 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
             <SoundToggle muted={muted} onToggle={handleSoundToggle} />
             <div className="flex flex-col items-center gap-2.5">
               {eventLogoUrl ? (
-                <motion.img src={eventLogoUrl} alt={eventName || ''} className="h-16 w-16 rounded-2xl object-cover shadow-xl"
+                <motion.img src={eventLogoUrl} alt={eventName || ''} className="h-16 w-auto max-w-[200px] rounded-2xl object-contain shadow-xl"
                   style={{ boxShadow: '0 0 24px color-mix(in srgb, var(--color-primary) 25%, transparent)' }}
                   animate={{ boxShadow: ['0 0 24px color-mix(in srgb, var(--color-primary) 18%, transparent)', '0 0 40px color-mix(in srgb, var(--color-primary) 32%, transparent)', '0 0 24px color-mix(in srgb, var(--color-primary) 18%, transparent)'] }}
                   transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} />
               ) : eventName ? (
-                <motion.div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-elevated text-xl font-black text-foreground shadow-xl"
+                /* No uploaded logo - a crown, not the first two letters of the
+                   event name (which read as a typo). */
+                <motion.div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-elevated text-warning-text shadow-xl"
                   animate={{ boxShadow: ['0 0 24px color-mix(in srgb, var(--color-primary) 18%, transparent)', '0 0 40px color-mix(in srgb, var(--color-primary) 32%, transparent)', '0 0 24px color-mix(in srgb, var(--color-primary) 18%, transparent)'] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}>{eventName.slice(0, 2)}</motion.div>
+                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}>
+                  <Crown size={32} strokeWidth={2.2} fill="currentColor" />
+                </motion.div>
               ) : null}
               <div className="flex items-center gap-2.5">
                 <motion.div animate={{ rotate: [0, -10, 10, 0] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}>

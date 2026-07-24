@@ -59,7 +59,7 @@ export function OfflineHub({ pack, onScan, onBoard, onInstructions }: OfflineHub
             <img
               src={pack.event.logo_url}
               alt={pack.event.name}
-              className="mb-3 h-16 w-16 rounded-2xl border border-border object-cover shadow-card"
+              className="mb-3 h-16 w-auto max-w-[240px] rounded-2xl border border-border object-contain shadow-card"
             />
           )}
 
