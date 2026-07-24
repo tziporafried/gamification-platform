@@ -145,6 +145,35 @@ function bookingCoversDay(booking: ScannerBooking, day: Date): boolean {
   }
 }
 
+/** 'free' = no price set, nothing is owed. Otherwise how much of the price has
+ *  come in, derived the same way the detail card computes its "תשלום" line. */
+type PaymentState = 'paid' | 'partial' | 'unpaid' | 'free'
+function bookingPaymentState(booking: ScannerBooking): PaymentState {
+  const total = booking.amount != null ? Number(booking.amount) : null
+  if (total == null || total <= 0) return 'free'
+  const paid =
+    booking.amount_paid != null ? Number(booking.amount_paid) : booking.is_paid ? total : 0
+  if (paid <= 0) return 'unpaid'
+  if (paid < total) return 'partial'
+  return 'paid'
+}
+
+const UNPAID_DOT = '#DC2626'
+const PARTIAL_DOT = '#F59E0B'
+
+/** A small ringed dot flagging an outstanding balance on a calendar bar.
+ *  Renders nothing once the booking is fully paid (or has no price). */
+function OutstandingDot({ state }: { state: PaymentState }) {
+  if (state !== 'unpaid' && state !== 'partial') return null
+  return (
+    <span
+      className="ms-1 h-2 w-2 shrink-0 rounded-full ring-1 ring-white/85"
+      style={{ backgroundColor: state === 'unpaid' ? UNPAID_DOT : PARTIAL_DOT }}
+      title={state === 'unpaid' ? 'לא שולם' : 'שולם חלקית'}
+    />
+  )
+}
+
 function rangesOverlap(
   aStart: string,
   aEnd: string,
@@ -1378,7 +1407,8 @@ export function AdminScannersPanel() {
                             color: colors.text,
                           }}
                         >
-                          <span className="truncate">{bar.booking.customer_name}</span>
+                          <span className="min-w-0 flex-1 truncate">{bar.booking.customer_name}</span>
+                          <OutstandingDot state={bookingPaymentState(bar.booking)} />
                         </button>
                       )
                     })}
@@ -1389,8 +1419,16 @@ export function AdminScannersPanel() {
           })}
         </div>
 
-        <p className="mt-3 text-[11px] text-muted">
-          בקוביה מוצגות כל המשפחות · משפחה לכמה ימים מופיעה כרצועה צבעונית מתמשכת · לחיצה פותחת את כל הפרטים · לחיצה כפולה להזמנה חדשה
+        <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted">
+          <span>בקוביה מוצגות כל המשפחות · משפחה לכמה ימים מופיעה כרצועה צבעונית מתמשכת · לחיצה פותחת את כל הפרטים · לחיצה כפולה להזמנה חדשה</span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full ring-1 ring-white/85" style={{ backgroundColor: UNPAID_DOT }} />
+            לא שולם
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full ring-1 ring-white/85" style={{ backgroundColor: PARTIAL_DOT }} />
+            שולם חלקית
+          </span>
         </p>
       </Card>
 
@@ -1485,7 +1523,8 @@ export function AdminScannersPanel() {
                             color: colors.text,
                           }}
                         >
-                          <span className="truncate">{booking.customer_name}</span>
+                          <span className="min-w-0 flex-1 truncate">{booking.customer_name}</span>
+                          <OutstandingDot state={bookingPaymentState(booking)} />
                         </button>
                       )
                     })}
@@ -2127,7 +2166,8 @@ function BookingDetailCard({
   onDelete: () => void
   onEventActions?: () => void
 }) {
-  const rows: { label: string; value: string }[] = [
+  const payState = bookingPaymentState(booking)
+  const rows: { label: string; value: string; tone?: 'danger' | 'warning' }[] = [
     { label: 'משפחה / לקוח', value: booking.customer_name },
     { label: 'חבילה', value: packageLabel },
     {
@@ -2136,6 +2176,7 @@ function BookingDetailCard({
     },
     {
       label: 'תשלום',
+      tone: payState === 'unpaid' ? 'danger' : payState === 'partial' ? 'warning' : undefined,
       value: (() => {
         const total = booking.amount != null ? Number(booking.amount) : null
         const paid =
@@ -2176,7 +2217,15 @@ function BookingDetailCard({
         {rows.map((row) => (
           <div key={row.label} className="grid grid-cols-[7rem_1fr] gap-2 text-sm">
             <dt className="text-muted">{row.label}</dt>
-            <dd className="font-medium text-foreground break-words">{row.value}</dd>
+            <dd
+              className={cn(
+                'break-words font-medium text-foreground',
+                row.tone === 'danger' && 'font-bold text-danger-text',
+                row.tone === 'warning' && 'font-bold text-warning-text',
+              )}
+            >
+              {row.value}
+            </dd>
           </div>
         ))}
       </dl>
