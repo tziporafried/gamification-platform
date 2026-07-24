@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { ControlActionCard, FloatingActionIcon } from './ControlActionCard'
 import { Modal } from '@/components/ui/Modal'
+import { ShimmerText } from '@/components/ui/ShimmerText'
 import { ModalActions } from '@/components/ui/ModalActions'
 import { ReadinessChecklist } from './ReadinessChecklist'
 import { getControlCenterSummaryItems, LiveStatsCaption } from './EventSummaryGrid'
@@ -227,7 +228,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                   '[background-image:linear-gradient(110deg,var(--color-foreground)_0%,var(--color-foreground)_38%,color-mix(in_srgb,var(--color-primary)_85%,white)_50%,var(--color-foreground)_62%,var(--color-foreground)_100%)]',
                 )}
               >
-                {event.name}
+                <ShimmerText text={event.name} />
               </h1>
 
               <div className="mt-1 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">

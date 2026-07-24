@@ -439,6 +439,13 @@
   }
 }
 
+/* Inside gradient-clipped text (`background-clip: text` + transparent fill) color
+   emoji collapse into flat blobs - these spans give them their own fill back. */
+.shimmer-emoji {
+  color: var(--color-foreground);
+  -webkit-text-fill-color: var(--color-foreground);
+}
+
 .landing-brand-shimmer {
   background: linear-gradient(
     105deg,

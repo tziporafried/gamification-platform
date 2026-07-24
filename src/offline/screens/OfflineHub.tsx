@@ -3,6 +3,7 @@ import { Crown, ScanLine, Trophy, WifiOff, HelpCircle, Zap } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { ControlActionCard, FloatingActionIcon } from '@/components/wizard/ControlActionCard'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
+import { ShimmerText } from '@/components/ui/ShimmerText'
 import { LiveEventsSelectModal, type LiveEventsOriginRect } from '@/components/live-events/LiveEventsSelectModal'
 import type { GamePack } from '@/lib/offline/types'
 
@@ -69,7 +70,7 @@ export function OfflineHub({ pack, onScan, onBoard, onInstructions }: OfflineHub
               '[background-image:linear-gradient(110deg,var(--color-foreground)_0%,var(--color-foreground)_38%,color-mix(in_srgb,var(--color-primary)_85%,white)_50%,var(--color-foreground)_62%,var(--color-foreground)_100%)]'
             }
           >
-            {pack.event.name}
+            <ShimmerText text={pack.event.name} />
           </h1>
 
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
