@@ -891,6 +891,9 @@ export function AdminScannersPanel() {
 
     const existingFinanceId = editingBooking?.finance_entry_id ?? null
     const existingDebtFinanceId = editingBooking?.debt_finance_entry_id ?? null
+    // With nothing paid we don't know whose hands the money lands in, so the
+    // booking (and its future-income row) stays unattributed until it is.
+    const collectedBy = amountPaid > 0 ? formCollectedBy || null : null
     const {
       financeEntryId,
       debtFinanceEntryId,
@@ -902,7 +905,7 @@ export function AdminScannersPanel() {
       amountPaid,
       customer,
       pkg: formPackage,
-      collectedBy: formCollectedBy || null,
+      collectedBy,
     })
     if (financeSyncError) {
       setError(financeSyncError)
@@ -919,7 +922,7 @@ export function AdminScannersPanel() {
       is_paid: amountPaid > 0,
       finance_entry_id: financeEntryId,
       debt_finance_entry_id: debtFinanceEntryId,
-      collected_by: formCollectedBy || null,
+      collected_by: collectedBy,
       start_date: formStart,
       end_date: formEnd,
       customer_name: customer,
@@ -1712,8 +1715,12 @@ export function AdminScannersPanel() {
                     setFormPaid(checked)
                     if (checked) {
                       setFormAmountPaid((prev) => prev.trim() || formAmount)
+                      // Money just came in - default the collector so it can be attributed.
+                      setFormCollectedBy((prev) => prev || defaultCollector())
                     } else {
                       setFormAmountPaid('')
+                      // Nothing paid means we don't yet know whose hands it lands in.
+                      setFormCollectedBy('')
                     }
                   }}
                 />
@@ -1774,7 +1781,9 @@ export function AdminScannersPanel() {
               </div>
             )}
           </div>
-          {admins.length > 0 && (
+          {/* Only a paid (or part-paid) booking has money that landed somewhere;
+              until then there is nothing to attribute, so the field is hidden. */}
+          {admins.length > 0 && formPaid && (
             <div className="space-y-1">
               <Select
                 id="booking-collected-by"
@@ -2194,7 +2203,11 @@ function BookingDetailCard({
           : `שולם ${formatPriceIls(paid)}`
       })(),
     },
-    { label: 'הכסף נכנס ל', value: collectorLabel },
+    // Only meaningful once money has actually come in; an unpaid booking has
+    // no destination yet, so the row is left out entirely.
+    ...(payState === 'paid' || payState === 'partial'
+      ? [{ label: 'הכסף נכנס ל', value: collectorLabel }]
+      : []),
     { label: 'משחק', value: eventLabel },
     { label: 'סורק', value: scannerLabel },
     { label: 'תאריכים', value: formatRange(booking.start_date, booking.end_date) },
