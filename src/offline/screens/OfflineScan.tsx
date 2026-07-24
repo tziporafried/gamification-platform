@@ -92,6 +92,7 @@ export function OfflineScan({ pack, scans, scanCount, onSubmitCodes, onBack }: O
             <ArrowRight size={18} strokeWidth={2.5} />
             חזרה
           </button>
+          {pack.event.logo_url && <img className="pl-logo" src={pack.event.logo_url} alt="" />}
           <span className="pl-brand-name">{pack.event.name}</span>
         </div>
         <div className="pl-topbar-actions">
@@ -111,7 +112,6 @@ export function OfflineScan({ pack, scans, scanCount, onSubmitCodes, onBack }: O
               <motion.div key="idle" className="pl-prompt" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="pl-prompt-badge"><Camera size={52} strokeWidth={2} /></div>
                 <div className="pl-prompt-title">מוכנים לסריקה</div>
-                <div className="pl-prompt-sub">סרקו את הברקוד של המשתתף</div>
               </motion.div>
             )}
 
