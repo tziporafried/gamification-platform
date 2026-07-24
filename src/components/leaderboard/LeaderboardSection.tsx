@@ -10,7 +10,6 @@ import { LeaderboardEmptyState } from './LeaderboardEmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { Spinner } from '@/components/ui/Spinner'
-import { AvatarCircle } from '@/components/ui/AvatarCircle'
 import type { ParticipantLeaderboardEntry, GroupLeaderboardEntry } from '@/types'
 
 interface LeaderboardSectionProps { eventId: string; eventName?: string; eventLogoUrl?: string | null }
@@ -260,7 +259,6 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                         </div>
                       ) : (
                         <motion.div initial={{ opacity: 0, scale: 0.8, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 200, damping: 20 }}>
-                          <div className="mx-auto mb-3 w-fit"><AvatarCircle name={champ.participant_name} size="lg" ringColor="var(--color-warning)" /></div>
                           <h2 className="text-2xl font-black text-foreground" style={{ textShadow: '0 0 10px rgba(255,255,255,0.1)' }}>{champ.participant_name}</h2>
                           {champGroup && <p className="mt-1.5 text-sm text-muted">{champGroup.name}</p>}
                         </motion.div>
@@ -332,14 +330,12 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                       </div>
                       <div className="flex items-end justify-center gap-8">
                         {p2 && (<motion.div className="flex w-32 flex-col items-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                          <AvatarCircle name={p2.participant_name} size="md" ringColor="var(--color-muted)" />
                           <p className="mt-2 truncate text-sm font-black text-foreground w-full text-center">{p2.participant_name}</p>
                           <p className="text-xs font-bold text-foreground tabular-nums">{p2.total_points.toLocaleString('he-IL')} נק׳</p>
                           <div className="mt-3 flex h-20 w-full items-end justify-center rounded-t-xl" style={{ background: 'linear-gradient(to top, rgba(161,161,170,0.2), transparent)', boxShadow: '0 0 15px rgba(161,161,170,0.1)' }}>
                             <span className="mb-2 text-3xl">🥈</span></div>
                         </motion.div>)}
                         {p3 && (<motion.div className="flex w-32 flex-col items-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                          <AvatarCircle name={p3.participant_name} size="md" ringColor="var(--color-accent)" />
                           <p className="mt-2 truncate text-sm font-black text-foreground w-full text-center">{p3.participant_name}</p>
                           <p className="text-xs font-bold text-foreground tabular-nums">{p3.total_points.toLocaleString('he-IL')} נק׳</p>
                           <div className="mt-3 flex h-14 w-full items-end justify-center rounded-t-xl" style={{ background: 'linear-gradient(to top, rgba(234,88,12,0.2), transparent)', boxShadow: '0 0 15px rgba(234,88,12,0.1)' }}>
@@ -392,7 +388,7 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                       <motion.div key={p.participant_id} className="flex items-center gap-3 border-b border-border px-5 py-3.5 transition-all hover:bg-surface-elevated"
                         style={{ boxShadow: rg || 'none', borderInlineStartWidth: p.rank <= 3 ? 3 : 0, borderInlineStartStyle: 'solid', borderInlineStartColor: RANK_BG[p.rank] || 'transparent', backgroundColor: rbg || 'transparent' }}
                         initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 + idx * 0.07 }}>
-                        <RankCircle rank={p.rank} /><AvatarCircle name={p.participant_name} size="sm" ringColor={g?.color} />
+                        <RankCircle rank={p.rank} />
                         <div className="min-w-0 flex-1"><p className="truncate text-sm font-black text-foreground">{p.participant_name}</p><div className="flex items-center gap-2 text-[11px] text-muted">{g && <span className="flex items-center gap-1">{g.name}<span className="h-1.5 w-1.5 rounded-full shadow-sm" style={{ backgroundColor: g.color }} /></span>}{tc > 0 && <span>{tc} משימות</span>}</div></div>
                         <div className="shrink-0 text-left"><span className="text-lg font-black text-foreground tabular-nums">{p.total_points.toLocaleString('he-IL')}</span><span className="mr-1 text-[10px] text-muted">נק׳</span></div>
                       </motion.div>
@@ -482,7 +478,7 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
           <div className="space-y-1.5">{rankedP.filter(p => p.total_points > 0).length === 0 ? (<p className="py-6 text-center text-sm text-muted">אין ניקוד עדיין</p>) : rankedP.filter(p => p.total_points > 0).map((p) => { const g = pgMap.get(p.participant_id); const tc = taskCountByP.get(p.participant_id) || 0; return (
             <div key={p.participant_id} className="flex items-center gap-2.5 rounded-xl px-3.5 py-3 transition-colors hover:bg-surface-elevated"
               style={{ backgroundColor: RANK_ROW_BG[p.rank] || 'rgba(255,255,255,0.02)', borderInlineStartWidth: p.rank <= 3 ? 3 : 0, borderInlineStartColor: RANK_BG[p.rank] || 'transparent', borderInlineStartStyle: 'solid' }}>
-              <RankCircle rank={p.rank} /><AvatarCircle name={p.participant_name} size="sm" ringColor={g?.color} />
+              <RankCircle rank={p.rank} />
               <div className="min-w-0 flex-1"><p className="text-sm font-bold text-foreground">{p.participant_name}</p><div className="flex items-center gap-2 text-[10px] text-muted">{g && <span>{g.name}</span>}{tc > 0 && <span>{tc} משימות</span>}</div></div>
               <span className="text-sm font-black text-foreground tabular-nums">{p.total_points.toLocaleString('he-IL')}</span>
             </div>) })}</div>

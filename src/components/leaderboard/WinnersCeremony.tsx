@@ -10,7 +10,6 @@ import { useSound } from '@/hooks/useSound'
 import { useCelebrationSound } from '@/hooks/useCelebrationSound'
 import { calculateCeremonyReadiness, CEREMONY_MIN_PARTICIPANTS } from '@/lib/ceremonyReadiness'
 import { LeaderboardEmptyState } from './LeaderboardEmptyState'
-import { AvatarCircle } from '@/components/ui/AvatarCircle'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Spinner } from '@/components/ui/Spinner'
@@ -592,7 +591,7 @@ function ChampionPhase({
           </motion.div>
           <p className="text-2xl font-black text-primary-text">{isGroup ? '🏆 אליפות הקבוצות' : 'אלוף המשתתפים'}</p>
           <div className="mx-auto mt-5 flex h-32 w-32 items-center justify-center rounded-full border-[8px] border-white text-5xl font-black text-white shadow-[0_16px_46px_rgba(46,34,30,0.2)] md:h-40 md:w-40 md:text-6xl" style={{ background: `linear-gradient(135deg, ${color}, ${isGroup ? ORANGE : GOLD})` }}>
-            {isGroup ? <Users size={72} /> : <AvatarCircle name={name} size="lg" ringColor={color} className="h-32 w-32 text-5xl ring-0 md:h-40 md:w-40 md:text-6xl" />}
+            {isGroup && <Users size={72} />}
           </div>
           <p className="mt-5 text-xl font-black text-muted">{isGroup ? 'הקבוצה המנצחת' : getParticipantGroupSummary(participantGroups, totalGroups)}</p>
           <h2 className="mx-auto mt-2 max-w-[14ch] truncate text-[clamp(4.2rem,8.5vw,7.25rem)] font-black leading-none text-foreground">{name}</h2>
@@ -658,7 +657,7 @@ function PodiumPhase({ title, items, type }: { title: string; items: (RankedGrou
                   )}
                   style={{ background: `linear-gradient(135deg, ${color}, ${rank === 1 ? GOLD : ORANGE})` }}
                 >
-                  {isGroup ? <Users size={50} /> : <AvatarCircle name={name} size="lg" ringColor={color} className="h-24 w-24 text-3xl ring-0 md:h-32 md:w-32 md:text-4xl" />}
+                  {isGroup && <Users size={50} />}
                 </div>
                 <span className="absolute -bottom-2 -right-2 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-white text-3xl shadow-lg">{MEDALS[rank - 1] || rank}</span>
               </div>
@@ -764,12 +763,10 @@ function LeaderboardPhase({
               transition={{ delay: idx * 0.08, duration: 0.45 }}
             >
               <RankBadge rank={item.rank} />
-              {isGroup ? (
+              {isGroup && (
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl text-white shadow-lg" style={{ background: color }}>
                   <Users size={34} />
                 </div>
-              ) : (
-                <AvatarCircle name={name} size="lg" ringColor={color} className="h-16 w-16 text-2xl" />
               )}
               <div className="min-w-0">
                 <div className="mb-2 flex items-baseline gap-3">
@@ -929,12 +926,10 @@ function SummaryLeaderboardPreview({
         const content = (
           <>
             <RankBadge rank={item.rank} />
-            {isGroup ? (
+            {isGroup && (
               <div className={cn('flex items-center justify-center rounded-2xl text-white shadow-lg', large ? 'h-16 w-16' : 'h-14 w-14')} style={{ background: color }}>
                 <Users size={large ? 34 : 30} />
               </div>
-            ) : (
-              <AvatarCircle name={name} size="lg" ringColor={color} className={cn(large ? 'h-16 w-16 text-2xl' : 'h-14 w-14 text-xl')} />
             )}
             <div className="min-w-0">
               <div className="mb-2 flex items-baseline gap-3">
@@ -1130,7 +1125,7 @@ function EntryTasksOverlay({ entry, transactions, onClose }: { entry: SelectedEn
             className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-[6px] border-white text-white shadow-[0_16px_46px_rgba(46,34,30,.2)]"
             style={{ background: `linear-gradient(135deg, ${entry.color || TEAL}, #FFB800)` }}
           >
-            {isGroup ? <Users size={34} /> : <AvatarCircle name={entry.name} size="lg" ringColor={entry.color} className="h-20 w-20 text-3xl ring-0" />}
+            {isGroup && <Users size={34} />}
           </div>
           <div className="min-w-0">
             <p className="text-lg font-black text-[#EF8A4E]">{isGroup ? 'כל המשימות שהקבוצה ביצעה' : 'כל המשימות שהמשתתף ביצע'}</p>

@@ -103,12 +103,6 @@
 }
 
 .pl-fb { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.pl-fb-avatar {
-  width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center;
-  font-size: 42px; font-weight: 900; color: white; margin-bottom: 8px;
-  background: linear-gradient(140deg, var(--pl-primary-accent), var(--pl-primary));
-  box-shadow: var(--pl-shadow);
-}
 .pl-fb-name { font-size: 40px; font-weight: 900; letter-spacing: -0.02em; }
 .pl-fb-action { font-size: 20px; color: var(--pl-muted); }
 .pl-fb-points { font-size: 92px; font-weight: 900; line-height: 1; color: var(--pl-primary); font-variant-numeric: tabular-nums; }

@@ -24,11 +24,6 @@ interface OfflineScanProps {
   onBack: () => void
 }
 
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  return (parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')
-}
-
 export function OfflineScan({ pack, scans, scanCount, onSubmitCodes, onBack }: OfflineScanProps) {
   const [feedback, setFeedback] = useState<Feedback>({ kind: 'idle' })
   const [manualP, setManualP] = useState('')
@@ -157,7 +152,6 @@ export function OfflineScan({ pack, scans, scanCount, onSubmitCodes, onBack }: O
                 exit={{ opacity: 0, scale: 0.92 }}
                 transition={{ type: 'spring', stiffness: 320, damping: 22 }}
               >
-                <div className="pl-fb-avatar">{initials(feedback.result.participantName)}</div>
                 <div className="pl-fb-name">{feedback.result.participantName}</div>
                 <div className="pl-fb-action">{feedback.result.actionName}</div>
                 <motion.div
