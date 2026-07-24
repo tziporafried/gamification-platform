@@ -104,8 +104,10 @@ function AnimatedNumber({ value, duration = 1600 }: { value: number; duration?: 
   return <>{display.toLocaleString('he-IL')}</>
 }
 
+// An empty string for the ungrouped: the stage says nothing about a group
+// rather than announcing the absence of one.
 function getParticipantGroupSummary(groups: ParticipantGroupRef[], totalGroups?: number) {
-  if (groups.length === 0) return 'ללא קבוצה'
+  if (groups.length === 0) return ''
   if (typeof totalGroups === 'number' && totalGroups > 0 && groups.length >= totalGroups) return 'כל הקבוצות'
   return groups.length === 1 ? 'קבוצה אחת' : `${groups.length} קבוצות`
 }
@@ -119,9 +121,7 @@ function ParticipantGroupChips({
   compact?: boolean
   totalGroups?: number
 }) {
-  if (groups.length === 0) {
-    return <span className={cn('font-bold text-[#9A8E88]', compact ? 'text-sm' : 'text-base')}>ללא קבוצה</span>
-  }
+  if (groups.length === 0) return null
 
   if (typeof totalGroups === 'number' && totalGroups > 0 && groups.length >= totalGroups) {
     return <span className={cn('font-bold text-[#9A8E88]', compact ? 'text-sm' : 'text-base')}>כל הקבוצות</span>
@@ -597,9 +597,13 @@ function ChampionPhase({
               <Users size={72} />
             </div>
           )}
-          <p className="mt-5 text-xl font-black text-muted">{isGroup ? 'הקבוצה המנצחת' : getParticipantGroupSummary(participantGroups, totalGroups)}</p>
+          {(() => {
+            // Nothing to say about groups leaves no empty line above the name.
+            const subtitle = isGroup ? 'הקבוצה המנצחת' : getParticipantGroupSummary(participantGroups, totalGroups)
+            return subtitle ? <p className="mt-5 text-xl font-black text-muted">{subtitle}</p> : null
+          })()}
           <h2 className="mx-auto mt-2 max-w-[14ch] truncate text-[clamp(4.2rem,8.5vw,7.25rem)] font-black leading-none text-foreground">{name}</h2>
-          {!isGroup && (
+          {!isGroup && participantGroups.length > 0 && (
             <div className="mx-auto mt-4 flex max-w-4xl justify-center">
               <ParticipantGroupChips groups={participantGroups} compact={false} totalGroups={totalGroups} />
             </div>
@@ -1222,6 +1226,9 @@ function FinalSummaryPhase({
 }) {
   const [focus, setFocus] = useState<SummaryFocus>(null)
   const [selected, setSelected] = useState<SelectedEntry | null>(null)
+  // An event with no groups gets no groups card at all - an empty-state box
+  // where a ranking should be reads as something that failed to load.
+  const hasGroups = totalGroups > 0
 
   // Pause the auto-advancing ceremony while the viewer is drilling into the data.
   useEffect(() => {
@@ -1318,19 +1325,21 @@ function FinalSummaryPhase({
           <SummaryMetricCard id="totalPoints" title="נקודות" value={totalPointsEarned} label="נקודות נצברו" icon={<Trophy size={22} />} accent={WARM_ORANGE} emptyText="אין עדיין נקודות להצגה" focused={focus === 'totalPoints'} onClick={toggleFocus} />
           <SummaryMetricCard id="rewards" title="פרסים" value={totalRewardsAwarded} label="פרסים הוענקו" icon={<Gift size={22} />} accent={GOLD} emptyText="אין עדיין פרסים להציג" focused={focus === 'rewards'} onClick={toggleFocus} />
         </div>
-        <div className="grid min-h-0 grid-cols-2 gap-5">
-          <motion.button
-            type="button"
-            layoutId="summary-groups"
-            onClick={() => toggleFocus('groups')}
-            className="relative min-h-0 overflow-hidden rounded-[26px] border border-[#F2B33C]/60 bg-white/78 p-6 text-right shadow-[0_18px_54px_rgba(46,34,30,.12)] backdrop-blur transition hover:-translate-y-1"
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <span className="rounded-full bg-[#FFF1D2] px-5 py-2 text-lg font-black text-[#EF8A4E]">דירוג הקבוצות</span>
-              <Users size={34} className="text-[#F2B33C]" />
-            </div>
-            <SummaryLeaderboardPreview large items={rankedG} pgMap={pgMap} totalGroups={totalGroups} groupTaskCounts={groupTaskCounts} taskCountByP={taskCountByP} topPByGroup={topPByGroup} />
-          </motion.button>
+        <div className={cn('grid min-h-0 gap-5', hasGroups ? 'grid-cols-2' : 'grid-cols-1')}>
+          {hasGroups && (
+            <motion.button
+              type="button"
+              layoutId="summary-groups"
+              onClick={() => toggleFocus('groups')}
+              className="relative min-h-0 overflow-hidden rounded-[26px] border border-[#F2B33C]/60 bg-white/78 p-6 text-right shadow-[0_18px_54px_rgba(46,34,30,.12)] backdrop-blur transition hover:-translate-y-1"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <span className="rounded-full bg-[#FFF1D2] px-5 py-2 text-lg font-black text-[#EF8A4E]">דירוג הקבוצות</span>
+                <Users size={34} className="text-[#F2B33C]" />
+              </div>
+              <SummaryLeaderboardPreview large items={rankedG} pgMap={pgMap} totalGroups={totalGroups} groupTaskCounts={groupTaskCounts} taskCountByP={taskCountByP} topPByGroup={topPByGroup} />
+            </motion.button>
+          )}
           <motion.button
             type="button"
             layoutId="summary-participants"
