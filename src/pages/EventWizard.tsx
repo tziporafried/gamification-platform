@@ -266,6 +266,7 @@ export function EventWizard() {
             isActive={currentStep === 3}
             onCountsPatch={patchCounts}
             onCountsRefresh={refreshCounts}
+            onGroupTypeSelect={setGroupType}
             onNext={goNext}
             onBack={goBack}
           />

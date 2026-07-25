@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { ParticipantList } from '@/components/participants/ParticipantList'
 import { WizardUsageScroll } from './WizardUsageScroll'
+import type { RosterImportResult } from '@/lib/roster/rosterImport'
 import type { EventCounts, GroupType, UserPlan } from '@/types'
 
 interface StepParticipantsProps {
@@ -12,6 +13,7 @@ interface StepParticipantsProps {
   isActive: boolean
   onCountsPatch: (patch: Partial<EventCounts>) => void
   onCountsRefresh: () => void
+  onGroupTypeSelect: (type: GroupType) => void
   onNext: () => void
   onBack: () => void
 }
@@ -22,6 +24,8 @@ export function StepParticipants({
   groupType,
   isActive,
   onCountsPatch,
+  onCountsRefresh,
+  onGroupTypeSelect,
   onNext,
   onBack,
 }: StepParticipantsProps) {
@@ -31,6 +35,13 @@ export function StepParticipants({
   function handleCountChange(count: number) {
     setLocalParticipantCount(count)
     onCountsPatch({ participants: count })
+  }
+
+  // An imported file can name groups, which turns the event into a group
+  // competition even though the choice was made a step earlier.
+  function handleImported(result: RosterImportResult) {
+    if (result.groupsCreated > 0) onGroupTypeSelect('custom')
+    onCountsRefresh()
   }
 
   return (
@@ -49,6 +60,7 @@ export function StepParticipants({
           groupType={groupType}
           isActive={isActive}
           onCountChange={handleCountChange}
+          onImported={handleImported}
         />
       </WizardUsageScroll>
     </WizardStepWrapper>

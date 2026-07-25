@@ -274,6 +274,7 @@ export function StepGroups({
               eventId={eventId}
               header={compactGroupModeHeader}
               onCountChange={handleCountChange}
+              onImported={onCountsRefresh}
             />
           </WizardUsageScroll>
         </div>

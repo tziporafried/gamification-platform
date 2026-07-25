@@ -63,6 +63,21 @@ When asked to verify the wizard, check all of the following:
 - [ ] Selected limit mode shows correct color (purple/amber/cyan) and icon
 - [ ] Changing limit saves immediately to DB (max_completions column)
 
+## Roster Import (Groups step + Participants step)
+
+- [ ] "ייבוא מקובץ" appears in the empty state and above the add field on both steps
+- [ ] The sample file downloads as .xlsx (CSV link as fallback) with columns שם המשתתף / קבוצה
+- [ ] Uploading .xlsx and .csv both work; a .xls upload explains it must be re-saved
+- [ ] A file with no header row is still read as name, group
+- [ ] The preview counts new participants, new groups and skipped rows before anything is written
+- [ ] On the participants step, a file with group names warns that groups will be created
+- [ ] On the groups step, the dialog states the same file also creates the participants
+- [ ] An import that creates groups flips groupType to "custom" (groups step turns green)
+- [ ] Re-uploading the same file adds nobody twice
+- [ ] Both lists and the step counters refresh straight after an import
+- [ ] Hitting the participant cap opens the upgrade modal and reports what was imported
+- [ ] Requires migration 073; without it the client fallback still imports (slower)
+
 ## Shared: GroupSelectDropdown Component
 
 - [ ] Dropdown trigger shows colored dots + label for selected groups

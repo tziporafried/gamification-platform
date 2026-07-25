@@ -7,6 +7,9 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { ScrollableListLayout } from '@/components/ui/ScrollableListLayout'
 import { UpgradeModal } from '@/components/UpgradeModal'
+import { RosterImportButton } from '@/components/roster/RosterImportButton'
+import { RosterImportModal } from '@/components/roster/RosterImportModal'
+import type { RosterImportResult } from '@/lib/roster/rosterImport'
 import { InlineAddParticipant } from './InlineAddParticipant'
 import { ParticipantRow } from './ParticipantRow'
 import type { Group, GroupType, Participant, ParticipantWithGroups } from '@/types'
@@ -18,6 +21,8 @@ interface ParticipantListProps {
   onCountChange: (count: number) => void
   /** Wizard step: list scrolls in parent; usage bar shares the same scroll width. */
   embedded?: boolean
+  /** A spreadsheet import finished - it may also have created groups. */
+  onImported?: (result: RosterImportResult) => void
 }
 
 interface ParticipantGroupJoin {
@@ -31,12 +36,14 @@ export function ParticipantList({
   isActive,
   onCountChange,
   embedded = false,
+  onImported,
 }: ParticipantListProps) {
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [showAddInput, setShowAddInput] = useState(false)
   const [addInputFocusRequest, setAddInputFocusRequest] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
@@ -86,6 +93,16 @@ export function ParticipantList({
     return () => { cancelled = true }
   }, [eventId])
 
+  const loadGroups = useCallback(async () => {
+    const { data } = await supabase
+      .from('groups')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: true })
+
+    return (data as Group[]) ?? []
+  }, [eventId])
+
   useEffect(() => {
     if (!hasGroups) {
       setGroups([])
@@ -96,19 +113,19 @@ export function ParticipantList({
     if (!isActive) return
 
     let cancelled = false
-    async function fetchGroups() {
-      const { data } = await supabase
-        .from('groups')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('created_at', { ascending: true })
-
-      if (!cancelled) setGroups((data as Group[]) ?? [])
-    }
-
-    fetchGroups()
+    loadGroups().then((data) => {
+      if (!cancelled) setGroups(data)
+    })
     return () => { cancelled = true }
-  }, [eventId, hasGroups, isActive])
+  }, [hasGroups, isActive, loadGroups])
+
+  // Coming back to this step re-reads the roster: an import on the groups step
+  // can have added participants behind this list's back.
+  const wasActiveRef = useRef(isActive)
+  useEffect(() => {
+    if (isActive && !wasActiveRef.current) loadParticipants(true)
+    wasActiveRef.current = isActive
+  }, [isActive, loadParticipants])
 
   useEffect(() => {
     if (participants.length > prevCountRef.current && listRef.current) {
@@ -150,6 +167,13 @@ export function ParticipantList({
         })
     }
   }, [onCountChange, hasGroups, groups, loadParticipants])
+
+  const handleImported = useCallback(async (result: RosterImportResult) => {
+    await loadParticipants(true)
+    // The file may have introduced groups the dropdowns don't know about yet.
+    if (result.groupsCreated > 0) setGroups(await loadGroups())
+    onImported?.(result)
+  }, [loadParticipants, loadGroups, onImported])
 
   const handleDelete = useCallback(async (id: string) => {
     const { error: deleteError } = await supabase.from('participants').delete().eq('id', id)
@@ -241,6 +265,44 @@ export function ParticipantList({
     </div>
   )
 
+  const addField = (
+    <InlineAddParticipant
+      eventId={eventId}
+      onAdded={handleAdded}
+      onPlanLimit={() => setUpgradeOpen(true)}
+      nameInputRef={addInputRef}
+    />
+  )
+
+  // The import sits above the add field so the input stays pinned to the bottom.
+  const footer = (
+    <div className="space-y-2">
+      <RosterImportButton label="ייבוא רשימה מקובץ" onClick={() => setImportOpen(true)} />
+      {addField}
+    </div>
+  )
+
+  const emptyState = (
+    <EmptyState
+      icon={<Users size={32} strokeWidth={1.75} />}
+      title="אין משתתפים עדיין"
+      description="הוסיפו את המשתתף הראשון, או ייבאו רשימה מוכנה מקובץ."
+      action={
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
+            <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+            הוסף משתתף
+          </Button>
+          <RosterImportButton
+            variant="button"
+            label="ייבוא מקובץ"
+            onClick={() => setImportOpen(true)}
+          />
+        </div>
+      }
+    />
+  )
+
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       {error && <ErrorAlert message={error} className="shrink-0 mb-4" />}
@@ -250,54 +312,16 @@ export function ParticipantList({
           <ScrollableListLayout
             className="flex-1 min-h-0"
             listRef={listRef}
-            footer={
-              showAddInput ? (
-                <InlineAddParticipant
-                  eventId={eventId}
-                  onAdded={handleAdded}
-                  onPlanLimit={() => setUpgradeOpen(true)}
-                  nameInputRef={addInputRef}
-                />
-              ) : undefined
-            }
+            footer={showAddInput ? addField : undefined}
           >
-            <EmptyState
-              icon={<Users size={32} strokeWidth={1.75} />}
-              title="אין משתתפים עדיין"
-              description="הוסיפו את המשתתף הראשון"
-              action={
-                <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
-                  <Plus size={16} className="shrink-0" strokeWidth={2.5} />
-                  הוסף משתתף
-                </Button>
-              }
-            />
+            {emptyState}
           </ScrollableListLayout>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col">
             <div ref={listRef} className="flex-1 overflow-y-auto min-h-0">
-              <EmptyState
-                icon={<Users size={32} strokeWidth={1.75} />}
-                title="אין משתתפים עדיין"
-                description="הוסיפו את המשתתף הראשון"
-                action={
-                  <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
-                    <Plus size={16} className="shrink-0" strokeWidth={2.5} />
-                    הוסף משתתף
-                  </Button>
-                }
-              />
+              {emptyState}
             </div>
-            {showAddInput && (
-              <div className="shrink-0">
-                <InlineAddParticipant
-                  eventId={eventId}
-                  onAdded={handleAdded}
-                  onPlanLimit={() => setUpgradeOpen(true)}
-                  nameInputRef={addInputRef}
-                />
-              </div>
-            )}
+            {showAddInput && <div className="shrink-0">{addField}</div>}
           </div>
         )
       ) : embedded ? (
@@ -305,14 +329,7 @@ export function ParticipantList({
           className="flex-1 min-h-0"
           listRef={listRef}
           listClassName="space-y-1"
-          footer={
-            <InlineAddParticipant
-              eventId={eventId}
-              onAdded={handleAdded}
-              onPlanLimit={() => setUpgradeOpen(true)}
-              nameInputRef={addInputRef}
-            />
-          }
+          footer={footer}
         >
           {participantList}
         </ScrollableListLayout>
@@ -321,18 +338,20 @@ export function ParticipantList({
           <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-1">
             {participantList}
           </div>
-          <div className="shrink-0">
-            <InlineAddParticipant
-              eventId={eventId}
-              onAdded={handleAdded}
-              onPlanLimit={() => setUpgradeOpen(true)}
-              nameInputRef={addInputRef}
-            />
-          </div>
+          <div className="shrink-0">{footer}</div>
         </>
       )}
 
       <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} eventId={eventId} />
+
+      <RosterImportModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        eventId={eventId}
+        context="participants"
+        groupsDisabled={!hasGroups}
+        onImported={handleImported}
+      />
     </div>
   )
 }

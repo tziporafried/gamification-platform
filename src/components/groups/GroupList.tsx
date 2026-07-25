@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { Layers, Lock, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
@@ -11,6 +11,9 @@ import { ScrollContainer } from '@/components/ui/ScrollContainer'
 import { ScrollableListLayout } from '@/components/ui/ScrollableListLayout'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { UpgradeModal } from '@/components/UpgradeModal'
+import { RosterImportButton } from '@/components/roster/RosterImportButton'
+import { RosterImportModal } from '@/components/roster/RosterImportModal'
+import type { RosterImportResult } from '@/lib/roster/rosterImport'
 import { GroupForm } from './GroupForm'
 import { GroupCard } from './GroupCard'
 import { InlineAddGroup } from './InlineAddGroup'
@@ -23,6 +26,8 @@ interface GroupListProps {
   onCountChange: (count: number) => void
   embedded?: boolean
   header?: ReactNode
+  /** A spreadsheet import finished - it also created the participants listed in it. */
+  onImported?: (result: RosterImportResult) => void
 }
 
 function LockedGroupCard({ group }: { group: ActivityTemplateGroup }) {
@@ -50,7 +55,7 @@ function LockedGroupCard({ group }: { group: ActivityTemplateGroup }) {
   )
 }
 
-export function GroupList({ eventId, onCountChange, embedded = false, header }: GroupListProps) {
+export function GroupList({ eventId, onCountChange, embedded = false, header, onImported }: GroupListProps) {
   const [groups, setGroups] = useState<GroupWithCount[]>([])
   const [lockedGroups, setLockedGroups] = useState<ActivityTemplateGroup[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,6 +65,7 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
   const [deletingGroup, setDeletingGroup] = useState<GroupWithCount | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [showAddInput, setShowAddInput] = useState(false)
   const [addInputFocusRequest, setAddInputFocusRequest] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
@@ -80,32 +86,32 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
     return () => window.removeEventListener(LOCKED_TEMPLATE_CHANGED, syncLocked)
   }, [eventId])
 
+  const loadGroups = useCallback(async (): Promise<GroupWithCount[] | null> => {
+    const { data, error: fetchError } = await supabase
+      .from('groups')
+      .select('*, participant_groups(count)')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: true })
+
+    if (fetchError) {
+      setError(fetchError.message)
+      return null
+    }
+
+    return (data ?? []).map((g) => ({
+      ...g,
+      member_count: (g.participant_groups as unknown as { count: number }[])?.[0]?.count ?? 0,
+    }))
+  }, [eventId])
+
   useEffect(() => {
     let cancelled = false
-    async function load() {
-      const { data, error: fetchError } = await supabase
-        .from('groups')
-        .select('*, participant_groups(count)')
-        .eq('event_id', eventId)
-        .order('created_at', { ascending: true })
-
-      if (cancelled) return
-
-      if (fetchError) {
-        setError(fetchError.message)
-        return
-      }
-
-      const mapped: GroupWithCount[] = (data ?? []).map((g) => ({
-        ...g,
-        member_count: (g.participant_groups as unknown as { count: number }[])?.[0]?.count ?? 0,
-      }))
-
+    loadGroups().then((mapped) => {
+      if (cancelled || !mapped) return
       setGroups(mapped)
       onCountChange(mapped.length)
       setLoading(false)
-    }
-    load()
+    })
     return () => { cancelled = true }
   }, [eventId]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -134,6 +140,15 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
       onCountChange(next.length)
       return next
     })
+  }
+
+  async function handleImported(result: RosterImportResult) {
+    const mapped = await loadGroups()
+    if (mapped) {
+      setGroups(mapped)
+      onCountChange(mapped.length)
+    }
+    onImported?.(result)
   }
 
   function handleSaved(saved: Group) {
@@ -195,6 +210,39 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
 
   const hasLocked = lockedGroups.length > 0
 
+  const emptyStateAction = (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
+        <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+        הוסף קבוצה
+      </Button>
+      <RosterImportButton
+        variant="button"
+        label="ייבוא מקובץ"
+        onClick={() => setImportOpen(true)}
+      />
+    </div>
+  )
+
+  const emptyStateDescription =
+    'הוסיפו את הקבוצה הראשונה, או ייבאו מקובץ את המשתתפים והקבוצות שלהם.'
+
+  // The import sits above the add field so the input stays pinned to the bottom.
+  const footer = (
+    <div className="space-y-2">
+      <RosterImportButton
+        label="ייבוא קבוצות ומשתתפים מקובץ"
+        onClick={() => setImportOpen(true)}
+      />
+      <InlineAddGroup
+        eventId={eventId}
+        usedColors={usedGroupColors}
+        onAdded={handleAdded}
+        onPlanLimit={() => setUpgradeOpen(true)}
+      />
+    </div>
+  )
+
   return (
     <div className={cn('flex h-full min-h-0 flex-1 flex-col', embedded && 'min-h-0')}>
       {!embedded && (
@@ -232,13 +280,8 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
               compact
               icon={<Layers size={24} strokeWidth={1.75} className="text-tertiary-text" />}
               title="אין קבוצות עדיין"
-              description="הוסיפו את הקבוצה הראשונה כדי להתחיל את התחרות."
-              action={
-                <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
-                  <Plus size={16} className="shrink-0" strokeWidth={2.5} />
-                  הוסף קבוצה
-                </Button>
-              }
+              description={emptyStateDescription}
+              action={emptyStateAction}
             />
           </ScrollableListLayout>
         ) : (
@@ -248,13 +291,8 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
                 compact
                 icon={<Layers size={24} strokeWidth={1.75} className="text-tertiary-text" />}
                 title="אין קבוצות עדיין"
-                description="הוסיפו את הקבוצה הראשונה כדי להתחיל את התחרות."
-                action={
-                  <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
-                    <Plus size={16} className="shrink-0" strokeWidth={2.5} />
-                    הוסף קבוצה
-                  </Button>
-                }
+                description={emptyStateDescription}
+                action={emptyStateAction}
               />
             </ScrollContainer>
             {showAddInput && (
@@ -276,9 +314,7 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
           listRef={listRef}
           header={header}
           listClassName="space-y-3 py-1"
-          footer={
-            <InlineAddGroup eventId={eventId} usedColors={usedGroupColors} onAdded={handleAdded} onPlanLimit={() => setUpgradeOpen(true)} />
-          }
+          footer={footer}
         >
           {groups.length > 0 && (
             <div className="grid grid-cols-1 items-stretch gap-4 px-1 py-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -327,9 +363,7 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
       )}
 
       {!embedded && (groups.length > 0 || hasLocked) && (
-      <div className="shrink-0">
-        <InlineAddGroup eventId={eventId} usedColors={usedGroupColors} onAdded={handleAdded} onPlanLimit={() => setUpgradeOpen(true)} />
-      </div>
+        <div className="shrink-0">{footer}</div>
       )}
 
       {formOpen && (
@@ -363,6 +397,14 @@ export function GroupList({ eventId, onCountChange, embedded = false, header }: 
       </Modal>
 
       <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} eventId={eventId} />
+
+      <RosterImportModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        eventId={eventId}
+        context="groups"
+        onImported={handleImported}
+      />
     </div>
   )
 }
