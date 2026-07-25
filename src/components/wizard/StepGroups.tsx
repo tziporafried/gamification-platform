@@ -16,6 +16,7 @@ interface StepGroupsProps {
   plan: UserPlan
   groupType: GroupType | null
   counts: EventCounts
+  isActive: boolean
   onGroupTypeSelect: (type: GroupType) => void
   onCountsPatch: (patch: Partial<EventCounts>) => void
   onCountsRefresh: () => void
@@ -153,6 +154,7 @@ export function StepGroups({
   eventId,
   groupType,
   counts,
+  isActive,
   onGroupTypeSelect,
   onCountsPatch,
   onCountsRefresh,
@@ -273,6 +275,7 @@ export function StepGroups({
               embedded
               eventId={eventId}
               header={compactGroupModeHeader}
+              isActive={isActive}
               onCountChange={handleCountChange}
               onImported={onCountsRefresh}
             />

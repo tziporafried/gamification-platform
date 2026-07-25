@@ -26,6 +26,12 @@ interface GroupListProps {
   onCountChange: (count: number) => void
   embedded?: boolean
   header?: ReactNode
+  /**
+   * False while the wizard is showing another step. The panel stays mounted, so
+   * the list re-reads the groups on the way back in - an import run from the
+   * participants step can have created some behind its back.
+   */
+  isActive?: boolean
   /** A spreadsheet import finished - it also created the participants listed in it. */
   onImported?: (result: RosterImportResult) => void
 }
@@ -55,7 +61,14 @@ function LockedGroupCard({ group }: { group: ActivityTemplateGroup }) {
   )
 }
 
-export function GroupList({ eventId, onCountChange, embedded = false, header, onImported }: GroupListProps) {
+export function GroupList({
+  eventId,
+  onCountChange,
+  embedded = false,
+  header,
+  isActive = true,
+  onImported,
+}: GroupListProps) {
   const [groups, setGroups] = useState<GroupWithCount[]>([])
   const [lockedGroups, setLockedGroups] = useState<ActivityTemplateGroup[]>([])
   const [loading, setLoading] = useState(true)
@@ -104,6 +117,13 @@ export function GroupList({ eventId, onCountChange, embedded = false, header, on
     }))
   }, [eventId])
 
+  const refreshGroups = useCallback(async () => {
+    const mapped = await loadGroups()
+    if (!mapped) return
+    setGroups(mapped)
+    onCountChange(mapped.length)
+  }, [loadGroups, onCountChange])
+
   useEffect(() => {
     let cancelled = false
     loadGroups().then((mapped) => {
@@ -114,6 +134,15 @@ export function GroupList({ eventId, onCountChange, embedded = false, header, on
     })
     return () => { cancelled = true }
   }, [eventId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Returning to this step re-reads the groups: importing a file on the
+  // participants step creates the groups it names, and this list would
+  // otherwise keep showing the roster from before that import.
+  const wasActiveRef = useRef(isActive)
+  useEffect(() => {
+    if (isActive && !wasActiveRef.current) refreshGroups()
+    wasActiveRef.current = isActive
+  }, [isActive, refreshGroups])
 
   useEffect(() => {
     if (groups.length > prevCountRef.current && listRef.current) {
@@ -143,11 +172,7 @@ export function GroupList({ eventId, onCountChange, embedded = false, header, on
   }
 
   async function handleImported(result: RosterImportResult) {
-    const mapped = await loadGroups()
-    if (mapped) {
-      setGroups(mapped)
-      onCountChange(mapped.length)
-    }
+    await refreshGroups()
     onImported?.(result)
   }
 

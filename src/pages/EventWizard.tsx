@@ -247,6 +247,7 @@ export function EventWizard() {
             plan={isSuperAdmin ? 'full' : event.plan}
             groupType={groupType}
             counts={counts}
+            isActive={currentStep === 2}
             onGroupTypeSelect={setGroupType}
             onCountsPatch={patchCounts}
             onCountsRefresh={refreshCounts}
