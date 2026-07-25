@@ -387,6 +387,8 @@ export function AdminScannersPanel() {
   const [newName, setNewName] = useState('')
   const [newCode, setNewCode] = useState('')
   const [newNotes, setNewNotes] = useState('')
+  /** Null = the scanner modal is adding; otherwise editing this scanner. */
+  const [editingScannerId, setEditingScannerId] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchData() {
@@ -658,9 +660,19 @@ export function AdminScannersPanel() {
 
   function openAddScanner() {
     const nextNum = scanners.length + 1
+    setEditingScannerId(null)
     setNewName(`סורק ${nextNum}`)
     setNewCode(`SCAN-${String(nextNum).padStart(2, '0')}`)
     setNewNotes('')
+    setError(null)
+    setScannerOpen(true)
+  }
+
+  function openEditScanner(scanner: Scanner) {
+    setEditingScannerId(scanner.id)
+    setNewName(scanner.name)
+    setNewCode(scanner.code)
+    setNewNotes(scanner.notes ?? '')
     setError(null)
     setScannerOpen(true)
   }
@@ -1170,13 +1182,39 @@ export function AdminScannersPanel() {
     setSaving(true)
     setError(null)
 
+    const notes = newNotes.trim() || null
+
+    if (editingScannerId) {
+      const { data, error: updateError } = await supabase
+        .from('scanners')
+        .update({ name, code, notes })
+        .eq('id', editingScannerId)
+        .select()
+        .single()
+
+      if (updateError || !data) {
+        setError(
+          updateError?.code === '23505'
+            ? 'כבר קיים סורק עם הקוד הזה'
+            : updateError?.message ?? 'שגיאה בשמירה',
+        )
+        setSaving(false)
+        return
+      }
+
+      setScanners((prev) => prev.map((s) => (s.id === editingScannerId ? (data as Scanner) : s)))
+      setSaving(false)
+      setScannerOpen(false)
+      return
+    }
+
     const maxSort = scanners.reduce((m, s) => Math.max(m, s.sort_order), 0)
     const { data, error: insertError } = await supabase
       .from('scanners')
       .insert({
         name,
         code,
-        notes: newNotes.trim() || null,
+        notes,
         sort_order: maxSort + 1,
         status: 'active',
       })
@@ -1234,10 +1272,13 @@ export function AdminScannersPanel() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-2">
           {scanners.map((s) => (
-            <span
+            <button
               key={s.id}
+              type="button"
+              onClick={() => openEditScanner(s)}
+              title={s.notes ? `${s.notes} · לחיצה לעריכה` : 'לחיצה לעריכה'}
               className={cn(
-                'inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs',
+                'inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs transition hover:border-secondary/40 hover:bg-surface-elevated',
                 s.status === 'retired' && 'opacity-50',
                 s.status === 'maintenance' && 'border-warning/40',
               )}
@@ -1250,7 +1291,8 @@ export function AdminScannersPanel() {
               {s.status === 'maintenance' && (
                 <span className="text-warning-text">תחזוקה</span>
               )}
-            </span>
+              <Pencil size={11} className="text-muted" />
+            </button>
           ))}
         </div>
         <div className="flex gap-2">
@@ -1944,7 +1986,7 @@ export function AdminScannersPanel() {
       <Modal
         isOpen={scannerOpen}
         onClose={() => setScannerOpen(false)}
-        title="הוספת סורק"
+        title={editingScannerId ? 'עריכת סורק' : 'הוספת סורק'}
         dialogClassName="max-w-md"
       >
         <form onSubmit={submitScanner} className="space-y-3">
@@ -1965,14 +2007,15 @@ export function AdminScannersPanel() {
           />
           <Input
             id="scanner-notes"
-            label="הערות"
+            label="תיאור / הערות"
             value={newNotes}
             onChange={(e) => setNewNotes(e.target.value)}
+            placeholder="למשל: הסורק הכחול, נמצא במשרד"
           />
           {error && <p className="text-sm text-danger-text">{error}</p>}
           <ModalActions>
             <Button type="submit" loading={saving}>
-              הוסף סורק
+              {editingScannerId ? 'שמור שינויים' : 'הוסף סורק'}
             </Button>
             <Button type="button" variant="outline" onClick={() => setScannerOpen(false)}>
               ביטול
