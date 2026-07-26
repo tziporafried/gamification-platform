@@ -229,75 +229,13 @@ function colorForFamily(
   return colors.get(customerName.trim()) ?? FAMILY_BAR_PALETTE[0]
 }
 
-function chunkWeeks(days: Date[]): Date[][] {
-  const weeks: Date[][] = []
-  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7))
-  return weeks
+/** A day already gone - dimmed, and not worth showing free capacity for. */
+function isPastDay(day: Date): boolean {
+  return day < startOfDay(new Date())
 }
 
 function dayISO(day: Date): string {
   return format(day, 'yyyy-MM-dd')
-}
-
-/** Clip a booking into a week row and return 0-based start column + span. */
-function bookingSpanInWeek(
-  booking: ScannerBooking,
-  week: Date[],
-): { start: number; span: number } | null {
-  const wStart = dayISO(week[0])
-  const wEnd = dayISO(week[6])
-  if (booking.end_date < wStart || booking.start_date > wEnd) return null
-  const clipStart = booking.start_date < wStart ? wStart : booking.start_date
-  const clipEnd = booking.end_date > wEnd ? wEnd : booking.end_date
-  const start = week.findIndex((d) => dayISO(d) === clipStart)
-  const end = week.findIndex((d) => dayISO(d) === clipEnd)
-  if (start < 0 || end < 0) return null
-  return { start, span: end - start + 1 }
-}
-
-type WeekBar = {
-  booking: ScannerBooking
-  start: number
-  span: number
-  lane: number
-}
-
-function rangesOverlapCols(
-  aStart: number,
-  aSpan: number,
-  bStart: number,
-  bSpan: number,
-): boolean {
-  return aStart < bStart + bSpan && bStart < aStart + aSpan
-}
-
-/** Pack overlapping family bars into separate lanes within a week. */
-function layoutWeekBookings(bookings: ScannerBooking[], week: Date[]): WeekBar[] {
-  const items = bookings
-    .map((booking) => {
-      const span = bookingSpanInWeek(booking, week)
-      return span ? { booking, ...span } : null
-    })
-    .filter((x): x is { booking: ScannerBooking; start: number; span: number } => x != null)
-    .sort(
-      (a, b) =>
-        a.start - b.start ||
-        b.span - a.span ||
-        a.booking.customer_name.localeCompare(b.booking.customer_name, 'he'),
-    )
-
-  const placed: WeekBar[] = []
-  for (const item of items) {
-    const used = new Set(
-      placed
-        .filter((p) => rangesOverlapCols(item.start, item.span, p.start, p.span))
-        .map((p) => p.lane),
-    )
-    let lane = 0
-    while (used.has(lane)) lane += 1
-    placed.push({ ...item, lane })
-  }
-  return placed
 }
 
 /**
@@ -308,11 +246,11 @@ function layoutWeekBookings(bookings: ScannerBooking[], week: Date[]): WeekBar[]
  * one window that starts on the current week and runs forward, so the first
  * thing on screen is today and everything after it.
  */
-const WINDOW_WEEKS = 5
+const WINDOW_WEEKS = 4
 const WINDOW_DAYS = WINDOW_WEEKS * 7
 /** One page back / forward, deliberately shorter than the window: the week of
  *  overlap keeps a booking that straddles the edge visible on both pages. */
-const PAGE_DAYS = 28
+const PAGE_DAYS = 21
 
 /** Clip a booking to the visible day list for the scanner timeline. */
 function bookingSpanInDays(
@@ -580,8 +518,6 @@ export function AdminScannersPanel() {
     [bookings],
   )
 
-  const calendarWeeks = useMemo(() => chunkWeeks(windowDays), [windowDays])
-
   const windowEnd = windowDays[windowDays.length - 1]
 
   /** Which months the window covers, so the strip can label the switch-over. */
@@ -600,6 +536,25 @@ export function AdminScannersPanel() {
     () => windowDays.some((d) => isSameDay(d, new Date())),
     [windowDays],
   )
+
+  /**
+   * One column template for every row, so the board lines up down its height.
+   * 60px is set by the narrowest thing that has to stay readable: a one-day
+   * booking, whose bar has ~52px left for the customer name once its padding
+   * is taken off. Narrower and single days go back to being anonymous blocks.
+   */
+  const boardColumns = `160px repeat(${windowDays.length}, minmax(60px, 1fr))`
+
+  /** Scanners still free to sell, per visible day. */
+  const capacityByDay = useMemo(() => {
+    const bookable = activeScanners.filter((s) => s.status === 'active')
+    return windowDays.map((day) => {
+      const taken = bookable.filter((scanner) =>
+        bookings.some((b) => b.scanner_id === scanner.id && bookingCoversDay(b, day)),
+      ).length
+      return { total: bookable.length, free: Math.max(0, bookable.length - taken) }
+    })
+  }, [windowDays, activeScanners, bookings])
 
   const rangeLabel = isSameMonth(windowStart, windowEnd)
     ? format(windowStart, 'MMMM yyyy', { locale: he })
@@ -1363,23 +1318,38 @@ export function AdminScannersPanel() {
         </div>
       </div>
 
-      <Card className="p-4">
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => setWindowStart((d) => addDays(d, -PAGE_DAYS))}
-            className="rounded-lg border border-border p-2 text-muted hover:border-secondary/40 hover:text-foreground"
-            aria-label="אחורה ארבעה שבועות"
-          >
-            <ChevronRight size={16} />
-          </button>
-          <div className="min-w-0 text-center">
-            <h3 className="text-sm font-semibold text-foreground">{rangeLabel}</h3>
-            <p className="text-[11px] tabular-nums text-muted">
-              {format(windowStart, 'd.M')} – {format(windowEnd, 'd.M')}
-            </p>
-          </div>
+      {/* One board: scanners x the visible window.
+          This replaced a month grid that sat above it and answered the same
+          questions in less room - so the day columns get the whole width now,
+          and the grid's two useful extras (free-scanner counts, double-click
+          to book) moved down here rather than being lost with it. */}
+      <Card className="overflow-x-auto p-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-base font-semibold text-foreground">לוח תפוסה</h3>
+
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setWindowStart((d) => addDays(d, -PAGE_DAYS))}
+              className="rounded-lg border border-border p-2 text-muted hover:border-secondary/40 hover:text-foreground"
+              aria-label="אחורה שלושה שבועות"
+            >
+              <ChevronRight size={16} />
+            </button>
+            <div className="min-w-[9rem] text-center">
+              <p className="text-sm font-semibold text-foreground">{rangeLabel}</p>
+              <p className="text-[11px] tabular-nums text-muted">
+                {format(windowStart, 'd.M')} – {format(windowEnd, 'd.M')}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setWindowStart((d) => addDays(d, PAGE_DAYS))}
+              className="rounded-lg border border-border p-2 text-muted hover:border-secondary/40 hover:text-foreground"
+              aria-label="קדימה שלושה שבועות"
+            >
+              <ChevronLeft size={16} />
+            </button>
             {!todayInWindow && (
               <button
                 type="button"
@@ -1389,209 +1359,61 @@ export function AdminScannersPanel() {
                 היום
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setWindowStart((d) => addDays(d, PAGE_DAYS))}
-              className="rounded-lg border border-border p-2 text-muted hover:border-secondary/40 hover:text-foreground"
-              aria-label="קדימה ארבעה שבועות"
-            >
-              <ChevronLeft size={16} />
-            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-1 mb-1">
-          {WEEKDAY_LABELS.map((d) => (
-            <div key={d} className="py-1 text-center text-[11px] font-medium text-muted">
-              {d}
-            </div>
-          ))}
-        </div>
-
-        <div className="space-y-1">
-          {calendarWeeks.map((week) => {
-            const weekBars = layoutWeekBookings(bookings, week)
-            const laneCount = Math.max(
-              weekBars.reduce((max, b) => Math.max(max, b.lane + 1), 0),
-              1,
-            )
-            const LANE_H = 26
-            const LANE_GAP = 4
-            const HEADER_H = 34
-            const barsBlockH = laneCount * LANE_H + Math.max(0, laneCount - 1) * LANE_GAP
-            const bodyMinHeight = HEADER_H + barsBlockH + 10
-
-            return (
-              <div
-                key={week[0].toISOString()}
-                className="relative rounded-xl border border-border"
-                style={{ minHeight: bodyMinHeight }}
-              >
-                <div className="grid grid-cols-7" style={{ minHeight: bodyMinHeight }}>
-                  {week.map((day) => {
-                    const isToday = isSameDay(day, new Date())
-                    // The window can open on a day or two of history; those are
-                    // dimmed the way out-of-month days used to be.
-                    const isPast = !isToday && day < startOfDay(new Date())
-                    const isSelected = selectedDay ? isSameDay(day, selectedDay) : false
-                    const dayBookings = bookings.filter((b) => bookingCoversDay(b, day))
-                    const activeCount = activeScanners.filter((s) => s.status === 'active').length
-                    const bookedActive = activeScanners.filter(
-                      (s) => s.status === 'active' && dayBookings.some((b) => b.scanner_id === s.id),
-                    ).length
-                    const freeCount = Math.max(0, activeCount - bookedActive)
-
-                    return (
-                      <button
-                        key={day.toISOString()}
-                        type="button"
-                        onClick={() => openDayDetail(day)}
-                        onDoubleClick={(e) => {
-                          e.stopPropagation()
-                          openBooking(day)
-                        }}
-                        className={cn(
-                          'flex flex-col border-e border-border/70 p-1.5 text-right transition-colors last:border-e-0',
-                          isPast ? 'bg-surface-elevated/40' : 'bg-surface',
-                          isToday && 'bg-secondary/5',
-                          isSelected && 'ring-inset ring-1 ring-secondary/40',
-                          'hover:bg-secondary/5',
-                        )}
-                        style={{ minHeight: bodyMinHeight }}
-                      >
-                        <div className="flex items-center justify-between gap-1">
-                          <span
-                            className={cn(
-                              'inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[12px] font-semibold tabular-nums',
-                              isPast ? 'text-muted/50' : 'text-foreground',
-                              isToday && 'bg-secondary text-white',
-                            )}
-                          >
-                            {format(day, day.getDate() === 1 ? 'd.M' : 'd')}
-                          </span>
-                          {!isPast && activeCount > 0 && (
-                            <span
-                              className={cn(
-                                'rounded px-1 text-[9px] font-medium tabular-nums',
-                                freeCount === 0
-                                  ? 'bg-danger/15 text-danger-text'
-                                  : freeCount === activeCount
-                                    ? 'bg-success/15 text-success-text'
-                                    : 'bg-warning/15 text-warning-text',
-                              )}
-                              title={`${freeCount} פנויים מתוך ${activeCount}`}
-                            >
-                              {freeCount}/{activeCount}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-
-                {/* Continuous family bars - one lane per overlapping booking */}
-                {weekBars.length > 0 && (
-                  <div
-                    className="pointer-events-none absolute inset-x-0 px-0.5"
-                    style={{ top: HEADER_H, height: barsBlockH }}
-                  >
-                    {weekBars.map((bar) => {
-                      const continuesBefore = bar.booking.start_date < dayISO(week[0])
-                      const continuesAfter = bar.booking.end_date > dayISO(week[6])
-                      const multiDay = bar.booking.start_date !== bar.booking.end_date
-                      const colors = colorForFamily(familyColors, bar.booking.customer_name)
-                      const colPct = 100 / 7
-                      return (
-                        <button
-                          key={bar.booking.id}
-                          type="button"
-                          onClick={() => openBookingDetail(bar.booking)}
-                          title={`${bar.booking.customer_name} · ${formatRange(bar.booking.start_date, bar.booking.end_date)} · ${scannerLabel(bar.booking.scanner_id)}`}
-                          className={cn(
-                            'pointer-events-auto absolute z-10 flex items-center overflow-hidden px-1.5 text-start text-[11px] font-semibold leading-none shadow-sm transition-opacity hover:opacity-90',
-                            multiDay && continuesBefore && continuesAfter && 'rounded-none',
-                            multiDay && continuesBefore && !continuesAfter && 'rounded-e-md rounded-s-none',
-                            multiDay && !continuesBefore && continuesAfter && 'rounded-s-md rounded-e-none',
-                            (!multiDay || (!continuesBefore && !continuesAfter)) && 'rounded-md',
-                          )}
-                          style={{
-                            top: bar.lane * (LANE_H + LANE_GAP),
-                            height: LANE_H,
-                            insetInlineStart: `calc(${bar.start * colPct}% + 2px)`,
-                            width: `calc(${bar.span * colPct}% - 4px)`,
-                            backgroundColor: colors.bg,
-                            color: colors.text,
-                          }}
-                        >
-                          <span className="min-w-0 flex-1 truncate">{bar.booking.customer_name}</span>
-                          <OutstandingDot state={bookingPaymentState(bar.booking)} />
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-
-        <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted">
-          <span>בקוביה מוצגות כל המשפחות · משפחה לכמה ימים מופיעה כרצועה צבעונית מתמשכת · לחיצה פותחת את כל הפרטים · לחיצה כפולה להזמנה חדשה</span>
-          <span className="inline-flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full ring-1 ring-white/85" style={{ backgroundColor: UNPAID_DOT }} />
-            לא שולם
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full ring-1 ring-white/85" style={{ backgroundColor: PARTIAL_DOT }} />
-            שולם חלקית
-          </span>
-        </p>
-      </Card>
-
-      {/* Resource timeline: scanners × the visible window, with family bars */}
-      <Card className="overflow-x-auto p-4">
-        <h3 className="mb-3 text-sm font-semibold text-foreground">לוח תפוסה</h3>
         {activeScanners.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted">אין סורקים עדיין. הוסף סורק חדש.</p>
         ) : (
-          <div className="relative min-w-[720px]">
-            <div className="space-y-2">
+          <div className="relative min-w-[1900px]">
+            <div className="space-y-1.5">
               {/* The window crosses a month boundary, so name the months above
                   the numbers - otherwise the row reads "30 31 1 2" with no clue. */}
-              <div
-                className="grid gap-0.5"
-                style={{ gridTemplateColumns: `132px repeat(${windowDays.length}, minmax(18px, 1fr))` }}
-              >
+              <div className="grid gap-0.5" style={{ gridTemplateColumns: boardColumns }}>
                 <div />
                 {monthBands.map((band) => (
                   <div
                     key={band.key}
-                    className="truncate border-b border-border/50 pb-0.5 text-center text-[9px] font-semibold text-muted"
+                    className="truncate border-b border-border/60 pb-1 text-center text-[11px] font-bold text-muted"
                     style={{ gridColumn: `span ${band.span}` }}
                   >
                     {band.label}
                   </div>
                 ))}
               </div>
-              <div
-                className="grid gap-0.5"
-                style={{ gridTemplateColumns: `132px repeat(${windowDays.length}, minmax(18px, 1fr))` }}
-              >
+
+              <div className="grid gap-0.5" style={{ gridTemplateColumns: boardColumns }}>
                 <div />
-                {windowDays.map((d) => (
-                  <div
-                    key={d.toISOString()}
-                    className={cn(
-                      'text-center text-[9px] text-muted',
-                      d.getDate() === 1 && 'border-s border-border/60',
-                      isSameDay(d, new Date()) && 'font-bold text-secondary-text',
-                    )}
-                  >
-                    {format(d, 'd')}
-                  </div>
-                ))}
+                {windowDays.map((d) => {
+                  const isToday = isSameDay(d, new Date())
+                  return (
+                    <div
+                      key={d.toISOString()}
+                      className={cn(
+                        'rounded-md py-1 text-center leading-tight',
+                        d.getDay() === 6 && !isToday && 'bg-surface-elevated/70',
+                        isToday && 'bg-secondary',
+                        isPastDay(d) && !isToday && 'opacity-45',
+                      )}
+                    >
+                      <span
+                        className={cn('block text-[9px]', isToday ? 'text-white/80' : 'text-muted/70')}
+                      >
+                        {WEEKDAY_LABELS[d.getDay()]}
+                      </span>
+                      <span
+                        className={cn(
+                          'block text-[13px] font-semibold tabular-nums',
+                          isToday ? 'text-white' : 'text-foreground',
+                        )}
+                      >
+                        {format(d, 'd')}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
+
               {[
                 ...activeScanners.map((scanner) => ({
                   key: scanner.id,
@@ -1616,79 +1438,126 @@ export function AdminScannersPanel() {
                 if (row.key === '__none__' && spans.length === 0) return null
 
                 return (
-                  <div key={row.key} className="flex items-stretch gap-0.5">
-                    <div className="flex w-[132px] shrink-0 items-center gap-1.5 truncate pe-2 text-xs text-foreground">
-                      <span className={cn('h-2 w-2 shrink-0 rounded-full', row.color)} />
+                  <div
+                    key={row.key}
+                    className="grid gap-0.5"
+                    style={{ gridTemplateColumns: boardColumns }}
+                  >
+                    <div className="flex items-center gap-2 truncate pe-2 text-sm text-foreground">
+                      <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', row.color)} />
                       <span className="truncate font-medium">{row.label}</span>
                     </div>
-                    <div
-                      className="grid h-9 min-w-0 flex-1 gap-0.5"
-                      style={{ gridTemplateColumns: `repeat(${windowDays.length}, minmax(0, 1fr))` }}
-                    >
-                      {windowDays.map((d, dayIdx) => {
-                        const occupied = spans.some(
-                          (s) => dayIdx >= s.start && dayIdx < s.start + s.span,
-                        )
-                        return (
-                          <button
-                            key={d.toISOString()}
-                            type="button"
-                            onClick={() => openDayDetail(d)}
-                            className={cn(
-                              'row-start-1 rounded-sm border border-border/30 bg-surface-elevated/50',
-                              isSameDay(d, new Date()) && 'ring-1 ring-secondary/40',
-                            )}
-                            style={{ gridColumn: dayIdx + 1 }}
-                            title={occupied ? 'לחיצה לפרטי היום' : 'פנוי - לחיצה לפרטי היום'}
-                            aria-label={`${format(d, 'd/M')}${occupied ? '' : ' פנוי'}`}
-                          />
-                        )
-                      })}
-                      {spans.map(({ booking, start, span }) => {
-                        const colors = colorForFamily(familyColors, booking.customer_name)
-                        return (
-                          <button
-                            key={booking.id}
-                            type="button"
-                            onClick={() => openBookingDetail(booking)}
-                            title={`${booking.customer_name} · ${formatRange(booking.start_date, booking.end_date)}`}
-                            className="z-10 row-start-1 mx-px flex items-center overflow-hidden rounded-md px-1 text-start text-[10px] font-semibold transition-opacity hover:opacity-90"
-                            style={{
-                              gridColumn: `${start + 1} / span ${span}`,
-                              backgroundColor: colors.bg,
-                              color: colors.text,
-                            }}
-                          >
-                            <span className="min-w-0 flex-1 truncate">{booking.customer_name}</span>
-                            <OutstandingDot state={bookingPaymentState(booking)} />
-                          </button>
-                        )
-                      })}
-                    </div>
+                    {windowDays.map((d, dayIdx) => {
+                      const occupied = spans.some(
+                        (s) => dayIdx >= s.start && dayIdx < s.start + s.span,
+                      )
+                      return (
+                        <button
+                          key={d.toISOString()}
+                          type="button"
+                          onClick={() => openDayDetail(d)}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation()
+                            openBooking(d)
+                          }}
+                          className={cn(
+                            'row-start-1 h-11 rounded-md border border-border/40 bg-surface-elevated/50',
+                            'transition-colors hover:bg-secondary/10',
+                            isPastDay(d) && 'bg-surface-elevated/20',
+                          )}
+                          style={{ gridColumn: dayIdx + 2 }}
+                          title={occupied ? 'לחיצה לפרטי היום' : 'פנוי - לחיצה לפרטי היום'}
+                          aria-label={`${format(d, 'd/M')}${occupied ? '' : ' פנוי'}`}
+                        />
+                      )
+                    })}
+                    {spans.map(({ booking, start, span }) => {
+                      const colors = colorForFamily(familyColors, booking.customer_name)
+                      return (
+                        <button
+                          key={booking.id}
+                          type="button"
+                          onClick={() => openBookingDetail(booking)}
+                          title={`${booking.customer_name} · ${formatRange(booking.start_date, booking.end_date)}`}
+                          className="z-10 row-start-1 my-0.5 flex items-center overflow-hidden rounded-md px-1 text-start text-[11px] font-semibold shadow-sm transition-opacity hover:opacity-90"
+                          style={{
+                            gridColumn: `${start + 2} / span ${span}`,
+                            backgroundColor: colors.bg,
+                            color: colors.text,
+                          }}
+                        >
+                          <span className="min-w-0 flex-1 truncate">{booking.customer_name}</span>
+                          <OutstandingDot state={bookingPaymentState(booking)} />
+                        </button>
+                      )
+                    })}
                   </div>
                 )
               })}
+
+              {/* Free-scanner count per day - the one number the month grid
+                  showed that a wall of bars cannot: capacity still to sell. */}
+              <div
+                className="grid gap-0.5 border-t border-border/50 pt-1.5"
+                style={{ gridTemplateColumns: boardColumns }}
+              >
+                <div className="truncate pe-2 text-xs font-medium text-muted">סורקים פנויים</div>
+                {windowDays.map((d, i) => {
+                  const cap = capacityByDay[i]
+                  if (cap.total === 0 || isPastDay(d)) return <div key={d.toISOString()} />
+                  return (
+                    <div
+                      key={d.toISOString()}
+                      title={`${cap.free} פנויים מתוך ${cap.total}`}
+                      className={cn(
+                        'rounded py-0.5 text-center text-[11px] font-bold tabular-nums',
+                        cap.free === 0
+                          ? 'bg-danger/15 text-danger-text'
+                          : cap.free === cap.total
+                            ? 'bg-success/15 text-success-text'
+                            : 'bg-warning/15 text-warning-text',
+                      )}
+                    >
+                      {cap.free}/{cap.total}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
 
-            {/* Week rulers: one line after every Saturday, drawn over the rows
-                so it reads as a single stripe rather than a tick per row. The
-                template matches the day-number row exactly, so the lines land
-                on the same boundaries as the dates above them. */}
+            {/* Week rulers: one line after every Saturday, plus a tint down
+                today - drawn over the rows as a single overlay so each reads
+                as one stripe rather than a tick that restarts per scanner. */}
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 grid gap-0.5"
-              style={{ gridTemplateColumns: `132px repeat(${windowDays.length}, minmax(18px, 1fr))` }}
+              style={{ gridTemplateColumns: boardColumns }}
             >
               <div />
               {windowDays.map((d, i) => (
                 <div
                   key={d.toISOString()}
-                  className={cn(i > 0 && i % 7 === 0 && 'border-s-2 border-s-border-strong')}
+                  className={cn(
+                    i > 0 && i % 7 === 0 && 'border-s-2 border-s-border-strong',
+                    isSameDay(d, new Date()) && 'bg-secondary/[0.07]',
+                  )}
                 />
               ))}
             </div>
           </div>
         )}
+
+        <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted">
+          <span>לחיצה על יום פותחת את כל הפרטים · לחיצה כפולה פותחת הזמנה חדשה ליום הזה · רצועה צבעונית = משפחה לכמה ימים</span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full ring-1 ring-white/85" style={{ backgroundColor: UNPAID_DOT }} />
+            לא שולם
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full ring-1 ring-white/85" style={{ backgroundColor: PARTIAL_DOT }} />
+            שולם חלקית
+          </span>
+        </p>
       </Card>
 
       <Modal
