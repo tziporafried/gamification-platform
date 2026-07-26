@@ -1,13 +1,23 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Calendar } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Calendar, Search, SlidersHorizontal, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
 import { fetchEventsPlayMeta } from '@/lib/eventsPlayMeta'
+import { fetchEventFeatureOverrides, useFeatureCatalog } from '@/hooks/useEventFeatures'
+import {
+  activeFlags,
+  summariseOverrides,
+  type EventFeatureOverride,
+  type FeatureCatalog,
+} from '@/lib/eventFeatures'
+import { PLAN_LABELS } from '@/lib/eventPlanLabels'
 import { Card } from '@/components/ui/Card'
+import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { StatusBadge, STATUS_COLORS, PLAN_BADGE_COLORS } from '@/components/ui/StatusBadge'
 import { EventDetailsModal } from '@/components/admin/EventDetailsModal'
+import { cn } from '@/lib/utils'
 import type { EventStatus, UserPlan } from '@/types'
 
 interface AdminEventRow {
@@ -25,6 +35,8 @@ interface AdminEventRow {
   tasks: number
   rewards: number
   scans: number
+  /** Feature flags set on this game specifically, on top of its plan. */
+  overrides: EventFeatureOverride[]
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -33,12 +45,14 @@ const STATUS_LABELS: Record<string, string> = {
   archived: 'בארכיון',
 }
 
-const PLAN_LABELS: Record<string, string> = {
-  free: 'התנסות',
-  independent: 'עצמאי',
-  full: 'מלא',
-  organizations: 'ארגונים',
-}
+/** Plan filter chips, in the plan picker's order plus an "all" entry. */
+const PLAN_FILTERS: { value: UserPlan | 'all'; label: string }[] = [
+  { value: 'all', label: 'הכל' },
+  ...(Object.keys(PLAN_LABELS) as UserPlan[]).map((plan) => ({
+    value: plan,
+    label: PLAN_LABELS[plan],
+  })),
+]
 
 function ownerDisplayName(displayName: string | null, email: string) {
   return displayName?.trim() || email.split('@')[0] || email
@@ -49,6 +63,16 @@ export function AdminEventsList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<AdminEventRow | null>(null)
+  const [query, setQuery] = useState('')
+  const [planFilter, setPlanFilter] = useState<UserPlan | 'all'>('all')
+  const [extrasOnly, setExtrasOnly] = useState(false)
+  const { catalog } = useFeatureCatalog()
+
+  /**
+   * The flags column and filter only appear once a flag exists, so the list
+   * looks exactly as it did before feature flags until there is one to show.
+   */
+  const showFeatures = activeFlags(catalog).length > 0
 
   const fetchEvents = useCallback(async () => {
     setLoading(true)
@@ -75,7 +99,7 @@ export function AdminEventsList() {
     const ownerIds = [...new Set(rows.map((row) => row.owner_admin_id))]
     const eventIds = rows.map((row) => row.id)
 
-    const [profilesResult, playMeta] = await Promise.all([
+    const [profilesResult, playMeta, overrides] = await Promise.all([
       ownerIds.length > 0
         ? supabase
             .from('user_profiles')
@@ -83,6 +107,10 @@ export function AdminEventsList() {
             .in('id', ownerIds)
         : Promise.resolve({ data: [] as { id: string; display_name: string | null; email: string }[], error: null }),
       fetchEventsPlayMeta(eventIds),
+      // Missing table / read failure just means "no game has a flag yet".
+      fetchEventFeatureOverrides(eventIds).catch(
+        () => ({}) as Record<string, EventFeatureOverride[]>,
+      ),
     ])
 
     if (profilesResult.error) {
@@ -116,6 +144,7 @@ export function AdminEventsList() {
           tasks: counts?.tasks ?? 0,
           rewards: counts?.rewards ?? 0,
           scans: playMeta[row.id]?.totalScans ?? 0,
+          overrides: overrides[row.id] ?? [],
         }
       }),
     )
@@ -125,6 +154,34 @@ export function AdminEventsList() {
   useEffect(() => {
     void fetchEvents()
   }, [fetchEvents])
+
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    return events.filter((event) => {
+      if (planFilter !== 'all' && event.plan !== planFilter) return false
+      if (extrasOnly && showFeatures) {
+        const { granted, withheld } = summariseOverrides(catalog, event.plan, event.overrides)
+        if (granted === 0 && withheld === 0) return false
+      }
+      if (!needle) return true
+      return (
+        event.name.toLowerCase().includes(needle) ||
+        event.owner_name.toLowerCase().includes(needle) ||
+        event.owner_email.toLowerCase().includes(needle)
+      )
+    })
+  }, [catalog, events, query, planFilter, extrasOnly, showFeatures])
+
+  const extrasCount = useMemo(
+    () =>
+      events.filter((event) => {
+        const { granted, withheld } = summariseOverrides(catalog, event.plan, event.overrides)
+        return granted > 0 || withheld > 0
+      }).length,
+    [catalog, events],
+  )
+
+  const filtered = query.trim() !== '' || planFilter !== 'all' || extrasOnly
 
   if (loading) return <FullPageLoader />
 
@@ -136,10 +193,81 @@ export function AdminEventsList() {
         </div>
       )}
 
-      <div className="mb-6 flex items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[13rem] flex-1">
+          <Search
+            size={15}
+            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="חיפוש לפי שם משחק, לקוח או אימייל"
+            aria-label="חיפוש משחקים"
+            className="!pr-9"
+          />
+        </div>
+
+        {showFeatures && (
+          <button
+            type="button"
+            aria-pressed={extrasOnly}
+            onClick={() => setExtrasOnly((v) => !v)}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[11px] font-medium transition-colors',
+              extrasOnly
+                ? 'border-success/45 bg-success/10 text-success-text'
+                : 'border-border bg-surface text-muted hover:text-foreground',
+            )}
+          >
+            <SlidersHorizontal size={13} aria-hidden="true" />
+            עם פיצ׳ר פלאגים ({extrasCount})
+          </button>
+        )}
+      </div>
+
+      <div className="mb-5 flex flex-wrap items-center gap-1.5">
+        {PLAN_FILTERS.map((option) => {
+          const active = planFilter === option.value
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setPlanFilter(option.value)}
+              className={cn(
+                'rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                active
+                  ? 'border-primary/50 bg-primary/10 text-primary-text'
+                  : 'border-border bg-surface text-muted hover:text-foreground',
+              )}
+            >
+              {option.label}
+            </button>
+          )
+        })}
+        {filtered && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery('')
+              setPlanFilter('all')
+              setExtrasOnly(false)
+            }}
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-muted hover:text-foreground"
+          >
+            <X size={12} aria-hidden="true" />
+            נקה סינון
+          </button>
+        )}
+      </div>
+
+      <div className="mb-4 flex items-center gap-2">
         <Calendar size={18} className="text-gray-400" />
         <h2 className="text-sm font-medium text-gray-400">
-          {events.length} אירועים
+          {filtered ? `${visible.length} מתוך ${events.length} אירועים` : `${events.length} אירועים`}
         </h2>
       </div>
 
@@ -149,15 +277,24 @@ export function AdminEventsList() {
           title="אין אירועים"
           description="אירועים שנוצרו על ידי לקוחות יופיעו כאן"
         />
+      ) : visible.length === 0 ? (
+        <EmptyState
+          icon={<Search size={32} />}
+          title="אין תוצאות"
+          description="נסו שם אחר, או נקו את הסינון"
+        />
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[840px] text-sm">
+            <table className="w-full min-w-[940px] text-sm">
               <thead>
                 <tr className="border-b border-game-border bg-white/[0.02] text-xs text-muted">
                   <th scope="col" className="px-4 py-3 text-right font-medium">שם האירוע</th>
                   <th scope="col" className="px-4 py-3 text-right font-medium">משתמש</th>
                   <th scope="col" className="px-4 py-3 text-right font-medium">תוכנית</th>
+                  {showFeatures && (
+                    <th scope="col" className="px-4 py-3 text-right font-medium">פיצ׳ר פלאגים</th>
+                  )}
                   <th scope="col" className="px-4 py-3 text-right font-medium">סטטוס</th>
                   <th scope="col" className="px-4 py-3 text-center font-medium">קבוצות</th>
                   <th scope="col" className="px-4 py-3 text-center font-medium">משתתפים</th>
@@ -168,7 +305,7 @@ export function AdminEventsList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-game-border/50">
-                {events.map((event) => (
+                {visible.map((event) => (
                   <tr
                     key={event.id}
                     role="button"
@@ -218,6 +355,11 @@ export function AdminEventsList() {
                         color={PLAN_BADGE_COLORS[event.plan] ?? 'var(--color-muted)'}
                       />
                     </td>
+                    {showFeatures && (
+                      <td className="px-4 py-3">
+                        <ExtrasCell catalog={catalog} plan={event.plan} overrides={event.overrides} />
+                      </td>
+                    )}
                     <td className="px-4 py-3">
                       <StatusBadge
                         label={STATUS_LABELS[event.status] ?? event.status}
@@ -244,9 +386,43 @@ export function AdminEventsList() {
         <EventDetailsModal
           eventId={preview.id}
           eventName={preview.name?.trim() || 'ללא שם'}
+          plan={preview.plan}
           onClose={() => setPreview(null)}
+          onFeaturesChanged={() => void fetchEvents()}
         />
       )}
     </>
+  )
+}
+
+/** "+2 / -1" for a game whose flags differ from its plan; a dash otherwise. */
+function ExtrasCell({
+  catalog,
+  plan,
+  overrides,
+}: {
+  catalog: FeatureCatalog
+  plan: UserPlan
+  overrides: EventFeatureOverride[]
+}) {
+  const { granted, withheld } = summariseOverrides(catalog, plan, overrides)
+
+  if (granted === 0 && withheld === 0) {
+    return <span className="text-xs text-muted/60">לפי התוכנית</span>
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {granted > 0 && (
+        <span className="rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success-text">
+          +{granted}
+        </span>
+      )}
+      {withheld > 0 && (
+        <span className="rounded-full bg-danger/10 px-2 py-0.5 text-[11px] font-semibold text-danger-text">
+          −{withheld}
+        </span>
+      )}
+    </div>
   )
 }

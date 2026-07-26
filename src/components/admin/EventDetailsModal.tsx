@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Layers, Users, CheckSquare, Gift, Star } from 'lucide-react'
+import { Layers, Users, CheckSquare, Gift, Star, SlidersHorizontal } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Modal } from '@/components/ui/Modal'
 import { Tabs } from '@/components/ui/Tabs'
@@ -7,12 +7,17 @@ import { ColorDot } from '@/components/ui/ColorDot'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
-import type { Group } from '@/types'
+import { EventFeaturesPanel } from '@/components/admin/EventFeaturesPanel'
+import type { Group, UserPlan } from '@/types'
 
 interface EventDetailsModalProps {
   eventId: string
   eventName: string
+  /** The game's plan - the baseline a feature flag overrides. */
+  plan: UserPlan
   onClose: () => void
+  /** A feature flag changed, so a parent list's summary is now stale. */
+  onFeaturesChanged?: () => void
 }
 
 interface GroupRow extends Group {
@@ -48,9 +53,15 @@ interface GroupJoin {
   groups: Group
 }
 
-type DetailTab = 'groups' | 'participants' | 'actions' | 'rewards'
+type DetailTab = 'groups' | 'participants' | 'actions' | 'rewards' | 'features'
 
-export function EventDetailsModal({ eventId, eventName, onClose }: EventDetailsModalProps) {
+export function EventDetailsModal({
+  eventId,
+  eventName,
+  plan,
+  onClose,
+  onFeaturesChanged,
+}: EventDetailsModalProps) {
   const [tab, setTab] = useState<DetailTab>('groups')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -139,11 +150,12 @@ export function EventDetailsModal({ eventId, eventName, onClose }: EventDetailsM
     return () => { cancelled = true }
   }, [eventId])
 
-  const TABS: { id: DetailTab; label: string; icon: typeof Layers; count: number }[] = [
+  const TABS: { id: DetailTab; label: string; icon: typeof Layers; count: number | null }[] = [
     { id: 'groups', label: 'קבוצות', icon: Layers, count: groups.length },
     { id: 'participants', label: 'משתתפים', icon: Users, count: participants.length },
     { id: 'actions', label: 'משימות', icon: CheckSquare, count: actions.length },
     { id: 'rewards', label: 'פרסים', icon: Gift, count: rewards.length },
+    { id: 'features', label: 'פיצ׳ר פלאגים', icon: SlidersHorizontal, count: null },
   ]
 
   return (
@@ -159,7 +171,7 @@ export function EventDetailsModal({ eventId, eventName, onClose }: EventDetailsM
           <Tabs
             tabs={TABS.map(({ id, label, icon: Icon, count }) => ({
               id,
-              label: `${label} (${count})`,
+              label: count == null ? label : `${label} (${count})`,
               icon: <Icon size={15} />,
             }))}
             activeTab={tab}
@@ -170,7 +182,9 @@ export function EventDetailsModal({ eventId, eventName, onClose }: EventDetailsM
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          {loading ? (
+          {tab === 'features' ? (
+            <EventFeaturesPanel eventId={eventId} plan={plan} onChanged={onFeaturesChanged} />
+          ) : loading ? (
             <CenteredLoader />
           ) : error ? (
             <ErrorAlert message={`שגיאה בטעינת המידע: ${error}`} />

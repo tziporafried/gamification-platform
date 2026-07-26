@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { useEventCounts } from '@/hooks/useEventCounts'
 import { ControlCenter } from '@/components/wizard/ControlCenter'
+import { EventFeaturesProvider } from '@/contexts/EventFeaturesContext'
 import { trackEventOpen } from '@/lib/analytics'
 import type { Event } from '@/types'
 
@@ -69,5 +70,9 @@ export function EventBySlugControl() {
     )
   }
 
-  return <ControlCenter event={event!} counts={counts} />
+  return (
+    <EventFeaturesProvider eventId={event!.id} plan={event!.plan}>
+      <ControlCenter event={event!} counts={counts} />
+    </EventFeaturesProvider>
+  )
 }

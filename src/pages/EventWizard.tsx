@@ -23,6 +23,7 @@ import { StepTasks } from '@/components/wizard/StepTasks'
 import { StepRewards } from '@/components/wizard/StepRewards'
 import { StepReviewGenerate } from '@/components/wizard/StepReviewGenerate'
 import { TemplatePickerModal } from '@/components/wizard/TemplatePickerModal'
+import { EventFeaturesProvider } from '@/contexts/EventFeaturesContext'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import {
   trackWizardStepView,
@@ -217,6 +218,7 @@ export function EventWizard() {
   const isTrial = !isSuperAdmin && event.plan === 'free'
 
   return (
+    <EventFeaturesProvider eventId={event.id} plan={event.plan}>
     <WizardLayout
       event={event}
       currentStep={currentStep}
@@ -336,5 +338,6 @@ export function EventWizard() {
         />
       )}
     </WizardLayout>
+    </EventFeaturesProvider>
   )
 }

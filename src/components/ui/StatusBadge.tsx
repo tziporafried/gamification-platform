@@ -26,6 +26,7 @@ export const PLAN_BADGE_COLORS: Record<string, string> = {
   free: 'var(--color-muted)',
   independent: 'var(--color-secondary)',
   full: 'var(--color-primary)',
+  offline: 'var(--color-tertiary)',
   organizations: 'var(--color-accent)',
 }
 

@@ -12,6 +12,7 @@
     "test:offline": "node --import ./scripts/register-alias.mjs --test src/lib/offline/*.test.ts",
     "test:scan": "node --import ./scripts/register-alias.mjs --test src/lib/qrPayload.test.ts src/lib/scanSequence.test.ts src/lib/cardCounts.test.ts",
     "test:finance": "node --import ./scripts/register-alias.mjs --test src/lib/financeSplit.test.ts",
+    "test:features": "node --import ./scripts/register-alias.mjs --test src/lib/eventFeatures.test.ts",
     "test:roster": "node --import ./scripts/register-alias.mjs --test src/lib/spreadsheet/*.test.ts src/lib/roster/*.test.ts"
   },
   "dependencies": {

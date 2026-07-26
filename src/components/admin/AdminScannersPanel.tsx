@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
@@ -10,6 +10,7 @@ import {
   Search,
   Download,
   Sparkles,
+  SlidersHorizontal,
   X,
 } from 'lucide-react'
 import {
@@ -50,6 +51,14 @@ import { ModalActions } from '@/components/ui/ModalActions'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { TrialActivationResetModal } from '@/components/TrialActivationResetModal'
+import { EventFeaturesModal } from '@/components/admin/EventFeaturesModal'
+import { EVENT_PLAN_OPTIONS, eventPlanLabel } from '@/lib/eventPlanLabels'
+import {
+  isMissingFeatureTableError,
+  summariseOverrides,
+  type EventFeatureOverride,
+} from '@/lib/eventFeatures'
+import { useFeatureCatalog } from '@/hooks/useEventFeatures'
 import { exportOfflineGame, OfflineExportError } from '@/lib/offline/exportGame'
 import { adminLabel, type FinanceAdmin } from '@/lib/financeSplit'
 
@@ -62,18 +71,6 @@ const BARCODE_TYPE_OPTIONS: { value: BarcodeType; label: string; hint: string }[
   { value: 'qr', label: 'דו-ממדי (QR)', hint: 'ברירת מחדל' },
   { value: 'code128', label: 'חד-ממדי', hint: 'ברקוד ליניארי' },
 ]
-
-const EVENT_PLAN_OPTIONS: { value: UserPlan; label: string }[] = [
-  { value: 'free', label: 'התנסות' },
-  { value: 'independent', label: 'עצמאי' },
-  { value: 'full', label: 'מלא' },
-  { value: 'offline', label: 'ללא אינטרנט' },
-  { value: 'organizations', label: 'ארגונים' },
-]
-
-function eventPlanLabel(plan: string | undefined): string {
-  return EVENT_PLAN_OPTIONS.find((p) => p.value === plan)?.label ?? plan ?? '-'
-}
 
 type EventOption = {
   id: string
@@ -352,6 +349,9 @@ export function AdminScannersPanel() {
   const [updatingEventPlan, setUpdatingEventPlan] = useState(false)
   const [exportingOffline, setExportingOffline] = useState(false)
   const [offlineExportError, setOfflineExportError] = useState<string | null>(null)
+  const [featuresTarget, setFeaturesTarget] = useState<{ eventId: string; plan: UserPlan } | null>(null)
+  const [featureOverrides, setFeatureOverrides] = useState<Record<string, EventFeatureOverride[]>>({})
+  const { catalog: featureCatalog } = useFeatureCatalog()
   const [eventActionError, setEventActionError] = useState<string | null>(null)
   const [pendingPlanChange, setPendingPlanChange] = useState<{
     eventId: string
@@ -389,6 +389,29 @@ export function AdminScannersPanel() {
   const [newNotes, setNewNotes] = useState('')
   /** Null = the scanner modal is adding; otherwise editing this scanner. */
   const [editingScannerId, setEditingScannerId] = useState<string | null>(null)
+
+  // Flag overrides for every game at once: the game-actions dialog shows a
+  // per-game summary and cannot call a hook per row.
+  const refreshFeatureOverrides = useCallback(async () => {
+    try {
+      const { data, error: featureError } = await supabase
+        .from('event_features')
+        .select('event_id, feature_key, enabled, note, price_ils')
+      if (featureError) {
+        if (!isMissingFeatureTableError(featureError.message)) throw featureError
+        setFeatureOverrides({})
+        return
+      }
+      const byEvent: Record<string, EventFeatureOverride[]> = {}
+      for (const row of (data ?? []) as (EventFeatureOverride & { event_id: string })[]) {
+        ;(byEvent[row.event_id] ??= []).push(row)
+      }
+      setFeatureOverrides(byEvent)
+    } catch {
+      // The board still works without them; games fall back to their plan.
+      setFeatureOverrides({})
+    }
+  }, [])
 
   useEffect(() => {
     async function fetchData() {
@@ -467,7 +490,8 @@ export function AdminScannersPanel() {
       setLoading(false)
     }
     fetchData()
-  }, [])
+    void refreshFeatureOverrides()
+  }, [refreshFeatureOverrides])
 
   const activeScanners = useMemo(
     () => scanners.filter((s) => s.status !== 'retired'),
@@ -2035,6 +2059,11 @@ export function AdminScannersPanel() {
           const linked = eventById.get(eventId)
           const currentPlan = (linked?.plan ?? 'free') as UserPlan
           const currentBarcodeType: BarcodeType = linked?.barcode_type ?? 'qr'
+          const extras = summariseOverrides(
+            featureCatalog,
+            currentPlan,
+            featureOverrides[eventId] ?? [],
+          )
           return (
             <div className="space-y-4">
               <div className="rounded-xl border border-border bg-surface px-3 py-3 text-sm">
@@ -2047,6 +2076,8 @@ export function AdminScannersPanel() {
                 </p>
                 <p className="mt-1 text-xs text-muted">
                   תוכנית נוכחית: {eventPlanLabel(currentPlan)}
+                  {extras.granted > 0 && ` · ${extras.granted} תוספות`}
+                  {extras.withheld > 0 && ` · ${extras.withheld} הוסרו`}
                 </p>
               </div>
 
@@ -2124,6 +2155,22 @@ export function AdminScannersPanel() {
                 type="button"
                 variant="outline"
                 className="w-full"
+                onClick={() => setFeaturesTarget({ eventId, plan: currentPlan })}
+                title="הוסיפו או הסירו פיצ׳ר פלאג למשחק הזה בלבד"
+              >
+                <SlidersHorizontal size={14} className="ml-1" />
+                פיצ׳ר פלאגים של המשחק
+                {extras.granted > 0 && (
+                  <span className="mr-1.5 text-xs font-semibold text-success-text">
+                    +{extras.granted}
+                  </span>
+                )}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
                 onClick={() => {
                   setResetEventTarget({
                     eventId,
@@ -2148,6 +2195,15 @@ export function AdminScannersPanel() {
           )
         })()}
       </Modal>
+
+      <EventFeaturesModal
+        isOpen={!!featuresTarget}
+        onClose={() => setFeaturesTarget(null)}
+        eventId={featuresTarget?.eventId ?? ''}
+        eventName={featuresTarget ? eventLabel(featuresTarget.eventId) : ''}
+        plan={featuresTarget?.plan ?? 'free'}
+        onChanged={() => void refreshFeatureOverrides()}
+      />
 
       <TrialActivationResetModal
         isOpen={pendingPlanChange !== null}

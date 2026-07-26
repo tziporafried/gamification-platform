@@ -8,6 +8,7 @@ import { computeRanks } from '@/lib/missionUtils'
 import { ManualEntryForm, type ManualEntryAvailability } from '@/components/scoring/ManualEntryForm'
 import { useHardwareScanner } from '@/hooks/useHardwareScanner'
 import { usePlanPermissions } from '@/hooks/usePlanPermissions'
+import { EventFeaturesProvider } from '@/contexts/EventFeaturesContext'
 import { useScoreSubmit } from '@/hooks/useScoreSubmit'
 import { useEventCatalog } from '@/hooks/useEventCatalog'
 import { useScanSequence } from '@/hooks/useScanSequence'
@@ -4129,9 +4130,9 @@ export function EventKioskPage() {
   }
 
   return (
-    <>
+    <EventFeaturesProvider eventId={event.id} plan={event.plan}>
       <ScreenControls to={`/events/${event.id}/control`} soundScope="scan" />
       <KioskViewport event={event} data={data} gameStarted={gameStarted} />
-    </>
+    </EventFeaturesProvider>
   )
 }

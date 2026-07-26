@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { WinnersCeremony } from '@/components/leaderboard/WinnersCeremony'
+import { EventFeaturesProvider } from '@/contexts/EventFeaturesContext'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { ScreenControls } from '@/components/ui/ScreenControls'
@@ -42,14 +43,16 @@ export function EventDisplayPage() {
   if (loading || !event) return <FullPageLoader />
 
   return (
-    <div className="relative min-h-screen bg-app-radial">
-      <ScreenControls to={`/events/${event.id}/control`} soundScope="leaderboard" />
-      <FloatingIconsLayer />
-      <WinnersCeremony
-        eventId={event.id}
-        eventName={event.name}
-        eventLogoUrl={event.logo_url}
-      />
-    </div>
+    <EventFeaturesProvider eventId={event.id} plan={event.plan}>
+      <div className="relative min-h-screen bg-app-radial">
+        <ScreenControls to={`/events/${event.id}/control`} soundScope="leaderboard" />
+        <FloatingIconsLayer />
+        <WinnersCeremony
+          eventId={event.id}
+          eventName={event.name}
+          eventLogoUrl={event.logo_url}
+        />
+      </div>
+    </EventFeaturesProvider>
   )
 }

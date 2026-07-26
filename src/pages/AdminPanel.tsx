@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download, Search, LogIn, Check, RotateCcw } from 'lucide-react'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download, Search, LogIn, Check, RotateCcw, Flag } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
@@ -20,13 +20,14 @@ import { useUtmLinkLabels, affiliateGroupKey, expandAffiliateSelection } from '@
 import { AdminEventsList } from '@/components/admin/AdminEventsList'
 import { AdminFinancePanel } from '@/components/admin/AdminFinancePanel'
 import { AdminScannersPanel } from '@/components/admin/AdminScannersPanel'
+import { FeatureFlagsAdminPanel } from '@/components/admin/FeatureFlagsAdminPanel'
 import { EventDetailsModal } from '@/components/admin/EventDetailsModal'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
 import { fetchEventsPlayMeta } from '@/lib/eventsPlayMeta'
 import { cn } from '@/lib/utils'
 import type { EventStatus, UserPlan } from '@/types'
 
-type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates' | 'analytics' | 'events' | 'finance' | 'scanners'
+type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates' | 'analytics' | 'events' | 'finance' | 'scanners' | 'feature-flags'
 
 const DEFAULT_ADMIN_TAB: AdminTab = 'analytics'
 
@@ -39,6 +40,7 @@ const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
   { id: 'scanners', label: 'לוח הזמנות', icon: CalendarDays },
   { id: 'finance', label: 'הכנסות והוצאות', icon: Wallet },
   { id: 'templates', label: 'תבניות', icon: Sparkles },
+  { id: 'feature-flags', label: 'פיצ׳ר פלאגים', icon: Flag },
   { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },
 ]
 
@@ -211,7 +213,7 @@ export function AdminPanel() {
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set())
   const [loadingEventsFor, setLoadingEventsFor] = useState<Set<string>>(new Set())
   const [userEvents, setUserEvents] = useState<Map<string, AdminEventRow[]>>(new Map())
-  const [detailEvent, setDetailEvent] = useState<{ id: string; name: string } | null>(null)
+  const [detailEvent, setDetailEvent] = useState<{ id: string; name: string; plan: UserPlan } | null>(null)
 
   // User deletion
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null)
@@ -516,6 +518,8 @@ export function AdminPanel() {
 
       {tab === 'scanners' && <AdminScannersPanel />}
 
+      {tab === 'feature-flags' && <FeatureFlagsAdminPanel />}
+
       {tab === 'customers' && (
         loadingUsers ? (
           <FullPageLoader />
@@ -713,6 +717,7 @@ export function AdminPanel() {
                                     setDetailEvent({
                                       id: ev.event_id,
                                       name: ev.event_name?.trim() || 'ללא שם',
+                                      plan: ev.plan,
                                     })
                                   }
                                   onKeyDown={(e) => {
@@ -721,6 +726,7 @@ export function AdminPanel() {
                                       setDetailEvent({
                                         id: ev.event_id,
                                         name: ev.event_name?.trim() || 'ללא שם',
+                                        plan: ev.plan,
                                       })
                                     }
                                   }}
@@ -918,6 +924,7 @@ export function AdminPanel() {
         <EventDetailsModal
           eventId={detailEvent.id}
           eventName={detailEvent.name}
+          plan={detailEvent.plan}
           onClose={() => setDetailEvent(null)}
         />
       )}

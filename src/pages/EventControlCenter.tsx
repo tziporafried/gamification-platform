@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useEventCounts } from '@/hooks/useEventCounts'
 import { ControlCenter } from '@/components/wizard/ControlCenter'
+import { EventFeaturesProvider } from '@/contexts/EventFeaturesContext'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { trackEventOpen } from '@/lib/analytics'
 import type { Event, EventCounts } from '@/types'
@@ -50,5 +51,9 @@ export function EventControlCenterPage() {
 
   if (loading || !event || !countsLoaded) return <FullPageLoader />
 
-  return <ControlCenter event={event} counts={counts} />
+  return (
+    <EventFeaturesProvider eventId={event.id} plan={event.plan}>
+      <ControlCenter event={event} counts={counts} />
+    </EventFeaturesProvider>
+  )
 }
