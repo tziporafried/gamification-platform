@@ -19,7 +19,7 @@ export interface PlanPricing {
 
 /** The single source of prices - nothing in the UI hardcodes a number. */
 export const PLAN_PRICING: Record<BookablePackage, PlanPricing | null> = {
-  independent: { regular: 40, launch: null },
+  independent: { regular: 60, launch: 40 },
   full: { regular: 200, launch: 150 },
   offline: { regular: 250, launch: 200 },
   organizations: null,
