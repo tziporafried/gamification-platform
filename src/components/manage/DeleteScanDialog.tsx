@@ -95,7 +95,7 @@ function RewardDecision({
 
       {!isFirstOnly ? (
         <p className={cn('mt-2 text-xs leading-relaxed', theme.textMuted)}>
-          הפרס יבוטל, ויוענק שוב אוטומטית ברגע שהניקוד יחזור מעל היעד - אין מה להחליט.
+          הפרס יבוטל, ויוענק שוב אוטומטית ברגע שהניקוד יחזור מעל היעד.
         </p>
       ) : reward.nextWinner ? (
         <div className="mt-2.5 space-y-1.5" role="radiogroup" aria-label={`מה לעשות עם הפרס ${reward.rewardName}`}>
