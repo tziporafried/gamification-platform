@@ -35,6 +35,8 @@ import {
   trackVideoProgress,
   trackVideoView,
 } from '@/lib/analytics'
+import { LaunchOfferBanner } from '@/components/ui/LaunchOfferBanner'
+import { formatPriceIls, resolvePlanPrice } from '@/lib/planPrices'
 import { cn } from '@/lib/utils'
 
 const SETUP_STEPS = [
@@ -190,6 +192,9 @@ export function Landing() {
   const [faqOpenIndex, setFaqOpenIndex] = useState<number | null>(null)
   const [contactOpen, setContactOpen] = useState(false)
   const [contactLocation, setContactLocation] = useState<'faq' | 'footer'>('footer')
+  // Prices (and whether the launch offer still runs) resolved once per mount.
+  const fullPlanPrice = resolvePlanPrice('full')
+  const basicPlanPrice = resolvePlanPrice('independent')
   const howItWorksRef = useRef<HTMLElement>(null)
   const withoutScannerCtaRef = useRef<HTMLButtonElement>(null)
   const restoreFocusToWithoutScannerRef = useRef(false)
@@ -283,7 +288,7 @@ export function Landing() {
     if (item.answer === 'pricing') {
       return (
         <>
-          משלמים לפי אירוע - החל מ-₪40.
+          משלמים לפי אירוע - החל מ-{formatPriceIls(basicPlanPrice?.price ?? 0)}.
           {' '}
           <button
             type="button"
@@ -361,6 +366,12 @@ export function Landing() {
 
       <div className="relative z-10">
         <GlobalHeader />
+
+        {/* System-style announcement strip - sits above every page section. */}
+        <LaunchOfferBanner
+          variant="bar"
+          onViewPlans={() => handleOpenPlans('launch_offer_banner')}
+        />
 
         <main className="mx-auto max-w-4xl px-4 pb-20 pt-12 sm:px-6">
           {/* 1. Hero */}
@@ -518,10 +529,14 @@ export function Landing() {
             {/* Area 1 - launch price + what's included */}
             <motion.section className="mb-6 sm:mb-8" {...revealProps(motionSafe)}>
               <h2 className="mb-2.5 text-[34px] font-black leading-[1.1] tracking-tight text-primary-text sm:text-[46px]">
-                עכשיו במחיר השקה של ₪150 בלבד
+                {fullPlanPrice?.onLaunchOffer
+                  ? `עכשיו במחיר השקה של ${formatPriceIls(fullPlanPrice.price)} בלבד`
+                  : `כל מערכת Gamify לאירוע אחד ב-${formatPriceIls(fullPlanPrice?.price ?? 0)}`}
               </h2>
               <p className="mb-3 text-base font-semibold text-foreground sm:text-lg">
-                לזמן מוגבל, כל מערכת Gamify לאירוע אחד במחיר מיוחד.
+                {fullPlanPrice?.onLaunchOffer
+                  ? 'לזמן מוגבל, כל מערכת Gamify לאירוע אחד במחיר מיוחד.'
+                  : 'כל מערכת Gamify לאירוע אחד, בלי מנוי ובלי התחייבות.'}
               </p>
               <p className="mx-auto mb-5 max-w-xl text-[15px] leading-relaxed text-muted sm:text-base">
                 מערכת המשחק · כרטיסי ברקוד · סריקות · ניקוד · לוח שיאנים · פרסים
@@ -535,7 +550,7 @@ export function Landing() {
                 לכל המסלולים והמחירים
               </Button>
               <p className="mx-auto mt-3 text-sm text-muted">
-                מחפשים משהו פשוט יותר? יש מסלולים החל מ־₪40 לאירוע.
+                מחפשים משהו פשוט יותר? יש מסלולים החל מ־{formatPriceIls(basicPlanPrice?.price ?? 0)} לאירוע.
               </p>
             </motion.section>
 

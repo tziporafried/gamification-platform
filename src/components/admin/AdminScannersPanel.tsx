@@ -34,7 +34,7 @@ import {
   BOOKABLE_PACKAGES,
   BOOKING_PACKAGE_LABELS,
   EXTRA_DAY_PRICE,
-  PLAN_BASE_PRICES,
+  planBasePrice,
   bookingDayCount,
   calculateBookingPrice,
   formatPriceIls,
@@ -1688,7 +1688,7 @@ export function AdminScannersPanel() {
               בחרי חבילה…
             </option>
             {BOOKABLE_PACKAGES.map((pkg) => {
-              const base = PLAN_BASE_PRICES[pkg]
+              const base = planBasePrice(pkg)
               const suffix =
                 base == null
                   ? ' - מחיר לפי הסכם'

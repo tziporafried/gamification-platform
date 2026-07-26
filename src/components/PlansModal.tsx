@@ -1,4 +1,12 @@
-import { useState, useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
 import { Check, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -13,6 +21,13 @@ import {
 import { ContactForm } from '@/components/ContactForm'
 import type { ContactIntent } from '@/lib/contact'
 import type { PlansOption } from '@/contexts/PlansModalContext'
+import { LaunchOfferBanner } from '@/components/ui/LaunchOfferBanner'
+import {
+  EXTRA_DAY_PRICE,
+  formatPriceIls,
+  isLaunchOfferActive,
+  resolvePlanPrice,
+} from '@/lib/planPrices'
 import { cn } from '@/lib/utils'
 
 type Option = PlansOption
@@ -31,11 +46,11 @@ const INTENT_FOR_OPTION: Record<Option, ContactIntent> = {
   offline: 'plan_offline',
 }
 
+/** Kept short on purpose - the four management lines read as one idea. */
+const CORE_INCLUDES = ['ניהול מלא של המשחק', 'משימות, משתתפים וקבוצות']
+
 const BASIC_INCLUDES = [
-  'מערכת המשחק',
-  'ניהול משתתפים',
-  'ניהול קבוצות',
-  'משימות וניקוד',
+  ...CORE_INCLUDES,
   'לוח תוצאות בזמן אמת',
   'הזנת ניקוד ידנית ממסך המשחק',
 ]
@@ -46,14 +61,7 @@ const BASIC_EXCLUDES = ['סורק', 'מסך הגרלה']
 /** Newly shipped - carries the "חדש" badge in the full plan's list. */
 const LOTTERY_FEATURE = 'הגרלה חגיגית בזמן אמת'
 
-const FULL_INCLUDES = [
-  'מערכת המשחק',
-  'ניהול משתתפים',
-  'ניהול קבוצות',
-  'משימות וניקוד',
-  'לוח תוצאות בזמן אמת',
-  LOTTERY_FEATURE,
-]
+const FULL_INCLUDES = [...CORE_INCLUDES, 'לוח תוצאות בזמן אמת', LOTTERY_FEATURE]
 
 const FULL_SPECIALS = ['סורק לשימוש באירוע']
 
@@ -85,6 +93,8 @@ export function PlansModal({
   const [eventName, setEventName] = useState<string | null>(null)
   /** Single visual emphasis target - moves when the user picks another plan. */
   const [emphasizedPlan, setEmphasizedPlan] = useState<Option>('full')
+  const [launchActive, setLaunchActive] = useState(() => isLaunchOfferActive())
+  const handleLaunchExpired = useCallback(() => setLaunchActive(false), [])
 
   const formSectionRef = useRef<HTMLDivElement>(null)
   const focusedCardRef = useRef<HTMLDivElement>(null)
@@ -127,6 +137,7 @@ export function PlansModal({
       'deep_link',
       'lottery_trial_reveal',
       'lottery_locked_plan',
+      'launch_offer_banner',
     ]
     if ((known as string[]).includes(source)) {
       trackActivationOptionsViewed(eventId, source as ActivationOptionsSource)
@@ -210,6 +221,13 @@ export function PlansModal({
     ? `איך תרצו להפעיל את ${eventName}?`
     : 'בחרו את המסלול המתאים לאירוע שלכם'
 
+  // Re-resolved when the modal opens and again the moment the countdown hits
+  // zero, so an open tab drops to the regular price without a refresh.
+  const basicPrice = useMemo(() => resolvePlanPrice('independent'), [isOpen, launchActive])
+  const fullPrice = useMemo(() => resolvePlanPrice('full'), [isOpen, launchActive])
+  const offlinePrice = useMemo(() => resolvePlanPrice('offline'), [isOpen, launchActive])
+  const extraDayLabel = `עד 70 משתתפים · יום נוסף ${formatPriceIls(EXTRA_DAY_PRICE)}`
+
   return (
     <Modal
       isOpen={isOpen}
@@ -220,9 +238,14 @@ export function PlansModal({
       contentClassName="flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-8 sm:py-6"
     >
       <div dir="rtl">
-        <p className="mb-6 text-center text-sm leading-relaxed text-muted">
-          בחרו את המסלול שמתאים לאירוע שלכם.
-        </p>
+        <LaunchOfferBanner
+          variant="bar"
+          sticky={false}
+          showAction={false}
+          eventId={eventId}
+          onExpire={handleLaunchExpired}
+          className="mb-6 rounded-xl border"
+        />
 
         <div className="mb-8 grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {/* Basic */}
@@ -244,13 +267,18 @@ export function PlansModal({
                   )}
                 </div>
                 <div className="mt-3 flex items-baseline gap-1.5">
+                  {basicPrice?.wasPrice != null && (
+                    <span className="text-lg font-semibold text-muted line-through decoration-2">
+                      {formatPriceIls(basicPrice.wasPrice)}
+                    </span>
+                  )}
                   <span
                     className={cn(
                       'text-3xl font-extrabold leading-none',
                       emphasizeBasic ? 'text-primary-text' : 'text-foreground',
                     )}
                   >
-                    ₪40
+                    {basicPrice && formatPriceIls(basicPrice.price)}
                   </span>
                   <span className="text-sm font-medium text-muted">לאירוע</span>
                 </div>
@@ -260,11 +288,11 @@ export function PlansModal({
                 </p>
               </div>
 
-              <div className="mb-5 flex-1 space-y-2">
+              <div className="mb-5 flex-1 space-y-3">
                 {BASIC_INCLUDES.map((item) => (
                   <FeatureRow key={item} text={item} />
                 ))}
-                <div className="mt-1 space-y-1 rounded-lg bg-surface-elevated px-2 py-1.5">
+                <div className="mt-2 space-y-1.5 rounded-lg bg-surface-elevated px-2 py-1.5">
                   <p className="text-[10px] font-semibold leading-none text-muted">לא כולל:</p>
                   {BASIC_EXCLUDES.map((item) => (
                     <div key={item} className="flex items-center gap-2">
@@ -308,26 +336,28 @@ export function PlansModal({
                   <span className="text-base font-bold text-foreground">משחק מלא</span>
                 </div>
                 <div className="mt-3 flex items-baseline gap-1.5">
-                  <span className="text-lg font-semibold text-muted line-through decoration-2">
-                    ₪200
-                  </span>
+                  {fullPrice?.wasPrice != null && (
+                    <span className="text-lg font-semibold text-muted line-through decoration-2">
+                      {formatPriceIls(fullPrice.wasPrice)}
+                    </span>
+                  )}
                   <span
                     className={cn(
                       'text-3xl font-extrabold leading-none',
                       emphasizeFull ? 'text-primary-text' : 'text-foreground',
                     )}
                   >
-                    ₪150
+                    {fullPrice && formatPriceIls(fullPrice.price)}
                   </span>
                   <span className="text-sm font-medium text-muted">לאירוע</span>
                 </div>
-                <p className="mt-1.5 text-xs text-muted">עד 70 משתתפים · יום נוסף ₪15</p>
+                <p className="mt-1.5 text-xs text-muted">{extraDayLabel}</p>
                 <p className="mt-2.5 text-xs leading-relaxed text-foreground/80">
                   החוויה המלאה של משחק הסריקות.
                 </p>
               </div>
 
-              <div className="mb-5 flex-1 space-y-2">
+              <div className="mb-5 flex-1 space-y-3">
                 {FULL_INCLUDES.map((item) => (
                   <FeatureRow
                     key={item}
@@ -335,7 +365,7 @@ export function PlansModal({
                     badge={item === LOTTERY_FEATURE ? 'חדש' : undefined}
                   />
                 ))}
-                <div className="mt-1 space-y-1 rounded-lg bg-[color-mix(in_srgb,var(--palette-brand-accent)_6%,transparent)] px-2 py-1.5">
+                <div className="mt-2 space-y-1.5 rounded-lg bg-[color-mix(in_srgb,var(--palette-brand-accent)_6%,transparent)] px-2 py-1.5">
                   <p className="text-[10px] font-semibold leading-none text-foreground/75">כולל גם:</p>
                   {FULL_SPECIALS.map((item) => (
                     <div key={item} className="flex items-center gap-2">
@@ -381,26 +411,28 @@ export function PlansModal({
                   )}
                 </div>
                 <div className="mt-3 flex items-baseline gap-1.5">
-                  <span className="text-lg font-semibold text-muted line-through decoration-2">
-                    ₪250
-                  </span>
+                  {offlinePrice?.wasPrice != null && (
+                    <span className="text-lg font-semibold text-muted line-through decoration-2">
+                      {formatPriceIls(offlinePrice.wasPrice)}
+                    </span>
+                  )}
                   <span
                     className={cn(
                       'text-3xl font-extrabold leading-none',
                       emphasizeOffline ? 'text-primary-text' : 'text-foreground',
                     )}
                   >
-                    ₪200
+                    {offlinePrice && formatPriceIls(offlinePrice.price)}
                   </span>
                   <span className="text-sm font-medium text-muted">לאירוע</span>
                 </div>
-                <p className="mt-1.5 text-xs text-muted">עד 70 משתתפים · יום נוסף ₪15</p>
+                <p className="mt-1.5 text-xs text-muted">{extraDayLabel}</p>
                 <p className="mt-2.5 text-xs leading-relaxed text-foreground/80">
                   כל מה שיש במשחק המלא - גם במקום בלי אינטרנט.
                 </p>
               </div>
 
-              <div className="mb-5 flex-1 space-y-2">
+              <div className="mb-5 flex-1 space-y-3">
                 {FULL_INCLUDES.map((item) => (
                   <FeatureRow
                     key={item}
@@ -408,7 +440,7 @@ export function PlansModal({
                     badge={item === LOTTERY_FEATURE ? 'חדש' : undefined}
                   />
                 ))}
-                <div className="mt-1 space-y-1 rounded-lg bg-[color-mix(in_srgb,var(--palette-brand-accent)_6%,transparent)] px-2 py-1.5">
+                <div className="mt-2 space-y-1.5 rounded-lg bg-[color-mix(in_srgb,var(--palette-brand-accent)_6%,transparent)] px-2 py-1.5">
                   <p className="text-[10px] font-semibold leading-none text-foreground/75">כולל גם:</p>
                   {OFFLINE_SPECIALS.map((item) => (
                     <div key={item} className="flex items-center gap-2">
@@ -459,7 +491,7 @@ export function PlansModal({
               </p>
             </div>
 
-            <div className="mb-5 flex-1 space-y-2">
+            <div className="mb-5 flex-1 space-y-3">
               {ORG_VALUES.map((item) => (
                 <FeatureRow key={item} text={item} />
               ))}
