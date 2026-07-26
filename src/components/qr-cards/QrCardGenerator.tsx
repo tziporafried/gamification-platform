@@ -44,6 +44,50 @@ const CARD_PALETTE = {
 /** Set to true to show the participant/group accordion before card generation. */
 const SHOW_PARTICIPANT_ACCORDION = false
 
+/**
+ * How a task name is sized on a card, by how long it is. A fixed size clamped
+ * to two lines used to print long names with an ellipsis, so a card could go
+ * out saying "משימת ניקיון החצר האחורית של..." and nothing more. Each tier
+ * trades a point of font size for another line instead, so the name always
+ * prints in full; the clamp on the last tier is a guard against absurd input,
+ * not a normal step.
+ *
+ * Widths the thresholds assume: ~187px of text on a side-by-side card (310px
+ * less the code column and padding), the full card width when the code is
+ * stacked above the details.
+ */
+const NAME_TIERS = [
+  { maxChars: 28, fontSize: 16, previewFontSize: 14, lines: 2 },
+  { maxChars: 45, fontSize: 14, previewFontSize: 12.5, lines: 3 },
+  { maxChars: 70, fontSize: 12, previewFontSize: 11, lines: 4 },
+  { maxChars: Infinity, fontSize: 11, previewFontSize: 10, lines: 5 },
+] as const
+
+/** A stacked card gives the name the full width, so it holds ~60% more per line. */
+const STACKED_WIDTH_BONUS = 1.6
+
+function actionNameStyle(name: string, { wizardPreview, stacked }: { wizardPreview: boolean; stacked: boolean }) {
+  const length = name.trim().length
+  const budget = stacked ? STACKED_WIDTH_BONUS : 1
+  const tier = NAME_TIERS.find((t) => length <= t.maxChars * budget) ?? NAME_TIERS[NAME_TIERS.length - 1]
+
+  return {
+    fontSize: `${wizardPreview ? tier.previewFontSize : tier.fontSize}px`,
+    fontWeight: 800,
+    color: CARD_PALETTE.foreground,
+    marginBottom: '4px',
+    lineHeight: 1.2,
+    // Kept inline rather than in the print stylesheet so the preview shows the
+    // same wrapping the printer will produce.
+    display: '-webkit-box',
+    WebkitBoxOrient: 'vertical',
+    WebkitLineClamp: tier.lines,
+    overflow: 'hidden',
+    // An unbroken run - a URL, an id - must not push past the card edge.
+    overflowWrap: 'anywhere',
+  } as const
+}
+
 export function QrCardGenerator({ event, scanMode, onReadyChange, onCardCountsChange, onGeneratedChange }: QrCardGeneratorProps) {
   const isSplit = scanMode === 'split'
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
@@ -173,10 +217,9 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
 .card .event-logo { width: 18px; height: 18px; border-radius: 4px; object-fit: cover; }
 .card .event-label { font-size: 9px; color: ${CARD_PALETTE.muted}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.card .action-name {
-  font-size: 16px; font-weight: 800; color: ${CARD_PALETTE.foreground}; margin-bottom: 4px;
-  line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
+/* Sizing and line count come from actionNameStyle() inline, so the preview and
+   the print agree; nothing here may restate them. */
+.card .action-name { font-weight: 800; color: ${CARD_PALETTE.foreground}; margin-bottom: 4px; line-height: 1.2; }
 
 .card .participant-badge {
   display: inline-flex; align-items: center; gap: 4px; background: ${c}12; border: 1px solid ${c}25;
@@ -519,7 +562,7 @@ function QrCard({
         {eyebrow}
       </div>
 
-      <div className="action-name" style={{ fontSize: wizardPreview ? '14px' : '16px', fontWeight: 800, color: CARD_PALETTE.foreground, marginBottom: '4px', lineHeight: 1.2 }}>
+      <div className="action-name" style={actionNameStyle(title, { wizardPreview, stacked: event.barcode_type === 'code128' })}>
         {title}
       </div>
 
@@ -575,7 +618,7 @@ function ParticipantPage({
             </div>
 
             {/* Task title */}
-            <div className="action-name" style={{ fontSize: wizardPreview ? '14px' : '16px', fontWeight: 800, color: CARD_PALETTE.foreground, marginBottom: '4px', lineHeight: 1.2 }}>
+            <div className="action-name" style={actionNameStyle(action.name, { wizardPreview, stacked: event.barcode_type === 'code128' })}>
               {action.name}
             </div>
 
