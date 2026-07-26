@@ -283,8 +283,9 @@ export function PlansModal({
                   <span className="text-sm font-medium text-muted">לאירוע</span>
                 </div>
                 <p className="mt-1.5 text-xs text-muted">עד 70 משתתפים</p>
-                <p className="mt-2.5 text-xs leading-relaxed text-foreground/80">
-                  משחקים בלי סורק. במקום לסרוק כרטיס, מזינים למשתתף את הניקוד ידנית ממסך המשחק.
+                <PlanTagline>משחקים בלי סורק.</PlanTagline>
+                <p className="mt-1.5 text-xs leading-relaxed text-foreground/80">
+                  במקום לסרוק כרטיס, מזינים למשתתף את הניקוד ידנית ממסך המשחק.
                 </p>
               </div>
 
@@ -352,9 +353,7 @@ export function PlansModal({
                   <span className="text-sm font-medium text-muted">לאירוע</span>
                 </div>
                 <p className="mt-1.5 text-xs text-muted">{extraDayLabel}</p>
-                <p className="mt-2.5 text-xs leading-relaxed text-foreground/80">
-                  החוויה המלאה של משחק הסריקות.
-                </p>
+                <PlanTagline>החוויה המלאה של משחק הסריקות.</PlanTagline>
               </div>
 
               <div className="mb-5 flex-1 space-y-3">
@@ -427,9 +426,7 @@ export function PlansModal({
                   <span className="text-sm font-medium text-muted">לאירוע</span>
                 </div>
                 <p className="mt-1.5 text-xs text-muted">{extraDayLabel}</p>
-                <p className="mt-2.5 text-xs leading-relaxed text-foreground/80">
-                  כל מה שיש במשחק המלא - גם במקום בלי אינטרנט.
-                </p>
+                <PlanTagline>כל מה שיש במשחק המלא - גם במקום בלי אינטרנט.</PlanTagline>
               </div>
 
               <div className="mb-5 flex-1 space-y-3">
@@ -483,11 +480,9 @@ export function PlansModal({
                 <span className="text-lg" aria-hidden="true">🏫</span>
                 <span className="text-base font-bold text-foreground">צריכים פתרון לארגון?</span>
               </div>
-              <p className="mt-3 text-xs leading-relaxed text-foreground/80">
+              <PlanTagline className="mt-3">נתאים את Gamify לאירועים ולפעילות שלכם.</PlanTagline>
+              <p className="mt-1.5 text-xs leading-relaxed text-foreground/80">
                 לבתי ספר, קייטנות, ישיבות, חברות וקהילות.
-              </p>
-              <p className="mt-2 text-xs leading-relaxed text-foreground/80">
-                נתאים את Gamify לאירועים ולפעילות שלכם.
               </p>
             </div>
 
@@ -578,6 +573,19 @@ function OptionCard({
     >
       {children}
     </div>
+  )
+}
+
+/**
+ * The line that says what the plan is, under the price. Deliberately heavier
+ * than the feature rows beneath it - the list is the detail, this is the
+ * reason to pick this card over the one next to it.
+ */
+function PlanTagline({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <p className={cn('mt-2.5 text-sm font-semibold leading-snug text-foreground', className)}>
+      {children}
+    </p>
   )
 }
 
