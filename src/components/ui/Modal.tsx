@@ -30,6 +30,17 @@ interface ModalProps {
   placement?: 'center' | 'corner'
 }
 
+/**
+ * Open dialogs, oldest first. A dialog opened from inside another one (the
+ * manage popup's delete confirmation, say) portals to the body as a sibling, so
+ * the outer dialog's key handler would otherwise fight it - trapping Tab back
+ * into itself and closing both on Escape. Only the last entry reacts to keys.
+ */
+const openDialogs: symbol[] = []
+
+/** How many centred dialogs are holding the page's scroll lock. */
+let scrollLocks = 0
+
 /** Elements that can hold focus inside the dialog, in DOM order. */
 const FOCUSABLE = [
   'a[href]',
@@ -57,6 +68,9 @@ export function Modal({
   // The element that had focus when the dialog opened, so it can be restored.
   const restoreFocusRef = useRef<HTMLElement | null>(null)
   const titleId = useId()
+  // This dialog's identity in the open-dialog stack (see `openDialogs`).
+  const tokenRef = useRef<symbol>()
+  if (!tokenRef.current) tokenRef.current = Symbol('modal')
 
   // Escape reads onClose through a ref so the effect below can depend on
   // `isOpen` alone. Callers routinely pass an inline/unmemoized handler, and a
@@ -70,6 +84,8 @@ export function Modal({
   useEffect(() => {
     if (!isOpen) return
 
+    const token = tokenRef.current!
+    openDialogs.push(token)
     restoreFocusRef.current = document.activeElement as HTMLElement | null
 
     function focusable(): HTMLElement[] {
@@ -86,6 +102,9 @@ export function Modal({
     else dialogRef.current?.focus()
 
     function handleKey(e: KeyboardEvent) {
+      // A dialog on top of this one owns the keyboard until it closes.
+      if (openDialogs[openDialogs.length - 1] !== token) return
+
       if (e.key === 'Escape') {
         onCloseRef.current()
         return
@@ -120,11 +139,17 @@ export function Modal({
     // A corner dialog deliberately leaves the page usable behind it, so it must
     // not freeze scrolling the way a centred, screen-covering one does.
     const locksScroll = placement === 'center'
-    if (locksScroll) document.body.style.overflow = 'hidden'
+    if (locksScroll) scrollLocks += 1
+    if (scrollLocks > 0) document.body.style.overflow = 'hidden'
 
     return () => {
       document.removeEventListener('keydown', handleKey)
-      if (locksScroll) document.body.style.overflow = ''
+      const at = openDialogs.lastIndexOf(token)
+      if (at !== -1) openDialogs.splice(at, 1)
+      // Closing an inner dialog must not hand scrolling back to the page while
+      // the dialog that opened it is still covering it.
+      if (locksScroll) scrollLocks -= 1
+      if (scrollLocks <= 0) document.body.style.overflow = ''
       // Return focus to whatever opened the dialog (WCAG 2.4.3).
       restoreFocusRef.current?.focus?.()
     }

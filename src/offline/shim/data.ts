@@ -1,7 +1,9 @@
-import type { GamePack, GameState, LocalScan } from '@/lib/offline/types'
+import type { Reward } from '@/types'
+import type { GamePack, GameState, LocalAward, LocalScan } from '@/lib/offline/types'
 import { loadGameState, saveGameState } from '@/offline/gameState'
-import { getGroupLeaderboard, getParticipantLeaderboard } from '@/lib/offline/leaderboard'
+import { getGroupLeaderboard, getParticipantLeaderboard, getParticipantTotal } from '@/lib/offline/leaderboard'
 import { checkAndAwardRewards, toLocalAwards } from '@/lib/offline/rewardEngine'
+import { isParticipantEligibleForReward } from '@/lib/rewardTargeting'
 
 /**
  * Backing store for the offline supabase shim: the embedded pack plus the live
@@ -82,6 +84,188 @@ export function recordScan(row: {
   saveGameState(getPack(), state)
   emit('point_transactions', { id: scan.clientTxId, event_id: row.event_id })
   return { id: scan.clientTxId }
+}
+
+/** The rewards this participant holds that a new total no longer covers. */
+function rewardsBelowTotal(participantId: string, total: number, awards: LocalAward[]): Reward[] {
+  const p = getPack()
+  return awards
+    .filter((a) => a.participantId === participantId)
+    .map((a) => p.rewards.find((r) => r.id === a.rewardId))
+    .filter((r): r is Reward => !!r && r.required_points > total)
+    .sort((a, b) => a.name.localeCompare(b.name, 'he'))
+}
+
+/**
+ * Mirrors next_reward_winner (074): the eligible participant who reached the
+ * reward's target EARLIEST and is still above it - replayed from the scan log
+ * with the deleted scan already taken out. Null when there is nobody.
+ */
+function nextRewardWinner(
+  reward: Reward,
+  scans: LocalScan[],
+  awards: LocalAward[],
+  excludeParticipantId: string,
+): Record<string, unknown> | null {
+  const p = getPack()
+  const held = new Set(awards.filter((a) => a.rewardId === reward.id).map((a) => a.participantId))
+  const rewardGroupIds = p.rewardGroups.filter((l) => l.reward_id === reward.id).map((l) => l.group_id)
+
+  let best: { participantId: string; name: string; total: number; crossedAt: string } | null = null
+
+  for (const participant of p.participants) {
+    if (participant.id === excludeParticipantId || held.has(participant.id)) continue
+
+    const eligible = isParticipantEligibleForReward(
+      {
+        id: participant.id,
+        groupIds: p.participantGroups
+          .filter((m) => m.participant_id === participant.id)
+          .map((m) => m.group_id),
+      },
+      {
+        target_type: reward.target_type,
+        target_participant_id: reward.target_participant_id,
+        winner_mode: reward.winner_mode,
+        groupIds: rewardGroupIds,
+      },
+    )
+    if (!eligible) continue
+
+    const own = scans
+      .filter((s) => s.participantId === participant.id)
+      .sort((a, b) => (a.createdAt === b.createdAt ? a.clientTxId.localeCompare(b.clientTxId) : a.createdAt < b.createdAt ? -1 : 1))
+
+    let running = 0
+    let crossedAt: string | null = null
+    for (const scan of own) {
+      running += scan.points
+      if (running >= reward.required_points) {
+        crossedAt = scan.createdAt
+        break
+      }
+    }
+    // Crossed it once and is still above it - the prize follows the standing.
+    if (!crossedAt || getParticipantTotal(scans, participant.id) < reward.required_points) continue
+
+    const candidate = {
+      participantId: participant.id,
+      name: participant.name,
+      total: getParticipantTotal(scans, participant.id),
+      crossedAt,
+    }
+    if (
+      !best ||
+      candidate.crossedAt < best.crossedAt ||
+      (candidate.crossedAt === best.crossedAt && candidate.name.localeCompare(best.name, 'he') < 0)
+    ) {
+      best = candidate
+    }
+  }
+
+  if (!best) return null
+  return {
+    participant_id: best.participantId,
+    name: best.name,
+    total_points: best.total,
+    crossed_at: best.crossedAt,
+  }
+}
+
+/** Mirrors the preview_delete_event_scan RPC: what this delete would do. */
+export function previewDeleteScan(txId: string): Record<string, unknown> {
+  const p = getPack()
+  const scan = state.scans.find((s) => s.clientTxId === txId)
+  if (!scan) throw new Error('SCAN_NOT_FOUND')
+
+  const remaining = state.scans.filter((s) => s.clientTxId !== txId)
+  const newTotal = getParticipantTotal(remaining, scan.participantId)
+
+  return {
+    transaction_id: txId,
+    event_id: p.event.id,
+    participant_id: scan.participantId,
+    participant_name: p.participants.find((x) => x.id === scan.participantId)?.name ?? null,
+    action_name: p.actions.find((a) => a.id === scan.actionId)?.name ?? null,
+    deleted_points: scan.points,
+    current_total: getParticipantTotal(state.scans, scan.participantId),
+    new_total: newTotal,
+    revoked_rewards: rewardsBelowTotal(scan.participantId, newTotal, state.awards).map((reward) => ({
+      reward_id: reward.id,
+      reward_name: reward.name,
+      required_points: reward.required_points,
+      winner_mode: reward.winner_mode,
+      next_winner:
+        reward.winner_mode === 'first'
+          ? nextRewardWinner(reward, remaining, state.awards, scan.participantId)
+          : null,
+    })),
+  }
+}
+
+/**
+ * Mirrors the delete_event_scan RPC: drops one scan, revokes any reward the
+ * participant no longer reaches, and passes on the ones the operator chose to
+ * transfer - exactly as the SQL function does online.
+ */
+export function deleteScan(
+  txId: string,
+  transfers: { reward_id: string; participant_id: string }[] = [],
+): Record<string, unknown> {
+  const p = getPack()
+  const scan = state.scans.find((s) => s.clientTxId === txId)
+  if (!scan) throw new Error('SCAN_NOT_FOUND')
+
+  const scans = state.scans.filter((s) => s.clientTxId !== txId)
+  const total = getParticipantTotal(scans, scan.participantId)
+  const revokedRewards = rewardsBelowTotal(scan.participantId, total, state.awards)
+  const revokedIds = new Set(revokedRewards.map((r) => r.id))
+
+  let awards = state.awards.filter(
+    (a) => a.participantId !== scan.participantId || !revokedIds.has(a.rewardId),
+  )
+
+  const now = new Date().toISOString()
+  const outcomes = revokedRewards.map((reward) => {
+    const transfer = transfers.find((t) => t.reward_id === reward.id)
+    if (!transfer) return { reward, transferredTo: null as Record<string, unknown> | null }
+
+    if (reward.winner_mode !== 'first') throw new Error(`TRANSFER_NOT_FIRST_WINNER: ${reward.name}`)
+
+    // Same guard as online: the transfer has to still be the rightful one.
+    const next = nextRewardWinner(reward, scans, awards, scan.participantId)
+    if (!next || next.participant_id !== transfer.participant_id) {
+      throw new Error(`TRANSFER_NOT_ELIGIBLE: ${reward.name}`)
+    }
+
+    awards = [
+      ...awards,
+      {
+        participantId: transfer.participant_id,
+        rewardId: reward.id,
+        scoreAtAward: next.total_points as number,
+        awardedAt: now,
+      },
+    ]
+    return { reward, transferredTo: { participant_id: next.participant_id, name: next.name } }
+  })
+
+  state = { scans, awards }
+  saveGameState(p, state)
+  emit('point_transactions', { id: txId, event_id: p.event.id })
+
+  return {
+    event_id: p.event.id,
+    participant_id: scan.participantId,
+    deleted_points: scan.points,
+    participant_total_points: total,
+    revoked_rewards: outcomes.map(({ reward, transferredTo }) => ({
+      reward_id: reward.id,
+      reward_name: reward.name,
+      winner_mode: reward.winner_mode,
+      transferred_to: transferredTo,
+    })),
+  }
 }
 
 /** Mirrors the check_and_award_rewards RPC: award, persist, notify, return rows. */

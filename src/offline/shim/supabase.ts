@@ -2,10 +2,12 @@ import {
   OFFLINE_USER_ID,
   awardRewards,
   awardRows,
+  deleteScan,
   getEventRow,
   getPack,
   groupLeaderboard,
   participantLeaderboard,
+  previewDeleteScan,
   recordScan,
   scanRows,
   subscribeToTable,
@@ -172,6 +174,19 @@ function rpc(name: string, params?: Record<string, unknown>): PromiseLike<Result
     if (name === 'check_and_award_rewards') {
       const pid = (params?.p_participant_id as string) ?? ''
       return Promise.resolve(ok(awardRewards(pid)))
+    }
+    if (name === 'preview_delete_event_scan') {
+      return Promise.resolve(ok(previewDeleteScan((params?.p_transaction_id as string) ?? '')))
+    }
+    if (name === 'delete_event_scan') {
+      return Promise.resolve(
+        ok(
+          deleteScan(
+            (params?.p_transaction_id as string) ?? '',
+            (params?.p_transfers as { reward_id: string; participant_id: string }[]) ?? [],
+          ),
+        ),
+      )
     }
     // Unknown RPCs (e.g. analytics/affiliate) are harmless no-ops offline.
     return Promise.resolve(ok(null))

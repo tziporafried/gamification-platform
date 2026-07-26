@@ -46,7 +46,9 @@ export function Toast({ message, variant, onDismiss, autoDismissMs, size = 'defa
   const isLarge = size === 'large'
 
   return createPortal(
-    <div className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 md:bottom-6">
+    // Above dialogs (z-[200]): a toast is often the result of an action taken
+    // inside one, and behind the overlay it would never be seen.
+    <div className="fixed bottom-20 left-1/2 z-[300] -translate-x-1/2 md:bottom-6">
       <div
         // Errors interrupt; success is polite. Without this the toast appeared
         // and vanished with no announcement at all (WCAG 4.1.3).

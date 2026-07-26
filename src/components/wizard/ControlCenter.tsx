@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trophy, Crown, ScanLine, Pencil, Zap, Gift, HelpCircle } from 'lucide-react'
+import { Trophy, Crown, ScanLine, Pencil, Zap, Gift, HelpCircle, ClipboardList } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { ControlActionCard, FloatingActionIcon } from './ControlActionCard'
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 import { trackEventEditStart, trackCtaClick, trackLiveEventsModalOpen } from '@/lib/analytics'
 import { FloatingContactButton } from '@/components/layout/FloatingContactButton'
 import { LiveEventsSelectModal, type LiveEventsOriginRect } from '@/components/live-events/LiveEventsSelectModal'
+import { ManageModal } from '@/components/manage/ManageModal'
 import type { Event, EventCounts } from '@/types'
 
 interface ControlCenterProps {
@@ -35,6 +36,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   const { openPlans } = usePlansModal()
   const isTrial = !isSuperAdmin && event.plan === 'free'
   const [settingsWarningOpen, setSettingsWarningOpen] = useState(false)
+  const [manageOpen, setManageOpen] = useState(false)
   const [liveEventsOpen, setLiveEventsOpen] = useState(false)
   const [liveEventsOrigin, setLiveEventsOrigin] = useState<LiveEventsOriginRect | null>(null)
   const liveEventsCardRef = useRef<HTMLDivElement>(null)
@@ -194,6 +196,13 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
         </div>
       </Modal>
 
+      <ManageModal
+        eventId={event.id}
+        eventName={event.name}
+        isOpen={manageOpen}
+        onClose={() => setManageOpen(false)}
+      />
+
       <LiveEventsSelectModal
         isOpen={liveEventsOpen}
         onClose={() => setLiveEventsOpen(false)}
@@ -246,6 +255,20 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                 >
                   <Pencil size={12} strokeWidth={2} aria-hidden="true" />
                   עריכת משחק
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setManageOpen(true)}
+                  className={cn(
+                    'inline-flex shrink-0 items-center gap-1 rounded-md',
+                    'px-1.5 py-0.5 text-[11px] font-medium text-muted sm:text-xs',
+                    'transition-[background-color,color] duration-150',
+                    'hover:bg-white/40 hover:text-foreground',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+                  )}
+                >
+                  <ClipboardList size={12} strokeWidth={2} aria-hidden="true" />
+                  ניהול
                 </button>
                 <a
                   href={`/offline-instructions?event=${event.id}`}

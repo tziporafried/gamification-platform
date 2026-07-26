@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from 'react'
-import { Crown, ScanLine, Trophy, WifiOff, HelpCircle, Zap } from 'lucide-react'
+import { Crown, ScanLine, Trophy, WifiOff, HelpCircle, Zap, ClipboardList } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { ControlActionCard, FloatingActionIcon } from '@/components/wizard/ControlActionCard'
 import { FloatingIconsLayer } from '@/components/layout/FloatingIconsLayer'
 import { ShimmerText } from '@/components/ui/ShimmerText'
 import { LiveEventsSelectModal, type LiveEventsOriginRect } from '@/components/live-events/LiveEventsSelectModal'
+import { ManageModal } from '@/components/manage/ManageModal'
 import type { GamePack } from '@/lib/offline/types'
 
 interface OfflineHubProps {
@@ -41,6 +42,9 @@ export function OfflineHub({ pack, onScan, onBoard, onInstructions }: OfflineHub
   const [liveEventsOpen, setLiveEventsOpen] = useState(false)
   const [liveEventsOrigin, setLiveEventsOrigin] = useState<LiveEventsOriginRect | null>(null)
   const liveEventsCardRef = useRef<HTMLDivElement>(null)
+  // The management popup runs off the same shimmed supabase as online, so the
+  // hub opens it in place - exactly as the control center does.
+  const [manageOpen, setManageOpen] = useState(false)
 
   return (
     <div className="relative min-h-screen overflow-y-auto bg-app-radial" dir="rtl">
@@ -51,6 +55,13 @@ export function OfflineHub({ pack, onScan, onBoard, onInstructions }: OfflineHub
         onClose={() => setLiveEventsOpen(false)}
         eventId={pack.event.id}
         originRect={liveEventsOrigin}
+      />
+
+      <ManageModal
+        eventId={pack.event.id}
+        eventName={pack.event.name}
+        isOpen={manageOpen}
+        onClose={() => setManageOpen(false)}
       />
 
       <main className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center px-4 py-8">
@@ -78,6 +89,15 @@ export function OfflineHub({ pack, onScan, onBoard, onInstructions }: OfflineHub
               <WifiOff size={15} strokeWidth={2.5} />
               מצב לא מקוון
             </span>
+            <button
+              type="button"
+              onClick={() => setManageOpen(true)}
+              data-hub-action="manage"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-1.5 text-sm font-bold text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              <ClipboardList size={15} strokeWidth={2.5} />
+              ניהול
+            </button>
             {onInstructions && (
               <button
                 type="button"
