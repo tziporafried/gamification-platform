@@ -1555,118 +1555,138 @@ export function AdminScannersPanel() {
         {activeScanners.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted">אין סורקים עדיין. הוסף סורק חדש.</p>
         ) : (
-          <div className="min-w-[720px] space-y-2">
-            {/* The window crosses a month boundary, so name the months above
-                the numbers - otherwise the row reads "30 31 1 2" with no clue. */}
-            <div
-              className="grid gap-0.5"
-              style={{ gridTemplateColumns: `132px repeat(${windowDays.length}, minmax(18px, 1fr))` }}
-            >
-              <div />
-              {monthBands.map((band) => (
-                <div
-                  key={band.key}
-                  className="truncate border-b border-border/50 pb-0.5 text-center text-[9px] font-semibold text-muted"
-                  style={{ gridColumn: `span ${band.span}` }}
-                >
-                  {band.label}
-                </div>
-              ))}
+          <div className="relative min-w-[720px]">
+            <div className="space-y-2">
+              {/* The window crosses a month boundary, so name the months above
+                  the numbers - otherwise the row reads "30 31 1 2" with no clue. */}
+              <div
+                className="grid gap-0.5"
+                style={{ gridTemplateColumns: `132px repeat(${windowDays.length}, minmax(18px, 1fr))` }}
+              >
+                <div />
+                {monthBands.map((band) => (
+                  <div
+                    key={band.key}
+                    className="truncate border-b border-border/50 pb-0.5 text-center text-[9px] font-semibold text-muted"
+                    style={{ gridColumn: `span ${band.span}` }}
+                  >
+                    {band.label}
+                  </div>
+                ))}
+              </div>
+              <div
+                className="grid gap-0.5"
+                style={{ gridTemplateColumns: `132px repeat(${windowDays.length}, minmax(18px, 1fr))` }}
+              >
+                <div />
+                {windowDays.map((d) => (
+                  <div
+                    key={d.toISOString()}
+                    className={cn(
+                      'text-center text-[9px] text-muted',
+                      d.getDate() === 1 && 'border-s border-border/60',
+                      isSameDay(d, new Date()) && 'font-bold text-secondary-text',
+                    )}
+                  >
+                    {format(d, 'd')}
+                  </div>
+                ))}
+              </div>
+              {[
+                ...activeScanners.map((scanner) => ({
+                  key: scanner.id,
+                  label: scanner.name,
+                  color: colorForScanner(scanners, scanner.id),
+                  rowBookings: bookings.filter((b) => b.scanner_id === scanner.id),
+                })),
+                {
+                  key: '__none__',
+                  label: 'ללא סורק',
+                  color: 'bg-muted',
+                  rowBookings: bookings.filter((b) => !b.scanner_id),
+                },
+              ].map((row) => {
+                const spans = row.rowBookings
+                  .map((booking) => {
+                    const span = bookingSpanInDays(booking, windowDays)
+                    return span ? { booking, ...span } : null
+                  })
+                  .filter((x): x is { booking: ScannerBooking; start: number; span: number } => x != null)
+
+                if (row.key === '__none__' && spans.length === 0) return null
+
+                return (
+                  <div key={row.key} className="flex items-stretch gap-0.5">
+                    <div className="flex w-[132px] shrink-0 items-center gap-1.5 truncate pe-2 text-xs text-foreground">
+                      <span className={cn('h-2 w-2 shrink-0 rounded-full', row.color)} />
+                      <span className="truncate font-medium">{row.label}</span>
+                    </div>
+                    <div
+                      className="grid h-9 min-w-0 flex-1 gap-0.5"
+                      style={{ gridTemplateColumns: `repeat(${windowDays.length}, minmax(0, 1fr))` }}
+                    >
+                      {windowDays.map((d, dayIdx) => {
+                        const occupied = spans.some(
+                          (s) => dayIdx >= s.start && dayIdx < s.start + s.span,
+                        )
+                        return (
+                          <button
+                            key={d.toISOString()}
+                            type="button"
+                            onClick={() => openDayDetail(d)}
+                            className={cn(
+                              'row-start-1 rounded-sm border border-border/30 bg-surface-elevated/50',
+                              isSameDay(d, new Date()) && 'ring-1 ring-secondary/40',
+                            )}
+                            style={{ gridColumn: dayIdx + 1 }}
+                            title={occupied ? 'לחיצה לפרטי היום' : 'פנוי - לחיצה לפרטי היום'}
+                            aria-label={`${format(d, 'd/M')}${occupied ? '' : ' פנוי'}`}
+                          />
+                        )
+                      })}
+                      {spans.map(({ booking, start, span }) => {
+                        const colors = colorForFamily(familyColors, booking.customer_name)
+                        return (
+                          <button
+                            key={booking.id}
+                            type="button"
+                            onClick={() => openBookingDetail(booking)}
+                            title={`${booking.customer_name} · ${formatRange(booking.start_date, booking.end_date)}`}
+                            className="z-10 row-start-1 mx-px flex items-center overflow-hidden rounded-md px-1 text-start text-[10px] font-semibold transition-opacity hover:opacity-90"
+                            style={{
+                              gridColumn: `${start + 1} / span ${span}`,
+                              backgroundColor: colors.bg,
+                              color: colors.text,
+                            }}
+                          >
+                            <span className="min-w-0 flex-1 truncate">{booking.customer_name}</span>
+                            <OutstandingDot state={bookingPaymentState(booking)} />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
+
+            {/* Week rulers: one line after every Saturday, drawn over the rows
+                so it reads as a single stripe rather than a tick per row. The
+                template matches the day-number row exactly, so the lines land
+                on the same boundaries as the dates above them. */}
             <div
-              className="grid gap-0.5"
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 grid gap-0.5"
               style={{ gridTemplateColumns: `132px repeat(${windowDays.length}, minmax(18px, 1fr))` }}
             >
               <div />
-              {windowDays.map((d) => (
+              {windowDays.map((d, i) => (
                 <div
                   key={d.toISOString()}
-                  className={cn(
-                    'text-center text-[9px] text-muted',
-                    d.getDate() === 1 && 'border-s border-border/60',
-                    isSameDay(d, new Date()) && 'font-bold text-secondary-text',
-                  )}
-                >
-                  {format(d, 'd')}
-                </div>
+                  className={cn(i > 0 && i % 7 === 0 && 'border-s-2 border-s-border-strong')}
+                />
               ))}
             </div>
-            {[
-              ...activeScanners.map((scanner) => ({
-                key: scanner.id,
-                label: scanner.name,
-                color: colorForScanner(scanners, scanner.id),
-                rowBookings: bookings.filter((b) => b.scanner_id === scanner.id),
-              })),
-              {
-                key: '__none__',
-                label: 'ללא סורק',
-                color: 'bg-muted',
-                rowBookings: bookings.filter((b) => !b.scanner_id),
-              },
-            ].map((row) => {
-              const spans = row.rowBookings
-                .map((booking) => {
-                  const span = bookingSpanInDays(booking, windowDays)
-                  return span ? { booking, ...span } : null
-                })
-                .filter((x): x is { booking: ScannerBooking; start: number; span: number } => x != null)
-
-              if (row.key === '__none__' && spans.length === 0) return null
-
-              return (
-                <div key={row.key} className="flex items-stretch gap-0.5">
-                  <div className="flex w-[132px] shrink-0 items-center gap-1.5 truncate pe-2 text-xs text-foreground">
-                    <span className={cn('h-2 w-2 shrink-0 rounded-full', row.color)} />
-                    <span className="truncate font-medium">{row.label}</span>
-                  </div>
-                  <div
-                    className="grid h-9 min-w-0 flex-1 gap-0.5"
-                    style={{ gridTemplateColumns: `repeat(${windowDays.length}, minmax(0, 1fr))` }}
-                  >
-                    {windowDays.map((d, dayIdx) => {
-                      const occupied = spans.some(
-                        (s) => dayIdx >= s.start && dayIdx < s.start + s.span,
-                      )
-                      return (
-                        <button
-                          key={d.toISOString()}
-                          type="button"
-                          onClick={() => openDayDetail(d)}
-                          className={cn(
-                            'row-start-1 rounded-sm border border-border/30 bg-surface-elevated/50',
-                            isSameDay(d, new Date()) && 'ring-1 ring-secondary/40',
-                          )}
-                          style={{ gridColumn: dayIdx + 1 }}
-                          title={occupied ? 'לחיצה לפרטי היום' : 'פנוי - לחיצה לפרטי היום'}
-                          aria-label={`${format(d, 'd/M')}${occupied ? '' : ' פנוי'}`}
-                        />
-                      )
-                    })}
-                    {spans.map(({ booking, start, span }) => {
-                      const colors = colorForFamily(familyColors, booking.customer_name)
-                      return (
-                        <button
-                          key={booking.id}
-                          type="button"
-                          onClick={() => openBookingDetail(booking)}
-                          title={`${booking.customer_name} · ${formatRange(booking.start_date, booking.end_date)}`}
-                          className="z-10 row-start-1 mx-px flex items-center overflow-hidden rounded-md px-1 text-start text-[10px] font-semibold transition-opacity hover:opacity-90"
-                          style={{
-                            gridColumn: `${start + 1} / span ${span}`,
-                            backgroundColor: colors.bg,
-                            color: colors.text,
-                          }}
-                        >
-                          <span className="min-w-0 flex-1 truncate">{booking.customer_name}</span>
-                          <OutstandingDot state={bookingPaymentState(booking)} />
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
           </div>
         )}
       </Card>
