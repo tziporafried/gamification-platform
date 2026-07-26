@@ -14,18 +14,15 @@ import {
   X,
 } from 'lucide-react'
 import {
-  addMonths,
+  addDays,
   eachDayOfInterval,
-  endOfMonth,
-  endOfWeek,
   format,
   isSameDay,
   isSameMonth,
   isWithinInterval,
   parseISO,
-  startOfMonth,
+  startOfDay,
   startOfWeek,
-  subMonths,
 } from 'date-fns'
 import { he } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
@@ -303,7 +300,21 @@ function layoutWeekBookings(bookings: ScannerBooking[], week: Date[]): WeekBar[]
   return placed
 }
 
-/** Clip a booking to a month day list for the scanner timeline. */
+/**
+ * The board looks forward, not at a calendar month.
+ *
+ * A month grid spends most of its width on days that have already happened -
+ * on the 27th, three quarters of it is history. Both boards therefore share
+ * one window that starts on the current week and runs forward, so the first
+ * thing on screen is today and everything after it.
+ */
+const WINDOW_WEEKS = 5
+const WINDOW_DAYS = WINDOW_WEEKS * 7
+/** One page back / forward, deliberately shorter than the window: the week of
+ *  overlap keeps a booking that straddles the edge visible on both pages. */
+const PAGE_DAYS = 28
+
+/** Clip a booking to the visible day list for the scanner timeline. */
 function bookingSpanInDays(
   booking: ScannerBooking,
   days: Date[],
@@ -328,7 +339,10 @@ export function AdminScannersPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
-  const [month, setMonth] = useState(() => startOfMonth(new Date()))
+  // Anchored to a week start so the grid's columns stay Sunday-first.
+  const [windowStart, setWindowStart] = useState(() =>
+    startOfWeek(new Date(), { weekStartsOn: 0 }),
+  )
 
   const [bookingOpen, setBookingOpen] = useState(false)
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null)
@@ -498,11 +512,15 @@ export function AdminScannersPanel() {
     [scanners],
   )
 
-  const calendarDays = useMemo(() => {
-    const start = startOfWeek(startOfMonth(month), { weekStartsOn: 0 })
-    const end = endOfWeek(endOfMonth(month), { weekStartsOn: 0 })
-    return eachDayOfInterval({ start, end })
-  }, [month])
+  /** The one window both boards render - the week grid and the occupancy strip. */
+  const windowDays = useMemo(
+    () =>
+      eachDayOfInterval({
+        start: windowStart,
+        end: addDays(windowStart, WINDOW_DAYS - 1),
+      }),
+    [windowStart],
+  )
 
   const eventNameById = useMemo(() => {
     const map = new Map<string, string>()
@@ -562,16 +580,30 @@ export function AdminScannersPanel() {
     [bookings],
   )
 
-  const calendarWeeks = useMemo(() => chunkWeeks(calendarDays), [calendarDays])
+  const calendarWeeks = useMemo(() => chunkWeeks(windowDays), [windowDays])
 
-  const daysInMonth = useMemo(
-    () =>
-      eachDayOfInterval({
-        start: startOfMonth(month),
-        end: endOfMonth(month),
-      }),
-    [month],
+  const windowEnd = windowDays[windowDays.length - 1]
+
+  /** Which months the window covers, so the strip can label the switch-over. */
+  const monthBands = useMemo(() => {
+    const bands: { key: string; label: string; span: number }[] = []
+    for (const day of windowDays) {
+      const key = format(day, 'yyyy-MM')
+      const last = bands[bands.length - 1]
+      if (last && last.key === key) last.span += 1
+      else bands.push({ key, label: format(day, 'MMMM', { locale: he }), span: 1 })
+    }
+    return bands
+  }, [windowDays])
+
+  const todayInWindow = useMemo(
+    () => windowDays.some((d) => isSameDay(d, new Date())),
+    [windowDays],
   )
+
+  const rangeLabel = isSameMonth(windowStart, windowEnd)
+    ? format(windowStart, 'MMMM yyyy', { locale: he })
+    : `${format(windowStart, 'MMMM', { locale: he })} – ${format(windowEnd, 'MMMM yyyy', { locale: he })}`
 
   function scannerLabel(id: string | null): string {
     if (!id) return 'ללא סורק'
@@ -1335,23 +1367,37 @@ export function AdminScannersPanel() {
         <div className="mb-4 flex items-center justify-between gap-2">
           <button
             type="button"
-            onClick={() => setMonth((m) => subMonths(m, 1))}
+            onClick={() => setWindowStart((d) => addDays(d, -PAGE_DAYS))}
             className="rounded-lg border border-border p-2 text-muted hover:border-secondary/40 hover:text-foreground"
-            aria-label="חודש קודם"
+            aria-label="אחורה ארבעה שבועות"
           >
             <ChevronRight size={16} />
           </button>
-          <h3 className="text-sm font-semibold text-foreground">
-            {format(month, 'MMMM yyyy', { locale: he })}
-          </h3>
-          <button
-            type="button"
-            onClick={() => setMonth((m) => addMonths(m, 1))}
-            className="rounded-lg border border-border p-2 text-muted hover:border-secondary/40 hover:text-foreground"
-            aria-label="חודש הבא"
-          >
-            <ChevronLeft size={16} />
-          </button>
+          <div className="min-w-0 text-center">
+            <h3 className="text-sm font-semibold text-foreground">{rangeLabel}</h3>
+            <p className="text-[11px] tabular-nums text-muted">
+              {format(windowStart, 'd.M')} – {format(windowEnd, 'd.M')}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {!todayInWindow && (
+              <button
+                type="button"
+                onClick={() => setWindowStart(startOfWeek(new Date(), { weekStartsOn: 0 }))}
+                className="rounded-lg border border-border px-2.5 py-2 text-[11px] font-medium text-muted hover:border-secondary/40 hover:text-foreground"
+              >
+                היום
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setWindowStart((d) => addDays(d, PAGE_DAYS))}
+              className="rounded-lg border border-border p-2 text-muted hover:border-secondary/40 hover:text-foreground"
+              aria-label="קדימה ארבעה שבועות"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-7 gap-1 mb-1">
@@ -1383,8 +1429,10 @@ export function AdminScannersPanel() {
               >
                 <div className="grid grid-cols-7" style={{ minHeight: bodyMinHeight }}>
                   {week.map((day) => {
-                    const inMonth = isSameMonth(day, month)
                     const isToday = isSameDay(day, new Date())
+                    // The window can open on a day or two of history; those are
+                    // dimmed the way out-of-month days used to be.
+                    const isPast = !isToday && day < startOfDay(new Date())
                     const isSelected = selectedDay ? isSameDay(day, selectedDay) : false
                     const dayBookings = bookings.filter((b) => bookingCoversDay(b, day))
                     const activeCount = activeScanners.filter((s) => s.status === 'active').length
@@ -1404,7 +1452,7 @@ export function AdminScannersPanel() {
                         }}
                         className={cn(
                           'flex flex-col border-e border-border/70 p-1.5 text-right transition-colors last:border-e-0',
-                          inMonth ? 'bg-surface' : 'bg-surface-elevated/40',
+                          isPast ? 'bg-surface-elevated/40' : 'bg-surface',
                           isToday && 'bg-secondary/5',
                           isSelected && 'ring-inset ring-1 ring-secondary/40',
                           'hover:bg-secondary/5',
@@ -1415,13 +1463,13 @@ export function AdminScannersPanel() {
                           <span
                             className={cn(
                               'inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[12px] font-semibold tabular-nums',
-                              inMonth ? 'text-foreground' : 'text-muted/50',
+                              isPast ? 'text-muted/50' : 'text-foreground',
                               isToday && 'bg-secondary text-white',
                             )}
                           >
-                            {format(day, 'd')}
+                            {format(day, day.getDate() === 1 ? 'd.M' : 'd')}
                           </span>
-                          {inMonth && activeCount > 0 && (
+                          {!isPast && activeCount > 0 && (
                             <span
                               className={cn(
                                 'rounded px-1 text-[9px] font-medium tabular-nums',
@@ -1501,23 +1549,41 @@ export function AdminScannersPanel() {
         </p>
       </Card>
 
-      {/* Resource timeline: scanners × days of month with continuous family bars */}
+      {/* Resource timeline: scanners × the visible window, with family bars */}
       <Card className="overflow-x-auto p-4">
         <h3 className="mb-3 text-sm font-semibold text-foreground">לוח תפוסה</h3>
         {activeScanners.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted">אין סורקים עדיין. הוסף סורק חדש.</p>
         ) : (
           <div className="min-w-[720px] space-y-2">
+            {/* The window crosses a month boundary, so name the months above
+                the numbers - otherwise the row reads "30 31 1 2" with no clue. */}
             <div
               className="grid gap-0.5"
-              style={{ gridTemplateColumns: `132px repeat(${daysInMonth.length}, minmax(18px, 1fr))` }}
+              style={{ gridTemplateColumns: `132px repeat(${windowDays.length}, minmax(18px, 1fr))` }}
             >
               <div />
-              {daysInMonth.map((d) => (
+              {monthBands.map((band) => (
+                <div
+                  key={band.key}
+                  className="truncate border-b border-border/50 pb-0.5 text-center text-[9px] font-semibold text-muted"
+                  style={{ gridColumn: `span ${band.span}` }}
+                >
+                  {band.label}
+                </div>
+              ))}
+            </div>
+            <div
+              className="grid gap-0.5"
+              style={{ gridTemplateColumns: `132px repeat(${windowDays.length}, minmax(18px, 1fr))` }}
+            >
+              <div />
+              {windowDays.map((d) => (
                 <div
                   key={d.toISOString()}
                   className={cn(
                     'text-center text-[9px] text-muted',
+                    d.getDate() === 1 && 'border-s border-border/60',
                     isSameDay(d, new Date()) && 'font-bold text-secondary-text',
                   )}
                 >
@@ -1541,7 +1607,7 @@ export function AdminScannersPanel() {
             ].map((row) => {
               const spans = row.rowBookings
                 .map((booking) => {
-                  const span = bookingSpanInDays(booking, daysInMonth)
+                  const span = bookingSpanInDays(booking, windowDays)
                   return span ? { booking, ...span } : null
                 })
                 .filter((x): x is { booking: ScannerBooking; start: number; span: number } => x != null)
@@ -1556,9 +1622,9 @@ export function AdminScannersPanel() {
                   </div>
                   <div
                     className="grid h-9 min-w-0 flex-1 gap-0.5"
-                    style={{ gridTemplateColumns: `repeat(${daysInMonth.length}, minmax(0, 1fr))` }}
+                    style={{ gridTemplateColumns: `repeat(${windowDays.length}, minmax(0, 1fr))` }}
                   >
-                    {daysInMonth.map((d, dayIdx) => {
+                    {windowDays.map((d, dayIdx) => {
                       const occupied = spans.some(
                         (s) => dayIdx >= s.start && dayIdx < s.start + s.span,
                       )
