@@ -55,6 +55,25 @@ export function planBasePrice(pkg: BookablePackage, now: Date = new Date()): num
   return resolvePlanPrice(pkg, now)?.price ?? null
 }
 
+/**
+ * The price tag the customer was looking at, in words - for the lead that
+ * reaches us. Resolved at submit time, which is exactly what the plan cards
+ * show: they re-resolve the moment the countdown hits zero, so a form left
+ * open across the deadline reports the regular price, not the launch one.
+ * Null for packages sold by agreement (organizations).
+ */
+export function describePlanPriceForLead(
+  pkg: BookablePackage,
+  now: Date = new Date(),
+): string | null {
+  const resolved = resolvePlanPrice(pkg, now)
+  if (!resolved) return null
+  if (resolved.onLaunchOffer && resolved.wasPrice != null) {
+    return `${formatPriceIls(resolved.price)} (מחיר השקה, במקום ${formatPriceIls(resolved.wasPrice)})`
+  }
+  return `${formatPriceIls(resolved.price)} (מחיר רגיל)`
+}
+
 /** Extra calendar day beyond the first, for full / offline. */
 export const EXTRA_DAY_PRICE = 15
 

@@ -848,7 +848,7 @@ export function AdminPanel() {
                           </p>
                         )}
                         {req.notes && (
-                          <p className="text-xs text-muted bg-surface-elevated rounded-lg px-3 py-2 mt-1">{req.notes}</p>
+                          <p className="text-xs text-muted bg-surface-elevated rounded-lg px-3 py-2 mt-1 whitespace-pre-line">{req.notes}</p>
                         )}
                       </div>
 

@@ -606,7 +606,7 @@ export function AdminScannersPanel() {
     setEventLinkQuery('')
     setEventLinkOpen(false)
     setFormPackage('full')
-    setFormAmount(String(calculateBookingPrice('full', iso, iso) ?? 150))
+    setFormAmount(String(calculateBookingPrice('full', iso, iso) ?? planBasePrice('full') ?? 0))
     setFormPaid(false)
     setFormAmountPaid('')
     setFormCollectedBy(defaultCollector())

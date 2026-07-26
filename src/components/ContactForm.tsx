@@ -11,6 +11,11 @@ import {
   limitTypeForIntent,
   buildContextNotes,
 } from '@/lib/contact'
+import {
+  type BookablePackage,
+  describePlanPriceForLead,
+  isLaunchOfferActive,
+} from '@/lib/planPrices'
 
 const CONTACT_EMAIL = 'ourgamify@gmail.com'
 const CONTACT_PHONE = '0556738544'
@@ -41,6 +46,17 @@ export interface ContactFormProps {
     participantCount?: number | null
   } | null
   onSubmitted?: () => void
+}
+
+/**
+ * Which plan's price the lead was standing in front of. 'contact' is a
+ * question, not a plan, so it has no price to report.
+ */
+const PACKAGE_FOR_INTENT: Partial<Record<ContactIntent, BookablePackage>> = {
+  plan_lead: 'full',
+  plan_independent: 'independent',
+  plan_offline: 'offline',
+  organization_lead: 'organizations',
 }
 
 function defaultHeading(intent: ContactIntent, hasEvent: boolean): string {
@@ -149,6 +165,11 @@ export function ContactForm({
     setSubmitting(true)
 
     const noteParts: string[] = []
+    // First line of the lead: what the customer was actually quoted, so a
+    // callback the day after the offer ends never argues about the number.
+    const pkg = PACKAGE_FOR_INTENT[intent]
+    const viewedPrice = pkg ? describePlanPriceForLead(pkg) : null
+    if (viewedPrice) noteParts.push(`המחיר שהוצג ללקוח: ${viewedPrice}`)
     if (intent === 'organization_lead' && organizationName.trim()) {
       noteParts.push(`שם הארגון: ${organizationName.trim()}`)
     }
@@ -180,6 +201,9 @@ export function ContactForm({
       eventName: eventName || eventPrefill?.name || null,
       route: typeof window !== 'undefined' ? window.location.pathname : null,
       mode: intent,
+      // Which pricing was live when they wrote - the only price signal a
+      // general question carries, since it names no plan.
+      extras: [`launchOffer: ${isLaunchOfferActive() ? 'active' : 'ended'}`],
     })
     if (contextNotes) noteParts.push(`---\n${contextNotes}`)
 

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, Fragment, type ReactNode } from 'react'
+import { useState, useMemo, useRef, useEffect, Fragment, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ScanLine,
@@ -36,7 +36,7 @@ import {
   trackVideoView,
 } from '@/lib/analytics'
 import { LaunchOfferBanner } from '@/components/ui/LaunchOfferBanner'
-import { formatPriceIls, resolvePlanPrice } from '@/lib/planPrices'
+import { formatPriceIls, isLaunchOfferActive, resolvePlanPrice } from '@/lib/planPrices'
 import { cn } from '@/lib/utils'
 
 const SETUP_STEPS = [
@@ -192,9 +192,11 @@ export function Landing() {
   const [faqOpenIndex, setFaqOpenIndex] = useState<number | null>(null)
   const [contactOpen, setContactOpen] = useState(false)
   const [contactLocation, setContactLocation] = useState<'faq' | 'footer'>('footer')
-  // Prices (and whether the launch offer still runs) resolved once per mount.
-  const fullPlanPrice = resolvePlanPrice('full')
-  const basicPlanPrice = resolvePlanPrice('independent')
+  // Re-resolved when the banner's countdown hits zero, so a tab left open
+  // across the deadline drops the launch wording and price without a refresh.
+  const [launchActive, setLaunchActive] = useState(() => isLaunchOfferActive())
+  const fullPlanPrice = useMemo(() => resolvePlanPrice('full'), [launchActive])
+  const basicPlanPrice = useMemo(() => resolvePlanPrice('independent'), [launchActive])
   const howItWorksRef = useRef<HTMLElement>(null)
   const withoutScannerCtaRef = useRef<HTMLButtonElement>(null)
   const restoreFocusToWithoutScannerRef = useRef(false)
@@ -371,6 +373,7 @@ export function Landing() {
         <LaunchOfferBanner
           variant="bar"
           onViewPlans={() => handleOpenPlans('launch_offer_banner')}
+          onExpire={() => setLaunchActive(false)}
         />
 
         <main className="mx-auto max-w-4xl px-4 pb-20 pt-12 sm:px-6">
