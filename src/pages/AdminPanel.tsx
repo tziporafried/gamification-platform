@@ -174,7 +174,7 @@ const LIMIT_LABELS: Record<string, string> = {
   general: 'כללי',
   'plan-independent': 'משחק עצמאי',
   'plan-full': 'משחק מלא',
-  'plan-offline': 'חוויה בלי חיבור לאינטרנט',
+  'plan-offline': 'משחק ללא חיבור לאינטרנט',
   'plan-organizations': 'פתרון לארגונים',
   homepage_contact: 'פנייה כללית (דף הבית)',
   trial_contact: 'פנייה כללית (התנסות)',

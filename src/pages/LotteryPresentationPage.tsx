@@ -105,7 +105,7 @@ export function LotteryPresentationPage() {
             <div className="max-w-md text-center">
               <p className="text-2xl font-black text-foreground">ההגרלה זמינה במשחק המלא</p>
               <p className="mt-3 text-base font-semibold text-muted">
-                ההגרלה כלולה במשחק המלא ובחוויה ללא אינטרנט. אפשר לשדרג מתוך המסלולים.
+                ההגרלה כלולה במשחק המלא ובמשחק ללא אינטרנט. אפשר לשדרג מתוך המסלולים.
               </p>
             </div>
           }

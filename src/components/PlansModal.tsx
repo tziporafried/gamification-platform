@@ -36,7 +36,7 @@ const OPTIONS: Record<Option, string> = {
   independent: 'משחק ידני',
   full: 'משחק מלא',
   organizations: 'פתרון לארגונים',
-  offline: 'חוויה בלי חיבור לאינטרנט',
+  offline: 'משחק ללא חיבור לאינטרנט',
 }
 
 const INTENT_FOR_OPTION: Record<Option, ContactIntent> = {
@@ -395,14 +395,14 @@ export function PlansModal({
           <div ref={focusPlan === 'offline' ? focusedCardRef : undefined}>
             <OptionCard
               featured={emphasizeOffline}
-              label="חוויה בלי חיבור לאינטרנט"
+              label="משחק ללא חיבור לאינטרנט"
               disabled={currentPlan === 'offline'}
               onEmphasize={() => emphasizeOnly('offline')}
             >
               <div className="mb-4">
                 <div className="mb-1 flex flex-wrap items-center gap-2">
                   <span className="text-lg" aria-hidden="true">📴</span>
-                  <span className="text-base font-bold text-foreground">חוויה בלי חיבור לאינטרנט</span>
+                  <span className="text-base font-bold text-foreground">משחק ללא חיבור לאינטרנט</span>
                   {currentPlan === 'offline' && (
                     <span className="rounded-full border border-border bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold text-foreground">
                       המסלול הנוכחי

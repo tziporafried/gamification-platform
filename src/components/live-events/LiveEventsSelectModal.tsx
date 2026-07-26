@@ -172,7 +172,7 @@ function AvailableEventCard({
           {item.title}
         </span>
         <span className="mt-1.5 line-clamp-2 text-[13px] font-medium leading-snug text-white/90">
-          {locked ? 'זמין במשחק המלא ובחוויה ללא אינטרנט - הציצו במסלולים.' : blurb}
+          {locked ? 'זמין במשחק המלא ובמשחק ללא אינטרנט - הציצו במסלולים.' : blurb}
         </span>
       </div>
     </button>
