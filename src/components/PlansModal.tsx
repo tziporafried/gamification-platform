@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
-import { Check } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
@@ -37,8 +37,11 @@ const BASIC_INCLUDES = [
   'ניהול קבוצות',
   'משימות וניקוד',
   'לוח תוצאות בזמן אמת',
-  'הזנת סריקות ידנית',
+  'הזנת ניקוד ידנית ממסך המשחק',
 ]
+
+/** Spelled out so nobody buys the basic plan expecting a scanner. */
+const BASIC_EXCLUDES = ['סורק']
 
 const FULL_INCLUDES = [
   'מערכת המשחק',
@@ -252,7 +255,7 @@ export function PlansModal({
                 </div>
                 <p className="mt-1.5 text-xs text-muted">עד 70 משתתפים</p>
                 <p className="mt-2.5 text-xs leading-relaxed text-foreground/80">
-                  משחקים עם כל המערכת, ומזינים את הסריקות ידנית.
+                  משחקים בלי סורק. במקום לסרוק כרטיס, מזינים למשתתף את הניקוד ידנית ממסך המשחק.
                 </p>
               </div>
 
@@ -260,6 +263,15 @@ export function PlansModal({
                 {BASIC_INCLUDES.map((item) => (
                   <FeatureRow key={item} text={item} />
                 ))}
+                <div className="mt-1 space-y-1 rounded-lg bg-surface-elevated px-2 py-1.5">
+                  <p className="text-[10px] font-semibold leading-none text-muted">לא כולל:</p>
+                  {BASIC_EXCLUDES.map((item) => (
+                    <div key={item} className="flex items-center gap-2">
+                      <X size={13} className="shrink-0 text-muted" aria-hidden="true" />
+                      <span className="text-xs leading-snug text-muted">{item}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <Button
