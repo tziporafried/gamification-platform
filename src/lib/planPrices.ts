@@ -14,7 +14,7 @@ export const PLAN_BASE_PRICES: Record<BookablePackage, number | null> = {
 export const EXTRA_DAY_PRICE = 15
 
 export const BOOKING_PACKAGE_LABELS: Record<BookablePackage, string> = {
-  independent: 'משחק בסיסי',
+  independent: 'משחק ידני',
   full: 'משחק מלא',
   offline: 'בלי אינטרנט',
   organizations: 'ארגונים',

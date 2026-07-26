@@ -532,6 +532,7 @@ export type ActivationOptionsSource =
   | 'post_wizard'
   | 'deep_link'
   | 'lottery_trial_reveal'
+  | 'lottery_locked_plan'
 
 /** User opened activation options (plans modal) from a tracked entry point. */
 export function trackActivationOptionsViewed(eventId: string, source: ActivationOptionsSource) {

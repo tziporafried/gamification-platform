@@ -3,6 +3,8 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { ScreenControls } from '@/components/ui/ScreenControls'
 import { supabase } from '@/lib/supabase'
+import { canRunLottery } from '@/hooks/usePlanPermissions'
+import type { UserPlan } from '@/types'
 import { LotteryBroadcastLayout } from '@/components/live-events/lottery/LotteryBroadcastLayout'
 import { LotteryConfigurationCard } from '@/components/live-events/lottery/LotteryConfigurationCard'
 import { LotteryPreparingStage } from '@/components/live-events/lottery/LotteryPreparingStage'
@@ -17,8 +19,10 @@ import {
 /**
  * Broadcast-ready lottery tab - no AppShell / GlobalHeader.
  * Permanent stage + dock layout; only stage/dock content changes per state.
- * Open to any event owner; trial-plan events run the full ceremony but mask
- * the winner's identity (see LotteryPresentation) instead of blocking access.
+ * Open to any event owner on a plan that includes the lottery; trial-plan
+ * events run the full ceremony but mask the winner's identity (see
+ * LotteryPresentation) instead of blocking access. The basic plan is locked
+ * out here too, not just in the launcher, so the URL can't be shared into it.
  */
 export function LotteryPresentationPage() {
   const { id } = useParams<{ id: string }>()
@@ -28,11 +32,11 @@ export function LotteryPresentationPage() {
   const [session, setSession] = useState<LotterySessionPayload | null | undefined>(
     runId ? undefined : null,
   )
-  const [isTrial, setIsTrial] = useState<boolean | undefined>(undefined)
+  const [plan, setPlan] = useState<UserPlan | null | undefined>(undefined)
 
   useEffect(() => {
     if (!id) {
-      setIsTrial(false)
+      setPlan(null)
       return
     }
     let cancelled = false
@@ -43,12 +47,15 @@ export function LotteryPresentationPage() {
       .single()
       .then(({ data }) => {
         if (cancelled) return
-        setIsTrial(data?.plan === 'free')
+        setPlan((data?.plan as UserPlan | undefined) ?? null)
       })
     return () => {
       cancelled = true
     }
   }, [id])
+
+  const isTrial = plan === 'free'
+  const locked = plan != null && !canRunLottery(plan)
 
   useEffect(() => {
     if (!runId) {
@@ -85,8 +92,31 @@ export function LotteryPresentationPage() {
     setSearchParams({ run: nextRunId }, { replace: true })
   }
 
-  if (isTrial === undefined) {
+  if (plan === undefined) {
     return <FullPageLoader />
+  }
+
+  if (locked) {
+    return (
+      <>
+        <ScreenControls onBack={handleClose} soundScope="lottery" />
+        <LotteryBroadcastLayout
+          stage={
+            <div className="max-w-md text-center">
+              <p className="text-2xl font-black text-foreground">ההגרלה זמינה במשחק המלא</p>
+              <p className="mt-3 text-base font-semibold text-muted">
+                ההגרלה כלולה במשחק המלא ובחוויה ללא אינטרנט. אפשר לשדרג מתוך המסלולים.
+              </p>
+            </div>
+          }
+          dock={
+            <p className="w-full text-center text-sm font-medium text-muted">
+              חזרו למסך המשחק כדי לראות את המסלולים
+            </p>
+          }
+        />
+      </>
+    )
   }
 
   if (!id) {

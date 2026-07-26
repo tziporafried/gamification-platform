@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Sparkles } from 'lucide-react'
+import { Lock, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { theme } from '@/lib/theme'
 import {
@@ -32,6 +32,9 @@ interface LiveEventsSelectModalProps {
   eventId: string
   /** Dashboard card bounds - modal expands from this rect. */
   originRect?: LiveEventsOriginRect | null
+  /** Basic plan: the lottery is shown but leads to the plans modal. */
+  lotteryLocked?: boolean
+  onLockedSelect?: () => void
 }
 
 const CARD_GRADIENT: Record<LiveEventCatalogItem['accent'], string> = {
@@ -104,10 +107,12 @@ const FOCUSABLE = [
 function AvailableEventCard({
   item,
   blurb,
+  locked = false,
   onLaunch,
 }: {
   item: LiveEventCatalogItem
   blurb: string
+  locked?: boolean
   onLaunch: () => void
 }) {
   const Icon = item.icon
@@ -121,7 +126,7 @@ function AvailableEventCard({
         'ring-2 ring-white/45',
         CARD_SHADOW[item.accent],
         CARD_SHADOW_HOVER[item.accent],
-        'brightness-[1.04] saturate-[1.08]',
+        locked ? 'saturate-[0.85] brightness-[0.98]' : 'brightness-[1.04] saturate-[1.08]',
         'transition-[transform,box-shadow,filter] duration-200 ease-out',
         'hover:scale-[1.03] hover:brightness-110',
         'active:scale-[0.99]',
@@ -146,6 +151,19 @@ function AvailableEventCard({
         aria-hidden="true"
       />
 
+      {locked && (
+        <span
+          className={cn(
+            'absolute start-3 top-3 z-10 inline-flex items-center gap-1',
+            'rounded-full border border-white/40 bg-black/25 px-2.5 py-1 backdrop-blur-sm',
+            'text-[10px] font-bold leading-none text-white',
+          )}
+        >
+          <Lock size={9} strokeWidth={2.5} className="shrink-0 opacity-90" aria-hidden="true" />
+          במשחק המלא
+        </span>
+      )}
+
       <div className="relative flex flex-1 flex-col items-center justify-center text-center">
         <span className="mb-3.5 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl border border-white/40 bg-white/25 shadow-[0_12px_28px_rgba(0,0,0,0.22)] backdrop-blur-sm">
           <Icon size={34} strokeWidth={2.25} className="text-white drop-shadow-md" aria-hidden="true" />
@@ -154,7 +172,7 @@ function AvailableEventCard({
           {item.title}
         </span>
         <span className="mt-1.5 line-clamp-2 text-[13px] font-medium leading-snug text-white/90">
-          {blurb}
+          {locked ? 'זמין במשחק המלא ובחוויה ללא אינטרנט - הציצו במסלולים.' : blurb}
         </span>
       </div>
     </button>
@@ -235,6 +253,8 @@ export function LiveEventsSelectModal({
   onClose,
   eventId,
   originRect = null,
+  lotteryLocked = false,
+  onLockedSelect,
 }: LiveEventsSelectModalProps) {
   const { available, upcoming } = useMemo(() => {
     const launchable = LIVE_EVENT_CATALOG.filter((item) => isLiveEventLaunchable(item))
@@ -317,14 +337,22 @@ export function LiveEventsSelectModal({
     }
   }, [isOpen])
 
+  function isLocked(id: LiveEventCatalogId) {
+    return id === 'lottery' && lotteryLocked
+  }
+
   function launch(id: LiveEventCatalogId) {
     if (id !== 'lottery') return
     trackLiveEventSelect({
       eventId,
       catalogId: id,
-      launchable: true,
+      launchable: !isLocked(id),
     })
     onCloseRef.current()
+    if (isLocked(id)) {
+      onLockedSelect?.()
+      return
+    }
     navigate(`/events/${eventId}/lottery`)
   }
 
@@ -494,6 +522,7 @@ export function LiveEventsSelectModal({
                       <AvailableEventCard
                         item={item}
                         blurb={CARD_BLURB[item.id]}
+                        locked={isLocked(item.id)}
                         onLaunch={() => launch(item.id)}
                       />
                     </div>

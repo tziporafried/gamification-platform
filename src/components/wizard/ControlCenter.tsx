@@ -14,6 +14,7 @@ import { EventPlayStatus, resolveEventPlayStatus } from '@/components/event/Even
 import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
 import { useHeaderSlot } from '@/contexts/HeaderSlotContext'
 import { usePlansModal } from '@/contexts/PlansModalContext'
+import { usePlanPermissions } from '@/hooks/usePlanPermissions'
 import { calculateReadiness, isEventReady, getWizardPrefs, resolveGroupType } from '@/lib/wizard'
 import { getLockedTemplate, completeTemplateImport, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import { useAuth } from '@/contexts/AuthContext'
@@ -35,6 +36,7 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   const { setHeaderActivationCta } = useHeaderSlot()
   const { openPlans } = usePlansModal()
   const isTrial = !isSuperAdmin && event.plan === 'free'
+  const { canRunLottery } = usePlanPermissions(event.plan)
   const [settingsWarningOpen, setSettingsWarningOpen] = useState(false)
   const [manageOpen, setManageOpen] = useState(false)
   const [liveEventsOpen, setLiveEventsOpen] = useState(false)
@@ -208,6 +210,10 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
         onClose={() => setLiveEventsOpen(false)}
         eventId={event.id}
         originRect={liveEventsOrigin}
+        lotteryLocked={!canRunLottery}
+        onLockedSelect={() =>
+          openPlans({ eventId: event.id, source: 'lottery_locked_plan', focusPlan: 'full' })
+        }
       />
 
       <main
