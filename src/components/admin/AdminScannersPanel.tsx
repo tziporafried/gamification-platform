@@ -1323,7 +1323,7 @@ export function AdminScannersPanel() {
           questions in less room - so the day columns get the whole width now,
           and the grid's two useful extras (free-scanner counts, double-click
           to book) moved down here rather than being lost with it. */}
-      <Card className="overflow-x-auto p-4">
+      <Card className="p-4">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-base font-semibold text-foreground">לוח תפוסה</h3>
 
@@ -1365,12 +1365,13 @@ export function AdminScannersPanel() {
         {activeScanners.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted">אין סורקים עדיין. הוסף סורק חדש.</p>
         ) : (
+          <div className="overflow-x-auto">
           <div className="relative min-w-[1900px]">
             <div className="space-y-1.5">
               {/* The window crosses a month boundary, so name the months above
                   the numbers - otherwise the row reads "30 31 1 2" with no clue. */}
               <div className="grid gap-0.5" style={{ gridTemplateColumns: boardColumns }}>
-                <div />
+                <div className="sticky start-0 z-20 border-e border-border/60 bg-surface" />
                 {monthBands.map((band) => (
                   <div
                     key={band.key}
@@ -1383,7 +1384,7 @@ export function AdminScannersPanel() {
               </div>
 
               <div className="grid gap-0.5" style={{ gridTemplateColumns: boardColumns }}>
-                <div />
+                <div className="sticky start-0 z-20 border-e border-border/60 bg-surface" />
                 {windowDays.map((d) => {
                   const isToday = isSameDay(d, new Date())
                   return (
@@ -1443,7 +1444,7 @@ export function AdminScannersPanel() {
                     className="grid gap-0.5"
                     style={{ gridTemplateColumns: boardColumns }}
                   >
-                    <div className="flex items-center gap-2 truncate pe-2 text-sm text-foreground">
+                    <div className="sticky start-0 z-20 border-e border-border/60 bg-surface flex items-center gap-2 truncate pe-2 text-sm text-foreground">
                       <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', row.color)} />
                       <span className="truncate font-medium">{row.label}</span>
                     </div>
@@ -1501,7 +1502,9 @@ export function AdminScannersPanel() {
                 className="grid gap-0.5 border-t border-border/50 pt-1.5"
                 style={{ gridTemplateColumns: boardColumns }}
               >
-                <div className="truncate pe-2 text-xs font-medium text-muted">סורקים פנויים</div>
+                <div className="sticky start-0 z-20 border-e border-border/60 bg-surface truncate pe-2 text-xs font-medium text-muted">
+                  סורקים פנויים
+                </div>
                 {windowDays.map((d, i) => {
                   const cap = capacityByDay[i]
                   if (cap.total === 0 || isPastDay(d)) return <div key={d.toISOString()} />
@@ -1544,6 +1547,7 @@ export function AdminScannersPanel() {
                 />
               ))}
             </div>
+          </div>
           </div>
         )}
 
