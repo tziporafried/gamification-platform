@@ -24,7 +24,7 @@ export function WizardStepWrapper({
   title,
   subtitle,
   currentStep,
-  totalSteps = 6,
+  totalSteps = 7,
   canAdvance = true,
   onNext,
   onBack,

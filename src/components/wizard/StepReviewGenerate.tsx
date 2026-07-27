@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Eye } from 'lucide-react'
+import { Eye, QrCode, ScanLine } from 'lucide-react'
 import { WizardStepWrapper } from './WizardStepWrapper'
 import { ScrollContainer } from '@/components/ui/ScrollContainer'
 import { ReadinessChecklist } from './ReadinessChecklist'
@@ -16,12 +16,37 @@ import { QrCardGenerator, type CardCounts } from '@/components/qr-cards/QrCardGe
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { syncEventToTemplate } from '@/lib/templates'
-import { ScanModeModal } from './ScanModeModal'
 import type { Event, EventCounts, GroupType, ScanMode } from '@/types'
 import { isEventReady, calculateReadiness, isTemplateReady, calculateTemplateReadiness } from '@/lib/wizard'
 import { trackWizardStepComplete } from '@/lib/analytics'
 import { getPendingActivation, clearPendingActivation } from '@/lib/contact'
 import { usePlansModal } from '@/contexts/PlansModalContext'
+
+/**
+ * What the cards step decided, restated where the deck is actually printed -
+ * with the way back, since the choice no longer lives on this screen.
+ */
+function ScanModeSummary({ scanMode, onChange }: { scanMode: ScanMode; onChange: () => void }) {
+  const Icon = scanMode === 'split' ? ScanLine : QrCode
+
+  return (
+    <div className="mb-3 flex shrink-0 items-center gap-2 rounded-xl border border-border bg-surface-elevated px-3 py-2">
+      <Icon size={15} className="shrink-0 text-muted" />
+      <span className="text-xs text-muted">
+        סוג הכרטיסים: <span className="font-semibold text-foreground">
+          {scanMode === 'split' ? 'סריקה כפולה' : 'סריקה בודדת'}
+        </span>
+      </span>
+      <button
+        type="button"
+        onClick={onChange}
+        className="mr-auto text-xs font-semibold text-primary-text underline-offset-2 hover:underline"
+      >
+        שינוי
+      </button>
+    </div>
+  )
+}
 
 interface StepReviewGenerateProps {
   event: Event
@@ -59,10 +84,9 @@ export function StepReviewGenerate({
   const [cardsGenerated, setCardsGenerated] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
-  // Print-time preference only - nothing persists it, because the scanner reads
-  // both kinds of card and no other screen branches on the choice.
-  const [scanMode, setScanMode] = useState<ScanMode>('combined')
-  const [scanModeOpen, setScanModeOpen] = useState(false)
+  // Answered in the cards step and kept on the event; the fallback is only for
+  // games created before that step existed.
+  const scanMode = event.scan_mode ?? 'combined'
   const { celebrate, animationKey } = useStepEntryCelebration(isActive, ready && !isTemplate)
 
   const handleReadyChange = useCallback((fn: (() => void) | null) => {
@@ -77,18 +101,9 @@ export function StepReviewGenerate({
     setCardsGenerated(generated)
   }, [])
 
-  /** Confirmed in the modal: take the mode, then reveal the cards. */
-  const handleScanModeConfirm = useCallback((next: ScanMode) => {
-    // Safe to set and generate together - QrCardGenerator derives its sheets
-    // from the prop rather than snapshotting them on the generate call.
-    setScanMode(next)
-    setScanModeOpen(false)
-    generateFn?.()
-  }, [generateFn])
-
   const footerBar = !isTemplate && generateFn ? (
     <AnimatedPrintFooter key={animationKey} celebrate={celebrate}>
-      <Button onClick={() => setScanModeOpen(true)} className="w-full">
+      <Button onClick={() => generateFn()} className="w-full">
         <Eye size={16} className="ml-1.5" />סקור כרטיסים
       </Button>
     </AnimatedPrintFooter>
@@ -113,7 +128,7 @@ export function StepReviewGenerate({
     if (event.status !== 'active') {
       await supabase.from('events').update({ status: 'active' }).eq('id', event.id)
     }
-    trackWizardStepComplete(6, 'review')
+    trackWizardStepComplete(7, 'review')
 
     // Resume activation if user arrived via pricing without an event (self-service path).
     const pending = getPendingActivation()
@@ -137,20 +152,12 @@ export function StepReviewGenerate({
         <ReadyCelebrationOverlay celebrate={celebrate} burstKey={animationKey} confettiLoop={ready} />
       )}
 
-      <ScanModeModal
-        isOpen={scanModeOpen}
-        value={scanMode}
-        cardCounts={cardCounts}
-        onCancel={() => setScanModeOpen(false)}
-        onConfirm={handleScanModeConfirm}
-      />
-
       <WizardStepWrapper
         title={isTemplate ? 'סיכום התבנית' : 'מוכנים לצאת לדרך?'}
         subtitle={isTemplate
           ? 'השינויים נשמרים אוטומטית - בדקו שהכל נראה טוב'
           : 'עברו על הסיכום האחרון. אם הכול נראה תקין, אפשר להתחיל את המשחק ולהזמין את המשתתפים.'}
-        currentStep={6}
+        currentStep={7}
         canAdvance={ready && !saving}
         onNext={handleFinish}
         onBack={onBack}
@@ -219,7 +226,9 @@ export function StepReviewGenerate({
                     description="המשחק מוכן להפעלה. אפשר להדפיס את הכרטיסים ולהתחיל את הפעילות."
                     celebrate={celebrate}
                     collapsed={cardsGenerated}
-                    footerNote={cardsGenerated ? undefined : 'לכל משתתף יודפס כרטיס אישי עם כל הפעילויות שהגדרתם.'}
+                    footerNote={cardsGenerated ? undefined : (scanMode === 'split'
+                      ? 'יודפסו כרטיס לכל משתתף וכרטיס לכל פעילות - סורקים משתתף ואז פעילות.'
+                      : 'לכל משתתף יודפס כרטיס אישי עם כל הפעילויות שהגדרתם.')}
                   >
                     <EventSummaryGrid
                       counts={counts}
@@ -231,6 +240,8 @@ export function StepReviewGenerate({
                     />
                   </ReadyCelebrationBanner>
                 </div>
+                <ScanModeSummary scanMode={scanMode} onChange={() => onGoToStep(6)} />
+
                 {/* Keep one QrCardGenerator instance - remounting would reset generated/print UI */}
                 <ScrollContainer className="flex-1 px-0" stableGutter={false}>
                   <QrCardGenerator

@@ -16,7 +16,7 @@ export interface UserProfile {
 }
 
 export type StepStatus = 'not_started' | 'in_progress' | 'completed';
-export type WizardStepId = 'details' | 'groups' | 'participants' | 'tasks' | 'rewards' | 'review';
+export type WizardStepId = 'details' | 'groups' | 'participants' | 'tasks' | 'rewards' | 'cards' | 'review';
 export type GroupType = 'none' | 'custom';
 
 export interface WizardState {
@@ -25,6 +25,7 @@ export interface WizardState {
   participants: StepStatus;
   tasks: StepStatus;
   rewards: StepStatus;
+  cards: StepStatus;
   review: StepStatus;
 }
 
@@ -121,8 +122,9 @@ export interface TemplateImportResult {
 }
 
 /**
- * Which QR deck gets printed. A print-time UI preference only - it is not
- * persisted, because the scanner reads both kinds of card regardless.
+ * Which deck gets printed, chosen in the wizard's cards step and kept on the
+ * event (077). The scanner reads both kinds of card regardless, so this governs
+ * only how cards are laid out for printing.
  * - `combined`: one QR holds participant + action - a single scan scores.
  * - `split`: separate participant and action QRs - participant first, then action.
  */
@@ -145,6 +147,8 @@ export interface Event {
   status: EventStatus;
   plan: UserPlan;
   barcode_type: BarcodeType;
+  /** null until the cards step is answered; printing falls back to 'combined'. */
+  scan_mode: ScanMode | null;
   created_at: string;
   updated_at: string;
 }
@@ -353,5 +357,6 @@ export const WIZARD_STEPS: { id: WizardStepId; label: string; step: number }[] =
   { id: 'participants', label: 'מי משתתף?', step: 3 },
   { id: 'tasks', label: 'צבירת נקודות', step: 4 },
   { id: 'rewards', label: 'פרסים', step: 5 },
-  { id: 'review', label: 'מוכנים לצאת לדרך?', step: 6 },
+  { id: 'cards', label: 'כרטיסים', step: 6 },
+  { id: 'review', label: 'מוכנים לצאת לדרך?', step: 7 },
 ];

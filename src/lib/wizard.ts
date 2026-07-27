@@ -40,6 +40,7 @@ export function computeWizardState(event: Event, counts: EventCounts, groupType:
     participants: hasParticipants ? 'completed' : (groupsResolved || groupType === null ? 'in_progress' : 'not_started'),
     tasks: hasTasks ? 'completed' : (hasParticipants ? 'in_progress' : 'not_started'),
     rewards: hasRewards ? 'completed' : (hasTasks ? 'in_progress' : 'not_started'),
+    cards: event.scan_mode ? 'completed' : (hasTasks ? 'in_progress' : 'not_started'),
     review: hasTasks ? 'in_progress' : 'not_started',
   }
 }
@@ -60,6 +61,9 @@ export function computeTemplateWizardState(
     participants: groupsResolved || groupType === null ? 'completed' : 'not_started',
     tasks: hasTasks ? 'completed' : (groupsResolved ? 'in_progress' : 'not_started'),
     rewards: hasRewards ? 'completed' : (hasTasks ? 'in_progress' : 'not_started'),
+    // A template has no participants to print cards for, so the cards step is
+    // hidden in template mode (TEMPLATE_SKIP_STEPS) and never has a status.
+    cards: 'not_started',
     review: hasTasks && groupsResolved && hasDetails ? 'in_progress' : 'not_started',
   }
 }
@@ -119,7 +123,12 @@ export function isTemplateReady(
   return calculateTemplateReadiness(event, counts, groupType).filter((c) => c.required).every((c) => c.passed)
 }
 
-export const TEMPLATE_SKIP_STEPS = [3] as const
+/** Participants (3) and cards (6) - neither exists for a template. */
+export const TEMPLATE_SKIP_STEPS = [3, 6] as const
+
+export function isTemplateSkippedStep(step: number): boolean {
+  return (TEMPLATE_SKIP_STEPS as readonly number[]).includes(step)
+}
 
 export function adjustWizardStep(step: number, direction: 'next' | 'prev', isTemplateMode: boolean): number {
   if (!isTemplateMode) {
@@ -128,19 +137,32 @@ export function adjustWizardStep(step: number, direction: 'next' | 'prev', isTem
 
   if (direction === 'next') {
     if (step === 2) return 4
+    if (step === 5) return 7
     return step + 1
   }
 
   if (step === 4) return 2
+  if (step === 7) return 5
   return step - 1
 }
 
 export function normalizeWizardStep(step: number, isTemplateMode: boolean): number {
   if (!isTemplateMode) return step
   if (step === 3) return 4
+  if (step === 6) return 7
   return step
 }
 
+/**
+ * What a game needs before it can be played.
+ *
+ * Deliberately says nothing about the cards step: this list is also what the
+ * control centre and the events list call through isEventReady, and a game
+ * plays fine without that choice - printing falls back to 'combined' and the
+ * scanner reads either deck. The cards step enforces its own answer before it
+ * lets anyone past it, and games that predate the step must not start
+ * reporting themselves as broken.
+ */
 export function calculateReadiness(
   event: Event,
   counts: EventCounts,
