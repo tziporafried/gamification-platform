@@ -19,7 +19,6 @@ export const WizardChromeContext = createContext<WizardChromeContextValue>({
     participants: 'not_started',
     tasks: 'not_started',
     rewards: 'not_started',
-    cards: 'not_started',
     review: 'not_started',
   },
   onStepClick: () => {},
