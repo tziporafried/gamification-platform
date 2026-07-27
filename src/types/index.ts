@@ -331,6 +331,9 @@ export interface ScannerBooking {
   customer_email: string | null;
   /** Linked game event. */
   event_id: string | null;
+  /** True = a hold that isn't closed yet. Another booking may take its
+   *  scanner, which drops this one to scanner_id = null. */
+  is_tentative: boolean;
   /** Commercial package for this booking. */
   booking_package: BookingPackage | null;
   /** Amount charged (may differ from list price). */

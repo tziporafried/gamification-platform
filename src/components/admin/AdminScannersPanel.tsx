@@ -11,6 +11,7 @@ import {
   Download,
   Sparkles,
   SlidersHorizontal,
+  HelpCircle,
   X,
 } from 'lucide-react'
 import {
@@ -269,6 +270,24 @@ function bookingSpanInDays(
   return { start, span: end - start + 1 }
 }
 
+/** Spread bookings that share days onto separate lines within their row, so
+ *  two families on the same date read as two bars instead of one hiding the
+ *  other. Mostly matters for the scanner-less row, where nothing limits how
+ *  many bookings land on a day. */
+function packIntoLanes<T extends { start: number; span: number }>(
+  spans: T[],
+): (T & { lane: number })[] {
+  const laneEnds: number[] = []
+  return [...spans]
+    .sort((a, b) => a.start - b.start || b.span - a.span)
+    .map((s) => {
+      let lane = laneEnds.findIndex((end) => end <= s.start)
+      if (lane < 0) lane = laneEnds.length
+      laneEnds[lane] = s.start + s.span
+      return { ...s, lane }
+    })
+}
+
 export function AdminScannersPanel() {
   const { user } = useAuth()
   const [scanners, setScanners] = useState<Scanner[]>([])
@@ -332,6 +351,9 @@ export function AdminScannersPanel() {
   const [formPhone, setFormPhone] = useState('')
   const [formEmail, setFormEmail] = useState('')
   const [formNotes, setFormNotes] = useState('')
+  const [formTentative, setFormTentative] = useState(false)
+  /** Booking whose question mark is mid-flight, from the details card. */
+  const [tentativeBusyId, setTentativeBusyId] = useState<string | null>(null)
   const [formCollectedBy, setFormCollectedBy] = useState('')
   const [admins, setAdmins] = useState<BookingAdmin[]>([])
 
@@ -586,6 +608,36 @@ export function AdminScannersPanel() {
     setSelectedBooking(null)
   }
 
+  /** Flip the question mark straight from the details card - marking a hold is
+   *  a one-click decision and shouldn't need a trip through the edit form. */
+  async function toggleTentative(booking: ScannerBooking) {
+    if (tentativeBusyId) return
+    const next = !booking.is_tentative
+    setTentativeBusyId(booking.id)
+    setError(null)
+    setSuccessMsg(null)
+    const { error: toggleError } = await supabase
+      .from('scanner_bookings')
+      .update({ is_tentative: next })
+      .eq('id', booking.id)
+    setTentativeBusyId(null)
+    if (toggleError) {
+      setError(
+        toggleError.message?.includes('is_tentative')
+          ? 'יש להריץ את עדכון מסד הנתונים (078_booking_tentative.sql)'
+          : toggleError.message,
+      )
+      return
+    }
+    setBookings((prev) =>
+      prev.map((b) => (b.id === booking.id ? { ...b, is_tentative: next } : b)),
+    )
+    setSelectedBooking((prev) =>
+      prev && prev.id === booking.id ? { ...prev, is_tentative: next } : prev,
+    )
+    setSuccessMsg(next ? 'ההזמנה סומנה בסימן שאלה' : 'סימן השאלה הוסר - ההזמנה סגורה')
+  }
+
   /** Whoever is filling the form is the likeliest one taking the payment. */
   function defaultCollector(): string {
     if (user?.id && admins.some((a) => a.id === user.id)) return user.id
@@ -612,6 +664,7 @@ export function AdminScannersPanel() {
     setFormPhone('')
     setFormEmail('')
     setFormNotes('')
+    setFormTentative(false)
     setFormScannerId('')
     setFormEventId('')
     setEventLinkQuery('')
@@ -635,6 +688,7 @@ export function AdminScannersPanel() {
     setFormPhone(booking.customer_phone ?? '')
     setFormEmail(booking.customer_email ?? '')
     setFormNotes(booking.notes ?? '')
+    setFormTentative(!!booking.is_tentative)
     setFormScannerId(booking.scanner_id ?? '')
     setFormEventId(booking.event_id ?? '')
     setEventLinkQuery('')
@@ -895,17 +949,21 @@ export function AdminScannersPanel() {
       }
     }
 
+    // A tentative booking holds its scanner but never blocks: whoever books
+    // that scanner next takes it, and the hold drops to the scanner-less row.
+    let toBump: ScannerBooking[] = []
     if (formScannerId) {
-      const conflict = bookings.some(
+      const clashes = bookings.filter(
         (b) =>
           b.id !== editingBookingId &&
           b.scanner_id === formScannerId &&
           rangesOverlap(formStart, formEnd, b.start_date, b.end_date),
       )
-      if (conflict) {
+      if (clashes.some((b) => !b.is_tentative)) {
         setError('הסורק כבר תפוס בתאריכים האלה')
         return
       }
+      toBump = clashes
     }
 
     setSaving(true)
@@ -936,8 +994,48 @@ export function AdminScannersPanel() {
       return
     }
 
+    // Free the scanner before writing, or the exclusion constraint rejects the
+    // new booking. If the write then fails the holds go back where they were.
+    if (toBump.length > 0) {
+      const { error: bumpError } = await supabase
+        .from('scanner_bookings')
+        .update({ scanner_id: null })
+        .in(
+          'id',
+          toBump.map((b) => b.id),
+        )
+      if (bumpError) {
+        setError(`לא הצלחתי לפנות את הסורק מהזמנות בסימן שאלה: ${bumpError.message}`)
+        setSaving(false)
+        return
+      }
+      const bumpedIds = new Set(toBump.map((b) => b.id))
+      setBookings((prev) =>
+        prev.map((b) => (bumpedIds.has(b.id) ? { ...b, scanner_id: null } : b)),
+      )
+    }
+
+    async function restoreBumped() {
+      for (const b of toBump) {
+        await supabase
+          .from('scanner_bookings')
+          .update({ scanner_id: b.scanner_id })
+          .eq('id', b.id)
+      }
+      if (toBump.length > 0) {
+        const byId = new Map(toBump.map((b) => [b.id, b]))
+        setBookings((prev) => prev.map((b) => byId.get(b.id) ?? b))
+      }
+    }
+
+    const bumpNote =
+      toBump.length > 0
+        ? ` · ${toBump.length === 1 ? `ההזמנה בסימן שאלה של ${toBump[0].customer_name} הועברה` : `${toBump.length} הזמנות בסימן שאלה הועברו`} ללא סורק`
+        : ''
+
     const payload = {
       scanner_id: formScannerId || null,
+      is_tentative: formTentative,
       event_id: formEventId || null,
       booking_package: formPackage as BookingPackage,
       amount,
@@ -963,10 +1061,13 @@ export function AdminScannersPanel() {
         .single()
 
       if (updateError || !data) {
+        await restoreBumped()
         setError(
           updateError?.message?.includes('scanner_bookings_no_overlap') ||
             updateError?.message?.includes('exclusion')
             ? 'הסורק כבר תפוס בתאריכים האלה'
+            : updateError?.message?.includes('is_tentative')
+              ? 'יש להריץ את עדכון מסד הנתונים (078_booking_tentative.sql)'
             : updateError?.message?.includes('collected_by')
               ? 'יש להריץ את עדכון מסד הנתונים (APPLY_FINANCE_INCOME_ATTRIBUTION.sql)'
               : updateError?.message?.includes('amount_paid') ||
@@ -985,7 +1086,7 @@ export function AdminScannersPanel() {
       )
       setSaving(false)
       closeBookingForm()
-      setSuccessMsg('ההזמנה עודכנה')
+      setSuccessMsg(`ההזמנה עודכנה${bumpNote}`)
       return
     }
 
@@ -999,6 +1100,7 @@ export function AdminScannersPanel() {
       .single()
 
     if (insertError || !data) {
+      await restoreBumped()
       if (financeEntryId && !existingFinanceId) {
         await supabase.from('admin_finance_entries').delete().eq('id', financeEntryId)
       }
@@ -1009,6 +1111,8 @@ export function AdminScannersPanel() {
       setError(
         msg.includes('scanner_bookings_no_overlap') || msg.includes('exclusion')
           ? 'הסורק כבר תפוס בתאריכים האלה'
+          : msg.includes('is_tentative')
+            ? 'יש להריץ את עדכון מסד הנתונים (078_booking_tentative.sql)'
           : msg.includes('collected_by')
             ? 'יש להריץ את עדכון מסד הנתונים (APPLY_FINANCE_INCOME_ATTRIBUTION.sql)'
             : msg.includes('amount_paid') || msg.includes('debt_finance')
@@ -1032,13 +1136,15 @@ export function AdminScannersPanel() {
       const debt = Math.max(0, amount - amountPaid)
       if (amountPaid > 0 && debt > 0) {
         setSuccessMsg(
-          `ההזמנה נשמרה · שולם ${formatPriceIls(amountPaid)} · לא שולם ${formatPriceIls(debt)}`,
+          `ההזמנה נשמרה · שולם ${formatPriceIls(amountPaid)} · לא שולם ${formatPriceIls(debt)}${bumpNote}`,
         )
       } else if (amountPaid > 0) {
-        setSuccessMsg(`ההזמנה נשמרה · שולם`)
+        setSuccessMsg(`ההזמנה נשמרה · שולם${bumpNote}`)
       } else {
-        setSuccessMsg(`ההזמנה נשמרה · לא שולם`)
+        setSuccessMsg(`ההזמנה נשמרה · לא שולם${bumpNote}`)
       }
+    } else {
+      setSuccessMsg(`ההזמנה נשמרה${bumpNote}`)
     }
   }
 
@@ -1429,12 +1535,18 @@ export function AdminScannersPanel() {
                   rowBookings: bookings.filter((b) => !b.scanner_id),
                 },
               ].map((row) => {
-                const spans = row.rowBookings
-                  .map((booking) => {
-                    const span = bookingSpanInDays(booking, windowDays)
-                    return span ? { booking, ...span } : null
-                  })
-                  .filter((x): x is { booking: ScannerBooking; start: number; span: number } => x != null)
+                const spans = packIntoLanes(
+                  row.rowBookings
+                    .map((booking) => {
+                      const span = bookingSpanInDays(booking, windowDays)
+                      return span ? { booking, ...span } : null
+                    })
+                    .filter(
+                      (x): x is { booking: ScannerBooking; start: number; span: number } =>
+                        x != null,
+                    ),
+                )
+                const laneCount = Math.max(1, ...spans.map((s) => s.lane + 1))
 
                 if (row.key === '__none__' && spans.length === 0) return null
 
@@ -1442,9 +1554,12 @@ export function AdminScannersPanel() {
                   <div
                     key={row.key}
                     className="grid gap-0.5"
-                    style={{ gridTemplateColumns: boardColumns }}
+                    style={{ gridTemplateColumns: boardColumns, gridAutoRows: '1.75rem' }}
                   >
-                    <div className="sticky start-0 z-20 border-e border-border/60 bg-surface flex items-center gap-2 truncate pe-2 text-sm text-foreground">
+                    <div
+                      className="sticky start-0 z-20 border-e border-border/60 bg-surface flex items-center gap-2 truncate pe-2 text-sm text-foreground"
+                      style={{ gridColumn: 1, gridRow: `1 / span ${laneCount}` }}
+                    >
                       <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', row.color)} />
                       <span className="truncate font-medium">{row.label}</span>
                     </div>
@@ -1462,31 +1577,44 @@ export function AdminScannersPanel() {
                             openBooking(d)
                           }}
                           className={cn(
-                            'row-start-1 h-11 rounded-md border border-border/40 bg-surface-elevated/50',
+                            'rounded-md border border-border/40 bg-surface-elevated/50',
                             'transition-colors hover:bg-secondary/10',
                             isPastDay(d) && 'bg-surface-elevated/20',
                           )}
-                          style={{ gridColumn: dayIdx + 2 }}
+                          style={{
+                            gridColumn: dayIdx + 2,
+                            gridRow: `1 / span ${laneCount}`,
+                          }}
                           title={occupied ? 'לחיצה לפרטי היום' : 'פנוי - לחיצה לפרטי היום'}
                           aria-label={`${format(d, 'd/M')}${occupied ? '' : ' פנוי'}`}
                         />
                       )
                     })}
-                    {spans.map(({ booking, start, span }) => {
+                    {spans.map(({ booking, start, span, lane }) => {
                       const colors = colorForFamily(familyColors, booking.customer_name)
                       return (
                         <button
                           key={booking.id}
                           type="button"
                           onClick={() => openBookingDetail(booking)}
-                          title={`${booking.customer_name} · ${formatRange(booking.start_date, booking.end_date)}`}
-                          className="z-10 row-start-1 my-0.5 flex items-center overflow-hidden rounded-md px-1 text-start text-[11px] font-semibold shadow-sm transition-opacity hover:opacity-90"
+                          title={`${booking.customer_name} · ${formatRange(booking.start_date, booking.end_date)}${
+                            booking.is_tentative ? ' · בסימן שאלה, לא סגור סופית' : ''
+                          }`}
+                          className={cn(
+                            'z-10 my-0.5 flex items-center gap-1 overflow-hidden rounded-md px-1 text-start text-[11px] font-semibold shadow-sm transition-opacity hover:opacity-90',
+                            // Dashed and faded, so a hold reads as "maybe" at a
+                            // glance without losing the family's color.
+                            booking.is_tentative && 'border border-dashed opacity-60',
+                          )}
                           style={{
                             gridColumn: `${start + 2} / span ${span}`,
+                            gridRow: lane + 1,
                             backgroundColor: colors.bg,
+                            borderColor: booking.is_tentative ? colors.text : undefined,
                             color: colors.text,
                           }}
                         >
+                          {booking.is_tentative && <span className="shrink-0">?</span>}
                           <span className="min-w-0 flex-1 truncate">{booking.customer_name}</span>
                           <OutstandingDot state={bookingPaymentState(booking)} />
                         </button>
@@ -1561,6 +1689,10 @@ export function AdminScannersPanel() {
             <span className="h-2 w-2 rounded-full ring-1 ring-white/85" style={{ backgroundColor: PARTIAL_DOT }} />
             שולם חלקית
           </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="rounded border border-dashed border-muted px-1 font-semibold opacity-70">?</span>
+            בסימן שאלה - אפשר לקחת את הסורק להזמנה אחרת
+          </span>
         </p>
       </Card>
 
@@ -1602,6 +1734,8 @@ export function AdminScannersPanel() {
                   packageLabel={packageLabel(b.booking_package)}
                   collectorLabel={adminLabel(admins, b.collected_by)}
                   onEdit={() => openEditBooking(b)}
+                  onToggleTentative={() => toggleTentative(b)}
+                  togglingTentative={tentativeBusyId === b.id}
                   onDelete={() => {
                     closeDetail()
                     setDeleteBookingId(b.id)
@@ -1629,6 +1763,8 @@ export function AdminScannersPanel() {
             packageLabel={packageLabel(selectedBooking.booking_package)}
             collectorLabel={adminLabel(admins, selectedBooking.collected_by)}
             onEdit={() => openEditBooking(selectedBooking)}
+            onToggleTentative={() => toggleTentative(selectedBooking)}
+            togglingTentative={tentativeBusyId === selectedBooking.id}
             onDelete={() => {
               const id = selectedBooking.id
               closeDetail()
@@ -1925,6 +2061,19 @@ export function AdminScannersPanel() {
               </option>
             ))}
           </Select>
+          <div className="rounded-xl border border-border bg-surface px-3 py-2.5">
+            <Checkbox
+              id="booking-tentative"
+              label="בסימן שאלה - עדיין לא סגור סופית"
+              checked={formTentative}
+              onChange={(e) => setFormTentative(e.target.checked)}
+            />
+            <p className="mt-1 text-[11px] text-muted">
+              {formScannerId
+                ? 'הסורק נשמר להזמנה, אבל אם תיקבע עליו הזמנה אחרת באותם תאריכים - ההזמנה הזאת תעבור אוטומטית ללא סורק'
+                : 'ההזמנה תסומן ב-? על הלוח. אם יבחר לה סורק, אפשר יהיה לקחת אותו להזמנה אחרת'}
+            </p>
+          </div>
           <Input
             id="booking-customer"
             label="שם לקוח / משפחה"
@@ -2222,6 +2371,8 @@ function BookingDetailCard({
   onEdit,
   onDelete,
   onEventActions,
+  onToggleTentative,
+  togglingTentative,
 }: {
   booking: ScannerBooking
   familyColors: Map<string, FamilyColor>
@@ -2232,9 +2383,22 @@ function BookingDetailCard({
   onEdit: () => void
   onDelete: () => void
   onEventActions?: () => void
+  onToggleTentative: () => void
+  togglingTentative: boolean
 }) {
   const payState = bookingPaymentState(booking)
   const rows: { label: string; value: string; tone?: 'danger' | 'warning' }[] = [
+    ...(booking.is_tentative
+      ? [
+          {
+            label: 'סטטוס',
+            tone: 'warning' as const,
+            value: booking.scanner_id
+              ? 'בסימן שאלה - הזמנה אחרת על הסורק הזה תעביר אותה ללא סורק'
+              : 'בסימן שאלה - עדיין לא סגור סופית',
+          },
+        ]
+      : []),
     { label: 'משפחה / לקוח', value: booking.customer_name },
     { label: 'חבילה', value: packageLabel },
     {
@@ -2301,6 +2465,16 @@ function BookingDetailCard({
         ))}
       </dl>
       <div className="flex flex-wrap justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          loading={togglingTentative}
+          onClick={onToggleTentative}
+        >
+          <HelpCircle size={14} className="ml-1" />
+          {booking.is_tentative ? 'סגור סופית (הסר ?)' : 'סמן בסימן שאלה'}
+        </Button>
         {onEventActions && (
           <Button type="button" variant="outline" size="sm" onClick={onEventActions}>
             <Sparkles size={14} className="ml-1" />
