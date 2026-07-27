@@ -123,11 +123,22 @@ export function isTemplateReady(
   return calculateTemplateReadiness(event, counts, groupType).filter((c) => c.required).every((c) => c.passed)
 }
 
-/** Participants (3) and cards (6) - neither exists for a template. */
+/**
+ * The two modes do not walk the same steps.
+ *
+ * A template has nobody to enrol (3) and no cards to print (6), and ends on the
+ * summary. A game ends on the cards step, where it is also started - the
+ * summary (7) is the template's ending only, so a game never sees it.
+ */
 export const TEMPLATE_SKIP_STEPS = [3, 6] as const
+export const EVENT_SKIP_STEPS = [7] as const
 
-export function isTemplateSkippedStep(step: number): boolean {
-  return (TEMPLATE_SKIP_STEPS as readonly number[]).includes(step)
+export function hiddenWizardSteps(isTemplateMode: boolean): number[] {
+  return isTemplateMode ? [...TEMPLATE_SKIP_STEPS] : [...EVENT_SKIP_STEPS]
+}
+
+export function isSkippedWizardStep(step: number, isTemplateMode: boolean): boolean {
+  return hiddenWizardSteps(isTemplateMode).includes(step)
 }
 
 export function adjustWizardStep(step: number, direction: 'next' | 'prev', isTemplateMode: boolean): number {
@@ -146,10 +157,14 @@ export function adjustWizardStep(step: number, direction: 'next' | 'prev', isTem
   return step - 1
 }
 
+/** The nearest step that exists in this mode, for a number that came from a URL. */
 export function normalizeWizardStep(step: number, isTemplateMode: boolean): number {
-  if (!isTemplateMode) return step
-  if (step === 3) return 4
-  if (step === 6) return 7
+  if (isTemplateMode) {
+    if (step === 3) return 4
+    if (step === 6) return 7
+    return step
+  }
+  if (step === 7) return 6
   return step
 }
 

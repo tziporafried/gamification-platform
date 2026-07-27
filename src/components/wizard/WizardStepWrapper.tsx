@@ -14,7 +14,8 @@ interface WizardStepWrapperProps {
   canAdvance?: boolean
   onNext?: () => void
   onBack?: () => void
-  nextLabel?: string
+  /** ReactNode so a step can put an icon in front of the label. */
+  nextLabel?: React.ReactNode
   backLabel?: string
   children: React.ReactNode
   footerBar?: React.ReactNode

@@ -1,31 +1,35 @@
-import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, type ReactNode } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import Barcode from 'react-barcode'
-import { QrCode, Printer, ChevronDown, ChevronUp, User, X } from 'lucide-react'
+import { QrCode } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/Button'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { PanelCard } from '@/components/ui/PanelCard'
 import { theme } from '@/lib/theme'
-import { computeCardCounts, isActionRelevantTo, type CardCounts } from '@/lib/cardCounts'
+import { isActionRelevantTo } from '@/lib/cardCounts'
 import { encodeCardPayload } from '@/lib/cardPayload'
 
-export type { CardCounts }
 import type { Action, Group, ParticipantWithGroups, Event, ScanMode, BarcodeType } from '@/types'
 
 interface QrCardGeneratorProps {
   event: Event
-  /** Which deck to lay out. Chosen at print time; not stored on the event. */
+  /** Which deck to lay out - the event's saved scan_mode (079). */
   scanMode: ScanMode
-  onReadyChange?: (fn: (() => void) | null) => void
   /**
-   * Both deck sizes, computed from the rows actually being printed. Callers must
-   * use these rather than deriving from `useEventCounts` - that counts every
-   * action row, including inactive ones, and cannot see group targeting.
+   * Whether the laid-out deck is on screen. The deck is only built once this
+   * turns true (or a print is asked for), and once built it stays mounted -
+   * hidden rather than unmounted - because printing reads it from the DOM.
    */
-  onCardCountsChange?: (counts: CardCounts) => void
-  onGeneratedChange?: (generated: boolean) => void
+  previewOpen?: boolean
+  /**
+   * Handed the print action once there is a deck worth printing, and null while
+   * it is loading or when the game has no participants or no active tasks. The
+   * print button belongs to the step around this component, not to it.
+   */
+  onPrintReady?: (print: (() => void) | null) => void
+  /** Fired once a print window has been handed to the browser. */
+  onPrinted?: () => void
 }
 
 interface ActionGroupJoin { group_id: string; groups: Group }
@@ -41,9 +45,6 @@ const CARD_PALETTE = {
   surface: '#FFFFFF',
 } as const
 
-/** Set to true to show the participant/group accordion before card generation. */
-const SHOW_PARTICIPANT_ACCORDION = false
-
 /**
  * How a task name is sized on a card, by how long it is. A fixed size clamped
  * to two lines used to print long names with an ellipsis, so a card could go
@@ -57,22 +58,22 @@ const SHOW_PARTICIPANT_ACCORDION = false
  * stacked above the details.
  */
 const NAME_TIERS = [
-  { maxChars: 28, fontSize: 16, previewFontSize: 14, lines: 2 },
-  { maxChars: 45, fontSize: 14, previewFontSize: 12.5, lines: 3 },
-  { maxChars: 70, fontSize: 12, previewFontSize: 11, lines: 4 },
-  { maxChars: Infinity, fontSize: 11, previewFontSize: 10, lines: 5 },
+  { maxChars: 28, fontSize: 16, lines: 2 },
+  { maxChars: 45, fontSize: 14, lines: 3 },
+  { maxChars: 70, fontSize: 12, lines: 4 },
+  { maxChars: Infinity, fontSize: 11, lines: 5 },
 ] as const
 
 /** A stacked card gives the name the full width, so it holds ~60% more per line. */
 const STACKED_WIDTH_BONUS = 1.6
 
-function actionNameStyle(name: string, { wizardPreview, stacked }: { wizardPreview: boolean; stacked: boolean }) {
+function actionNameStyle(name: string, { stacked }: { stacked: boolean }) {
   const length = name.trim().length
   const budget = stacked ? STACKED_WIDTH_BONUS : 1
   const tier = NAME_TIERS.find((t) => length <= t.maxChars * budget) ?? NAME_TIERS[NAME_TIERS.length - 1]
 
   return {
-    fontSize: `${wizardPreview ? tier.previewFontSize : tier.fontSize}px`,
+    fontSize: `${tier.fontSize}px`,
     fontWeight: 800,
     color: CARD_PALETTE.foreground,
     marginBottom: '4px',
@@ -88,22 +89,22 @@ function actionNameStyle(name: string, { wizardPreview, stacked }: { wizardPrevi
   } as const
 }
 
-export function QrCardGenerator({ event, scanMode, onReadyChange, onCardCountsChange, onGeneratedChange }: QrCardGeneratorProps) {
+export function QrCardGenerator({ event, scanMode, previewOpen = false, onPrintReady, onPrinted }: QrCardGeneratorProps) {
   const isSplit = scanMode === 'split'
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [actions, setActions] = useState<ActionWithGroupIds[]>([])
-  const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
-  const [generated, setGenerated] = useState(false)
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(null)
-  const [expandedParticipant, setExpandedParticipant] = useState<string | null>(null)
+  // Laying out a deck means rendering a QR for every card, which is heavy for a
+  // large game. It is put off until something actually needs it: the preview
+  // being opened, or a print being asked for.
+  const [mountedForPrint, setMountedForPrint] = useState(false)
+  const [pendingPrint, setPendingPrint] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
 
   const fetchData = useCallback(async () => {
-    const [participantsRes, actionsRes, groupsRes] = await Promise.all([
+    const [participantsRes, actionsRes] = await Promise.all([
       supabase.from('participants').select('*, participant_groups(group_id, groups(*))').eq('event_id', event.id).order('name'),
       supabase.from('actions').select('*, action_groups(group_id, groups(*))').eq('event_id', event.id).eq('is_active', true).order('name'),
-      supabase.from('groups').select('*').eq('event_id', event.id).order('name'),
     ])
     const mappedParticipants: ParticipantWithGroups[] = (participantsRes.data ?? []).map((p) => ({
       ...p, groups: ((p.participant_groups as unknown as { group_id: string; groups: Group }[]) ?? []).map((pg) => pg.groups),
@@ -111,46 +112,18 @@ export function QrCardGenerator({ event, scanMode, onReadyChange, onCardCountsCh
     const mappedActions: ActionWithGroupIds[] = (actionsRes.data ?? []).map((a) => ({
       ...a, groupIds: ((a.action_groups as unknown as ActionGroupJoin[]) ?? []).map((ag) => ag.group_id),
     }))
-    setParticipants(mappedParticipants); setActions(mappedActions); setGroups((groupsRes.data ?? []) as Group[]); setLoading(false)
+    setParticipants(mappedParticipants); setActions(mappedActions); setLoading(false)
   }, [event.id])
 
   useEffect(() => { fetchData() }, [fetchData])
-
-  interface GroupBucket { id: string; name: string; color: string; participants: ParticipantWithGroups[] }
-
-  function getGroupBuckets(): GroupBucket[] {
-    const buckets: GroupBucket[] = groups.map((g) => ({ id: g.id, name: g.name, color: g.color, participants: participants.filter((p) => p.groups.some((pg) => pg.id === g.id)) }))
-    const ungrouped = participants.filter((p) => p.groups.length === 0)
-    if (ungrouped.length > 0 && groups.length > 0) buckets.push({ id: '__none__', name: 'ללא קבוצה', color: 'var(--color-muted)', participants: ungrouped })
-    return buckets.filter((b) => b.participants.length > 0)
-  }
 
   const getRelevantActions = useCallback((participant: ParticipantWithGroups): ActionWithGroupIds[] => {
     const participantGroupIds = new Set(participant.groups.map((g) => g.id))
     return actions.filter((action) => isActionRelevantTo(action, participantGroupIds))
   }, [actions])
 
-  // Counted from the same rows and the same targeting rule that lay the deck
-  // out, so the advertised number cannot drift from what actually prints.
-  const cardCounts = useMemo<CardCounts>(
-    () => computeCardCounts(
-      participants.map((p) => ({ groupIds: p.groups.map((g) => g.id) })),
-      actions,
-    ),
-    [participants, actions],
-  )
-
-  useEffect(() => {
-    if (loading) return
-    onCardCountsChange?.(cardCounts)
-  }, [loading, cardCounts, onCardCountsChange])
-
-  useEffect(() => {
-    onGeneratedChange?.(generated)
-  }, [generated, onGeneratedChange])
-
-  // Derived, not snapshotted on generate - the scan mode is chosen in the same
-  // click that generates, so a snapshot would lay out the previous mode.
+  // Derived, not snapshotted when the preview opens - the scan mode can change
+  // under this component, and a snapshot would lay out the previous one.
   const sheets = useMemo<ParticipantSheet[]>(
     () => isSplit
       ? []
@@ -158,20 +131,11 @@ export function QrCardGenerator({ event, scanMode, onReadyChange, onCardCountsCh
     [isSplit, participants, getRelevantActions],
   )
 
-  const handleGenerate = useCallback(() => { setGenerated(true) }, [])
+  const hasDeck = !loading && participants.length > 0 && actions.length > 0
+  const showDeck = previewOpen && hasDeck
+  const deckInDom = showDeck || mountedForPrint
 
-  const showGenerateButton = useMemo(
-    () => !loading && participants.length > 0 && actions.length > 0 && !generated,
-    [loading, participants.length, actions.length, generated] // eslint-disable-line react-hooks/exhaustive-deps
-  )
-
-  useEffect(() => {
-    if (!onReadyChange) return
-    onReadyChange(showGenerateButton ? handleGenerate : null)
-    return () => { onReadyChange(null) }
-  }, [showGenerateButton, handleGenerate, onReadyChange])
-
-  function handlePrint() {
+  const printDeck = useCallback(() => {
     const content = printRef.current; if (!content) return
     const printWindow = window.open('', '_blank'); if (!printWindow) return
     const c = CARD_PALETTE.primary
@@ -244,11 +208,36 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
 </style></head><body>${content.innerHTML}</body></html>`)
     printWindow.document.close(); printWindow.focus()
     setTimeout(() => printWindow.print(), 300)
-  }
+    onPrinted?.()
+  }, [event.name, onPrinted])
 
-  if (loading) return <CenteredLoader />
+  /**
+   * Print on demand. When the preview has never been opened there is no deck in
+   * the DOM to read, so this mounts it and leaves the printing to the effect
+   * below - one render later, when the ref is filled.
+   */
+  const requestPrint = useCallback(() => {
+    if (printRef.current) { printDeck(); return }
+    setMountedForPrint(true)
+    setPendingPrint(true)
+  }, [printDeck])
 
-  if (participants.length === 0 || actions.length === 0) {
+  useEffect(() => {
+    if (!pendingPrint || !printRef.current) return
+    setPendingPrint(false)
+    printDeck()
+  }, [pendingPrint, deckInDom, printDeck])
+
+  useEffect(() => {
+    if (!onPrintReady) return
+    onPrintReady(hasDeck ? requestPrint : null)
+    return () => { onPrintReady(null) }
+  }, [hasDeck, requestPrint, onPrintReady])
+
+  if (loading) return previewOpen ? <CenteredLoader /> : null
+
+  if (!hasDeck) {
+    if (!previewOpen) return null
     return (
       <PanelCard size="lg" className="text-center">
         <QrCode size={32} className="mx-auto text-muted mb-3" />
@@ -259,78 +248,92 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
     )
   }
 
+  if (!deckInDom) return null
+
   return (
-    <div>
-      {!generated ? (
-        SHOW_PARTICIPANT_ACCORDION ? (
-        <div className="space-y-3">
-          {groups.length === 0 ? (
-              <div className={theme.surfaceInset}>
-                <button type="button" onClick={() => setExpandedGroup(expandedGroup === '__flat__' ? null : '__flat__')} className="flex w-full items-center gap-2 px-3 py-2 text-right">
-                  <User size={14} className="text-muted shrink-0" /><span className="text-sm text-foreground flex-1">{participants.length} משתתפים</span>
-                  {expandedGroup === '__flat__' ? <ChevronUp size={14} className="text-muted" /> : <ChevronDown size={14} className="text-muted" />}
-                </button>
-                {expandedGroup === '__flat__' && (
-                  <div className="border-t border-border space-y-1 p-1.5 max-h-56 overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
-                    {participants.map((p) => { const ra = getRelevantActions(p); const isExp = expandedParticipant === p.id; return (
-                      <div key={p.id} className="rounded-lg border border-border/50 bg-surface">
-                        <button type="button" onClick={() => setExpandedParticipant(isExp ? null : p.id)} className="flex w-full items-center gap-2 px-3 py-1.5 text-right">
-                          <User size={12} className="text-muted shrink-0" /><span className="text-sm text-foreground flex-1 truncate">{p.name}</span><span className="text-xs text-muted shrink-0">{ra.length} כרטיסים</span>
-                          {isExp ? <ChevronUp size={12} className="text-muted" /> : <ChevronDown size={12} className="text-muted" />}
-                        </button>
-                        {isExp && <div className="px-3 pb-2 space-y-1">{ra.map((a) => (<div key={a.id} className="flex items-center gap-2 text-xs text-muted pr-5"><span className="truncate">{a.name}</span><span className="text-muted">({a.points >= 0 ? '+' : ''}{a.points} נק׳)</span></div>))}</div>}
-                      </div>
-                    ) })}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                {getGroupBuckets().map((bucket) => { const isGO = expandedGroup === bucket.id; return (
-                  <div key={bucket.id} className={theme.surfaceInset}>
-                    <button type="button" onClick={() => setExpandedGroup(isGO ? null : bucket.id)} className="flex w-full items-center gap-2 px-3 py-2 text-right">
-                      <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: bucket.color }} /><span className="text-sm text-foreground flex-1 truncate">{bucket.name}</span><span className="text-xs text-muted shrink-0">{bucket.participants.length} משתתפים</span>
-                      {isGO ? <ChevronUp size={14} className="text-muted" /> : <ChevronDown size={14} className="text-muted" />}
-                    </button>
-                    {isGO && (<div className="border-t border-border space-y-1 p-1.5 max-h-48 overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
-                      {bucket.participants.map((p) => { const ra = getRelevantActions(p); const isExp = expandedParticipant === `${bucket.id}:${p.id}`; return (
-                        <div key={p.id} className="rounded-lg border border-border/50 bg-surface">
-                          <button type="button" onClick={() => setExpandedParticipant(isExp ? null : `${bucket.id}:${p.id}`)} className="flex w-full items-center gap-2 px-3 py-1.5 text-right">
-                            <User size={12} className="text-muted shrink-0" /><span className="text-sm text-foreground flex-1 truncate">{p.name}</span><span className="text-xs text-muted shrink-0">{ra.length} כרטיסים</span>
-                            {isExp ? <ChevronUp size={12} className="text-muted" /> : <ChevronDown size={12} className="text-muted" />}
-                          </button>
-                          {isExp && (<div className="px-3 pb-2 space-y-1">{ra.map((a) => (<div key={a.id} className="flex items-center gap-2 text-xs text-muted pr-5"><span className="truncate">{a.name}</span><span className="text-muted">({a.points >= 0 ? '+' : ''}{a.points} נק׳)</span></div>))}
-                            {ra.length === 0 && <p className="text-xs text-muted pr-5">אין משימות רלוונטיות</p>}
-                          </div>)}
-                        </div>
-                      ) })}
-                    </div>)}
-                  </div>
-                ) })}
-              </div>
-            )}
-
+    // Kept in the DOM but hidden when the preview is closed: printing copies
+    // the laid-out markup straight out of the ref, so it has to exist even when
+    // nobody is looking at it.
+    <div className={cn(!showDeck && 'hidden')} aria-hidden={!showDeck}>
+      <PrintSheet active={showDeck}>
+        <div ref={printRef}>
+          {isSplit ? (
+            <SplitPages participants={participants} actions={actions} event={event} />
+          ) : (
+            sheets.map((sheet) => (<ParticipantPage key={sheet.participant.id} sheet={sheet} event={event} />))
+          )}
         </div>
-        ) : null
-      ) : (
-        <div>
-          <div className="mb-4 flex items-center gap-3">
-            <button type="button" onClick={() => setGenerated(false)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted hover:bg-surface-elevated hover:text-foreground transition-colors"><X size={16} /></button>
-            <Button onClick={handlePrint}><Printer size={16} className="ml-1.5" />הדפס כרטיסים</Button>
-            <span className="text-xs text-muted">אפשר להדפיס שוב כרטיסים בכל שלב במהלך הפעילות.</span>
-          </div>
+      </PrintSheet>
+    </div>
+  )
+}
 
-          <div className="rounded-2xl border border-border bg-surface">
-            <div ref={printRef} className="p-6">
-              {isSplit ? (
-                <SplitPages participants={participants} actions={actions} event={event} wizardPreview />
-              ) : (
-                sheets.map((sheet) => (<ParticipantPage key={sheet.participant.id} sheet={sheet} event={event} wizardPreview />))
-              )}
-            </div>
-          </div>
+/** A4 at 96dpi, and the page margin the print window sets on `body`. */
+const SHEET_WIDTH = '210mm'
+const SHEET_MIN_HEIGHT = '297mm'
+const SHEET_PADDING = '10mm'
+
+/**
+ * The deck on the paper it is going to come out on: a sheet of A4, at the width
+ * and margin the printer will use, holding cards at their printed size. The
+ * preview used to reflow them into a two-column grid that stretched each card to
+ * whatever space was going - it fit any panel, and told nobody how many cards
+ * land on a page or how small a long task name comes out.
+ *
+ * The sheet keeps its real width and is scaled down to whatever room it is
+ * given, so what is on screen is the printout, just smaller. Length is left to
+ * the content rather than split into pages: where the printer breaks depends on
+ * its own margins, and drawing page edges here would be a guess.
+ */
+function PrintSheet({ active, children }: { active: boolean; children: ReactNode }) {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+  const [scaledHeight, setScaledHeight] = useState<number>()
+
+  useLayoutEffect(() => {
+    const host = hostRef.current
+    const sheet = sheetRef.current
+    if (!active || !host || !sheet) return
+
+    function measure() {
+      const available = host!.clientWidth
+      // Untransformed, so scaling never feeds back into what we measure.
+      const natural = sheet!.offsetWidth
+      if (!available || !natural) return
+      const next = Math.min(1, available / natural)
+      setScale(next)
+      setScaledHeight(sheet!.offsetHeight * next)
+    }
+
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(host)
+    observer.observe(sheet)
+    return () => observer.disconnect()
+  }, [active])
+
+  return (
+    // The sheet is wider than the box it sits in until it is scaled, and the
+    // outer height is the scaled one - otherwise the scroller would offer the
+    // full-size sheet's worth of empty space under it.
+    <div ref={hostRef} className="overflow-hidden">
+      <div style={{ height: scaledHeight }} className="flex justify-center">
+        <div
+          ref={sheetRef}
+          className="rounded-sm shadow-card"
+          style={{
+            width: SHEET_WIDTH,
+            minHeight: SHEET_MIN_HEIGHT,
+            padding: SHEET_PADDING,
+            background: CARD_PALETTE.surface,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top center',
+          }}
+        >
+          {children}
         </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -343,21 +346,14 @@ function SplitPages({
   participants,
   actions,
   event,
-  wizardPreview = false,
 }: {
   participants: ParticipantWithGroups[]
   actions: ActionWithGroupIds[]
   event: Event
-  wizardPreview?: boolean
 }) {
   const c = CARD_PALETTE.primary
 
-  const gridStyle = {
-    display: wizardPreview ? 'grid' : 'flex',
-    gridTemplateColumns: wizardPreview ? 'repeat(2, minmax(0, 1fr))' : undefined,
-    flexWrap: wizardPreview ? undefined : ('wrap' as const),
-    gap: '12px',
-  }
+  const gridStyle = { display: 'flex', flexWrap: 'wrap' as const, gap: '12px' }
 
   return (
     <>
@@ -373,7 +369,6 @@ function SplitPages({
             <QrCard
               key={participant.id}
               event={event}
-              wizardPreview={wizardPreview}
               payload={{ participantCode: participant.external_id }}
               eyebrow="כרטיס משתתף"
               title={participant.name}
@@ -405,7 +400,6 @@ function SplitPages({
             <QrCard
               key={action.id}
               event={event}
-              wizardPreview={wizardPreview}
               payload={{ actionCode: action.code }}
               eyebrow="כרטיס משימה"
               title={action.name}
@@ -413,7 +407,7 @@ function SplitPages({
               footer={(
                 <div className="points-row" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
                   <span className="points-icon" style={{ fontSize: '14px' }}>⭐</span>
-                  <span className="points-value" style={{ fontSize: wizardPreview ? '16px' : '18px', fontWeight: 900, color: c, letterSpacing: '-0.5px' }}>
+                  <span className="points-value" style={{ fontSize: '18px', fontWeight: 900, color: c, letterSpacing: '-0.5px' }}>
                     {action.points >= 0 ? '+' : ''}{action.points}
                   </span>
                   <span className="points-label" style={{ fontSize: '10px', color: CARD_PALETTE.muted, fontWeight: 500 }}>נקודות</span>
@@ -433,23 +427,15 @@ function SplitPages({
  * instead - wide and short, with the human-readable code beneath it so an
  * operator can always type it in if a print is too faint to scan.
  */
-function CardCode({
-  value,
-  type,
-  wizardPreview,
-}: {
-  value: string
-  type: BarcodeType
-  wizardPreview: boolean
-}) {
+function CardCode({ value, type }: { value: string; type: BarcodeType }) {
   if (type === 'code128') {
     return (
       <Barcode
         value={value}
         format="CODE128"
         renderer="svg"
-        width={wizardPreview ? 1.2 : 1.5}
-        height={wizardPreview ? 44 : 54}
+        width={1.5}
+        height={54}
         margin={4}
         background="transparent"
         lineColor={CARD_PALETTE.foreground}
@@ -457,7 +443,7 @@ function CardCode({
       />
     )
   }
-  return <QRCodeSVG value={value} size={wizardPreview ? 72 : 90} level="M" fgColor={CARD_PALETTE.foreground} />
+  return <QRCodeSVG value={value} size={90} level="M" fgColor={CARD_PALETTE.foreground} />
 }
 
 /**
@@ -467,13 +453,11 @@ function CardCode({
  */
 function CardFrame({
   type,
-  wizardPreview,
   codeValue,
   scanHint,
   children,
 }: {
   type: BarcodeType
-  wizardPreview: boolean
   codeValue: string
   scanHint: string
   children: ReactNode
@@ -485,7 +469,7 @@ function CardFrame({
     <div
       className="card"
       style={{
-        width: wizardPreview ? '100%' : '310px',
+        width: '310px',
         minWidth: 0,
         borderRadius: '16px',
         border: `1.5px solid ${CARD_PALETTE.border}`,
@@ -502,8 +486,8 @@ function CardFrame({
         className="qr-side"
         style={{
           flexShrink: 0,
-          width: stacked ? '100%' : wizardPreview ? '96px' : '120px',
-          padding: wizardPreview ? '10px' : '14px',
+          width: stacked ? '100%' : '120px',
+          padding: '14px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -514,11 +498,11 @@ function CardFrame({
           borderBottom: stacked ? `3px solid ${c}` : 'none',
         }}
       >
-        <CardCode value={codeValue} type={type} wizardPreview={wizardPreview} />
+        <CardCode value={codeValue} type={type} />
         <span className="scan-text" style={{ fontSize: '7px', color: CARD_PALETTE.muted, textAlign: 'center', direction: 'rtl', letterSpacing: '0.3px' }}>{scanHint}</span>
       </div>
 
-      <div className="info-side" style={{ flex: 1, padding: wizardPreview ? '10px 12px' : '14px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center', direction: 'rtl', minWidth: 0, gap: '2px' }}>
+      <div className="info-side" style={{ flex: 1, padding: '14px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center', direction: 'rtl', minWidth: 0, gap: '2px' }}>
         {children}
       </div>
     </div>
@@ -533,7 +517,6 @@ function QrCard({
   title,
   scanHint,
   footer,
-  wizardPreview = false,
 }: {
   event: Event
   payload: { participantCode: string } | { actionCode: string }
@@ -541,14 +524,12 @@ function QrCard({
   title: string
   scanHint: string
   footer?: ReactNode
-  wizardPreview?: boolean
 }) {
   const c = CARD_PALETTE.primary
 
   return (
     <CardFrame
       type={event.barcode_type}
-      wizardPreview={wizardPreview}
       codeValue={encodeCardPayload(payload, event.barcode_type)}
       scanHint={scanHint}
     >
@@ -562,7 +543,7 @@ function QrCard({
         {eyebrow}
       </div>
 
-      <div className="action-name" style={actionNameStyle(title, { wizardPreview, stacked: event.barcode_type === 'code128' })}>
+      <div className="action-name" style={actionNameStyle(title, { stacked: event.barcode_type === 'code128' })}>
         {title}
       </div>
 
@@ -571,15 +552,7 @@ function QrCard({
   )
 }
 
-function ParticipantPage({
-  sheet,
-  event,
-  wizardPreview = false,
-}: {
-  sheet: ParticipantSheet
-  event: Event
-  wizardPreview?: boolean
-}) {
+function ParticipantPage({ sheet, event }: { sheet: ParticipantSheet; event: Event }) {
   const { participant, actions } = sheet
   const c = CARD_PALETTE.primary
 
@@ -596,18 +569,12 @@ function ParticipantPage({
 
       <div
         className="cards-grid"
-        style={{
-          display: wizardPreview ? 'grid' : 'flex',
-          gridTemplateColumns: wizardPreview ? 'repeat(2, minmax(0, 1fr))' : undefined,
-          flexWrap: wizardPreview ? undefined : 'wrap',
-          gap: '12px',
-        }}
+        style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}
       >
         {actions.map((action) => (
           <CardFrame
             key={action.id}
             type={event.barcode_type}
-            wizardPreview={wizardPreview}
             codeValue={encodeCardPayload({ participantCode: participant.external_id, actionCode: action.code }, event.barcode_type)}
             scanHint="סרקו לקבלת הנקודות"
           >
@@ -618,7 +585,7 @@ function ParticipantPage({
             </div>
 
             {/* Task title */}
-            <div className="action-name" style={actionNameStyle(action.name, { wizardPreview, stacked: event.barcode_type === 'code128' })}>
+            <div className="action-name" style={actionNameStyle(action.name, { stacked: event.barcode_type === 'code128' })}>
               {action.name}
             </div>
 
@@ -631,7 +598,7 @@ function ParticipantPage({
             {/* Points */}
             <div className="points-row" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
               <span className="points-icon" style={{ fontSize: '14px' }}>⭐</span>
-              <span className="points-value" style={{ fontSize: wizardPreview ? '16px' : '18px', fontWeight: 900, color: c, letterSpacing: '-0.5px' }}>
+              <span className="points-value" style={{ fontSize: '18px', fontWeight: 900, color: c, letterSpacing: '-0.5px' }}>
                 +{action.points}
               </span>
               <span className="points-label" style={{ fontSize: '10px', color: CARD_PALETTE.muted, fontWeight: 500 }}>נקודות</span>

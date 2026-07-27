@@ -25,6 +25,8 @@ interface EventSummaryGridProps {
   animationKey?: number
   showCards?: boolean
   showScans?: boolean
+  /** Prizes set up for the game - shown where the point is checking the setup. */
+  showRewards?: boolean
   totalCards?: number
   compact?: boolean
   rotating?: boolean
@@ -37,25 +39,34 @@ export function getEventSummaryItems(
     isTemplate = false,
     showScans = false,
     showCards = false,
+    showRewards = false,
     totalCards = 0,
   }: {
     isTemplate?: boolean
     showScans?: boolean
     showCards?: boolean
+    showRewards?: boolean
     totalCards?: number
   } = {},
 ): SummaryItem[] {
   const withCards = showCards && !isTemplate
   const items: SummaryItem[] = []
 
+  // Groups lead: the players are read as belonging to them. Scans take the
+  // same slot on a running game, where the split into groups matters less than
+  // what has been scanned.
+  if (!showScans && counts.groups > 0) {
+    items.push({ type: 'groups', value: counts.groups })
+  }
   if (!isTemplate) {
     items.push({ type: 'participants', value: counts.participants })
   }
   items.push({ type: 'activities', value: counts.tasks })
   if (showScans) {
     items.push({ type: 'scans', value: counts.transactions })
-  } else if (counts.groups > 0) {
-    items.push({ type: 'groups', value: counts.groups })
+  }
+  if (showRewards) {
+    items.push({ type: 'rewards', value: counts.rewards })
   }
   if (withCards) {
     items.push({ type: 'cards', value: totalCards })
@@ -172,13 +183,14 @@ export function EventSummaryGrid({
   animationKey = 0,
   showCards = false,
   showScans = false,
+  showRewards = false,
   totalCards = 0,
   compact = false,
   rotating = false,
   rotateIntervalMs = 3000,
 }: EventSummaryGridProps) {
   const reducedMotion = usePrefersReducedMotion()
-  const items = getEventSummaryItems(counts, { isTemplate, showScans, showCards, totalCards })
+  const items = getEventSummaryItems(counts, { isTemplate, showScans, showCards, showRewards, totalCards })
 
   if (rotating && items.length > 1 && !reducedMotion) {
     return (
@@ -193,7 +205,10 @@ export function EventSummaryGrid({
   }
 
   const columnClass =
-    items.length >= 4 ? 'grid-cols-2 sm:grid-cols-4'
+    // Five across rather than four-plus-an-orphan: a lone tile on a second row
+    // reads as something left over.
+    items.length === 5 ? 'grid-cols-2 sm:grid-cols-5'
+    : items.length >= 4 ? 'grid-cols-2 sm:grid-cols-4'
     : items.length === 3 ? 'grid-cols-3'
     : 'grid-cols-2'
 
@@ -306,6 +321,9 @@ function formatSummaryLabel(type: SummaryCardType, value: number, live = false):
         return value === 1 ? '1 פרס נצבר' : `${value.toLocaleString('he-IL')} פרסים נצברו`
       }
       return value === 1 ? '1 פרס' : `${value.toLocaleString('he-IL')} פרסים`
+    case 'rewards':
+      if (value === 0) return 'ללא פרסים'
+      return value === 1 ? '1 פרס' : `${value} פרסים`
     case 'cards':
       return value === 1 ? '1 כרטיס' : `${value} כרטיסים`
   }
@@ -323,6 +341,7 @@ function getSummaryIcon(type: SummaryCardType): LucideIcon {
       return ScanLine
     case 'points':
       return Star
+    case 'rewards':
     case 'rewardsEarned':
       return Gift
     case 'cards':
@@ -344,6 +363,7 @@ function formatSummaryTitle(type: SummaryCardType): string {
       return 'סריקות'
     case 'points':
       return 'נקודות'
+    case 'rewards':
     case 'rewardsEarned':
       return 'פרסים'
     case 'cards':
@@ -379,6 +399,7 @@ function getSummaryAccent(type: SummaryCardType): { iconBg: string; iconText: st
         iconBg: 'bg-primary/12',
         iconText: 'text-primary-text',
       }
+    case 'rewards':
     case 'rewardsEarned':
       return {
         iconBg: 'bg-warning/12',
@@ -515,7 +536,9 @@ function SummaryCard({
   )
 
   const cardClass = cn(
-    'rounded-xl flex items-center justify-center shadow-sm',
+    // h-full: as a grid item it should take the row's height, so tiles whose
+    // label wraps do not stand taller than the rest of the row.
+    'h-full rounded-xl flex items-center justify-center text-center shadow-sm',
     compact ? 'px-2 py-1' : 'px-3 py-2',
     ready ? variantStyles.cardHighlight : variantStyles.card,
   )

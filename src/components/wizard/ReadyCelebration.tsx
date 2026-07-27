@@ -268,6 +268,11 @@ const SUMMARY_CARD_TINTS = {
     cardHighlight: 'gradient-reward-legendary brightness-[1.04]',
     text: 'text-white',
   },
+  success: {
+    card: 'gradient-reward-starter',
+    cardHighlight: 'gradient-reward-starter brightness-[1.04]',
+    text: 'text-white',
+  },
 } as const
 
 const SUMMARY_CARD_VARIANTS = {
@@ -278,6 +283,12 @@ const SUMMARY_CARD_VARIANTS = {
   scans: SUMMARY_CARD_TINTS.tertiary,
   cards: SUMMARY_CARD_TINTS.primary,
   points: SUMMARY_CARD_TINTS.primary,
+  /**
+   * Prizes defined in the wizard - `rewardsEarned` is the live count. Its own
+   * tint: it stands next to participants, activities, groups and cards in the
+   * wizard's ending, and no two tiles there may share a colour.
+   */
+  rewards: SUMMARY_CARD_TINTS.success,
   rewardsEarned: SUMMARY_CARD_TINTS.participants,
 } as const
 
@@ -299,10 +310,12 @@ export function AnimatedSummaryCard({ children, index, variant, highlight }: Ani
   const styles = SUMMARY_CARD_VARIANTS[variant]
 
   return (
-    <div className="overflow-visible py-1 -my-1">
+    <div className="h-full overflow-visible py-1 -my-1">
       <motion.div
         className={cn(
-          'rounded-xl px-3 py-2 flex items-center justify-center',
+          // h-full so a tile whose label wraps does not leave its neighbours
+          // shorter - the row decides the height, not the text.
+          'h-full rounded-xl px-3 py-2 flex items-center justify-center text-center',
           styles.card,
           highlight && styles.cardHighlight,
         )}
@@ -319,42 +332,6 @@ export function AnimatedSummaryCard({ children, index, variant, highlight }: Ani
         {children}
       </motion.div>
     </div>
-  )
-}
-
-interface AnimatedPrintFooterProps {
-  children: React.ReactNode
-  celebrate: boolean
-}
-
-export function AnimatedPrintFooter({ children, celebrate }: AnimatedPrintFooterProps) {
-  const reducedMotion = usePrefersReducedMotion()
-
-  return (
-    <motion.div
-      className="border-t border-border px-4 pt-3 pb-2"
-      initial={reducedMotion ? false : { opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 24, delay: 0.5 }}
-    >
-      <motion.div
-        animate={
-          reducedMotion || !celebrate
-            ? undefined
-            : {
-                boxShadow: [
-                  '0 0 0 0 color-mix(in srgb, var(--color-primary) 0%, transparent)',
-                  '0 0 0 6px color-mix(in srgb, var(--color-primary) 18%, transparent)',
-                  '0 0 0 0 color-mix(in srgb, var(--color-primary) 0%, transparent)',
-                ],
-              }
-        }
-        transition={{ duration: 1.2, ease: 'easeOut' }}
-        className="rounded-xl"
-      >
-        {children}
-      </motion.div>
-    </motion.div>
   )
 }
 

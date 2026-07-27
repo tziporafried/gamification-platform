@@ -1,7 +1,26 @@
-/** How many cards each deck would print, for the same participants and actions. */
+/**
+ * How many cards each deck would print, for the same participants and actions.
+ *
+ * `combined` and `split` are the two totals - keyed by ScanMode, so callers can
+ * index them with the mode in hand. The two halves the split deck is made of
+ * are kept alongside, because "55 cards" says nothing about how they are made
+ * up until it is broken into participant cards and task cards.
+ */
 export interface CardCounts {
   combined: number
   split: number
+  /** One per participant - the split deck's first half. */
+  participantCards: number
+  /** One per active action - the split deck's second half. */
+  actionCards: number
+}
+
+/** What every deck counts to before anything has loaded. */
+export const EMPTY_CARD_COUNTS: CardCounts = {
+  combined: 0,
+  split: 0,
+  participantCards: 0,
+  actionCards: 0,
 }
 
 /** Only the fields the deck maths needs - keeps this usable from tests. */
@@ -41,5 +60,10 @@ export function computeCardCounts(
     return sum + actions.filter((action) => isActionRelevantTo(action, groupIds)).length
   }, 0)
 
-  return { combined, split: participants.length + actions.length }
+  return {
+    combined,
+    split: participants.length + actions.length,
+    participantCards: participants.length,
+    actionCards: actions.length,
+  }
 }

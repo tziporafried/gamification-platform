@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { computeCardCounts, type CardCounts } from '@/lib/cardCounts'
+import { computeCardCounts, EMPTY_CARD_COUNTS, type CardCounts } from '@/lib/cardCounts'
 
 interface GroupJoin { group_id: string }
 
@@ -17,7 +17,7 @@ interface GroupJoin { group_id: string }
  * wants: come back to it after adding participants and the numbers are current.
  */
 export function useCardCounts(eventId: string, enabled = true) {
-  const [cardCounts, setCardCounts] = useState<CardCounts>({ combined: 0, split: 0 })
+  const [cardCounts, setCardCounts] = useState<CardCounts>(EMPTY_CARD_COUNTS)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

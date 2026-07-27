@@ -360,6 +360,6 @@ export const WIZARD_STEPS: { id: WizardStepId; label: string; step: number }[] =
   { id: 'participants', label: 'מי משתתף?', step: 3 },
   { id: 'tasks', label: 'צבירת נקודות', step: 4 },
   { id: 'rewards', label: 'פרסים', step: 5 },
-  { id: 'cards', label: 'כרטיסים', step: 6 },
+  { id: 'cards', label: 'מוכנים להתחיל?', step: 6 },
   { id: 'review', label: 'מוכנים לצאת לדרך?', step: 7 },
 ];

@@ -7,7 +7,14 @@ const a = (...groupIds: string[]) => ({ groupIds })
 
 test('with no group targeting the combined deck is participants × actions', () => {
   const counts = computeCardCounts([p(), p(), p()], [a(), a()])
-  assert.deepEqual(counts, { combined: 6, split: 5 })
+  assert.deepEqual(counts, { combined: 6, split: 5, participantCards: 3, actionCards: 2 })
+})
+
+test('the split deck is reported as its two halves, and they add up', () => {
+  const counts = computeCardCounts([p(), p('g1'), p('g2')], [a(), a('g1')])
+  assert.equal(counts.participantCards, 3)
+  assert.equal(counts.actionCards, 2)
+  assert.equal(counts.split, counts.participantCards + counts.actionCards)
 })
 
 test('a group-restricted action only prints for members - not for everyone', () => {
@@ -51,9 +58,9 @@ test('split beats combined exactly when targeting is loose enough', () => {
 })
 
 test('empty inputs count as zero, not NaN', () => {
-  assert.deepEqual(computeCardCounts([], []), { combined: 0, split: 0 })
-  assert.deepEqual(computeCardCounts([p()], []), { combined: 0, split: 1 })
-  assert.deepEqual(computeCardCounts([], [a()]), { combined: 0, split: 1 })
+  assert.deepEqual(computeCardCounts([], []), { combined: 0, split: 0, participantCards: 0, actionCards: 0 })
+  assert.deepEqual(computeCardCounts([p()], []), { combined: 0, split: 1, participantCards: 1, actionCards: 0 })
+  assert.deepEqual(computeCardCounts([], [a()]), { combined: 0, split: 1, participantCards: 0, actionCards: 1 })
 })
 
 test('isActionRelevantTo: open actions match anyone', () => {

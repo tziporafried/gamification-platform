@@ -8,7 +8,15 @@ interface ModalProps {
   onClose: () => void
   title: string
   titleClassName?: string
+  /** A line under the title, for dialogs whose purpose needs a sentence. */
+  subtitle?: ReactNode
   children: ReactNode
+  /**
+   * Pinned under the scrolling body. Actions belong here rather than at the end
+   * of the content in a dialog tall enough for the content to scroll - a button
+   * that scrolls out of reach is not an action.
+   */
+  footer?: ReactNode
   /** Optional override for the dimming layer behind the dialog. */
   overlayClassName?: string
   /** Optional override for the dialog panel (e.g. wider form modals). */
@@ -56,7 +64,9 @@ export function Modal({
   onClose,
   title,
   titleClassName,
+  subtitle,
   children,
+  footer,
   overlayClassName,
   dialogClassName,
   headerClassName,
@@ -211,12 +221,16 @@ export function Modal({
         ) : (
           <div
             className={cn(
-              'flex shrink-0 items-center justify-between border-b bg-modal px-6 py-4',
+              'flex shrink-0 justify-between gap-3 border-b bg-modal px-6 py-4',
+              subtitle ? 'items-start' : 'items-center',
               theme.border,
               headerClassName,
             )}
           >
-            <h2 id={titleId} className={titleClassName ?? cn('text-lg font-semibold', theme.text)}>{title}</h2>
+            <div className="min-w-0">
+              <h2 id={titleId} className={titleClassName ?? cn('text-lg font-semibold', theme.text)}>{title}</h2>
+              {subtitle && <p className={cn('mt-0.5 text-sm', theme.textMuted)}>{subtitle}</p>}
+            </div>
             <button
               type="button"
               onClick={onClose}
@@ -240,6 +254,16 @@ export function Modal({
         >
           {children}
         </div>
+        {footer && (
+          <div
+            className={cn(
+              'shrink-0 border-t bg-modal px-6 py-4',
+              theme.border,
+            )}
+          >
+            {footer}
+          </div>
+        )}
       </div>
     </div>,
     document.body,

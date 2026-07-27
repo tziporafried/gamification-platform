@@ -9,8 +9,8 @@ import {
   setWizardPrefs,
   adjustWizardStep,
   normalizeWizardStep,
-  isTemplateSkippedStep,
-  TEMPLATE_SKIP_STEPS,
+  isSkippedWizardStep,
+  hiddenWizardSteps,
 } from '@/lib/wizard'
 import { getTemplateByDraftEventId, fetchActivityTemplateById, seedTemplateDraftEvent, isDraftBehindTemplate } from '@/lib/templates'
 import { useTemplateAutoSync } from '@/hooks/useTemplateAutoSync'
@@ -23,7 +23,7 @@ import { StepGroups } from '@/components/wizard/StepGroups'
 import { StepTasks } from '@/components/wizard/StepTasks'
 import { StepRewards } from '@/components/wizard/StepRewards'
 import { StepCards } from '@/components/wizard/StepCards'
-import { StepReviewGenerate } from '@/components/wizard/StepReviewGenerate'
+import { StepTemplateSummary } from '@/components/wizard/StepTemplateSummary'
 import { TemplatePickerModal } from '@/components/wizard/TemplatePickerModal'
 import { EventFeaturesProvider } from '@/contexts/EventFeaturesContext'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
@@ -186,10 +186,11 @@ export function EventWizard() {
     goToStep(toStep)
   }, [currentStep, goToStep, isTemplateMode])
 
-  // A template has no participants (3) and no cards to print (6); landing on
-  // either - by URL or by a stale lastStep - falls through to the next step.
+  // Each mode skips steps the other one has - a template has no participants
+  // (3) and no cards (6), a game has no template summary (7). Landing on one of
+  // them, by URL or by a stale lastStep, falls through to the nearest real step.
   useEffect(() => {
-    if (!isTemplateMode || !isTemplateSkippedStep(currentStep)) return
+    if (!isSkippedWizardStep(currentStep, isTemplateMode)) return
     goToStep(currentStep)
   }, [isTemplateMode, currentStep, goToStep])
 
@@ -228,7 +229,7 @@ export function EventWizard() {
       currentStep={currentStep}
       wizardState={wizardState}
       onStepClick={goToStep}
-      hiddenSteps={isTemplateMode ? [...TEMPLATE_SKIP_STEPS] : undefined}
+      hiddenSteps={hiddenWizardSteps(isTemplateMode)}
       headerSuffix={isTemplateMode ? 'עריכת תבנית' : undefined}
     >
       <WizardStepPanel active={currentStep === 1}>
@@ -314,26 +315,26 @@ export function EventWizard() {
         <WizardStepPanel active={currentStep === 6}>
           <StepCards
             event={event}
+            counts={counts}
+            groupType={groupType}
             isActive={currentStep === 6}
             onEventUpdated={setEvent}
-            onNext={goNext}
+            onGoToStep={goToStep}
             onBack={goBack}
           />
         </WizardStepPanel>
       )}
 
-      {visitedSteps.has(7) && (
+      {isTemplateMode && visitedSteps.has(7) && (
         <WizardStepPanel active={currentStep === 7}>
-          <StepReviewGenerate
+          <StepTemplateSummary
             event={event}
             counts={counts}
             groupType={groupType}
             isActive={currentStep === 7}
+            templateId={editingTemplate!.id}
             onGoToStep={goToStep}
             onBack={goBack}
-            templateMode={isTemplateMode ? {
-              templateId: editingTemplate!.id,
-            } : undefined}
           />
         </WizardStepPanel>
       )}
