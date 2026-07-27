@@ -229,13 +229,13 @@ export function useScanLotteryRound(eventId: string, enabled: boolean): ScanLott
     if (!round || busy) return
     // A round that is still open has to be closed before a new one can exist:
     // the one-open-round index in 080 would otherwise hand this very round
-    // back on the next open(), and "סבב חדש" would look like it did nothing.
+    // back on the next open(), and "הגרלה חדשה" would look like it did nothing.
     if (!round.closedAt) {
       setBusy(true)
       try {
         await closeScanLotteryRound(round.id)
       } catch (err: unknown) {
-        failWith(err instanceof Error ? err.message : '', 'לא ניתן לסגור את הסבב הקודם כרגע.')
+        failWith(err instanceof Error ? err.message : '', 'לא ניתן לסגור את ההגרלה הקודמת כרגע.')
         setBusy(false)
         return
       }

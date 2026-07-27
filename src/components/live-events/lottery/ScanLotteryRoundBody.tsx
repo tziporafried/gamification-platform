@@ -100,10 +100,10 @@ export function ScanLotteryRoundBody({
             SETTINGS_INLINE_BUTTON,
             'border border-transparent opacity-70 hover:bg-black/[0.05] hover:opacity-100',
           )}
-          title="פתיחת סבב איסוף חדש - הכרטיסים שנאספו יימחקו מהמסך"
+          title="התחלת הגרלה חדשה - מי שנסרק להגרלה הזו לא ייכנס אליה"
         >
           <RotateCcw size={11} strokeWidth={2.75} aria-hidden="true" />
-          סבב חדש
+          הגרלה חדשה
         </button>
       )}
     </>
