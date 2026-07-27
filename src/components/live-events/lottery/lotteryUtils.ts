@@ -7,14 +7,11 @@ export const ELIMINATION_MILESTONES = [120, 60, 30, 15, 8, 5, 3, 1] as const
 /**
  * Draws one winner, one ticket at a time.
  *
- * The draw is over tickets, not people. Every pool today hands out exactly one
- * ticket each - the points rules always did, and the scan lottery caps it at
- * one in the database (081) - so this is the uniform pick it has always been:
- * the same `floor(random * n)` index into the same array.
- *
- * Weighing by ticket rather than by head is kept because it is what makes that
- * cap a policy instead of a structure. If a pool ever hands out more than one
- * again, this already draws it correctly and nothing else has to change.
+ * Every pool today hands out exactly one ticket each, so this is the uniform
+ * pick it has always been: the same `floor(random * n)` index into the same
+ * array. Walking tickets rather than heads is kept because it costs three
+ * lines and means a pool that ever does weight itself draws correctly without
+ * touching this.
  */
 export function pickRandomWinner(participants: EligibleParticipant[]): EligibleParticipant {
   const tickets = totalEntries(participants)

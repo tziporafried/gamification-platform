@@ -41,7 +41,7 @@ export function ScanLotteryRoundBody({
   onClose,
   onReset,
 }: ScanLotteryRoundBodyProps) {
-  const { status, loading, busy } = scan
+  const { status } = scan
   const isOpen = status === 'open'
 
   // Picking this toggle offers a button; it never drops the organizer straight
@@ -55,7 +55,6 @@ export function ScanLotteryRoundBody({
         <button
           type="button"
           onClick={onOpen}
-          disabled={busy || loading}
           className={cn(SETTINGS_INLINE_BUTTON, 'bg-primary text-white shadow-sm hover:opacity-95')}
         >
           {isOpen ? 'המשיכו לאסוף' : 'פתחו את ההגרלה'}
@@ -82,7 +81,6 @@ export function ScanLotteryRoundBody({
         <button
           type="button"
           onClick={onClose}
-          disabled={busy}
           className={cn(
             SETTINGS_INLINE_BUTTON,
             'border border-primary/35 bg-white text-primary shadow-sm',
@@ -95,7 +93,6 @@ export function ScanLotteryRoundBody({
         <button
           type="button"
           onClick={onReset}
-          disabled={busy}
           className={cn(
             SETTINGS_INLINE_BUTTON,
             'border border-transparent opacity-70 hover:bg-black/[0.05] hover:opacity-100',

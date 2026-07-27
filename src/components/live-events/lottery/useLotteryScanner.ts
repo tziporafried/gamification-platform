@@ -3,7 +3,7 @@ import { useScoreSubmit } from '@/hooks/useScoreSubmit'
 import { useScanSequence, type PendingParticipant } from '@/hooks/useScanSequence'
 import { useHardwareScanner } from '@/hooks/useHardwareScanner'
 import { trackScanFailed, trackScanSuccess } from '@/lib/analytics'
-import { recordScanLotteryEntry } from './scanLotteryRounds'
+import { addScanLotteryEntry } from './scanLotteryStore'
 
 /**
  * Scanning from inside the lottery screen, while a scan round is collecting.
@@ -22,10 +22,9 @@ import { recordScanLotteryEntry } from './scanLotteryRounds'
  * per round, so scanning again is answered with "you already have one" rather
  * than a second entry.
  *
- * That claim is written here, and only here. It is what keeps the lottery
+ * The entry is written here, and only here. That is what keeps the lottery
  * separate from the game's other scanning stations: those scans score points
- * exactly as before and never touch the pool, because a ticket is earned at
- * the lottery rather than counted out of the scan log afterwards.
+ * exactly as before and never touch the pool.
  */
 
 /** How long the last scan's result stays on the stage. */
@@ -52,8 +51,8 @@ export interface LotteryScannerState {
 
 interface UseLotteryScannerOptions {
   eventId: string
-  /** The open round a ticket would belong to. null when nothing is collecting. */
-  roundId: string | null
+  /** True while a collection is open, so a scan should join it. */
+  collecting: boolean
   /** Collecting, on a plan that may scan, in a game that has started. */
   enabled: boolean
   /** A ticket was added - recount the pool without waiting for the poll. */
@@ -62,7 +61,7 @@ interface UseLotteryScannerOptions {
 
 export function useLotteryScanner({
   eventId,
-  roundId,
+  collecting,
   enabled,
   onScored,
 }: UseLotteryScannerOptions): LotteryScannerState {
@@ -95,24 +94,16 @@ export function useLotteryScanner({
       }
       trackScanSuccess('qr_scan')
 
-      // The scan scored; now claim the ticket it earned. This write is the
-      // only thing that puts anybody in the lottery - which is exactly why
-      // scans taken at the game's other stations never join the pool.
-      if (!roundId) return
-      try {
-        const { isNewTicket } = await recordScanLotteryEntry({
-          roundId,
-          participantId: response.result.participantId,
-          transactionId: response.result.transactionId,
-        })
-        if (!isNewTicket) {
-          show({ kind: 'duplicate', participantName: response.result.participantName })
-          return
-        }
-      } catch {
-        // The points landed but the ticket did not. Say so plainly rather than
-        // celebrate a ticket they do not hold.
-        show({ kind: 'error', message: 'הסריקה נקלטה אך הכרטיס לא נרשם. נסו שוב.' })
+      // The scan scored; now put them in the hat. This is the only thing that
+      // enters anybody into the lottery - which is why scans taken at the
+      // game's other stations are no part of it.
+      if (!collecting) return
+      const { added } = addScanLotteryEntry(eventId, {
+        id: response.result.participantId,
+        name: response.result.participantName,
+      })
+      if (!added) {
+        show({ kind: 'duplicate', participantName: response.result.participantName })
         return
       }
 
@@ -124,7 +115,7 @@ export function useLotteryScanner({
       // The counter should not lag behind the hand of the person standing here.
       onScoredRef.current()
     },
-    [submit, show, roundId],
+    [submit, show, collecting, eventId],
   )
 
   const handleScanError = useCallback(

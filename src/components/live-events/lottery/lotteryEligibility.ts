@@ -4,10 +4,10 @@ import type { EligibleParticipant, LotteryEligibilityMode } from '../types'
 /**
  * Who ends up in the hat, for the three points-based ways of choosing.
  *
- * 'scans' is not here: that pool is counted in the database from the scans
- * inside the round's window (see scanLotteryRounds), not filtered out of the
- * leaderboard. Everything else is a filter over the same leaderboard rows the
- * lottery has always used, which is why they share one function.
+ * 'scans' is not here: that pool is whoever was scanned in on the lottery
+ * screen (see scanLotteryStore), not a filter over the leaderboard at all.
+ * Everything else is a filter over the same leaderboard rows the lottery has
+ * always used, which is why they share one function.
  *
  * Pure, and given its inputs explicitly, so the rules can be exercised without
  * a database - the hook around it owns only the loading.

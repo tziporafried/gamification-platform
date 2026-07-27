@@ -24,9 +24,9 @@ import type {
  *           always worked.
  *
  *   scan    "לפי משתתפים" alone. Points are ignored entirely; the organizer
- *           opens a round and scans people in on the lottery screen itself.
- *           One ticket each, however many times they scan, and scans taken at
- *           the game's other stations are no part of it (081).
+ *           opens a collection and scans people in on the lottery screen
+ *           itself. One ticket each, however many times they scan, and scans
+ *           taken at the game's other stations are no part of it.
  *
  * The mode is derived from the choice, never chosen separately, so the two
  * cannot disagree. It travels in the LotteryConfig from launch onward, and

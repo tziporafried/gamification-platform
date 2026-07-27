@@ -9,16 +9,15 @@ import { useScanLotteryRound, type ScanLotteryRoundState } from './useScanLotter
 /**
  * The lottery entry service: one pool, whichever choice built it.
  *
- * All four choices end at the same place - a list of participants with a
- * ticket count each - so everything downstream (the launch button, the intro,
- * the draw) reads one shape and never branches. What differs is only how the
- * list is produced: three filter the leaderboard, and 'scans' counts the scans
- * inside the open round's window.
+ * All four choices end at the same place - a list of participants, one ticket
+ * each - so everything downstream (the launch button, the intro, the draw)
+ * reads one shape and never branches. What differs is only how the list is
+ * produced: three filter the leaderboard, and 'scans' reads whoever was
+ * scanned in on the lottery screen.
  *
  * Every hook here is called on every render (hooks cannot be conditional) but
  * the ones the current choice does not need are switched off through their
- * `enabled` flag, so an unused branch issues no queries and holds no
- * subscription.
+ * `enabled` flag, so an unused branch issues no queries.
  */
 
 /** Why the show cannot start yet. Doubles as the analytics `reason`. */
@@ -28,13 +27,13 @@ export interface LotteryEntryPool {
   participants: EligibleParticipant[]
   /** People in the pool. */
   count: number
-  /** Tickets in the hat - equals `count` for every choice but 'scans'. */
+  /** Tickets in the hat. One each, so this equals `count`. */
   entries: number
   loading: boolean
   error: string | null
   /** null once the pool can be drawn from. */
   blockedBy: LotteryLaunchBlocker | null
-  /** The round controls, when choosing by scans. */
+  /** The collection's controls, when choosing by scans. */
   scan: ScanLotteryRoundState | null
   /** The game's groups - the "לפי קבוצות" picker's options. */
   groups: LotteryGroup[]
@@ -88,15 +87,14 @@ export function useLotteryEntries({ eventId, criteria }: UseLotteryEntriesOption
       }
     }
 
-    // A scan lottery is drawn only after the window has closed - that is what
-    // closing means. Before then the pool is still moving.
-    const blockedBy: LotteryLaunchBlocker | null = scan.loading
-      ? null
-      : scan.status === 'idle'
+    // A scan lottery is drawn only after the collection has closed - that is
+    // what closing means. Before then the pool is still moving.
+    const blockedBy: LotteryLaunchBlocker | null =
+      scan.status === 'idle'
         ? 'not_opened'
         : scan.status === 'open'
           ? 'still_open'
-          : scan.entries > 0
+          : scan.count > 0
             ? null
             : 'no_eligible'
 
@@ -104,8 +102,9 @@ export function useLotteryEntries({ eventId, criteria }: UseLotteryEntriesOption
       participants: scan.participants,
       count: scan.count,
       entries: scan.entries,
-      loading: scan.loading,
-      error: scan.error,
+      // Nothing to wait for and nothing to fail: it is read from localStorage.
+      loading: false,
+      error: null,
       blockedBy,
       scan,
       groups: [],

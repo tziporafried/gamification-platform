@@ -84,8 +84,8 @@ test('a points pool has as many tickets as it has players', () => {
 })
 
 test('a scan pool is one ticket per participant', () => {
-  // The cap lives in the database (081); this just checks the client adds up
-  // whatever ticket counts it is handed.
+  // The cap lives in the store; this just checks the client adds up whatever
+  // ticket counts it is handed.
   assert.equal(totalEntries([player('a', 1), player('b', 1), player('c', 1)]), 3)
 })
 

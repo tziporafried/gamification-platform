@@ -142,7 +142,7 @@ export function LotteryConfigurationCard({
   const collecting = startedScanning && scan?.status === 'open'
   const scanner = useLotteryScanner({
     eventId,
-    roundId: collecting ? (scan?.round?.id ?? null) : null,
+    collecting: !!collecting,
     enabled: !!collecting && scanningAllowed,
     onScored: scan?.recount ?? noop,
   })
@@ -177,16 +177,16 @@ export function LotteryConfigurationCard({
     setFormError(null)
     // Hand the keyboard to the scanner. The wedge binding deliberately yields
     // to any other focused field, and the prize input focuses itself on mount
-    // - so opening the round while it still holds focus would leave the stage
-    // listening and every card landing silently in the prize box. Blurring
-    // also commits a prize that was typed but never confirmed.
+    // - so starting while it still holds focus would leave the stage listening
+    // and every card landing silently in the prize box. Blurring also commits
+    // a prize that was typed but never confirmed.
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     setStartedScanning(true)
-    // A round already collecting is rejoined rather than replaced - opening a
-    // second one would split the floor's tickets between two pools.
+    // A collection already open is rejoined rather than replaced, so a refresh
+    // mid-lottery does not throw away who is already in.
     if (scan.status === 'open') return
     trackLotteryRoundOpened(eventId)
-    void scan.open()
+    scan.open()
   }
 
   function handleCloseRound() {
@@ -196,14 +196,14 @@ export function LotteryConfigurationCard({
     // landing in the same instant is counted by the draw but not by this
     // event, which is the honest reading of "what was on screen".
     trackLotteryRoundClosed({ eventId, entries: scan.entries, participants: scan.count })
-    void scan.close()
+    scan.close()
   }
 
   function handleResetRound() {
     if (!scan) return
     playUiClick()
     setFormError(null)
-    void scan.reset()
+    scan.reset()
   }
 
   /**

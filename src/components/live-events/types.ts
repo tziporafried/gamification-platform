@@ -13,7 +13,7 @@ export interface EligibleParticipant {
   /**
    * Tickets this participant holds in the draw. One, in every pool the app
    * builds today: the leaderboard rules put each eligible player in the hat
-   * once, and the scan lottery caps it at one per participant per round.
+   * once, and the scan lottery allows one entry per participant.
    * Absent on sessions saved before the scan lottery shipped; read it through
    * entryCount() in lottery/lotteryMode.
    */
@@ -30,9 +30,9 @@ export interface EligibleParticipant {
  * NAMING: the organizer sees 'scans' labelled "לפי משתתפים", because from the
  * floor's side that is what it means - whoever took part by scanning is in.
  * The key stays 'scans' because that is what it *does*: it opens a collection
- * round and gives a ticket to each person scanned in on the lottery screen. Do
- * not rename it to match the label; the label is the product's word, the key
- * is the mechanism's.
+ * and gives a ticket to each person scanned in on the lottery screen. Do not
+ * rename it to match the label; the label is the product's word, the key is
+ * the mechanism's.
  */
 export type LotteryEligibilityMode = 'all' | 'min_points' | 'scans' | 'groups'
 
@@ -51,7 +51,7 @@ export interface LotteryConfig {
    * lotteries.
    */
   mode?: LotteryMode
-  /** The collection window a scan lottery drew from. Scan mode only. */
+  /** The collection a scan lottery drew from. Scan mode only. */
   roundId?: string
   eligibilityMode: LotteryEligibilityMode
   /** Positive integer when mode is min_points; ignored otherwise. */
