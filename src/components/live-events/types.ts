@@ -10,16 +10,61 @@ export interface EligibleParticipant {
   id: string
   name: string
   points: number
+  /**
+   * Tickets this participant holds in the draw. One, in every pool the app
+   * builds today: the leaderboard rules put each eligible player in the hat
+   * once, and the scan lottery caps it at one per participant per round.
+   * Absent on sessions saved before the scan lottery shipped; read it through
+   * entryCount() in lottery/lotteryMode.
+   */
+  entries?: number
 }
 
-export type LotteryEligibilityMode = 'all' | 'min_points'
+/**
+ * Who is in the hat - the organizer's single choice in the dock.
+ *
+ * 'scans' is offered only when the `scan_based_lottery` flag is on; the other
+ * three are always available. It is also the one choice that changes how many
+ * tickets a person holds - see LotteryMode.
+ *
+ * NAMING: the organizer sees 'scans' labelled "לפי משתתפים", because from the
+ * floor's side that is what it means - whoever took part by scanning is in.
+ * The key stays 'scans' because that is what it *does*: it opens a collection
+ * round and gives a ticket to each person scanned in on the lottery screen. Do
+ * not rename it to match the label; the label is the product's word, the key
+ * is the mechanism's.
+ */
+export type LotteryEligibilityMode = 'all' | 'min_points' | 'scans' | 'groups'
+
+/**
+ * How the pool is built, derived from the eligibility choice rather than
+ * chosen separately - see lottery/lotteryMode for the full contract.
+ */
+export type LotteryMode = 'points' | 'scan'
 
 export interface LotteryConfig {
   kind: 'lottery'
   eventId: string
+  /**
+   * Resolved from the `scan_based_lottery` flag when the lottery is set up.
+   * Absent on sessions saved before the flag existed, which are all points
+   * lotteries.
+   */
+  mode?: LotteryMode
+  /** The collection window a scan lottery drew from. Scan mode only. */
+  roundId?: string
   eligibilityMode: LotteryEligibilityMode
-  /** Positive integer when mode is min_points; ignored for "all". */
+  /** Positive integer when mode is min_points; ignored otherwise. */
   minPoints: number
+  /** The chosen groups, when eligibility is 'groups'. */
+  groupIds?: string[]
+  /**
+   * What the intro card tells the audience the pool is, written when the
+   * lottery is launched. The dock is the only place that knows the chosen
+   * groups' names, so it says it once here rather than making the show look
+   * them up again.
+   */
+  poolLabel?: string
   prizeName: string
   prizeIcon: string
 }

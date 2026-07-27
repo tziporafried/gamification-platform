@@ -605,16 +605,62 @@ export function trackLiveEventSelect(params: {
   })
 }
 
-/** Lottery broadcast tab opened on the setup / preparing dock. */
-export function trackLotterySetupView(eventId: string) {
+/** How the pool was built - see live-events/lottery/lotteryMode. */
+type LotteryModeParam = 'points' | 'scan'
+
+/**
+ * The organizer's choice under "מי משתתף?". 'scans' is the one labelled
+ * "לפי משתתפים" in the UI - the key names the mechanism, not the label.
+ */
+type EligibilityModeParam = 'all' | 'min_points' | 'scans' | 'groups'
+
+/**
+ * Lottery broadcast tab opened on the setup / preparing dock.
+ *
+ * `eligibility_mode` rides along on the whole lottery funnel from here down,
+ * so the five ways of choosing a pool can be read apart rather than silently
+ * averaged together. It is the choice the dock *opened* on;
+ * `scan_lottery_available` says whether the scan toggle was offered at all,
+ * which is what makes its take-up rate readable.
+ */
+export function trackLotterySetupView(
+  eventId: string,
+  eligibilityMode: EligibilityModeParam = 'all',
+  scanLotteryAvailable = false,
+) {
   trackEventDeduped(`lottery_setup_view:${eventId}`, 'lottery_setup_view', {
     event_id: eventId,
+    eligibility_mode: eligibilityMode,
+    scan_lottery_available: scanLotteryAvailable,
   })
 }
 
+/** Scan lottery: the organizer opened the collection window. */
+export function trackLotteryRoundOpened(eventId: string) {
+  trackEvent('lottery_round_opened', {
+    event_id: eventId,
+    lottery_mode: 'scan',
+  })
+}
+
+/** Scan lottery: window closed - no further scans become entries. */
+export function trackLotteryRoundClosed(params: {
+  eventId: string
+  entries: number
+  participants: number
+}) {
+  trackEvent('lottery_round_closed', {
+    event_id: params.eventId,
+    lottery_mode: 'scan',
+    entry_count: params.entries,
+    eligible_count: params.participants,
+  })
+}
+
+/** The organizer moved the "מי משתתף?" toggle. */
 export function trackLotteryEligibilitySet(params: {
   eventId: string
-  mode: 'all' | 'min_points'
+  mode: EligibilityModeParam
   minPoints?: number
 }) {
   trackEvent('lottery_eligibility_set', {
@@ -629,10 +675,23 @@ export function trackLotteryPrizeConfirmed(eventId: string) {
   trackEvent('lottery_prize_confirmed', { event_id: eventId })
 }
 
-/** Launch blocked by validation (missing prize, no eligible players, etc.). */
+/**
+ * Launch blocked by validation (missing prize, no eligible players, etc.).
+ *
+ * `nothing_picked` is distinct from `no_eligible` on purpose: a picker left
+ * empty is an unfinished sentence, not a lottery whose rule matched nobody,
+ * and the two have different fixes. `not_opened` / `still_open` are the scan
+ * lottery's two extra gates - its window has to be opened and then closed
+ * before there is a pool to draw from.
+ */
 export function trackLotteryLaunchBlocked(params: {
   eventId: string
-  reason: 'missing_prize' | 'no_eligible'
+  reason:
+    | 'missing_prize'
+    | 'no_eligible'
+    | 'nothing_picked'
+    | 'not_opened'
+    | 'still_open'
 }) {
   trackEvent('lottery_launch_blocked', {
     event_id: params.eventId,
@@ -643,15 +702,23 @@ export function trackLotteryLaunchBlocked(params: {
 /** Organizer started the live lottery show from the setup dock. */
 export function trackLotteryLaunched(params: {
   eventId: string
-  eligibilityMode: 'all' | 'min_points'
+  lotteryMode?: LotteryModeParam
+  eligibilityMode: EligibilityModeParam
   minPoints: number
   eligibleCount: number
+  /** Tickets in the hat. Equals eligibleCount for every choice but scans. */
+  entryCount?: number
 }) {
+  const lotteryMode = params.lotteryMode ?? 'points'
   trackEvent('lottery_launched', {
     event_id: params.eventId,
+    lottery_mode: lotteryMode,
     eligibility_mode: params.eligibilityMode,
+    // Only meaningful for the points line; reporting it elsewhere would read
+    // as a threshold that was applied.
     min_points: params.eligibilityMode === 'min_points' ? params.minPoints : 0,
     eligible_count: params.eligibleCount,
+    entry_count: params.entryCount ?? params.eligibleCount,
   })
 }
 

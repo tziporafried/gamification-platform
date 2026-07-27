@@ -1,12 +1,30 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { ParticipantLeaderboardEntry } from '@/types'
-import type { EligibleParticipant, LotteryEligibilityMode } from './types'
+import type { EligibleParticipant } from './types'
+import {
+  filterEligible,
+  type EligibilityCriteria,
+  type GroupMembership,
+} from './lottery/lotteryEligibility'
+
+/**
+ * The leaderboard, filtered down to whoever the organizer chose.
+ *
+ * Every points-based way of choosing - everyone, a points line, a set of
+ * groups - is the same read followed by a different filter, so switching
+ * between them costs nothing and re-reads nothing. The rules themselves live
+ * in lottery/lotteryEligibility, where they can be tested without a database.
+ *
+ * The scan lottery does not come through here at all: its pool is counted in
+ * the database from the scans inside the round's window.
+ */
 
 interface UseEligibleParticipantsOptions {
   eventId: string
-  mode: LotteryEligibilityMode
-  minPoints: number
+  criteria: EligibilityCriteria
+  /** Group membership, needed only when choosing by groups. */
+  membership?: GroupMembership
   /** Reserved for future filtering against lottery winner history. */
   excludeIds?: ReadonlySet<string>
   enabled?: boolean
@@ -20,30 +38,12 @@ interface UseEligibleParticipantsResult {
   refresh: () => void
 }
 
-export function filterEligibleParticipants(
-  rows: ParticipantLeaderboardEntry[],
-  mode: LotteryEligibilityMode,
-  minPoints: number,
-  excludeIds?: ReadonlySet<string>,
-): EligibleParticipant[] {
-  const threshold = mode === 'all' ? 0 : Math.max(0, Math.floor(minPoints))
-  return rows
-    .filter((row) => {
-      if (row.total_points < threshold) return false
-      if (excludeIds?.has(row.participant_id)) return false
-      return true
-    })
-    .map((row) => ({
-      id: row.participant_id,
-      name: row.participant_name,
-      points: Number(row.total_points),
-    }))
-}
+const NO_MEMBERSHIP: GroupMembership = new Map()
 
 export function useEligibleParticipants({
   eventId,
-  mode,
-  minPoints,
+  criteria,
+  membership = NO_MEMBERSHIP,
   excludeIds,
   enabled = true,
 }: UseEligibleParticipantsOptions): UseEligibleParticipantsResult {
@@ -81,8 +81,8 @@ export function useEligibleParticipants({
   }, [eventId, enabled, tick])
 
   const participants = useMemo(
-    () => filterEligibleParticipants(rows, mode, minPoints, excludeIds),
-    [rows, mode, minPoints, excludeIds],
+    () => filterEligible(rows, criteria, membership, excludeIds),
+    [rows, criteria, membership, excludeIds],
   )
 
   return {

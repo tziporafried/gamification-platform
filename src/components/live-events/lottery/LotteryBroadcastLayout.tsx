@@ -52,13 +52,14 @@ export function LotteryBroadcastLayout({
         {showDock && (
           <section
             className={cn(
-              'relative z-20 flex h-[176px] shrink-0 flex-col',
+              // 64px of settings + 24px of breathing room above and below.
+              'relative z-20 flex h-[112px] shrink-0 flex-col',
               'border-t border-white/50 bg-white/75',
               'shadow-[0_-12px_36px_rgba(46,34,30,0.1)] backdrop-blur-xl',
             )}
             aria-label="בקרת מארגן"
           >
-            <div className="mx-auto flex h-full w-full max-w-6xl items-center px-3 sm:px-5">
+            <div className="mx-auto flex h-full w-full max-w-6xl items-center px-6">
               {dock}
             </div>
           </section>

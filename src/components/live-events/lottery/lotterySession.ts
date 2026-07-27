@@ -23,13 +23,27 @@ export function saveLotterySession(payload: Omit<LotterySessionPayload, 'created
   return runId
 }
 
+/**
+ * A session written by an older build has no `mode` and no ticket counts on
+ * its participants. Those are all points lotteries - one name, one ticket - so
+ * they are normalised to exactly that rather than left for every reader to
+ * guess at. A run already in flight when this ships keeps behaving as it did.
+ */
+function normaliseSession(parsed: LotterySessionPayload): LotterySessionPayload {
+  return {
+    ...parsed,
+    config: { ...parsed.config, mode: parsed.config.mode ?? 'points' },
+    participants: parsed.participants.map((p) => ({ ...p, entries: p.entries ?? 1 })),
+  }
+}
+
 export function loadLotterySession(runId: string): LotterySessionPayload | null {
   try {
     const raw = localStorage.getItem(storageKey(runId))
     if (!raw) return null
     const parsed = JSON.parse(raw) as LotterySessionPayload
     if (!parsed?.config || !Array.isArray(parsed.participants)) return null
-    return parsed
+    return normaliseSession(parsed)
   } catch {
     return null
   }

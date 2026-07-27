@@ -15,6 +15,7 @@ import { LotteryBroadcastLayout } from './LotteryBroadcastLayout'
 import { LotteryIntroShow, type IntroBeat, type IntroRuleCard } from './LotteryIntroShow'
 import { GiftBoxLotteryDraw } from './GiftBoxLotteryDraw'
 import { pickRandomWinner } from './lotteryUtils'
+import { configLotteryMode, poolDescription } from './lotteryMode'
 import { recordLotteryWinner } from './lotteryWinners'
 
 type ShowStage = 'intro' | 'draw'
@@ -29,14 +30,15 @@ interface LotteryPresentationProps {
   onClose: () => void
 }
 
-function eligibilityLabel(config: LotteryConfig): string {
-  if (config.eligibilityMode === 'all') return 'כל המשתתפים'
-  return `מי שהשיג מעל ${config.minPoints.toLocaleString('he-IL')} נקודות`
-}
-
 /**
  * Live lottery show: cinematic intro → raffle ceremony (through finished controls).
  * «הגרל שוב» replays intro + draw from the start (previous winners stay excluded).
+ *
+ * The show is mode-blind by design: it is handed a pool of participants with a
+ * ticket count each and never asks where they came from. All a scan lottery
+ * changes here is the line the intro card reads out, and that a winner's odds
+ * are their ticket count rather than a flat one - both of which live in the
+ * pool and the config, not in this component.
  */
 export function LotteryPresentation({
   config,
@@ -79,9 +81,9 @@ export function LotteryPresentation({
       },
       {
         id: 'participants',
-        icon: '👥',
-        label: 'משתתפים',
-        value: eligibilityLabel(config),
+        icon: configLotteryMode(config) === 'scan' ? '🎟️' : '👥',
+        label: configLotteryMode(config) === 'scan' ? 'כרטיסים' : 'משתתפים',
+        value: poolDescription(config),
       },
     ],
     [config],
