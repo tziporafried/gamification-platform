@@ -616,9 +616,46 @@ export function AdminScannersPanel() {
     setTentativeBusyId(booking.id)
     setError(null)
     setSuccessMsg(null)
+
+    // The question mark decides whether the unpaid part is future income, so
+    // the finance rows are rebuilt from the booking's own numbers.
+    const total = booking.amount != null ? Number(booking.amount) : 0
+    const paid =
+      booking.amount_paid != null
+        ? Number(booking.amount_paid)
+        : booking.is_paid
+          ? total
+          : 0
+    const {
+      financeEntryId,
+      debtFinanceEntryId,
+      error: financeError,
+    } = await syncBookingFinance({
+      existingFinanceId: booking.finance_entry_id,
+      existingDebtFinanceId: booking.debt_finance_entry_id,
+      amount: booking.amount != null ? Number(booking.amount) : null,
+      amountPaid: paid,
+      customer: booking.customer_name,
+      pkg: (booking.booking_package as BookablePackage | null) ?? 'full',
+      collectedBy: booking.collected_by,
+      start: booking.start_date,
+      end: booking.end_date,
+      tentative: next,
+    })
+    if (financeError) {
+      setTentativeBusyId(null)
+      setError(financeError)
+      return
+    }
+
+    const patch = {
+      is_tentative: next,
+      finance_entry_id: financeEntryId,
+      debt_finance_entry_id: debtFinanceEntryId,
+    }
     const { error: toggleError } = await supabase
       .from('scanner_bookings')
-      .update({ is_tentative: next })
+      .update(patch)
       .eq('id', booking.id)
     setTentativeBusyId(null)
     if (toggleError) {
@@ -629,13 +666,16 @@ export function AdminScannersPanel() {
       )
       return
     }
-    setBookings((prev) =>
-      prev.map((b) => (b.id === booking.id ? { ...b, is_tentative: next } : b)),
-    )
+    setBookings((prev) => prev.map((b) => (b.id === booking.id ? { ...b, ...patch } : b)))
     setSelectedBooking((prev) =>
-      prev && prev.id === booking.id ? { ...prev, is_tentative: next } : prev,
+      prev && prev.id === booking.id ? { ...prev, ...patch } : prev,
     )
-    setSuccessMsg(next ? 'ההזמנה סומנה בסימן שאלה' : 'סימן השאלה הוסר - ההזמנה סגורה')
+    const debt = Math.max(0, total - paid)
+    setSuccessMsg(
+      next
+        ? `ההזמנה סומנה בסימן שאלה${debt > 0 ? ' · הוסרה מההכנסות העתידיות' : ''}`
+        : `סימן השאלה הוסר - ההזמנה סגורה${debt > 0 ? ` · ${formatPriceIls(debt)} נרשמו כהכנסה עתידית` : ''}`,
+    )
   }
 
   /** Whoever is filling the form is the likeliest one taking the payment. */
@@ -748,8 +788,9 @@ export function AdminScannersPanel() {
     amount: number
     description: string
     collectedBy: string | null
+    entryDate: string
   }): Promise<{ id: string | null; error: string | null; createdNew: boolean }> {
-    const { existingId, entryType, amount, description, collectedBy } = options
+    const { existingId, entryType, amount, description, collectedBy, entryDate } = options
     if (existingId) {
       const { error: financeError } = await supabase
         .from('admin_finance_entries')
@@ -757,7 +798,7 @@ export function AdminScannersPanel() {
           entry_type: entryType,
           amount,
           description,
-          entry_date: formStart,
+          entry_date: entryDate,
           admin_user_id: collectedBy,
         })
         .eq('id', existingId)
@@ -782,7 +823,7 @@ export function AdminScannersPanel() {
         entry_type: entryType,
         amount,
         description,
-        entry_date: formStart,
+        entry_date: entryDate,
         admin_user_id: collectedBy,
         created_by: user.id,
       })
@@ -816,15 +857,29 @@ export function AdminScannersPanel() {
     customer: string
     pkg: BookablePackage
     collectedBy: string | null
+    start: string
+    end: string
+    /** A hold is not money anyone can count on, so it books no future income. */
+    tentative: boolean
   }): Promise<{
     financeEntryId: string | null
     debtFinanceEntryId: string | null
     error: string | null
   }> {
-    const { existingFinanceId, existingDebtFinanceId, amount, amountPaid, customer, pkg, collectedBy } =
-      options
+    const {
+      existingFinanceId,
+      existingDebtFinanceId,
+      amount,
+      amountPaid,
+      customer,
+      pkg,
+      collectedBy,
+      start,
+      end,
+      tentative,
+    } = options
     const pkgLabel = BOOKING_PACKAGE_LABELS[pkg]
-    const base = `הזמנה: ${customer} · ${pkgLabel} · ${formatRange(formStart, formEnd)}`
+    const base = `הזמנה: ${customer} · ${pkgLabel} · ${formatRange(start, end)}`
     const total = amount != null && amount > 0 ? amount : 0
     const paid = Math.min(Math.max(0, amountPaid), total)
     const debt = Math.max(0, total - paid)
@@ -833,7 +888,9 @@ export function AdminScannersPanel() {
     let debtFinanceEntryId: string | null = existingDebtFinanceId
     const createdIds: string[] = []
 
-    if (total <= 0) {
+    // Money already in hand still counts, whatever the booking's status; what a
+    // hold must not do is promise income nobody committed to yet.
+    if (total <= 0 || (tentative && paid <= 0)) {
       const delIncome = await deleteFinanceEntry(existingFinanceId)
       if (delIncome) return { financeEntryId: null, debtFinanceEntryId: null, error: delIncome }
       const delDebt = await deleteFinanceEntry(existingDebtFinanceId)
@@ -848,6 +905,7 @@ export function AdminScannersPanel() {
         amount: paid,
         description: debt > 0 ? `${base} · שולם חלקית` : base,
         collectedBy,
+        entryDate: start,
       })
       if (res.error) return { financeEntryId: null, debtFinanceEntryId: null, error: res.error }
       financeEntryId = res.id
@@ -865,6 +923,7 @@ export function AdminScannersPanel() {
         amount: total,
         description: base,
         collectedBy,
+        entryDate: start,
       })
       if (res.error) {
         for (const id of createdIds) await deleteFinanceEntry(id)
@@ -880,13 +939,14 @@ export function AdminScannersPanel() {
       return { financeEntryId, debtFinanceEntryId: null, error: null }
     }
 
-    if (debt > 0) {
+    if (debt > 0 && !tentative) {
       const res = await upsertFinanceEntry({
         existingId: existingDebtFinanceId,
         entryType: 'future_income',
         amount: debt,
         description: `${base} · לא שולם`,
         collectedBy,
+        entryDate: start,
       })
       if (res.error) {
         for (const id of createdIds) await deleteFinanceEntry(id)
@@ -987,6 +1047,9 @@ export function AdminScannersPanel() {
       customer,
       pkg: formPackage,
       collectedBy,
+      start: formStart,
+      end: formEnd,
+      tentative: formTentative,
     })
     if (financeSyncError) {
       setError(financeSyncError)
@@ -2070,8 +2133,8 @@ export function AdminScannersPanel() {
             />
             <p className="mt-1 text-[11px] text-muted">
               {formScannerId
-                ? 'הסורק נשמר להזמנה, אבל אם תיקבע עליו הזמנה אחרת באותם תאריכים - ההזמנה הזאת תעבור אוטומטית ללא סורק'
-                : 'ההזמנה תסומן ב-? על הלוח. אם יבחר לה סורק, אפשר יהיה לקחת אותו להזמנה אחרת'}
+                ? 'הסורק נשמר להזמנה, אבל אם תיקבע עליו הזמנה אחרת באותם תאריכים - ההזמנה הזאת תעבור אוטומטית ללא סורק. מה שלא שולם לא ייספר בהכנסות עתידיות'
+                : 'ההזמנה תסומן ב-? על הלוח, ומה שלא שולם בה לא ייספר בהכנסות עתידיות. אם יבחר לה סורק, אפשר יהיה לקחת אותו להזמנה אחרת'}
             </p>
           </div>
           <Input
@@ -2394,8 +2457,8 @@ function BookingDetailCard({
             label: 'סטטוס',
             tone: 'warning' as const,
             value: booking.scanner_id
-              ? 'בסימן שאלה - הזמנה אחרת על הסורק הזה תעביר אותה ללא סורק'
-              : 'בסימן שאלה - עדיין לא סגור סופית',
+              ? 'בסימן שאלה - לא נספר בהכנסות עתידיות, והזמנה אחרת על הסורק הזה תעביר אותה ללא סורק'
+              : 'בסימן שאלה - לא נספר בהכנסות עתידיות',
           },
         ]
       : []),
