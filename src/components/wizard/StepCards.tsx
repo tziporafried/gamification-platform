@@ -379,9 +379,13 @@ export function StepCards({
                         onClose={() => setPreviewOpen(false)}
                         title="תצוגה מקדימה של הכרטיסים"
                         subtitle="כך ייראו הכרטיסים שיודפסו."
-                        // Nearly the whole screen: a deck read at postage-stamp
-                        // size tells nobody whether it is worth printing.
-                        dialogClassName="w-full max-w-[min(72rem,92vw)] h-[88dvh]"
+                        // As big as the deck needs and no bigger. The width is
+                        // the sheet's own (A4 plus the body's padding), because
+                        // anything wider is empty margin either side of it; the
+                        // height is left to the content, and the dialog's own
+                        // cap turns a long deck into a scroll rather than a
+                        // dialog taller than the screen.
+                        dialogClassName="w-full max-w-[min(53rem,92vw)]"
                         footer={
                           <ModalActions className="pt-0">
                             <Button

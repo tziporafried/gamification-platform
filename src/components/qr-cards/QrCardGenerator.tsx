@@ -268,9 +268,8 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
   )
 }
 
-/** A4 at 96dpi, and the page margin the print window sets on `body`. */
+/** A4's width, and the page margin the print window sets on `body`. */
 const SHEET_WIDTH = '210mm'
-const SHEET_MIN_HEIGHT = '297mm'
 const SHEET_PADDING = '10mm'
 
 /**
@@ -282,8 +281,9 @@ const SHEET_PADDING = '10mm'
  *
  * The sheet keeps its real width and is scaled down to whatever room it is
  * given, so what is on screen is the printout, just smaller. Length is left to
- * the content rather than split into pages: where the printer breaks depends on
- * its own margins, and drawing page edges here would be a guess.
+ * the content: a four-card deck is four cards of paper, not a page of it with
+ * an empty two thirds. Nor is it split into pages - where the printer breaks
+ * depends on its own margins, and drawing page edges here would be a guess.
  */
 function PrintSheet({ active, children }: { active: boolean; children: ReactNode }) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -318,13 +318,15 @@ function PrintSheet({ active, children }: { active: boolean; children: ReactNode
     // outer height is the scaled one - otherwise the scroller would offer the
     // full-size sheet's worth of empty space under it.
     <div ref={hostRef} className="overflow-hidden">
-      <div style={{ height: scaledHeight }} className="flex justify-center">
+      {/* items-start: the box is the scaled height, which is shorter than the
+          sheet it holds - stretching the sheet to it would squash the cards and
+          feed a new height straight back into the measurement below. */}
+      <div style={{ height: scaledHeight }} className="flex items-start justify-center">
         <div
           ref={sheetRef}
           className="rounded-sm shadow-card"
           style={{
             width: SHEET_WIDTH,
-            minHeight: SHEET_MIN_HEIGHT,
             padding: SHEET_PADDING,
             background: CARD_PALETTE.surface,
             transform: `scale(${scale})`,
