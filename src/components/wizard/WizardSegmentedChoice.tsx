@@ -4,8 +4,8 @@ import { cn } from '@/lib/utils'
 
 /**
  * The wizard's two-way choice control, first built for «איך תרצו לשחק?» in
- * StepGroups and now shared with the cards step: one bordered strip, a divider
- * down the middle and a tinted panel that slides to whichever half is chosen.
+ * StepGroups and now shared with the cards step: a recessed track carrying two
+ * segments, with a tinted panel that slides to whichever half is chosen.
  *
  * Two options exactly - the sliding indicator is positioned as halves, and a
  * third segment would have nowhere to go.
@@ -66,16 +66,26 @@ export function WizardSegmentedChoice<T extends string>({
       role="radiogroup"
       aria-label={ariaLabel}
       className={cn(
-        'relative grid grid-cols-2 items-stretch gap-0 border border-border bg-surface-elevated p-1',
-        'shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.06)]',
+        // A recessed track. The control used to be `bg-surface-elevated`, which
+        // is what the wizard panel behind it is made of - with nothing chosen
+        // yet there was no indicator either, so the whole thing read as one
+        // flat card holding two paragraphs rather than as a choice between
+        // them. The tint is what the segments sit on and stand out from.
+        'relative grid grid-cols-2 items-stretch gap-1 border border-border p-1',
+        'bg-[color-mix(in_srgb,var(--color-foreground)_5%,var(--color-surface))]',
+        'shadow-[inset_0_1px_3px_rgba(46,34,30,0.07)]',
         'transition-[box-shadow,border-color] duration-200 ease-out',
         compact ? 'rounded-xl' : 'rounded-2xl',
       )}
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute top-4 bottom-4 start-1/2 z-20 w-px -translate-x-1/2 bg-border/70"
-      />
+      {/* Only once a side has been chosen: until then the two raised segments
+          have their own edges, and a line in the gap between them is noise. */}
+      {hasSelection && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-4 bottom-4 start-1/2 z-20 w-px -translate-x-1/2 bg-border/70"
+        />
+      )}
       <div
         aria-hidden="true"
         className={cn(
@@ -84,8 +94,8 @@ export function WizardSegmentedChoice<T extends string>({
           'transition-[inset-inline-start,inset-inline-end,opacity,background-color] duration-200 ease-out',
           compact ? 'top-1.5 bottom-1.5' : 'top-2 bottom-2',
           !hasSelection && 'opacity-0',
-          selectedIndex === 0 && 'start-1.5 end-[calc(50%+1px)]',
-          selectedIndex === 1 && 'start-[calc(50%+1px)] end-1.5',
+          selectedIndex === 0 && 'start-1.5 end-[calc(50%+2px)]',
+          selectedIndex === 1 && 'start-[calc(50%+2px)] end-1.5',
         )}
       />
 
@@ -101,7 +111,7 @@ export function WizardSegmentedChoice<T extends string>({
             onClick={() => onSelect(optionValue)}
             className={cn(
               'group/segment relative z-10 flex h-full w-full min-w-0 cursor-pointer items-center justify-center text-center',
-              'rounded-xl transition-[color,background-color] duration-200 ease-out',
+              'rounded-xl transition-[color,background-color,box-shadow] duration-200 ease-out',
               // No alpha modifier on the ring colour: the palette is raw
               // `var(--color-*)` without an <alpha-value>, so `ring-tertiary/35`
               // is never generated and `ring-1` falls back to Tailwind's own
@@ -116,7 +126,15 @@ export function WizardSegmentedChoice<T extends string>({
                 ? SELECTED_SEGMENT_STYLES.title
                 : cn(
                     'text-foreground/85',
-                    'hover:bg-[color-mix(in_srgb,var(--color-foreground)_3%,var(--color-surface))]',
+                    hasSelection
+                      // One side is already tinted; the other stays flat on the
+                      // track so the choice is the only thing standing out.
+                      ? 'hover:bg-[color-mix(in_srgb,var(--color-foreground)_3%,var(--color-surface))]'
+                      // Nothing chosen: both sides are raised, and both offer
+                      // themselves. Lifting on hover rather than darkening -
+                      // these read as panels sitting on the track, and a panel
+                      // comes towards the cursor.
+                      : 'bg-surface shadow-[0_1px_2px_rgba(46,34,30,0.06)] hover:shadow-[0_3px_8px_rgba(46,34,30,0.10)]',
                   ),
             )}
           >
