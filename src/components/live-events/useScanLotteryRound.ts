@@ -28,12 +28,17 @@ import {
  * Once closed, nothing can change the answer again (a round is never
  * reopened), so the polling and the subscription both stop.
  *
- * A round left *open* is resumed, not replaced: refreshing the tab, or opening
- * the lottery on a second screen, must not start a second collection and split
- * the floor's scans between two pools. A round left *closed* is history and is
- * never fetched back - see fetchOpenScanLotteryRound for why that distinction
- * is the whole difference between a dock that offers "פתחו את ההגרלה" and one
- * that comes up holding a finished pool nobody asked for.
+ * Which round the screen picks up when it opens is the fiddly part, and the
+ * rule is: resume what is worth resuming, sweep away what is not.
+ *
+ *   closed          history. Never fetched back, so setting up a lottery
+ *                   always starts from nothing rather than from yesterday's
+ *                   finished pool. One closed during this session stays on
+ *                   screen because this hook still holds it.
+ *   open, has people  resumed. A refresh mid-collection must not lose them.
+ *   open, empty       swept. Only this screen can add a ticket, so a window
+ *                   left open by an earlier visit was never collecting - it
+ *                   was just making every later visit offer to "resume" it.
  */
 
 /** How often to re-count while collecting, if realtime never fires. */
@@ -115,6 +120,11 @@ export function useScanLotteryRound(eventId: string, enabled: boolean): ScanLott
   const roundId = round?.id ?? null
   const isOpen = round != null && round.closedAt == null
 
+  // The round this screen opened, if any. What separates "I am collecting"
+  // from "somebody left a window open here once" - see the empty-round sweep
+  // in the entries effect below.
+  const openedHereRef = useRef<string | null>(null)
+
   // Count the pool. Re-runs on every realtime insert while open, and once more
   // on close so the frozen answer is the one the draw uses.
   const [entriesTick, setEntriesTick] = useState(0)
@@ -131,6 +141,26 @@ export function useScanLotteryRound(eventId: string, enabled: boolean): ScanLott
         if (cancelled) return
         setParticipants(rows)
         setError(null)
+
+        // Litter, not a collection in progress.
+        //
+        // Only this screen can add a ticket, so a round left open by an
+        // earlier visit collects nothing while nobody is looking at it - it
+        // just sits there, and every later visit was offering to "resume" it.
+        // One with nobody in it has nothing to preserve, so it is closed on
+        // sight and the organizer gets a clean start. A round that does hold
+        // people is left alone: that one is worth resuming, and losing it to
+        // a refresh would be the worse mistake.
+        if (rows.length === 0 && isOpen && openedHereRef.current !== roundId) {
+          void closeScanLotteryRound(roundId)
+            .then(() => {
+              if (!cancelled) setRound(null)
+            })
+            .catch(() => {
+              // Leave it be: an empty round the organizer can close by hand is
+              // a smaller problem than an error over housekeeping.
+            })
+        }
       })
       .catch((err: unknown) => {
         if (cancelled) return
@@ -139,7 +169,7 @@ export function useScanLotteryRound(eventId: string, enabled: boolean): ScanLott
     return () => {
       cancelled = true
     }
-  }, [roundId, entriesTick, failWith])
+  }, [roundId, isOpen, entriesTick, failWith])
 
   // Live while collecting: realtime first, slow poll as the safety net. Both
   // stop the moment the round closes - the count cannot move after that.
@@ -169,6 +199,7 @@ export function useScanLotteryRound(eventId: string, enabled: boolean): ScanLott
     setError(null)
     try {
       const opened = await openScanLotteryRound(eventId, user?.id)
+      openedHereRef.current = opened.id
       setRound(opened)
       setParticipants(IDLE)
       recount()
