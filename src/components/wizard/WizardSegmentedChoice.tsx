@@ -91,6 +91,8 @@ export function WizardSegmentedChoice<T extends string>({
         className={cn(
           'pointer-events-none absolute rounded-xl',
           SELECTED_SEGMENT_STYLES.indicator,
+          // Sitting on the track like the segments do, lit from the same side.
+          'shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_2px_6px_-1px_rgba(46,34,30,0.12)]',
           'transition-[inset-inline-start,inset-inline-end,opacity,background-color] duration-200 ease-out',
           compact ? 'top-1.5 bottom-1.5' : 'top-2 bottom-2',
           !hasSelection && 'opacity-0',
@@ -111,7 +113,7 @@ export function WizardSegmentedChoice<T extends string>({
             onClick={() => onSelect(optionValue)}
             className={cn(
               'group/segment relative z-10 flex h-full w-full min-w-0 cursor-pointer items-center justify-center text-center',
-              'rounded-xl transition-[color,background-color,box-shadow] duration-200 ease-out',
+              'rounded-xl transition-[color,background-color,box-shadow,transform,border-color] duration-200 ease-out',
               // No alpha modifier on the ring colour: the palette is raw
               // `var(--color-*)` without an <alpha-value>, so `ring-tertiary/35`
               // is never generated and `ring-1` falls back to Tailwind's own
@@ -131,10 +133,18 @@ export function WizardSegmentedChoice<T extends string>({
                       // track so the choice is the only thing standing out.
                       ? 'hover:bg-[color-mix(in_srgb,var(--color-foreground)_3%,var(--color-surface))]'
                       // Nothing chosen: both sides are raised, and both offer
-                      // themselves. Lifting on hover rather than darkening -
-                      // these read as panels sitting on the track, and a panel
-                      // comes towards the cursor.
-                      : 'bg-surface shadow-[0_1px_2px_rgba(46,34,30,0.06)] hover:shadow-[0_3px_8px_rgba(46,34,30,0.10)]',
+                      // themselves. A lit top edge and a shadow that falls
+                      // below give them a thickness to press; the cursor lifts
+                      // one off the track and a click puts it back down, which
+                      // is the whole of what a button is.
+                      : cn(
+                          'border border-border/70 bg-surface',
+                          'shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_2px_rgba(46,34,30,0.05),0_5px_12px_-4px_rgba(46,34,30,0.12)]',
+                          'hover:-translate-y-0.5 hover:border-border',
+                          'hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_2px_4px_rgba(46,34,30,0.06),0_12px_22px_-8px_rgba(46,34,30,0.20)]',
+                          'active:translate-y-0 active:shadow-[inset_0_1px_3px_rgba(46,34,30,0.10)]',
+                          'motion-reduce:transform-none',
+                        ),
                   ),
             )}
           >
