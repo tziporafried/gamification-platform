@@ -66,15 +66,21 @@ export function WizardSegmentedChoice<T extends string>({
       role="radiogroup"
       aria-label={ariaLabel}
       className={cn(
-        // A recessed track. The control used to be `bg-surface-elevated`, which
-        // is what the wizard panel behind it is made of - with nothing chosen
-        // yet there was no indicator either, so the whole thing read as one
-        // flat card holding two paragraphs rather than as a choice between
-        // them. The tint is what the segments sit on and stand out from.
         'relative grid grid-cols-2 items-stretch gap-1 border border-border p-1',
-        'bg-[color-mix(in_srgb,var(--color-foreground)_5%,var(--color-surface))]',
-        'shadow-[inset_0_1px_3px_rgba(46,34,30,0.07)]',
-        'transition-[box-shadow,border-color] duration-200 ease-out',
+        hasSelection
+          // Answered: a card carrying the answer. Nothing here competes with
+          // the tinted panel - it is the only thing on the card with a colour.
+          ? 'bg-surface-elevated shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.06)]'
+          // Unanswered: a recessed track for the two segments to sit on. The
+          // control used to be `bg-surface-elevated` in both states, which is
+          // what the wizard panel behind it is made of - and with nothing
+          // chosen there is no tinted panel either, so it read as one flat card
+          // holding two paragraphs rather than as a choice between them.
+          : cn(
+              'bg-[color-mix(in_srgb,var(--color-foreground)_5%,var(--color-surface))]',
+              'shadow-[inset_0_1px_3px_rgba(46,34,30,0.07)]',
+            ),
+        'transition-[box-shadow,border-color,background-color] duration-200 ease-out',
         compact ? 'rounded-xl' : 'rounded-2xl',
       )}
     >
@@ -91,8 +97,6 @@ export function WizardSegmentedChoice<T extends string>({
         className={cn(
           'pointer-events-none absolute rounded-xl',
           SELECTED_SEGMENT_STYLES.indicator,
-          // Sitting on the track like the segments do, lit from the same side.
-          'shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_2px_6px_-1px_rgba(46,34,30,0.12)]',
           'transition-[inset-inline-start,inset-inline-end,opacity,background-color] duration-200 ease-out',
           compact ? 'top-1.5 bottom-1.5' : 'top-2 bottom-2',
           !hasSelection && 'opacity-0',
