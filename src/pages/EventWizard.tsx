@@ -9,6 +9,7 @@ import {
   setWizardPrefs,
   adjustWizardStep,
   normalizeWizardStep,
+  isTemplateSkippedStep,
   TEMPLATE_SKIP_STEPS,
 } from '@/lib/wizard'
 import { getTemplateByDraftEventId, fetchActivityTemplateById, seedTemplateDraftEvent, isDraftBehindTemplate } from '@/lib/templates'
@@ -21,6 +22,7 @@ import { StepParticipants } from '@/components/wizard/StepParticipants'
 import { StepGroups } from '@/components/wizard/StepGroups'
 import { StepTasks } from '@/components/wizard/StepTasks'
 import { StepRewards } from '@/components/wizard/StepRewards'
+import { StepCards } from '@/components/wizard/StepCards'
 import { StepReviewGenerate } from '@/components/wizard/StepReviewGenerate'
 import { TemplatePickerModal } from '@/components/wizard/TemplatePickerModal'
 import { EventFeaturesProvider } from '@/contexts/EventFeaturesContext'
@@ -47,7 +49,7 @@ export function EventWizard() {
 
   const currentStep = useMemo(() => {
     const n = parseInt(stepParam ?? '', 10)
-    return Number.isFinite(n) && n >= 1 && n <= 6 ? n : 1
+    return Number.isFinite(n) && n >= 1 && n <= WIZARD_STEPS.length ? n : 1
   }, [stepParam])
 
   const [visitedSteps, setVisitedSteps] = useState<Set<number>>(() => new Set([currentStep]))
@@ -168,7 +170,7 @@ export function EventWizard() {
 
   const goToStep = useCallback((s: number) => {
     const normalized = normalizeWizardStep(s, isTemplateMode)
-    const clamped = Math.max(1, Math.min(6, normalized))
+    const clamped = Math.max(1, Math.min(WIZARD_STEPS.length, normalized))
     if (id) setWizardPrefs(id, { lastStep: clamped })
     navigate(`/events/${id}/step/${clamped}`, { replace: true })
   }, [id, navigate, isTemplateMode])
@@ -184,9 +186,11 @@ export function EventWizard() {
     goToStep(toStep)
   }, [currentStep, goToStep, isTemplateMode])
 
+  // A template has no participants (3) and no cards to print (6); landing on
+  // either - by URL or by a stale lastStep - falls through to the next step.
   useEffect(() => {
-    if (!isTemplateMode || currentStep !== 3) return
-    goToStep(4)
+    if (!isTemplateMode || !isTemplateSkippedStep(currentStep)) return
+    goToStep(currentStep)
   }, [isTemplateMode, currentStep, goToStep])
 
   const showTemplatePicker =
@@ -306,13 +310,25 @@ export function EventWizard() {
         </WizardStepPanel>
       )}
 
-      {visitedSteps.has(6) && (
+      {!isTemplateMode && visitedSteps.has(6) && (
         <WizardStepPanel active={currentStep === 6}>
+          <StepCards
+            event={event}
+            isActive={currentStep === 6}
+            onEventUpdated={setEvent}
+            onNext={goNext}
+            onBack={goBack}
+          />
+        </WizardStepPanel>
+      )}
+
+      {visitedSteps.has(7) && (
+        <WizardStepPanel active={currentStep === 7}>
           <StepReviewGenerate
             event={event}
             counts={counts}
             groupType={groupType}
-            isActive={currentStep === 6}
+            isActive={currentStep === 7}
             onGoToStep={goToStep}
             onBack={goBack}
             templateMode={isTemplateMode ? {
