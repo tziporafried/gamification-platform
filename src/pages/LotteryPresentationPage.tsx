@@ -229,6 +229,7 @@ function LotteryBroadcast({ eventId: id, plan, status }: LotteryBroadcastProps) 
         config={session.config}
         participants={session.participants}
         isTrial={isTrial}
+        runId={runId}
         onClose={handleClose}
       />
     </>

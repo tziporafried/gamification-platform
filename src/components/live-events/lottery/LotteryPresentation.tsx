@@ -28,6 +28,8 @@ interface LotteryPresentationProps {
   config: LotteryConfig
   participants: EligibleParticipant[]
   isTrial: boolean
+  /** Identifies this run, so every draw in it records as one lottery. */
+  runId?: string
   onClose: () => void
 }
 
@@ -45,6 +47,7 @@ export function LotteryPresentation({
   config,
   participants,
   isTrial,
+  runId,
   onClose,
 }: LotteryPresentationProps) {
   const [stage, setStage] = useState<ShowStage>('intro')
@@ -137,13 +140,14 @@ export function LotteryPresentation({
       // already on screen and nothing here may hold up the ceremony.
       void recordLotteryDraw({
         config,
+        runId: runId ?? null,
         entrants: pool,
         winner: { id: winner.id, name: winner.name },
         drawIndex,
       })
     }
     setDrawnIds((ids) => (ids.includes(winner.id) ? ids : [...ids, winner.id]))
-  }, [winner, stop, playWinnerFanfare, config, participants.length, pool, drawIndex, isTrial])
+  }, [winner, stop, playWinnerFanfare, config, participants.length, pool, drawIndex, isTrial, runId])
 
   const handleUpgradeClick = useCallback(() => {
     trackCtaClick({

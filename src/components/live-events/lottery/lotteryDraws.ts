@@ -23,6 +23,11 @@ import { poolDescription } from './lotteryMode'
 
 export interface LotteryDrawRecord {
   config: LotteryConfig
+  /**
+   * Ties every draw made without leaving the screen into one lottery, so the
+   * history shows a list of winners rather than a stack of near-identical rows.
+   */
+  runId: string | null
   /** Everyone in the hat for this draw. */
   entrants: readonly EligibleParticipant[]
   winner: { id: string; name: string }
@@ -32,6 +37,7 @@ export interface LotteryDrawRecord {
 
 export async function recordLotteryDraw({
   config,
+  runId,
   entrants,
   winner,
   drawIndex,
@@ -41,6 +47,7 @@ export async function recordLotteryDraw({
       .from('lottery_draws')
       .insert({
         event_id: config.eventId,
+        run_id: runId,
         prize_name: config.prizeName,
         prize_icon: config.prizeIcon || null,
         eligibility_mode: config.eligibilityMode,

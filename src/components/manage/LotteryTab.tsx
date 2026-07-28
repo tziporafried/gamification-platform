@@ -4,7 +4,7 @@ import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Input } from '@/components/ui/Input'
-import { useEventLotteryDraws, type LotteryDraw } from '@/hooks/useEventLotteryDraws'
+import { useEventLotteryRuns, type LotteryRun } from '@/hooks/useEventLotteryRuns'
 import { ELIGIBILITY_LABELS } from '@/components/live-events/lottery/lotteryMode'
 import { formatTimeOfDay, getIsraelHour, getIsraelLocalDateString, getIsraelMinute } from '@/lib/israelTime'
 import { cn } from '@/lib/utils'
@@ -17,7 +17,7 @@ interface LotteryTabProps {
 interface DrawDay {
   dayKey: string
   label: string
-  draws: LotteryDraw[]
+  draws: LotteryRun[]
 }
 
 /** "היום" for the current Israel day, otherwise "12.7". */
@@ -27,7 +27,7 @@ function dayLabel(dayKey: string, todayKey: string): string {
   return `${Number(day)}.${Number(month)}`
 }
 
-function groupByDay(draws: LotteryDraw[], todayKey: string): DrawDay[] {
+function groupByDay(draws: LotteryRun[], todayKey: string): DrawDay[] {
   const days: DrawDay[] = []
   for (const draw of draws) {
     const dayKey = getIsraelLocalDateString(new Date(draw.drawnAt))
@@ -38,12 +38,12 @@ function groupByDay(draws: LotteryDraw[], todayKey: string): DrawDay[] {
   return days
 }
 
-function matches(draw: LotteryDraw, query: string): boolean {
+function matches(draw: LotteryRun, query: string): boolean {
   const q = query.trim().toLowerCase()
   if (!q) return true
   return (
-    draw.winnerName.toLowerCase().includes(q) ||
     draw.prizeName.toLowerCase().includes(q) ||
+    draw.winners.some((w) => w.name.toLowerCase().includes(q)) ||
     // Searching a name should find the lotteries somebody was *in*, not only
     // the ones they won - that is most of what "did they get a chance" means.
     draw.entrants.some((e) => e.name.toLowerCase().includes(q))
@@ -51,7 +51,7 @@ function matches(draw: LotteryDraw, query: string): boolean {
 }
 
 /** How the pool was chosen, in one phrase. */
-function poolSummary(draw: LotteryDraw): string {
+function poolSummary(draw: LotteryRun): string {
   if (draw.poolLabel?.trim()) return draw.poolLabel.trim()
   if (draw.eligibilityMode === 'min_points' && draw.minPoints != null) {
     return `מעל ${draw.minPoints.toLocaleString('he-IL')} נקודות`
@@ -64,17 +64,21 @@ function poolSummary(draw: LotteryDraw): string {
  * the running and who won - newest first, in the same plain table as the scans
  * and rewards tabs.
  *
+ * One row is one lottery, not one draw. Drawing again reaches for another name
+ * in the same lottery, so the names stack in the row rather than splitting it
+ * into two that read like the prize was handed out twice.
+ *
  * The entrants are the reason this exists rather than a winners list, so each
- * row opens onto them. They are collapsed by default because a hundred names
- * between two draws would bury the thing the manager scans for.
+ * row opens onto them - collapsed by default, because a hundred names between
+ * two lotteries would bury what the manager is scanning for.
  */
 export function LotteryTab({ eventId }: LotteryTabProps) {
-  const { draws, loading, error } = useEventLotteryDraws(eventId)
+  const { runs, loading, error } = useEventLotteryRuns(eventId)
   const [query, setQuery] = useState('')
   const [openDrawId, setOpenDrawId] = useState<string | null>(null)
 
   const todayKey = useMemo(() => getIsraelLocalDateString(new Date()), [])
-  const visible = useMemo(() => draws.filter((draw) => matches(draw, query)), [draws, query])
+  const visible = useMemo(() => runs.filter((run) => matches(run, query)), [runs, query])
   const days = useMemo(() => groupByDay(visible, todayKey), [visible, todayKey])
 
   if (loading) return <CenteredLoader />
@@ -83,7 +87,7 @@ export function LotteryTab({ eventId }: LotteryTabProps) {
     <div className="space-y-4">
       {error && <ErrorAlert message={error} />}
 
-      {draws.length === 0 ? (
+      {runs.length === 0 ? (
         <EmptyState
           icon={<PartyPopper size={28} aria-hidden="true" />}
           title="עדיין לא בוצעו הגרלות"
@@ -93,7 +97,7 @@ export function LotteryTab({ eventId }: LotteryTabProps) {
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className={cn('text-sm tabular-nums', theme.textMuted)}>
-              {draws.length === 1 ? 'הגרלה אחת' : `${draws.length} הגרלות`}
+              {runs.length === 1 ? 'הגרלה אחת' : `${runs.length} הגרלות`}
             </p>
             <div className="relative w-full sm:w-64">
               <Search
@@ -135,7 +139,7 @@ export function LotteryTab({ eventId }: LotteryTabProps) {
                       פרס
                     </th>
                     <th scope="col" className="w-[24%] px-2 py-2.5 text-start font-semibold">
-                      זוכה
+                      זוכים
                     </th>
                     <th scope="col" className="px-2 py-2.5 text-start font-semibold">
                       מי השתתף
@@ -183,17 +187,18 @@ export function LotteryTab({ eventId }: LotteryTabProps) {
   )
 }
 
-/** One draw, plus its entrants when opened. */
+/** One lottery: its winners, and its entrants when opened. */
 function DrawRows({
   draw,
   open,
   onToggle,
 }: {
-  draw: LotteryDraw
+  draw: LotteryRun
   open: boolean
   onToggle: () => void
 }) {
   const drawnAt = new Date(draw.drawnAt)
+  const wonNames = new Set(draw.winners.map((w) => w.name))
 
   return (
     <>
@@ -206,17 +211,26 @@ function DrawRows({
               </span>
             )}
             <span className="truncate text-[15px] font-medium">{draw.prizeName}</span>
-            {/* A redraw is a second name for the same prize - worth marking,
-                since two rows with one prize otherwise look like a mistake. */}
-            {draw.drawIndex > 0 && (
-              <span className={cn('shrink-0 text-[11px]', theme.textSubtle)}>
-                · הגרלה {draw.drawIndex + 1}
-              </span>
-            )}
           </span>
         </td>
 
-        <td className={cn('truncate px-2 py-3 font-medium', theme.text)}>{draw.winnerName}</td>
+        {/* One lottery, however many names it came out on. A redraw is the same
+            lottery reaching for another name, so it belongs in this list rather
+            than in a second row that reads like the prize was given twice. */}
+        <td className={cn('px-2 py-3', theme.text)}>
+          <ol className="space-y-0.5">
+            {draw.winners.map((winner, i) => (
+              <li key={`${winner.participantId ?? ''}-${winner.name}`} className="flex items-baseline gap-1.5">
+                {draw.winners.length > 1 && (
+                  <span className={cn('shrink-0 text-[11px] tabular-nums', theme.textSubtle)}>
+                    {i + 1}.
+                  </span>
+                )}
+                <span className="truncate font-medium">{winner.name}</span>
+              </li>
+            ))}
+          </ol>
+        </td>
 
         <td className="px-2 py-3">
           <button
@@ -264,7 +278,7 @@ function DrawRows({
                     'rounded-md px-2 py-1 text-[13px]',
                     theme.bgCard,
                     theme.textMuted,
-                    entrant.name === draw.winnerName && 'font-semibold text-primary',
+                    wonNames.has(entrant.name) && 'font-semibold text-primary',
                   )}
                 >
                   {entrant.name}

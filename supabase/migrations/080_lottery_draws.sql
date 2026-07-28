@@ -16,6 +16,12 @@
 -- prize (the first name was not in the room), and the manager wants both the
 -- fact that it happened and who each one landed on.
 --
+-- run_id is what ties those rows back together. Every draw made without
+-- leaving the lottery screen carries the same one, so the history can show a
+-- lottery once with its list of winners instead of as a stack of near-identical
+-- rows that only draw_index tells apart. It is the id of the run in the
+-- presentation URL, so it is stable across a refresh mid-ceremony.
+--
 -- Names are copied in beside the ids on purpose. A participant deleted from
 -- the game must not blank out the history of a prize they won, so the id
 -- carries ON DELETE SET NULL while the name stays as written on the night.
@@ -23,6 +29,10 @@
 CREATE TABLE IF NOT EXISTS lottery_draws (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id         UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+
+  -- Draws made in one visit to the lottery screen share this. NULL means a
+  -- draw recorded before the column existed, which stands on its own.
+  run_id           TEXT,
 
   -- What was given away.
   prize_name       TEXT NOT NULL,
@@ -56,8 +66,15 @@ CREATE TABLE IF NOT EXISTS lottery_draws (
   drawn_by         UUID REFERENCES auth.users(id) DEFAULT auth.uid()
 );
 
+-- Additive, for a database where the table above already exists: CREATE TABLE
+-- IF NOT EXISTS would skip the column entirely.
+ALTER TABLE lottery_draws ADD COLUMN IF NOT EXISTS run_id TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_lottery_draws_event
   ON lottery_draws(event_id, drawn_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_lottery_draws_run
+  ON lottery_draws(run_id);
 
 -- Who was in the running. One row per name in the hat at the moment of the
 -- draw - which is the question "מי השתתף" actually asks, and the only way to
