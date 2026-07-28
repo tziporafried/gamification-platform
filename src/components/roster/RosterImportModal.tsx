@@ -307,24 +307,17 @@ export function RosterImportModal({
         {stage === 'pick' && (
           <div className="space-y-4">
             {/*
-              One sentence where three numbered steps used to be. "Download the
-              sample" and "upload it back" were narrating the two buttons
-              directly underneath them - the only thing the operator could not
-              see for themselves is which columns to fill in, so that is all
-              that is left.
-            */}
-            <p className="text-sm leading-relaxed text-muted">
-              שורה לכל משתתף:{' '}
-              <strong className="font-semibold text-foreground">{FIRST_NAME_COLUMN_HEADER}</strong>,{' '}
-              <strong className="font-semibold text-foreground">{LAST_NAME_COLUMN_HEADER}</strong>,{' '}
-              <strong className="font-semibold text-foreground">{GROUP_COLUMN_HEADER}</strong>
-              {collectPhones && <> ו-<strong className="font-semibold text-foreground">{PHONE_COLUMN_HEADER}</strong></>}.
-              {' '}כל קבוצה בקובץ שאינה קיימת באירוע תיווצר
-              {groupsDisabled && ', והאירוע יעבור לתחרות בין קבוצות'}.
-              {collectPhones && ' מי שאין לו מספר תקין ייובא, אבל לא יקבל SMS.'}
-            </p>
+              The order is carried by the two controls being numbered, not by
+              prose describing them. Somebody who has done this before reads two
+              headings; somebody who has not is told the sequence without a
+              paragraph standing between them and the button it describes.
 
+              The one thing neither control can show is what belongs in the
+              file, so that sentence sits under step 2 - where filling it in is
+              what the step is asking for.
+            */}
             <div className="space-y-1.5">
+              <StepHeading index={1}>הורידו את קובץ הדוגמה</StepHeading>
               <Button
                 variant="outline"
                 className="w-full gap-2"
@@ -342,35 +335,49 @@ export function RosterImportModal({
               </button>
             </div>
 
-            {modeChoice}
+            <div className="space-y-2">
+              <StepHeading index={2}>מלאו אותו והעלו לכאן</StepHeading>
+              <p className="text-sm leading-relaxed text-muted">
+                שורה לכל משתתף:{' '}
+                <strong className="font-semibold text-foreground">{FIRST_NAME_COLUMN_HEADER}</strong>,{' '}
+                <strong className="font-semibold text-foreground">{LAST_NAME_COLUMN_HEADER}</strong>,{' '}
+                <strong className="font-semibold text-foreground">{GROUP_COLUMN_HEADER}</strong>
+                {collectPhones && <> ו-<strong className="font-semibold text-foreground">{PHONE_COLUMN_HEADER}</strong></>}.
+                {' '}מחקו את שורות הדוגמה. כל קבוצה בקובץ שאינה קיימת באירוע תיווצר
+                {groupsDisabled && ', והאירוע יעבור לתחרות בין קבוצות'}.
+                {collectPhones && ' מי שאין לו מספר תקין ייובא, אבל לא יקבל SMS.'}
+              </p>
 
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={handleDrop}
-              className={cn(
-                'flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-6 text-center transition-colors',
-                dragging ? 'border-accent bg-surface-elevated' : 'border-border bg-surface-elevated',
-              )}
-            >
-              <Upload size={24} strokeWidth={1.75} className="text-secondary-text" aria-hidden="true" />
-              <p className="text-sm text-muted">גררו לכאן קובץ Excel או CSV</p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={SPREADSHEET_ACCEPT}
-                onChange={handleInputChange}
-                className="sr-only"
-                aria-label="בחירת קובץ לייבוא"
-              />
-              <Button
-                size="sm"
-                className="gap-1.5"
-                loading={loadingExisting}
-                onClick={() => fileInputRef.current?.click()}
+              {modeChoice}
+
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+                className={cn(
+                  'flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-5 text-center transition-colors',
+                  dragging ? 'border-accent bg-surface-elevated' : 'border-border bg-surface-elevated',
+                )}
               >
-                בחירת קובץ
-              </Button>
+                <Upload size={22} strokeWidth={1.75} className="text-secondary-text" aria-hidden="true" />
+                <p className="text-sm text-muted">גררו לכאן את הקובץ המלא</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={SPREADSHEET_ACCEPT}
+                  onChange={handleInputChange}
+                  className="sr-only"
+                  aria-label="בחירת קובץ לייבוא"
+                />
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  loading={loadingExisting}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  בחירת קובץ
+                </Button>
+              </div>
             </div>
 
             {error && <Alert variant="error" message={error} />}
@@ -573,6 +580,28 @@ export function RosterImportModal({
 
       <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} eventId={eventId} />
     </>
+  )
+}
+
+/**
+ * The number of a step, sitting on the control that step is asking for.
+ *
+ * Deliberately not a list of instructions above the controls: an operator who
+ * has imported before reads two headings and acts, and one who has not learns
+ * the order from where the numbers are rather than from a paragraph they have
+ * to hold in their head while scrolling past it to reach the button.
+ */
+function StepHeading({ index, children }: { index: number; children: React.ReactNode }) {
+  return (
+    <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+      <span
+        aria-hidden="true"
+        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-[var(--color-on-primary)]"
+      >
+        {index}
+      </span>
+      {children}
+    </p>
   )
 }
 
