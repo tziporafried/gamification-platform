@@ -16,6 +16,7 @@ import { LotteryIntroShow, type IntroBeat, type IntroRuleCard } from './LotteryI
 import { GiftBoxLotteryDraw } from './GiftBoxLotteryDraw'
 import { pickRandomWinner } from './lotteryUtils'
 import { configLotteryMode, poolDescription } from './lotteryMode'
+import { recordLotteryDraw } from './lotteryDraws'
 import { recordLotteryWinner } from './lotteryWinners'
 
 type ShowStage = 'intro' | 'draw'
@@ -129,9 +130,20 @@ export function LotteryPresentation({
         prizeIcon: config.prizeIcon,
         wonAt: new Date().toISOString(),
       })
+      // The programme's own record: prize, pool, winner, how it was chosen.
+      // The line above stays as it is - that one is what the *next* draw reads
+      // to keep a winner out of the hat, and it must keep working on a machine
+      // that never reaches the server. Deliberately not awaited: the winner is
+      // already on screen and nothing here may hold up the ceremony.
+      void recordLotteryDraw({
+        config,
+        entrants: pool,
+        winner: { id: winner.id, name: winner.name },
+        drawIndex,
+      })
     }
     setDrawnIds((ids) => (ids.includes(winner.id) ? ids : [...ids, winner.id]))
-  }, [winner, stop, playWinnerFanfare, config, participants.length, drawIndex, isTrial])
+  }, [winner, stop, playWinnerFanfare, config, participants.length, pool, drawIndex, isTrial])
 
   const handleUpgradeClick = useCallback(() => {
     trackCtaClick({
