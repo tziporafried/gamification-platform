@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase'
 import { canPerformAction } from '@/lib/canPerformAction'
 import { countCompletionsOnIsraelDate } from '@/lib/israelTime'
 import { isTrialScanLimitError } from '@/lib/plans'
+import { notifyScanBySms } from '@/lib/scanSms'
+import { useSmsNotifications } from '@/lib/smsNotifications'
 import type { NewlyAwardedReward } from '@/types'
 
 export interface ScoreSubmitResult {
@@ -38,6 +40,10 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
   const { user } = useAuth()
   const [submitting, setSubmitting] = useState(false)
   const [lastError, setLastError] = useState<string | null>(null)
+  // Every scanning station in the app scores through this hook, so texting the
+  // participant belongs here and not in each of them - the kiosk and the lottery
+  // screen both get it without knowing the feature exists. Off outside a game.
+  const smsNotifications = useSmsNotifications()
 
   const submit = useCallback(async (participantCode: string, actionCode: string): Promise<ScoreSubmitResponse> => {
     setLastError(null)
@@ -217,6 +223,21 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
         // Reward check failed silently
       }
 
+      // Deliberately not awaited: the scan is saved and the celebration is the
+      // next thing that must happen. notifyScanBySms never rejects, and a text
+      // that does not go out is not a scan that failed.
+      if (smsNotifications) {
+        void notifyScanBySms({
+          eventId,
+          participantId: participant.id,
+          participantName: participant.name,
+          actionName: action.name,
+          points: action.points,
+          totalPoints: participantTotalPoints,
+          transactionId: insertedTx.id,
+        })
+      }
+
       setSubmitting(false)
       return {
         ok: true,
@@ -245,7 +266,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
       setSubmitting(false)
       return { ok: false, error: message }
     }
-  }, [eventId, user])
+  }, [eventId, user, smsNotifications])
 
   return { submit, submitting, lastError }
 }
