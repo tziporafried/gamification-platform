@@ -198,14 +198,11 @@ export function RosterImportModal({
   }
 
   /**
-   * The merge/replace choice, shown on the upload screen and again beside the
-   * preview.
-   *
-   * On the upload screen because that is where somebody arrives knowing which
-   * of the two they came to do, and a question that only appears after the file
-   * is parsed reads as though the decision had already been made for them. Kept
-   * on the preview because that is where the counts move when it changes, and
-   * where the last look before a destructive click happens.
+   * The merge/replace choice, asked once - on the upload screen, before a file
+   * is chosen. That is where somebody arrives already knowing which of the two
+   * they came to do, and a question that appears only after the file is parsed
+   * reads as though the decision had been made for them. The preview restates
+   * the answer in one line rather than asking again.
    *
    * Hidden while the roster is still loading, and on an event with nobody in it
    * yet: replacing an empty list and adding to an empty list are the same
@@ -309,47 +306,23 @@ export function RosterImportModal({
       >
         {stage === 'pick' && (
           <div className="space-y-4">
-            <ol className="space-y-2.5">
-              <ImportStep index={1} icon={<Download size={16} strokeWidth={2} />}>
-                הורידו את קובץ הדוגמה.
-              </ImportStep>
-              <ImportStep index={2} icon={<FileSpreadsheet size={16} strokeWidth={2} />}>
-                מלאו שורה לכל משתתף: <strong className="font-semibold text-foreground">{FIRST_NAME_COLUMN_HEADER}</strong>,
-                {' '}<strong className="font-semibold text-foreground">{LAST_NAME_COLUMN_HEADER}</strong>
-                {' '}ולצידם <strong className="font-semibold text-foreground">{GROUP_COLUMN_HEADER}</strong>
-                {collectPhones && <> ו-<strong className="font-semibold text-foreground">{PHONE_COLUMN_HEADER}</strong></>}.
-                מחקו את שורות הדוגמה.
-              </ImportStep>
-              <ImportStep index={3} icon={<Upload size={16} strokeWidth={2} />}>
-                העלו את הקובץ חזרה לכאן.
-              </ImportStep>
-            </ol>
-
-            <Alert variant="warning">
-              {context === 'groups' ? (
-                <>
-                  <strong className="font-semibold">שימו לב:</strong> אותו קובץ מגדיר גם את שמות המשתתפים.
-                  כל שורה היא משתתף אחד, והקבוצות נוצרות מעמודת "{GROUP_COLUMN_HEADER}".
-                </>
-              ) : (
-                <>
-                  <strong className="font-semibold">שימו לב:</strong> עמודת "{GROUP_COLUMN_HEADER}" יוצרת גם קבוצות.
-                  כל שם קבוצה שיופיע בקובץ ואינו קיים באירוע ייווצר כקבוצה חדשה, והמשתתפים ישויכו אליה.
-                  {groupsDisabled && ' אם תשאירו את העמודה ריקה, האירוע יישאר תחרות בין משתתפים.'}
-                </>
-              )}
-            </Alert>
-
-            {collectPhones && (
-              <div className={cn('flex items-start gap-2 p-3 text-sm leading-relaxed text-muted', theme.surfaceInset)}>
-                <Phone size={16} className="mt-0.5 shrink-0 text-secondary-text" aria-hidden="true" />
-                <p>
-                  <strong className="font-semibold text-foreground">{PHONE_COLUMN_HEADER}:</strong>{' '}
-                  המשחק שולח הודעות SMS, אז מלאו גם עמודת טלפון. אפשר לכתוב את המספר בכל צורה
-                  (050-1234567, ‎054 987 6543) ואנחנו נסדר אותו. משתתף בלי מספר תקין ייובא, אבל לא יקבל הודעות.
-                </p>
-              </div>
-            )}
+            {/*
+              One sentence where three numbered steps used to be. "Download the
+              sample" and "upload it back" were narrating the two buttons
+              directly underneath them - the only thing the operator could not
+              see for themselves is which columns to fill in, so that is all
+              that is left.
+            */}
+            <p className="text-sm leading-relaxed text-muted">
+              שורה לכל משתתף:{' '}
+              <strong className="font-semibold text-foreground">{FIRST_NAME_COLUMN_HEADER}</strong>,{' '}
+              <strong className="font-semibold text-foreground">{LAST_NAME_COLUMN_HEADER}</strong>,{' '}
+              <strong className="font-semibold text-foreground">{GROUP_COLUMN_HEADER}</strong>
+              {collectPhones && <> ו-<strong className="font-semibold text-foreground">{PHONE_COLUMN_HEADER}</strong></>}.
+              {' '}כל קבוצה בקובץ שאינה קיימת באירוע תיווצר
+              {groupsDisabled && ', והאירוע יעבור לתחרות בין קבוצות'}.
+              {collectPhones && ' מי שאין לו מספר תקין ייובא, אבל לא יקבל SMS.'}
+            </p>
 
             <div className="space-y-1.5">
               <Button
@@ -411,25 +384,37 @@ export function RosterImportModal({
               <span className="min-w-0 truncate">{fileName}</span>
             </p>
 
-            {modeChoice}
-
-            {mode === 'replace' && (
-              <Alert variant="error">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
-                  <div className="space-y-1">
-                    <p className="font-semibold">
-                      {existingScans > 0
-                        ? `הפעולה הזו מוחקת ${existingNames.length} משתתפים ו-${existingScans} סריקות, ואי אפשר לבטל אותה.`
-                        : `הפעולה הזו מוחקת ${existingNames.length} משתתפים, ואי אפשר לבטל אותה.`}
-                    </p>
-                    <p className="leading-relaxed">
-                      הקבוצות עצמן נשארות, וגם היסטוריית ההגרלות. אם רק חסרים לכם שמות -
-                      בחרו "הוספה לרשימה הקיימת".
-                    </p>
-                  </div>
-                </div>
-              </Alert>
+            {/*
+              The choice was already made and read in full on the upload screen.
+              Repeating the whole fieldset here, and then a warning saying the
+              same thing a third time, was most of what made this dialog long.
+              One line that states what is about to happen, and switches.
+            */}
+            {existingNames.length > 0 && (
+              <div
+                className={cn(
+                  'flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs',
+                  mode === 'replace' ? 'border-danger text-danger-text' : cn(theme.border, 'text-muted'),
+                )}
+              >
+                <span className="flex min-w-0 items-center gap-1.5">
+                  {mode === 'replace' && <AlertTriangle size={14} className="shrink-0" aria-hidden="true" />}
+                  <span className="min-w-0">
+                    {mode === 'replace'
+                      ? existingScans > 0
+                        ? `מחליף את הרשימה: ${existingNames.length} משתתפים ו-${existingScans} סריקות יימחקו`
+                        : `מחליף את הרשימה: ${existingNames.length} משתתפים יימחקו`
+                      : `מוסיף לרשימה הקיימת (${existingNames.length} משתתפים נשארים)`}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => chooseMode(mode === 'replace' ? 'merge' : 'replace')}
+                  className={cn('shrink-0 rounded px-1 font-semibold underline-offset-2 hover:underline', theme.focusRing)}
+                >
+                  שינוי
+                </button>
+              </div>
             )}
 
             <div className="grid grid-cols-3 gap-2">
@@ -591,29 +576,6 @@ export function RosterImportModal({
   )
 }
 
-function ImportStep({ index, icon, children }: { index: number; icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <li className="flex items-start gap-3">
-      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-elevated text-secondary-text">
-        {icon}
-      </span>
-      <span className="pt-1 text-sm leading-relaxed text-muted">
-        <span className="sr-only">שלב {index}: </span>
-        {children}
-      </span>
-    </li>
-  )
-}
-
-/**
- * One of the two things an uploaded file can do to the roster.
- *
- * A radio rather than a checkbox: "replace the list" and "add to the list" are
- * two operations, not one operation with a modifier, and a radio is what says
- * that both are always there to be read. A ticked box is also the easier thing
- * to leave ticked by accident, which is the wrong property for the choice that
- * deletes people.
- */
 function ModeOption({
   checked,
   onSelect,
