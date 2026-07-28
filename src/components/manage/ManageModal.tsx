@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Gift, ScanLine } from 'lucide-react'
+import { Gift, PartyPopper, ScanLine } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Tabs } from '@/components/ui/Tabs'
 import { ScansTab } from '@/components/manage/ScansTab'
 import { RewardsTab } from '@/components/manage/RewardsTab'
+import { LotteryTab } from '@/components/manage/LotteryTab'
 
 /**
  * The event's management popup: the running game's data, as opposed to the
@@ -23,6 +24,7 @@ interface ManageModalProps {
 const TABS = [
   { id: 'scans', label: 'סריקות', icon: <ScanLine size={15} aria-hidden="true" /> },
   { id: 'rewards', label: 'פרסים', icon: <Gift size={15} aria-hidden="true" /> },
+  { id: 'lottery', label: 'הגרלות', icon: <PartyPopper size={15} aria-hidden="true" /> },
 ]
 
 export function ManageModal({ eventId, eventName, isOpen, onClose }: ManageModalProps) {
@@ -48,6 +50,7 @@ export function ManageModal({ eventId, eventName, isOpen, onClose }: ManageModal
 
       {activeTab === 'scans' && <ScansTab eventId={eventId} />}
       {activeTab === 'rewards' && <RewardsTab eventId={eventId} />}
+      {activeTab === 'lottery' && <LotteryTab eventId={eventId} />}
     </Modal>
   )
 }
