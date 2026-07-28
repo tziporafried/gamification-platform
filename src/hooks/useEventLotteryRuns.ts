@@ -74,7 +74,8 @@ interface LotteryDraw {
 
 interface DrawQueryRow {
   id: string
-  run_id: string | null
+  /** Absent when read from a schema that predates the column. */
+  run_id?: string | null
   prize_name: string
   prize_icon: string | null
   eligibility_mode: string
@@ -88,16 +89,50 @@ interface DrawQueryRow {
   entrants: { participant_id: string | null; participant_name: string }[] | null
 }
 
-/**
- * True when the read failed because the migration has not run. Same contract
- * as lib/eventFeatures' version: a missing table means "no lotteries yet", not
- * an error to put in front of the operator.
- */
-function isMissingTableError(message: string | null | undefined): boolean {
-  if (!message) return false
-  const missing = message.includes('does not exist') || message.includes('schema cache')
-  return missing && message.includes('lottery_draw')
+interface QueryError {
+  code?: string
+  message?: string
 }
+
+/**
+ * The table itself is absent - the migration has never run. That is "no
+ * lotteries yet", not an error to put in front of the operator.
+ *
+ * 42P01 is postgres' undefined_table; PGRST205 is PostgREST failing to find it
+ * in its schema cache.
+ */
+function isMissingTable(error: QueryError): boolean {
+  if (error.code === '42P01' || error.code === 'PGRST205') return true
+  const message = error.message ?? ''
+  // Narrowed to the table's own wording. A column error mentions the table
+  // too, and reading it as "no lotteries yet" is exactly how a schema that had
+  // fallen a migration behind came out looking like an empty history.
+  return message.includes('lottery_draws') && message.includes('relation')
+}
+
+/**
+ * The table is there but a column this build asks for is not - the schema is a
+ * migration behind. Recoverable: everything except that column still exists,
+ * so the read is retried without it rather than reported as nothing.
+ *
+ * 42703 is undefined_column; PGRST204 is PostgREST's version.
+ */
+function isMissingColumn(error: QueryError): boolean {
+  if (error.code === '42703' || error.code === 'PGRST204') return true
+  const message = error.message ?? ''
+  return message.includes('column') && message.includes('does not exist')
+}
+
+const COLUMNS =
+  'id, run_id, prize_name, prize_icon, eligibility_mode, min_points, pool_label, entrant_count,' +
+  ' winner_name, winner_participant_id, draw_index, drawn_at,' +
+  ' entrants:lottery_draw_entrants(participant_id, participant_name)'
+
+/** The same list without run_id, for a schema that predates the grouping. */
+const COLUMNS_WITHOUT_RUN =
+  'id, prize_name, prize_icon, eligibility_mode, min_points, pool_label, entrant_count,' +
+  ' winner_name, winner_participant_id, draw_index, drawn_at,' +
+  ' entrants:lottery_draw_entrants(participant_id, participant_name)'
 
 /**
  * Collapses draws into lotteries.
@@ -161,21 +196,29 @@ export function useEventLotteryRuns(eventId: string | undefined) {
     if (!eventId) return
     setError(null)
 
-    const { data, error: queryError } = await supabase
-      .from('lottery_draws')
-      .select(
-        'id, run_id, prize_name, prize_icon, eligibility_mode, min_points, pool_label, entrant_count,' +
-          ' winner_name, winner_participant_id, draw_index, drawn_at,' +
-          ' entrants:lottery_draw_entrants(participant_id, participant_name)',
-      )
-      .eq('event_id', eventId)
-      .order('drawn_at', { ascending: false })
+    const read = (columns: string) =>
+      supabase
+        .from('lottery_draws')
+        .select(columns)
+        .eq('event_id', eventId)
+        .order('drawn_at', { ascending: false })
+
+    let { data, error: queryError } = await read(COLUMNS)
+
+    // A schema still missing run_id has every lottery this game ever ran; it
+    // just cannot group them. Showing the history ungrouped beats showing an
+    // operator that their lotteries have vanished.
+    if (queryError && isMissingColumn(queryError)) {
+      ;({ data, error: queryError } = await read(COLUMNS_WITHOUT_RUN))
+    }
 
     if (queryError) {
-      if (!isMissingTableError(queryError.message)) {
+      if (isMissingTable(queryError)) {
+        setDraws([])
+      } else {
         setError('טעינת ההגרלות נכשלה. נסו לרענן את הדף.')
+        setDraws([])
       }
-      setDraws([])
       setLoading(false)
       return
     }
@@ -183,7 +226,7 @@ export function useEventLotteryRuns(eventId: string | undefined) {
     const rows = (data ?? []) as unknown as DrawQueryRow[]
     const parsed: LotteryDraw[] = rows.map((row) => ({
       id: row.id,
-      runId: row.run_id,
+      runId: row.run_id ?? null,
       prizeName: row.prize_name,
       prizeIcon: row.prize_icon,
       eligibilityMode: row.eligibility_mode as LotteryEligibilityMode,
