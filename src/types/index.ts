@@ -16,7 +16,7 @@ export interface UserProfile {
 }
 
 export type StepStatus = 'not_started' | 'in_progress' | 'completed';
-export type WizardStepId = 'details' | 'groups' | 'participants' | 'tasks' | 'rewards' | 'cards' | 'review';
+export type WizardStepId = 'details' | 'groups' | 'participants' | 'tasks' | 'rewards' | 'sms' | 'cards' | 'review';
 export type GroupType = 'none' | 'custom';
 
 export interface WizardState {
@@ -25,6 +25,8 @@ export interface WizardState {
   participants: StepStatus;
   tasks: StepStatus;
   rewards: StepStatus;
+  /** Only ever seen by games with the `sms_notifications` flag. */
+  sms: StepStatus;
   cards: StepStatus;
   review: StepStatus;
 }
@@ -149,6 +151,13 @@ export interface Event {
   barcode_type: BarcodeType;
   /** null until the cards step is answered; printing falls back to 'combined'. */
   scan_mode: ScanMode | null;
+  /**
+   * The text this game sends after a scan, as its owner wrote it on the SMS
+   * step. null means nobody changed it and DEFAULT_SMS_TEMPLATE is in force -
+   * as it is on an older database where migration 082 has not run, where this
+   * is undefined. See src/lib/smsTemplate.ts.
+   */
+  sms_template?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -360,12 +369,17 @@ export interface ScannerBooking {
   updated_at: string;
 }
 
+// The numbers are the wizard's own, not a count of what any one run shows: a
+// template skips two of these and a game without the sms_notifications flag
+// skips the SMS step, so the numbering has gaps in it. What the operator sees
+// is a running 1..n, counted over the visible steps in WizardProgress.
 export const WIZARD_STEPS: { id: WizardStepId; label: string; step: number }[] = [
   { id: 'details', label: 'פרטי הפעילות', step: 1 },
   { id: 'groups', label: 'חלוקה לקבוצות', step: 2 },
   { id: 'participants', label: 'מי משתתף?', step: 3 },
   { id: 'tasks', label: 'צבירת נקודות', step: 4 },
   { id: 'rewards', label: 'פרסים', step: 5 },
-  { id: 'cards', label: 'מוכנים להתחיל?', step: 6 },
-  { id: 'review', label: 'מוכנים לצאת לדרך?', step: 7 },
+  { id: 'sms', label: 'הודעות SMS', step: 6 },
+  { id: 'cards', label: 'מוכנים להתחיל?', step: 7 },
+  { id: 'review', label: 'מוכנים לצאת לדרך?', step: 8 },
 ];

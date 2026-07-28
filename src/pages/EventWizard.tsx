@@ -22,10 +22,14 @@ import { StepParticipants } from '@/components/wizard/StepParticipants'
 import { StepGroups } from '@/components/wizard/StepGroups'
 import { StepTasks } from '@/components/wizard/StepTasks'
 import { StepRewards } from '@/components/wizard/StepRewards'
+import { StepSmsSettings } from '@/components/wizard/StepSmsSettings'
 import { StepCards } from '@/components/wizard/StepCards'
 import { StepTemplateSummary } from '@/components/wizard/StepTemplateSummary'
 import { TemplatePickerModal } from '@/components/wizard/TemplatePickerModal'
 import { EventFeaturesProvider } from '@/contexts/EventFeaturesContext'
+import { useEventFeatures } from '@/hooks/useEventFeatures'
+import { isFeatureOn } from '@/lib/eventFeatures'
+import { SMS_NOTIFICATIONS_FLAG } from '@/lib/smsNotifications'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import {
   trackWizardStepView,
@@ -62,6 +66,17 @@ export function EventWizard() {
 
   const { counts, loaded: countsLoaded, refresh: refreshCounts, patchCounts } = useEventCounts(id)
   const { wizardState, groupType, setGroupType } = useWizardState(event, counts, countsLoaded, isTemplateMode)
+
+  // Read straight from the hook rather than through the provider below, because
+  // this component renders that provider and so sits outside it. Both go
+  // through the same module-level cache, so this is the same answer and not a
+  // second query. A template is never sold anything, so it never asks.
+  const { features, loading: featuresLoading } = useEventFeatures(
+    isTemplateMode ? undefined : id,
+    event?.plan,
+  )
+  const smsEnabled = !isTemplateMode && !featuresLoading && isFeatureOn(features, SMS_NOTIFICATIONS_FLAG)
+  const scope = useMemo(() => ({ isTemplateMode, smsEnabled }), [isTemplateMode, smsEnabled])
 
   useTemplateAutoSync({
     enabled: isTemplateMode && draftSynced,
@@ -169,30 +184,36 @@ export function EventWizard() {
   }, [id, loading, event, stepParam, navigate, isTemplateMode])
 
   const goToStep = useCallback((s: number) => {
-    const normalized = normalizeWizardStep(s, isTemplateMode)
+    const normalized = normalizeWizardStep(s, scope)
     const clamped = Math.max(1, Math.min(WIZARD_STEPS.length, normalized))
     if (id) setWizardPrefs(id, { lastStep: clamped })
     navigate(`/events/${id}/step/${clamped}`, { replace: true })
-  }, [id, navigate, isTemplateMode])
+  }, [id, navigate, scope])
 
   const goNext = useCallback(() => {
     trackWizardStepComplete(currentStep, stepNameFor(currentStep))
-    goToStep(adjustWizardStep(currentStep, 'next', isTemplateMode))
-  }, [currentStep, goToStep, isTemplateMode])
+    goToStep(adjustWizardStep(currentStep, 'next', scope))
+  }, [currentStep, goToStep, scope])
 
   const goBack = useCallback(() => {
-    const toStep = adjustWizardStep(currentStep, 'prev', isTemplateMode)
+    const toStep = adjustWizardStep(currentStep, 'prev', scope)
     trackWizardBack(currentStep, toStep)
     goToStep(toStep)
-  }, [currentStep, goToStep, isTemplateMode])
+  }, [currentStep, goToStep, scope])
 
-  // Each mode skips steps the other one has - a template has no participants
-  // (3) and no cards (6), a game has no template summary (7). Landing on one of
-  // them, by URL or by a stale lastStep, falls through to the nearest real step.
+  // Not every run walks every step - a template has no participants (3), no SMS
+  // (6) and no cards (7); a game has no template summary (8), and no SMS step
+  // unless it was sold one. Landing on one of them, by URL or by a lastStep
+  // saved under different flags, falls through to the nearest real step.
+  //
+  // Held until the flags have arrived: until then every game reads as "no SMS",
+  // and acting on that would bounce somebody off step 6 of the game that does
+  // have it, half a second before we knew better.
   useEffect(() => {
-    if (!isSkippedWizardStep(currentStep, isTemplateMode)) return
+    if (featuresLoading) return
+    if (!isSkippedWizardStep(currentStep, scope)) return
     goToStep(currentStep)
-  }, [isTemplateMode, currentStep, goToStep])
+  }, [scope, featuresLoading, currentStep, goToStep])
 
   const showTemplatePicker =
     !isTemplateMode &&
@@ -229,7 +250,7 @@ export function EventWizard() {
       currentStep={currentStep}
       wizardState={wizardState}
       onStepClick={goToStep}
-      hiddenSteps={hiddenWizardSteps(isTemplateMode)}
+      hiddenSteps={hiddenWizardSteps(scope)}
       headerSuffix={isTemplateMode ? 'עריכת תבנית' : undefined}
     >
       <WizardStepPanel active={currentStep === 1}>
@@ -311,13 +332,24 @@ export function EventWizard() {
         </WizardStepPanel>
       )}
 
-      {!isTemplateMode && visitedSteps.has(6) && (
+      {smsEnabled && visitedSteps.has(6) && (
         <WizardStepPanel active={currentStep === 6}>
+          <StepSmsSettings
+            event={event}
+            onEventUpdated={setEvent}
+            onNext={goNext}
+            onBack={goBack}
+          />
+        </WizardStepPanel>
+      )}
+
+      {!isTemplateMode && visitedSteps.has(7) && (
+        <WizardStepPanel active={currentStep === 7}>
           <StepCards
             event={event}
             counts={counts}
             groupType={groupType}
-            isActive={currentStep === 6}
+            isActive={currentStep === 7}
             onEventUpdated={setEvent}
             onGoToStep={goToStep}
             onBack={goBack}
@@ -325,13 +357,13 @@ export function EventWizard() {
         </WizardStepPanel>
       )}
 
-      {isTemplateMode && visitedSteps.has(7) && (
-        <WizardStepPanel active={currentStep === 7}>
+      {isTemplateMode && visitedSteps.has(8) && (
+        <WizardStepPanel active={currentStep === 8}>
           <StepTemplateSummary
             event={event}
             counts={counts}
             groupType={groupType}
-            isActive={currentStep === 7}
+            isActive={currentStep === 8}
             templateId={editingTemplate!.id}
             onGoToStep={goToStep}
             onBack={goBack}

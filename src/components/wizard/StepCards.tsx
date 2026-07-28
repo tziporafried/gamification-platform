@@ -249,10 +249,12 @@ export function StepCards({
         subtitle={isDone
           ? undefined
           : 'לפני תחילת הפעילות, בחרו את סוג הכרטיסים, עברו עליהם במידת הצורך והדפיסו אותם.'}
-        currentStep={6}
-        // Six steps for a game: the template-only summary (7) is not part of
-        // this run, so this is the last one and the CTA carries no arrow.
-        totalSteps={6}
+        currentStep={7}
+        // The last step a game walks: the template-only summary (8) is not part
+        // of this run, so this is the end and the CTA carries no arrow. Saying
+        // it as its own number rather than a count keeps it true whether or not
+        // the game was sold the SMS step before it.
+        totalSteps={7}
         canAdvance={isDone ? !starting : (!!selected && !saving)}
         // The footer button is the wizard's one forward action throughout, so
         // the ending takes it over rather than growing a second CTA of its own.

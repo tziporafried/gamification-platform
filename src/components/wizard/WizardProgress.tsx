@@ -15,7 +15,11 @@ export function WizardProgress({ currentStep, wizardState, onStepClick, hiddenSt
 
   return (
     <nav className="hidden w-full items-start sm:flex" aria-label="Wizard progress">
-      {visibleSteps.map((step) => {
+      {visibleSteps.map((step, index) => {
+        // The badge counts the steps this run actually walks, not the step's
+        // own number: a template skips two of them and a game without SMS skips
+        // one, and "1 2 3 4 5 7" is a wizard that looks like it lost a step.
+        const shownNumber = index + 1
         const status = wizardState[step.id as WizardStepId]
         const isCurrent = step.step === currentStep
         const isCompleted = status === 'completed'
@@ -53,7 +57,7 @@ export function WizardProgress({ currentStep, wizardState, onStepClick, hiddenSt
                       'h-7 w-7 border border-border bg-surface text-[11px] text-muted/75',
                   )}
                 >
-                  {isCompleted && !isCurrent ? <Check size={12} strokeWidth={3} /> : step.step}
+                  {isCompleted && !isCurrent ? <Check size={12} strokeWidth={3} /> : shownNumber}
                 </span>
                 <span
                   className={cn(

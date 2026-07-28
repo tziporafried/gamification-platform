@@ -40,6 +40,10 @@ export function computeWizardState(event: Event, counts: EventCounts, groupType:
     participants: hasParticipants ? 'completed' : (groupsResolved || groupType === null ? 'in_progress' : 'not_started'),
     tasks: hasTasks ? 'completed' : (hasParticipants ? 'in_progress' : 'not_started'),
     rewards: hasRewards ? 'completed' : (hasTasks ? 'in_progress' : 'not_started'),
+    // Completed means the owner wrote their own message. An untouched step is
+    // not a broken game - it sends the default text - so nothing here ever
+    // blocks starting, and the step is hidden outright without the flag.
+    sms: event.sms_template ? 'completed' : (hasTasks ? 'in_progress' : 'not_started'),
     cards: event.scan_mode ? 'completed' : (hasTasks ? 'in_progress' : 'not_started'),
     review: hasTasks ? 'in_progress' : 'not_started',
   }
@@ -61,8 +65,10 @@ export function computeTemplateWizardState(
     participants: groupsResolved || groupType === null ? 'completed' : 'not_started',
     tasks: hasTasks ? 'completed' : (groupsResolved ? 'in_progress' : 'not_started'),
     rewards: hasRewards ? 'completed' : (hasTasks ? 'in_progress' : 'not_started'),
-    // A template has no participants to print cards for, so the cards step is
-    // hidden in template mode (TEMPLATE_SKIP_STEPS) and never has a status.
+    // A template has no participants - so nobody to print cards for and nobody
+    // to text. Both steps are hidden in template mode (TEMPLATE_SKIP_STEPS) and
+    // never have a status.
+    sms: 'not_started',
     cards: 'not_started',
     review: hasTasks && groupsResolved && hasDetails ? 'in_progress' : 'not_started',
   }
@@ -124,48 +130,64 @@ export function isTemplateReady(
 }
 
 /**
- * The two modes do not walk the same steps.
+ * Not every run walks every step.
  *
- * A template has nobody to enrol (3) and no cards to print (6), and ends on the
- * summary. A game ends on the cards step, where it is also started - the
- * summary (7) is the template's ending only, so a game never sees it.
+ * A template has nobody to enrol (3), no phones to text (6) and no cards to
+ * print (7), and ends on the summary. A game ends on the cards step, where it
+ * is also started - the summary (8) is the template's ending only, so a game
+ * never sees it - and sees the SMS step only if it was sold SMS.
+ *
+ * Which steps exist is the one question everything else here is derived from:
+ * the progress bar, the dots, and both directions of next/back. That is why
+ * these are computed from a set rather than written as jumps - the SMS step is
+ * the third thing that can move them, and a jump table with three inputs is
+ * a table nobody can read.
  */
-export const TEMPLATE_SKIP_STEPS = [3, 6] as const
-export const EVENT_SKIP_STEPS = [7] as const
+export const TEMPLATE_SKIP_STEPS = [3, 6, 7] as const
+export const EVENT_SKIP_STEPS = [8] as const
+/** Sold separately; hidden entirely for every game that did not buy it. */
+export const SMS_STEP = 6
 
-export function hiddenWizardSteps(isTemplateMode: boolean): number[] {
-  return isTemplateMode ? [...TEMPLATE_SKIP_STEPS] : [...EVENT_SKIP_STEPS]
+/** What this particular run of the wizard is. */
+export interface WizardScope {
+  isTemplateMode: boolean
+  /** The game has the `sms_notifications` flag. Always false for a template. */
+  smsEnabled?: boolean
 }
 
-export function isSkippedWizardStep(step: number, isTemplateMode: boolean): boolean {
-  return hiddenWizardSteps(isTemplateMode).includes(step)
+export function hiddenWizardSteps({ isTemplateMode, smsEnabled }: WizardScope): number[] {
+  if (isTemplateMode) return [...TEMPLATE_SKIP_STEPS]
+  return smsEnabled ? [...EVENT_SKIP_STEPS] : [...EVENT_SKIP_STEPS, SMS_STEP]
 }
 
-export function adjustWizardStep(step: number, direction: 'next' | 'prev', isTemplateMode: boolean): number {
-  if (!isTemplateMode) {
-    return direction === 'next' ? step + 1 : step - 1
-  }
+/** The steps this run actually walks, in order. */
+export function visibleWizardSteps(scope: WizardScope): number[] {
+  const hidden = hiddenWizardSteps(scope)
+  return WIZARD_STEPS.map((s) => s.step).filter((step) => !hidden.includes(step))
+}
 
+export function isSkippedWizardStep(step: number, scope: WizardScope): boolean {
+  return hiddenWizardSteps(scope).includes(step)
+}
+
+/** The step the footer's next / back buttons lead to. Ends stay put. */
+export function adjustWizardStep(step: number, direction: 'next' | 'prev', scope: WizardScope): number {
+  const steps = visibleWizardSteps(scope)
   if (direction === 'next') {
-    if (step === 2) return 4
-    if (step === 5) return 7
-    return step + 1
+    return steps.find((s) => s > step) ?? steps[steps.length - 1] ?? step
   }
-
-  if (step === 4) return 2
-  if (step === 7) return 5
-  return step - 1
+  return [...steps].reverse().find((s) => s < step) ?? steps[0] ?? step
 }
 
-/** The nearest step that exists in this mode, for a number that came from a URL. */
-export function normalizeWizardStep(step: number, isTemplateMode: boolean): number {
-  if (isTemplateMode) {
-    if (step === 3) return 4
-    if (step === 6) return 7
-    return step
-  }
-  if (step === 7) return 6
-  return step
+/**
+ * The nearest step that exists in this run, for a number that came from a URL
+ * or from a lastStep saved before the game was sold SMS. Falls forward, so
+ * landing on a hidden step carries on through the wizard rather than back.
+ */
+export function normalizeWizardStep(step: number, scope: WizardScope): number {
+  const steps = visibleWizardSteps(scope)
+  if (steps.includes(step)) return step
+  return steps.find((s) => s > step) ?? steps[steps.length - 1] ?? step
 }
 
 /**

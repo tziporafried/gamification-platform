@@ -65,7 +65,9 @@ export function StepTemplateSummary({
     <WizardStepWrapper
       title="סיכום התבנית"
       subtitle="השינויים נשמרים אוטומטית - בדקו שהכל נראה טוב"
-      currentStep={7}
+      currentStep={8}
+      // A template's last step, so the CTA is an ending and carries no arrow.
+      totalSteps={8}
       canAdvance={ready && !saving}
       onNext={handleFinish}
       onBack={onBack}
