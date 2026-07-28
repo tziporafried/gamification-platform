@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Plus, Users } from 'lucide-react'
+import { Phone, Plus, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
@@ -9,6 +9,8 @@ import { ScrollableListLayout } from '@/components/ui/ScrollableListLayout'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { RosterImportButton } from '@/components/roster/RosterImportButton'
 import { RosterImportModal } from '@/components/roster/RosterImportModal'
+import { useSmsNotifications } from '@/lib/smsNotifications'
+import { useImportCsv } from '@/lib/roster/importCsvFlag'
 import type { RosterImportResult } from '@/lib/roster/rosterImport'
 import { InlineAddParticipant } from './InlineAddParticipant'
 import { ParticipantRow } from './ParticipantRow'
@@ -54,6 +56,11 @@ export function ParticipantList({
   useEffect(() => { participantsRef.current = participants }, [participants])
 
   const hasGroups = groupType === 'custom'
+  // Building the roster from a file is sold with the organizations plan.
+  const canImport = useImportCsv()
+  // A game that texts its participants needs a number for each of them.
+  const collectPhone = useSmsNotifications()
+  const missingPhones = collectPhone ? participants.filter((p) => !p.phone).length : 0
 
   function revealAddInput() {
     setShowAddInput(true)
@@ -175,6 +182,10 @@ export function ParticipantList({
     onImported?.(result)
   }, [loadParticipants, loadGroups, onImported])
 
+  const handlePhoneSaved = useCallback((participantId: string, phone: string | null) => {
+    setParticipants((prev) => prev.map((p) => (p.id === participantId ? { ...p, phone } : p)))
+  }, [])
+
   const handleDelete = useCallback(async (id: string) => {
     const { error: deleteError } = await supabase.from('participants').delete().eq('id', id)
     if (deleteError) {
@@ -260,6 +271,8 @@ export function ParticipantList({
           onToggleGroup={handleToggleGroup}
           onSelectAllGroups={handleSelectAllGroups}
           onError={setError}
+          collectPhone={collectPhone}
+          onPhoneSaved={handlePhoneSaved}
         />
       ))}
     </div>
@@ -271,33 +284,40 @@ export function ParticipantList({
       onAdded={handleAdded}
       onPlanLimit={() => setUpgradeOpen(true)}
       nameInputRef={addInputRef}
+      collectPhone={collectPhone}
+      onError={setError}
     />
   )
 
   // The import sits above the add field so the input stays pinned to the bottom.
-  const footer = (
+  const footer = canImport ? (
     <div className="space-y-2">
       <RosterImportButton label="ייבוא רשימה מקובץ" onClick={() => setImportOpen(true)} />
       {addField}
     </div>
-  )
+  ) : addField
 
   const emptyState = (
     <EmptyState
       icon={<Users size={32} strokeWidth={1.75} />}
       title="אין משתתפים עדיין"
-      description="הוסיפו את המשתתף הראשון, או ייבאו רשימה מוכנה מקובץ."
+      // Not offered as an alternative to a game that has no import to offer.
+      description={canImport
+        ? 'הוסיפו את המשתתף הראשון, או ייבאו רשימה מוכנה מקובץ.'
+        : 'הוסיפו את המשתתף הראשון.'}
       action={
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
             <Plus size={16} className="shrink-0" strokeWidth={2.5} />
             הוסף משתתף
           </Button>
-          <RosterImportButton
-            variant="button"
-            label="ייבוא מקובץ"
-            onClick={() => setImportOpen(true)}
-          />
+          {canImport && (
+            <RosterImportButton
+              variant="button"
+              label="ייבוא מקובץ"
+              onClick={() => setImportOpen(true)}
+            />
+          )}
         </div>
       }
     />
@@ -306,6 +326,26 @@ export function ParticipantList({
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       {error && <ErrorAlert message={error} className="shrink-0 mb-4" />}
+
+      {/*
+        Imported rows are the only way to end up here without a number, and
+        those are exactly the participants no message will reach. Said as a
+        count rather than a block: the roster is still worth having, and the
+        gap is fixed one row at a time.
+      */}
+      {missingPhones > 0 && (
+        <div
+          role="status"
+          className="mb-2 flex shrink-0 items-center gap-2 rounded-lg border border-warning bg-surface-elevated px-3 py-2 text-xs leading-relaxed text-warning-text"
+        >
+          <Phone size={14} strokeWidth={2.25} className="shrink-0" aria-hidden="true" />
+          <span>
+            {missingPhones === 1
+              ? 'למשתתף אחד אין מספר טלפון, והוא לא יקבל הודעות SMS.'
+              : `ל-${missingPhones} משתתפים אין מספר טלפון, והם לא יקבלו הודעות SMS.`}
+          </span>
+        </div>
+      )}
 
       {participants.length === 0 ? (
         embedded ? (
@@ -344,14 +384,18 @@ export function ParticipantList({
 
       <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} eventId={eventId} />
 
-      <RosterImportModal
-        isOpen={importOpen}
-        onClose={() => setImportOpen(false)}
-        eventId={eventId}
-        context="participants"
-        groupsDisabled={!hasGroups}
-        onImported={handleImported}
-      />
+      {/* Not mounted at all without the flag: nothing can open it, and the
+          dialog reads the roster on mount for a preview nobody asked for. */}
+      {canImport && (
+        <RosterImportModal
+          isOpen={importOpen}
+          onClose={() => setImportOpen(false)}
+          eventId={eventId}
+          context="participants"
+          groupsDisabled={!hasGroups}
+          onImported={handleImported}
+        />
+      )}
     </div>
   )
 }

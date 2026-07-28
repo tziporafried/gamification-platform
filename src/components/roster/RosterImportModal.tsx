@@ -5,6 +5,7 @@ import {
   Download,
   FileSpreadsheet,
   Layers,
+  Phone,
   Upload,
   Users,
 } from 'lucide-react'
@@ -23,11 +24,14 @@ import { downloadRosterTemplate, downloadRosterTemplateCsv } from '@/lib/roster/
 import {
   GROUP_COLUMN_HEADER,
   NAME_COLUMN_HEADER,
+  PHONE_COLUMN_HEADER,
   planHasWork,
   planRosterImport,
   skippedRowCount,
   type RosterPlan,
 } from '@/lib/roster/rosterPlan'
+import { formatPhone } from '@/lib/phone'
+import { isMissingPhoneColumnError, MISSING_PHONE_COLUMN_MESSAGE, useSmsNotifications } from '@/lib/smsNotifications'
 import { importRoster, type RosterImportResult } from '@/lib/roster/rosterImport'
 import type { Group } from '@/types'
 
@@ -81,6 +85,8 @@ export function RosterImportModal({
   const [result, setResult] = useState<RosterImportResult | null>(null)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Only a game that texts its participants asks the file for a phone column.
+  const collectPhones = useSmsNotifications()
 
   useEffect(() => {
     if (!isOpen) return
@@ -129,10 +135,14 @@ export function RosterImportModal({
       return
     }
 
-    const next = planRosterImport(grid, {
-      participantNames: existingNames,
-      groupNames: existingGroups.map((group) => group.name),
-    })
+    const next = planRosterImport(
+      grid,
+      {
+        participantNames: existingNames,
+        groupNames: existingGroups.map((group) => group.name),
+      },
+      { collectPhones },
+    )
 
     if (next.error) {
       setError(PLAN_ERRORS[next.error])
@@ -142,7 +152,7 @@ export function RosterImportModal({
 
     setPlan(next)
     setStage('preview')
-  }, [existingNames, existingGroups, loadingExisting])
+  }, [existingNames, existingGroups, loadingExisting, collectPhones])
 
   function handleInputChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -188,9 +198,12 @@ export function RosterImportModal({
       setStage('done')
     } catch (err) {
       setStage('preview')
-      setError(err instanceof Error && err.message
-        ? `הייבוא נכשל: ${err.message}`
-        : 'הייבוא נכשל. נסו שוב.')
+      const message = err instanceof Error ? err.message : ''
+      if (isMissingPhoneColumnError(message)) {
+        setError(MISSING_PHONE_COLUMN_MESSAGE)
+        return
+      }
+      setError(message ? `הייבוא נכשל: ${message}` : 'הייבוא נכשל. נסו שוב.')
     }
   }
 
@@ -213,7 +226,8 @@ export function RosterImportModal({
               </ImportStep>
               <ImportStep index={2} icon={<FileSpreadsheet size={16} strokeWidth={2} />}>
                 מלאו שורה לכל משתתף: <strong className="font-semibold text-foreground">{NAME_COLUMN_HEADER}</strong>
-                {' '}ולצידו <strong className="font-semibold text-foreground">{GROUP_COLUMN_HEADER}</strong>.
+                {' '}ולצידו <strong className="font-semibold text-foreground">{GROUP_COLUMN_HEADER}</strong>
+                {collectPhones && <> ו-<strong className="font-semibold text-foreground">{PHONE_COLUMN_HEADER}</strong></>}.
                 מחקו את שורות הדוגמה.
               </ImportStep>
               <ImportStep index={3} icon={<Upload size={16} strokeWidth={2} />}>
@@ -236,14 +250,29 @@ export function RosterImportModal({
               )}
             </Alert>
 
+            {collectPhones && (
+              <div className={cn('flex items-start gap-2 p-3 text-sm leading-relaxed text-muted', theme.surfaceInset)}>
+                <Phone size={16} className="mt-0.5 shrink-0 text-secondary-text" aria-hidden="true" />
+                <p>
+                  <strong className="font-semibold text-foreground">{PHONE_COLUMN_HEADER}:</strong>{' '}
+                  המשחק שולח הודעות SMS, אז מלאו גם עמודת טלפון. אפשר לכתוב את המספר בכל צורה
+                  (050-1234567, ‎054 987 6543) ואנחנו נסדר אותו. משתתף בלי מספר תקין ייובא, אבל לא יקבל הודעות.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-1.5">
-              <Button variant="outline" className="w-full gap-2" onClick={() => downloadRosterTemplate()}>
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => downloadRosterTemplate({ includePhoneColumn: collectPhones })}
+              >
                 <Download size={16} strokeWidth={2.2} aria-hidden="true" />
                 הורדת קובץ לדוגמה
               </Button>
               <button
                 type="button"
-                onClick={() => downloadRosterTemplateCsv()}
+                onClick={() => downloadRosterTemplateCsv({ includePhoneColumn: collectPhones })}
                 className={cn('mx-auto block rounded px-1 text-[11px] text-muted underline-offset-2 hover:underline', theme.focusRing)}
               >
                 או הורדה כקובץ CSV
@@ -311,6 +340,25 @@ export function RosterImportModal({
               </Alert>
             )}
 
+            {collectPhones && plan.missingPhoneRows > 0 && (
+              <Alert variant="warning">
+                <div className="flex items-start gap-2">
+                  <Phone size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+                  <div className="space-y-1">
+                    <p className="font-semibold">
+                      {plan.missingPhoneRows === plan.entries.length
+                        ? 'לאף אחד מהמשתתפים בקובץ אין מספר טלפון תקין'
+                        : `${plan.missingPhoneRows} מהמשתתפים בקובץ בלי מספר טלפון תקין`}
+                    </p>
+                    <p className="leading-relaxed">
+                      הם ייובאו בכל מקרה, אבל לא יקבלו הודעות SMS עד שתשלימו להם מספר.
+                      בדקו שיש בקובץ עמודת "{PHONE_COLUMN_HEADER}" ושהמספרים בה ניידים.
+                    </p>
+                  </div>
+                </div>
+              </Alert>
+            )}
+
             {plan.alreadyInEventRows > 0 && (
               <p className="text-xs leading-relaxed text-muted">
                 {plan.alreadyInEventRows} שמות כבר קיימים באירוע ולא ייווצרו שוב
@@ -330,6 +378,9 @@ export function RosterImportModal({
                     <tr>
                       <th scope="col" className="px-3 py-2 font-semibold">{NAME_COLUMN_HEADER}</th>
                       <th scope="col" className="px-3 py-2 font-semibold">{GROUP_COLUMN_HEADER}</th>
+                      {collectPhones && (
+                        <th scope="col" className="px-3 py-2 font-semibold">{PHONE_COLUMN_HEADER}</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -337,6 +388,15 @@ export function RosterImportModal({
                       <tr key={`${entry.name}-${index}`} className="border-t border-border">
                         <td className="px-3 py-1.5 text-foreground">{entry.name}</td>
                         <td className="px-3 py-1.5 text-muted">{entry.group || 'כל הקבוצות'}</td>
+                        {collectPhones && (
+                          // The number as it will be stored, so a wrong column
+                          // or a number we could not read shows up here first.
+                          <td className="px-3 py-1.5 text-muted" dir="ltr">
+                            {entry.phone
+                              ? formatPhone(entry.phone)
+                              : <span className="text-danger-text">חסר</span>}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

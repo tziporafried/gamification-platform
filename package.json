@@ -14,7 +14,7 @@
     "test:finance": "node --import ./scripts/register-alias.mjs --test src/lib/financeSplit.test.ts",
     "test:features": "node --import ./scripts/register-alias.mjs --test src/lib/eventFeatures.test.ts",
     "test:lottery": "node --import ./scripts/register-alias.mjs --test src/components/live-events/lottery/*.test.ts",
-    "test:roster": "node --import ./scripts/register-alias.mjs --test src/lib/spreadsheet/*.test.ts src/lib/roster/*.test.ts"
+    "test:roster": "node --import ./scripts/register-alias.mjs --test src/lib/spreadsheet/*.test.ts src/lib/roster/*.test.ts src/lib/phone.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

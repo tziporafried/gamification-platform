@@ -13,6 +13,7 @@ import { CenteredLoader } from '@/components/ui/CenteredLoader'
 import { UpgradeModal } from '@/components/UpgradeModal'
 import { RosterImportButton } from '@/components/roster/RosterImportButton'
 import { RosterImportModal } from '@/components/roster/RosterImportModal'
+import { useImportCsv } from '@/lib/roster/importCsvFlag'
 import type { RosterImportResult } from '@/lib/roster/rosterImport'
 import { GroupForm } from './GroupForm'
 import { GroupCard } from './GroupCard'
@@ -84,6 +85,8 @@ export function GroupList({
   const listRef = useRef<HTMLDivElement>(null)
   const addInputRef = useRef<HTMLInputElement>(null)
   const prevCountRef = useRef(0)
+  // Building the roster from a file is sold with the organizations plan.
+  const canImport = useImportCsv()
 
   function revealAddInput() {
     setShowAddInput(true)
@@ -241,32 +244,40 @@ export function GroupList({
         <Plus size={16} className="shrink-0" strokeWidth={2.5} />
         הוסף קבוצה
       </Button>
-      <RosterImportButton
-        variant="button"
-        label="ייבוא מקובץ"
-        onClick={() => setImportOpen(true)}
-      />
+      {canImport && (
+        <RosterImportButton
+          variant="button"
+          label="ייבוא מקובץ"
+          onClick={() => setImportOpen(true)}
+        />
+      )}
     </div>
   )
 
-  const emptyStateDescription =
-    'הוסיפו את הקבוצה הראשונה, או ייבאו מקובץ את המשתתפים והקבוצות שלהם.'
+  // Not offered as an alternative to a game that has no import to offer.
+  const emptyStateDescription = canImport
+    ? 'הוסיפו את הקבוצה הראשונה, או ייבאו מקובץ את המשתתפים והקבוצות שלהם.'
+    : 'הוסיפו את הקבוצה הראשונה.'
+
+  const addField = (
+    <InlineAddGroup
+      eventId={eventId}
+      usedColors={usedGroupColors}
+      onAdded={handleAdded}
+      onPlanLimit={() => setUpgradeOpen(true)}
+    />
+  )
 
   // The import sits above the add field so the input stays pinned to the bottom.
-  const footer = (
+  const footer = canImport ? (
     <div className="space-y-2">
       <RosterImportButton
         label="ייבוא קבוצות ומשתתפים מקובץ"
         onClick={() => setImportOpen(true)}
       />
-      <InlineAddGroup
-        eventId={eventId}
-        usedColors={usedGroupColors}
-        onAdded={handleAdded}
-        onPlanLimit={() => setUpgradeOpen(true)}
-      />
+      {addField}
     </div>
-  )
+  ) : addField
 
   return (
     <div className={cn('flex h-full min-h-0 flex-1 flex-col', embedded && 'min-h-0')}>
@@ -423,13 +434,17 @@ export function GroupList({
 
       <UpgradeModal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} eventId={eventId} />
 
-      <RosterImportModal
-        isOpen={importOpen}
-        onClose={() => setImportOpen(false)}
-        eventId={eventId}
-        context="groups"
-        onImported={handleImported}
-      />
+      {/* Not mounted at all without the flag: nothing can open it, and the
+          dialog reads the roster on mount for a preview nobody asked for. */}
+      {canImport && (
+        <RosterImportModal
+          isOpen={importOpen}
+          onClose={() => setImportOpen(false)}
+          eventId={eventId}
+          context="groups"
+          onImported={handleImported}
+        />
+      )}
     </div>
   )
 }

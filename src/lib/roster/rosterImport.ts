@@ -66,7 +66,13 @@ export async function importRoster(
   options: ImportOptions = {},
 ): Promise<RosterImportResult> {
   const groups = colorsForNewGroups(plan.newGroups, usedColors)
-  const rows = plan.entries.map((entry) => ({ name: entry.name, group: entry.group }))
+  // A row with no phone omits the key rather than sending an empty one: the
+  // same rows the import always sent, which is what the pre-081 function reads.
+  const rows = plan.entries.map((entry) => (
+    entry.phone === ''
+      ? { name: entry.name, group: entry.group }
+      : { name: entry.name, group: entry.group, phone: entry.phone }
+  ))
   const skipped = plan.duplicateRows + plan.alreadyInEventRows + plan.invalidRows
 
   let participantsCreated = 0
@@ -143,7 +149,11 @@ async function importRosterFromClient(
   for (const entry of plan.entries) {
     const { data, error } = await supabase
       .from('participants')
-      .insert({ event_id: eventId, name: entry.name })
+      .insert(
+        entry.phone === ''
+          ? { event_id: eventId, name: entry.name }
+          : { event_id: eventId, name: entry.name, phone: entry.phone },
+      )
       .select('id')
       .single()
 

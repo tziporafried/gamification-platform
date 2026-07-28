@@ -3,19 +3,24 @@
 //
 // Node ESM wants explicit extensions; the app's `@/...` imports omit them, so we
 // also probe `.ts` / `.tsx` / index files the way a bundler would.
-import { access } from 'node:fs/promises'
+import { stat } from 'node:fs/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, resolve as resolvePath } from 'node:path'
 
 const SRC = resolvePath(process.cwd(), 'src')
 const CANDIDATE_SUFFIXES = ['', '.ts', '.tsx', '/index.ts', '/index.tsx']
 
+/**
+ * A candidate only counts when it is a file. The bare path (`''`) matches the
+ * directory itself for `@/lib/spreadsheet`, and handing that to Node fails with
+ * ERR_UNSUPPORTED_DIR_IMPORT instead of moving on to the `/index.ts` a bundler
+ * would have picked.
+ */
 async function firstThatExists(basePath) {
   for (const suffix of CANDIDATE_SUFFIXES) {
     const candidate = basePath + suffix
     try {
-      await access(candidate)
-      return candidate
+      if ((await stat(candidate)).isFile()) return candidate
     } catch {
       // keep looking
     }

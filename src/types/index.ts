@@ -158,6 +158,12 @@ export interface Participant {
   event_id: string;
   external_id: string;
   name: string;
+  /**
+   * E.164 (`+972501234567`), collected only by games with the
+   * `sms_notifications` flag. null everywhere else - and on an older database
+   * where migration 081 has not run, undefined. See src/lib/phone.ts.
+   */
+  phone?: string | null;
   created_at: string;
   updated_at: string;
 }

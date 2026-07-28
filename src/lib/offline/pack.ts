@@ -89,7 +89,13 @@ export async function buildEventPack(eventId: string): Promise<GamePack> {
       logo_url: logoDataUri,
     },
     groups: (groupsRes.data ?? []) as Group[],
-    participants: (participantsRes.data ?? []) as Participant[],
+    // Phone numbers stay out of the export. The offline player scans codes and
+    // shows names - it has no use for a number, and the pack is a file that
+    // gets copied onto a laptop and mailed around. A game that never collected
+    // one would carry an empty `phone` key for no reason either.
+    participants: ((participantsRes.data ?? []) as Participant[]).map(
+      ({ phone: _phone, ...participant }) => participant,
+    ),
     participantGroups: (participantGroupsRes.data ?? []).map((row) => ({
       participant_id: row.participant_id,
       group_id: row.group_id,
