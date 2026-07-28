@@ -91,8 +91,15 @@ export function StepSmsSettings({ event, onEventUpdated, onNext, onBack }: StepS
   async function handleNext() {
     if (error) return
 
-    const next = template.trim()
-    if (next === (event.sms_template ?? '')) {
+    // A message nobody changed is stored as NULL, not as a copy of the default.
+    // That is what the column means (see types/index.ts), and it is what lets a
+    // later change to DEFAULT_SMS_TEMPLATE reach the games that never edited
+    // theirs. Writing the text out here instead is what left every one of them
+    // greeting people by their whole name after the variable was split - the
+    // thing migration 084 had to go back and undo.
+    const typed = template.trim()
+    const next = typed === DEFAULT_SMS_TEMPLATE ? null : typed
+    if (next === (event.sms_template ?? null)) {
       onNext()
       return
     }
