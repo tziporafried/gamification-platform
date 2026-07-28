@@ -13,8 +13,11 @@ interface RosterImportButtonProps {
 
 export function RosterImportButton({ onClick, label, variant = 'row', className }: RosterImportButtonProps) {
   if (variant === 'button') {
+    // Filled, and first in the row. A game that was sold the import is a game
+    // with a list already written down somewhere - typing it in one name at a
+    // time is the fallback here, not the main way in.
     return (
-      <Button size="sm" variant="outline" className={cn('gap-1.5', className)} onClick={onClick}>
+      <Button size="sm" className={cn('gap-1.5', className)} onClick={onClick}>
         <FileSpreadsheet size={16} className="shrink-0" strokeWidth={2} aria-hidden="true" />
         {label}
       </Button>

@@ -240,10 +240,6 @@ export function GroupList({
 
   const emptyStateAction = (
     <div className="flex flex-wrap items-center justify-center gap-2">
-      <Button size="sm" className="gap-1.5" onClick={revealAddInput}>
-        <Plus size={16} className="shrink-0" strokeWidth={2.5} />
-        הוסף קבוצה
-      </Button>
       {canImport && (
         <RosterImportButton
           variant="button"
@@ -251,6 +247,17 @@ export function GroupList({
           onClick={() => setImportOpen(true)}
         />
       )}
+      {/* Second, and quieter, once there is an import to lead with - two filled
+          buttons side by side would say neither is the way in. */}
+      <Button
+        size="sm"
+        variant={canImport ? 'outline' : 'primary'}
+        className="gap-1.5"
+        onClick={revealAddInput}
+      >
+        <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+        הוסף קבוצה
+      </Button>
     </div>
   )
 
