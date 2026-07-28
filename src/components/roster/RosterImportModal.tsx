@@ -197,6 +197,47 @@ export function RosterImportModal({
     setError(replanned.error ? PLAN_ERRORS[replanned.error] : '')
   }
 
+  /**
+   * The merge/replace choice, shown on the upload screen and again beside the
+   * preview.
+   *
+   * On the upload screen because that is where somebody arrives knowing which
+   * of the two they came to do, and a question that only appears after the file
+   * is parsed reads as though the decision had already been made for them. Kept
+   * on the preview because that is where the counts move when it changes, and
+   * where the last look before a destructive click happens.
+   *
+   * Hidden while the roster is still loading, and on an event with nobody in it
+   * yet: replacing an empty list and adding to an empty list are the same
+   * import, and offering the choice would be inventing a distinction.
+   */
+  const modeChoice = !loadingExisting && existingNames.length > 0 ? (
+    <fieldset className={cn('rounded-xl border p-3', theme.border)}>
+      <legend className="px-1 text-xs font-semibold text-muted">
+        מה לעשות עם {existingNames.length} המשתתפים שכבר באירוע?
+      </legend>
+      <div className="space-y-2">
+        <ModeOption
+          checked={mode === 'merge'}
+          onSelect={() => chooseMode('merge')}
+          title="הוספה לרשימה הקיימת"
+          description="רק שמות חדשים ייווצרו. מי שכבר באירוע נשאר כמו שהוא, עם הנקודות שצבר."
+        />
+        <ModeOption
+          checked={mode === 'replace'}
+          onSelect={() => chooseMode('replace')}
+          danger
+          title="החלפת הרשימה בקובץ"
+          description={
+            existingScans > 0
+              ? `${existingNames.length} המשתתפים הקיימים יימחקו, ואיתם ${existingScans} הסריקות שנרשמו להם. הקובץ יהיה הרשימה כולה.`
+              : `${existingNames.length} המשתתפים הקיימים יימחקו, והקובץ יהיה הרשימה כולה.`
+          }
+        />
+      </div>
+    </fieldset>
+  ) : null
+
   function handleInputChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     // Reset so picking the same file again still fires a change event.
@@ -328,6 +369,8 @@ export function RosterImportModal({
               </button>
             </div>
 
+            {modeChoice}
+
             <div
               onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
               onDragLeave={() => setDragging(false)}
@@ -368,37 +411,7 @@ export function RosterImportModal({
               <span className="min-w-0 truncate">{fileName}</span>
             </p>
 
-            {/*
-              Offered only when there is an existing roster to do something to.
-              An empty event has nothing to replace, and asking the question
-              there would be asking about a distinction that does not exist yet.
-            */}
-            {existingNames.length > 0 && (
-              <fieldset className={cn('rounded-xl border p-3', theme.border)}>
-                <legend className="px-1 text-xs font-semibold text-muted">
-                  מה לעשות עם {existingNames.length} המשתתפים שכבר באירוע?
-                </legend>
-                <div className="space-y-2">
-                  <ModeOption
-                    checked={mode === 'merge'}
-                    onSelect={() => chooseMode('merge')}
-                    title="הוספה לרשימה הקיימת"
-                    description="רק שמות חדשים ייווצרו. מי שכבר באירוע נשאר כמו שהוא, עם הנקודות שצבר."
-                  />
-                  <ModeOption
-                    checked={mode === 'replace'}
-                    onSelect={() => chooseMode('replace')}
-                    danger
-                    title="החלפת הרשימה בקובץ"
-                    description={
-                      existingScans > 0
-                        ? `${existingNames.length} המשתתפים הקיימים יימחקו, ואיתם ${existingScans} הסריקות שנרשמו להם. הקובץ יהיה הרשימה כולה.`
-                        : `${existingNames.length} המשתתפים הקיימים יימחקו, והקובץ יהיה הרשימה כולה.`
-                    }
-                  />
-                </div>
-              </fieldset>
-            )}
+            {modeChoice}
 
             {mode === 'replace' && (
               <Alert variant="error">
