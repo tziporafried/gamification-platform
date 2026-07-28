@@ -40,8 +40,17 @@ export interface SmsVariable {
 
 /** The values one scan supplies. */
 export interface SmsValues {
-  /** Participant name. */
+  /** Participant name, first and family joined - what the app displays. */
   name: string
+  /**
+   * The given name on its own, for a message that greets somebody rather than
+   * addressing them. Falls back to the whole name, so a game whose roster was
+   * typed by hand - where there is no division to make - greets דנה כהן by her
+   * whole name rather than by nothing at all.
+   */
+  firstName: string
+  /** The family name, or '' when there is none. See migration 083. */
+  lastName: string
   /** The task that was scanned. */
   task: string
   /** Points this scan was worth. */
@@ -53,11 +62,23 @@ export interface SmsValues {
 }
 
 export const SMS_VARIABLES: readonly SmsVariable[] = [
-  { token: 'שם', label: 'שם המשתתף', sample: 'דנה', aliases: ['name', 'participant'] },
-  { token: 'משימה', label: 'שם המשימה', sample: 'ריצת בוקר', aliases: ['task', 'action'] },
-  { token: 'ניקוד', label: 'הניקוד שהתקבל', sample: '10', aliases: ['points', 'score'] },
-  { token: 'סהכ', label: 'סה"כ נקודות', sample: '120', aliases: ['סה"כ', 'סה״כ', 'total'] },
-  { token: 'פעילות', label: 'שם הפעילות', sample: 'ספורטתון קיץ', aliases: ['event', 'game'] },
+  // The name is offered in halves and only in halves. Whoever wants the whole
+  // of it writes `{{שם פרטי}} {{שם משפחה}}`, which costs one chip more and buys
+  // the thing a single joined variable could never do: greet somebody by name.
+  { token: 'שם פרטי', label: 'שם פרטי', sample: 'שרה', aliases: ['פרטי', 'first name', 'firstname', 'first', 'given name'] },
+  { token: 'שם משפחה', label: 'שם משפחה', sample: 'כהן', aliases: ['משפחה', 'last name', 'lastname', 'surname', 'family name'] },
+  // Labels are the tokens themselves, near enough. Splitting the name into two
+  // chips made six of them, and six sentences do not fit on one row - where a
+  // second row pushes the chips away from the box they write into. The token is
+  // on each chip's tooltip, and the preview underneath says what it fills in.
+  // The samples are deliberately not a sports day. The step is read by schools,
+  // companies and family events too, and an example that assumes one kind of
+  // customer is the fastest way to make the rest feel the product is not for
+  // them. A riddle at a בר מצווה is closer to the middle of who buys this.
+  { token: 'משימה', label: 'משימה', sample: 'פתרת חידה', aliases: ['task', 'action'] },
+  { token: 'ניקוד', label: 'ניקוד', sample: '10', aliases: ['points', 'score'] },
+  { token: 'סהכ', label: 'סה"כ', sample: '120', aliases: ['סה"כ', 'סה״כ', 'total'] },
+  { token: 'פעילות', label: 'פעילות', sample: 'ערב גיבוש חורף', aliases: ['event', 'game'] },
 ]
 
 /**
@@ -70,7 +91,7 @@ export const SMS_VARIABLES: readonly SmsVariable[] = [
  * written around `נקודות` says "1 נקודות" to whoever scores a single point.
  */
 export const DEFAULT_SMS_TEMPLATE =
-  'היי {{שם}}! קיבלת {{ניקוד}} נק\' על "{{משימה}}". סה"כ יש לך {{סהכ}} נק\'.'
+  'היי {{שם פרטי}}! קיבלת {{ניקוד}} נק\' על "{{משימה}}". סה"כ יש לך {{סהכ}} נק\'.'
 
 /** A template longer than this is refused - see validateSmsTemplate. */
 export const SMS_TEMPLATE_MAX_CHARS = 480
@@ -91,13 +112,33 @@ export function smsSegments(body: string): number {
   return Math.ceil(body.length / 67)
 }
 
-/** `{{ שם }}`, with whatever spacing somebody typed inside the braces. */
+/**
+ * The joined name, as the step used to offer it.
+ *
+ * Retired from the chips above - it is `{{שם פרטי}} {{שם משפחה}}` now - but it
+ * still fills in, because customers have templates saved with it and a variable
+ * that stops resolving does not fall back, it goes out in the message with its
+ * braces on. There is no chip for it, so nobody writes a new one.
+ */
+const LEGACY_FULL_NAME_TOKEN = 'שם'
+const LEGACY_FULL_NAME_ALIASES = ['שם', 'name', 'participant']
+
+/** `{{ שם פרטי }}`, with whatever spacing somebody typed inside the braces. */
 const TOKEN = /\{\{\s*([^{}]*?)\s*\}\}/g
 
+/**
+ * The same token with the horizontal space in front of it, so a variable that
+ * fills in as nothing takes its own separator with it - see renderSmsTemplate.
+ */
+const TOKEN_WITH_LEAD = /([^\S\n]*)\{\{\s*([^{}]*?)\s*\}\}/g
+
 /** Every spelling that resolves to a variable, mapped to its canonical token. */
-const BY_NAME = new Map<string, string>(
-  SMS_VARIABLES.flatMap((v) => [v.token, ...v.aliases].map((name) => [name.toLowerCase(), v.token])),
-)
+const BY_NAME = new Map<string, string>([
+  ...SMS_VARIABLES.flatMap((v) =>
+    [v.token, ...v.aliases].map((name): [string, string] => [name.toLowerCase(), v.token]),
+  ),
+  ...LEGACY_FULL_NAME_ALIASES.map((name): [string, string] => [name.toLowerCase(), LEGACY_FULL_NAME_TOKEN]),
+])
 
 function resolve(name: string): string | null {
   return BY_NAME.get(name.toLowerCase()) ?? null
@@ -107,6 +148,10 @@ function valueFor(token: string, values: SmsValues): string {
   switch (token) {
     case 'שם':
       return values.name
+    case 'שם פרטי':
+      return values.firstName || values.name
+    case 'שם משפחה':
+      return values.lastName
     case 'משימה':
       return values.task
     case 'ניקוד':
@@ -126,17 +171,30 @@ function valueFor(token: string, values: SmsValues): string {
  */
 export function renderSmsTemplate(template: string | null | undefined, values: SmsValues): string {
   const source = (template ?? '').trim() || DEFAULT_SMS_TEMPLATE
-  return source.replace(TOKEN, (whole, name: string) => {
+
+  const filled = source.replace(TOKEN_WITH_LEAD, (whole, lead: string, name: string) => {
     const token = resolve(name)
-    return token ? valueFor(token, values) : whole
+    if (!token) return whole
+    const value = valueFor(token, values)
+    // An empty value takes the space in front of it with it. `{{שם פרטי}}
+    // {{שם משפחה}}` is how the whole name is written now, and in a game whose
+    // roster was typed by hand there is no family name - so without this every
+    // message reads "היי דנה , קיבלת" and pays for the extra character too.
+    return value === '' ? '' : lead + value
   })
+
+  return filled.replace(/[^\S\n]+$/gm, '').trim()
 }
 
 /** The sample message the wizard step shows while the operator types. */
 export function previewSmsTemplate(template: string | null | undefined): string {
   const samples = Object.fromEntries(SMS_VARIABLES.map((v) => [v.token, v.sample]))
   return renderSmsTemplate(template, {
-    name: samples['שם'],
+    // The retired variable has no chip and so no sample of its own; a template
+    // still carrying it previews as the two halves it stands for.
+    name: `${samples['שם פרטי']} ${samples['שם משפחה']}`,
+    firstName: samples['שם פרטי'],
+    lastName: samples['שם משפחה'],
     task: samples['משימה'],
     points: Number(samples['ניקוד']),
     total: Number(samples['סהכ']),

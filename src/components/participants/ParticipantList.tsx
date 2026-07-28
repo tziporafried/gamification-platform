@@ -58,6 +58,17 @@ export function ParticipantList({
   const hasGroups = groupType === 'custom'
   // Building the roster from a file is sold with the organizations plan.
   const canImport = useImportCsv()
+  /**
+   * A game that imports its roster builds it from the file and only from the
+   * file, so the typed field is not offered alongside it.
+   *
+   * That is also what keeps the two halves of a name honest. An imported
+   * participant has a first name and a family name because the file had two
+   * columns; a typed one has only a first name, because a single field cannot
+   * say where a name divides and guessing gets בן אבו wrong. Offering both doors
+   * in the same game would put both kinds of row in the same roster.
+   */
+  const canAddManually = !canImport
   // A game that texts its participants needs a number for each of them.
   const collectPhone = useSmsNotifications()
   const missingPhones = collectPhone ? participants.filter((p) => !p.phone).length : 0
@@ -186,6 +197,16 @@ export function ParticipantList({
     setParticipants((prev) => prev.map((p) => (p.id === participantId ? { ...p, phone } : p)))
   }, [])
 
+  // The joined name is derived in the database, so it is rebuilt the same way
+  // here rather than re-fetched - one edit should not cost a round trip.
+  const handleNameSaved = useCallback((participantId: string, firstName: string, lastName: string) => {
+    setParticipants((prev) => prev.map((p) => (
+      p.id === participantId
+        ? { ...p, first_name: firstName, last_name: lastName, name: `${firstName} ${lastName}`.trim() }
+        : p
+    )))
+  }, [])
+
   const handleDelete = useCallback(async (id: string) => {
     const { error: deleteError } = await supabase.from('participants').delete().eq('id', id)
     if (deleteError) {
@@ -273,6 +294,8 @@ export function ParticipantList({
           onError={setError}
           collectPhone={collectPhone}
           onPhoneSaved={handlePhoneSaved}
+          splitName={canImport}
+          onNameSaved={handleNameSaved}
         />
       ))}
     </div>
@@ -289,42 +312,32 @@ export function ParticipantList({
     />
   )
 
-  // The import sits above the add field so the input stays pinned to the bottom.
-  const footer = canImport ? (
-    <div className="space-y-2">
-      <RosterImportButton label="ייבוא רשימה מקובץ" onClick={() => setImportOpen(true)} />
-      {addField}
-    </div>
-  ) : addField
+  const footer = canAddManually
+    ? addField
+    : <RosterImportButton label="ייבוא רשימה מקובץ" onClick={() => setImportOpen(true)} />
 
   const emptyState = (
     <EmptyState
       icon={<Users size={32} strokeWidth={1.75} />}
       title="אין משתתפים עדיין"
       // Not offered as an alternative to a game that has no import to offer.
-      description={canImport
-        ? 'הוסיפו את המשתתף הראשון, או ייבאו רשימה מוכנה מקובץ.'
-        : 'הוסיפו את המשתתף הראשון.'}
+      description={canAddManually
+        ? 'הוסיפו את המשתתף הראשון.'
+        : 'ייבאו את רשימת המשתתפים מקובץ.'}
       action={
         <div className="flex flex-wrap items-center justify-center gap-2">
-          {canImport && (
+          {canAddManually ? (
+            <Button size="sm" variant="primary" className="gap-1.5" onClick={revealAddInput}>
+              <Plus size={16} className="shrink-0" strokeWidth={2.5} />
+              הוסף משתתף
+            </Button>
+          ) : (
             <RosterImportButton
               variant="button"
               label="ייבוא מקובץ"
               onClick={() => setImportOpen(true)}
             />
           )}
-          {/* Second, and quieter, once there is an import to lead with - two
-              filled buttons side by side would say neither is the way in. */}
-          <Button
-            size="sm"
-            variant={canImport ? 'outline' : 'primary'}
-            className="gap-1.5"
-            onClick={revealAddInput}
-          >
-            <Plus size={16} className="shrink-0" strokeWidth={2.5} />
-            הוסף משתתף
-          </Button>
         </div>
       }
     />
@@ -359,7 +372,7 @@ export function ParticipantList({
           <ScrollableListLayout
             className="flex-1 min-h-0"
             listRef={listRef}
-            footer={showAddInput ? addField : undefined}
+            footer={canAddManually && showAddInput ? addField : undefined}
           >
             {emptyState}
           </ScrollableListLayout>
@@ -368,7 +381,7 @@ export function ParticipantList({
             <div ref={listRef} className="flex-1 overflow-y-auto min-h-0">
               {emptyState}
             </div>
-            {showAddInput && <div className="shrink-0">{addField}</div>}
+            {canAddManually && showAddInput && <div className="shrink-0">{addField}</div>}
           </div>
         )
       ) : embedded ? (

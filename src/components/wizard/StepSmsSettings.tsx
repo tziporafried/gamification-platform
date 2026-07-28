@@ -7,6 +7,8 @@ import { ChipButton } from '@/components/ui/ChipButton'
 import { Textarea } from '@/components/ui/Textarea'
 import { PanelCard } from '@/components/ui/PanelCard'
 import { supabase } from '@/lib/supabase'
+import { cn } from '@/lib/utils'
+import { theme } from '@/lib/theme'
 import {
   DEFAULT_SMS_TEMPLATE,
   SMS_VARIABLES,
@@ -20,6 +22,9 @@ import {
   isMissingSmsTemplateColumnError,
 } from '@/lib/smsNotifications'
 import type { Event } from '@/types'
+
+/** Ties the label above the box to the box, now that the two are rendered apart. */
+const TEMPLATE_FIELD_ID = 'sms-template'
 
 /**
  * The wizard step for games that were sold SMS.
@@ -132,9 +137,36 @@ export function StepSmsSettings({ event, onEventUpdated, onNext, onBack }: StepS
           {saveError && <Alert variant="error" message={saveError} />}
 
           <div>
+            {/*
+              The label row carries the reset, at the far end of it. It used to
+              sit among the variable chips, where it read as one more thing to
+              insert into the message rather than as the way out of having
+              edited it - and where a sixth chip could push it onto its own line.
+              The Textarea's own label is dropped for this, so the htmlFor here
+              is what keeps the control labelled.
+            */}
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label htmlFor={TEMPLATE_FIELD_ID} className={cn('block text-sm font-medium', theme.label)}>
+                נוסח ההודעה
+              </label>
+              {!isDefault && (
+                <button
+                  type="button"
+                  onClick={() => setTemplate(DEFAULT_SMS_TEMPLATE)}
+                  className={cn(
+                    'inline-flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-[11px] font-medium text-muted transition-colors hover:text-foreground',
+                    theme.focusRing,
+                  )}
+                >
+                  <RotateCcw size={12} strokeWidth={2.5} />
+                  חזרה לנוסח ברירת המחדל
+                </button>
+              )}
+            </div>
+
             <Textarea
               ref={textareaRef}
-              label="נוסח ההודעה"
+              id={TEMPLATE_FIELD_ID}
               rows={4}
               dir="rtl"
               value={template}
@@ -143,8 +175,11 @@ export function StepSmsSettings({ event, onEventUpdated, onNext, onBack }: StepS
               className="resize-none leading-relaxed"
             />
 
+            {/* Still wrapping rather than scrolling: on a narrow phone six chips
+                cannot fit however short their labels are, and a chip that has to
+                be scrolled to is a chip nobody finds. */}
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-medium text-muted">הוסיפו משתנה:</span>
+              <span className="shrink-0 text-[11px] font-medium text-muted">הוסיפו משתנה:</span>
               {SMS_VARIABLES.map((variable) => (
                 <ChipButton
                   key={variable.token}
@@ -154,16 +189,6 @@ export function StepSmsSettings({ event, onEventUpdated, onNext, onBack }: StepS
                   {variable.label}
                 </ChipButton>
               ))}
-              {!isDefault && (
-                <button
-                  type="button"
-                  onClick={() => setTemplate(DEFAULT_SMS_TEMPLATE)}
-                  className="mr-auto inline-flex items-center gap-1 px-1 py-1 text-[11px] font-medium text-muted transition-colors hover:text-foreground"
-                >
-                  <RotateCcw size={12} strokeWidth={2.5} />
-                  חזרה לנוסח ברירת המחדל
-                </button>
-              )}
             </div>
           </div>
 

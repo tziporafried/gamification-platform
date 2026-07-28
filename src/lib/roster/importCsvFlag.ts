@@ -24,3 +24,20 @@ export const IMPORT_CSV_FLAG = 'import_csv'
 export function useImportCsv(): boolean {
   return useFeatureFlag(IMPORT_CSV_FLAG)
 }
+
+/**
+ * True when a write failed only because migration 083 has not been applied to
+ * this database - the two halves of a name have nowhere to go.
+ *
+ * Only the games with this flag can reach it. Everywhere else a name is written
+ * whole into `name`, the column that has always been there, so a database
+ * missing 083 behaves exactly as it did before.
+ */
+export function isMissingNamePartsColumnError(message: string | null | undefined): boolean {
+  if (!message) return false
+  const missing = message.includes('does not exist') || message.includes('schema cache')
+  return missing && (message.includes('first_name') || message.includes('last_name'))
+}
+
+export const MISSING_NAME_PARTS_COLUMN_MESSAGE =
+  'פיצול שם פרטי ומשפחה עדיין לא מותקן במסד הנתונים. הריצו את APPLY_PARTICIPANT_NAME_PARTS.sql ונסו שוב.'

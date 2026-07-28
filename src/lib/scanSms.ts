@@ -111,22 +111,50 @@ export async function sendSms(request: SmsRequest): Promise<SmsDelivery> {
   return { sent: false, reason: 'NO_PROVIDER', body: request.body }
 }
 
+/** What this file needs about a participant that the scan did not already carry. */
+interface SmsParticipant {
+  phone: string | null
+  /** '' when migration 083 has not run - the message falls back to the whole name. */
+  firstName: string
+  lastName: string
+}
+
 /**
- * The participant's number, or null.
+ * The participant's number and the two halves of their name.
  *
  * Read on its own, after the scan is already saved, and never as part of the
- * scoring query - `phone` only exists once migration 081 has been applied, and a
- * database still missing it must fail to text somebody, not fail to score them.
+ * scoring query - these columns only exist once migrations 081 and 083 have been
+ * applied, and a database still missing them must fail to text somebody, not
+ * fail to score them.
+ *
+ * The name parts are asked for separately from the phone for the same reason
+ * one step down: a database with 081 but not 083 still has numbers to text, and
+ * one failed select should not silence it. It falls back to the phone alone,
+ * and `{{שם פרטי}}` resolves to the whole name the scan already carried.
  */
-async function participantPhone(participantId: string): Promise<string | null> {
+async function participantForSms(participantId: string): Promise<SmsParticipant> {
   const { data, error } = await supabase
+    .from('participants')
+    .select('phone, first_name, last_name')
+    .eq('id', participantId)
+    .maybeSingle()
+
+  if (!error) {
+    return {
+      phone: (data?.phone as string | null) ?? null,
+      firstName: (data?.first_name as string | null) ?? '',
+      lastName: (data?.last_name as string | null) ?? '',
+    }
+  }
+
+  const { data: phoneOnly, error: phoneError } = await supabase
     .from('participants')
     .select('phone')
     .eq('id', participantId)
     .maybeSingle()
 
-  if (error) return null
-  return (data?.phone as string | null) ?? null
+  if (phoneError) return { phone: null, firstName: '', lastName: '' }
+  return { phone: (phoneOnly?.phone as string | null) ?? null, firstName: '', lastName: '' }
 }
 
 /**
@@ -161,13 +189,15 @@ async function eventMessaging(eventId: string): Promise<{ template: string | nul
  */
 export async function notifyScanBySms(scan: ScanSms): Promise<SmsDelivery> {
   try {
-    const [phone, messaging] = await Promise.all([
-      participantPhone(scan.participantId),
+    const [participant, messaging] = await Promise.all([
+      participantForSms(scan.participantId),
       eventMessaging(scan.eventId),
     ])
 
     const body = renderSmsTemplate(messaging.template, {
       name: scan.participantName,
+      firstName: participant.firstName,
+      lastName: participant.lastName,
       task: scan.actionName,
       points: scan.points,
       total: scan.totalPoints,
@@ -176,8 +206,8 @@ export async function notifyScanBySms(scan: ScanSms): Promise<SmsDelivery> {
 
     // Ordinary, not exceptional: a roster imported before the game was sold SMS
     // has numbers for nobody, and those participants simply score in silence.
-    if (!phone) return { sent: false, reason: 'NO_PHONE', body }
-    return await sendSms({ to: phone, body, idempotencyKey: scan.transactionId })
+    if (!participant.phone) return { sent: false, reason: 'NO_PHONE', body }
+    return await sendSms({ to: participant.phone, body, idempotencyKey: scan.transactionId })
   } catch {
     return { sent: false, reason: 'LOOKUP_FAILED', body: '' }
   }

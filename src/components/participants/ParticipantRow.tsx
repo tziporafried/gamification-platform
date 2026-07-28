@@ -9,6 +9,7 @@ import { PARTICIPANT_CARD_GRADIENT, getParticipantIcon } from '@/lib/participant
 import { theme } from '@/lib/theme'
 import { formatPhone, parsePhone, PHONE_ERROR_LABELS } from '@/lib/phone'
 import { isMissingPhoneColumnError, MISSING_PHONE_COLUMN_MESSAGE } from '@/lib/smsNotifications'
+import { isMissingNamePartsColumnError, MISSING_NAME_PARTS_COLUMN_MESSAGE } from '@/lib/roster/importCsvFlag'
 import type { Group, ParticipantWithGroups } from '@/types'
 
 interface ParticipantRowProps {
@@ -22,7 +23,19 @@ interface ParticipantRowProps {
   /** The game texts its participants, so the row carries their number too. */
   collectPhone?: boolean
   onPhoneSaved?: (participantId: string, phone: string | null) => void
+  /**
+   * The game imported its roster, so these names came in already divided and
+   * the editor has to keep them that way. Editing through one field would put
+   * the whole name back into `first_name` and quietly drop every family name in
+   * the event - see the UPDATE branch of the trigger in migration 083.
+   */
+  splitName?: boolean
+  onNameSaved?: (participantId: string, firstName: string, lastName: string) => void
 }
+
+/** Shared by the one-field and two-field editors so both read as the same row. */
+const NAME_INPUT_CLASS =
+  'h-full w-full min-w-0 flex-1 bg-transparent text-sm font-semibold leading-5 tracking-tight text-[color-mix(in_srgb,var(--color-on-warning)_92%,#2e221e)] outline-none border-0 shadow-[inset_0_-1px_0_0_color-mix(in_srgb,var(--color-on-warning)_35%,transparent)] placeholder:font-normal placeholder:text-[color-mix(in_srgb,var(--color-on-warning)_45%,transparent)]'
 
 export const ParticipantRow = memo(function ParticipantRow({
   participant,
@@ -34,15 +47,22 @@ export const ParticipantRow = memo(function ParticipantRow({
   onError,
   collectPhone = false,
   onPhoneSaved,
+  splitName = false,
+  onNameSaved,
 }: ParticipantRowProps) {
   const [editingName, setEditingName] = useState(false)
   const [name, setName] = useState(participant.name)
+  // Only edited when splitName is on. Falling back to the whole name covers the
+  // row of a participant created before migration 083 backfilled the parts.
+  const [firstName, setFirstName] = useState(participant.first_name ?? participant.name)
+  const [lastName, setLastName] = useState(participant.last_name ?? '')
   const [saving, setSaving] = useState(false)
   const [touchRevealed, setTouchRevealed] = useState(false)
   const [editingPhone, setEditingPhone] = useState(false)
   const [phone, setPhone] = useState(formatPhone(participant.phone))
   const [savingPhone, setSavingPhone] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
+  const lastNameRef = useRef<HTMLInputElement>(null)
   const nameTextRef = useRef<HTMLButtonElement>(null)
   const phoneRef = useRef<HTMLInputElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -53,6 +73,10 @@ export const ParticipantRow = memo(function ParticipantRow({
   const isNameTruncated = useIsTruncated(nameTextRef, name)
 
   useEffect(() => { setName(participant.name) }, [participant.name])
+  useEffect(() => {
+    setFirstName(participant.first_name ?? participant.name)
+    setLastName(participant.last_name ?? '')
+  }, [participant.first_name, participant.last_name, participant.name])
   useEffect(() => { setPhone(formatPhone(participant.phone)) }, [participant.phone])
 
   useEffect(() => {
@@ -83,28 +107,89 @@ export const ParticipantRow = memo(function ParticipantRow({
 
   const showDeleteOnTouch = editingName || touchRevealed
 
+  function resetName() {
+    setName(participant.name)
+    setFirstName(participant.first_name ?? participant.name)
+    setLastName(participant.last_name ?? '')
+    setEditingName(false)
+  }
+
+  /**
+   * Two shapes of write, because there are two shapes of game.
+   *
+   * With the import, the parts are what the row edits and what it sends; the
+   * database derives the joined name from them. Without it, the single field
+   * writes `name` exactly as this row always has - the trigger takes the whole
+   * of it as the first name, which is the same rule the typed add field
+   * follows, and a database still missing migration 083 keeps working.
+   */
   async function saveName() {
+    if (splitName) return saveNameParts()
+
     const trimmed = name.trim()
     if (!trimmed || trimmed === participant.name) {
-      setName(participant.name)
-      setEditingName(false)
+      resetName()
       return
     }
     setSaving(true)
     const { error } = await supabase.from('participants').update({ name: trimmed }).eq('id', participant.id)
     setSaving(false)
     if (error) {
-      setName(participant.name)
-      setEditingName(false)
+      resetName()
       onError?.('שגיאה בעדכון שם המשתתף.')
       return
     }
     setEditingName(false)
   }
 
+  async function saveNameParts() {
+    const first = firstName.trim()
+    const last = lastName.trim()
+    // A family name alone is still somebody, so only a wholly empty pair is
+    // refused - it would leave the row with no name at all.
+    if (!first && !last) {
+      resetName()
+      return
+    }
+    if (first === (participant.first_name ?? '') && last === (participant.last_name ?? '')) {
+      resetName()
+      return
+    }
+
+    setSaving(true)
+    const { error } = await supabase
+      .from('participants')
+      .update({ first_name: first, last_name: last })
+      .eq('id', participant.id)
+    setSaving(false)
+
+    if (error) {
+      resetName()
+      onError?.(
+        isMissingNamePartsColumnError(error.message)
+          ? MISSING_NAME_PARTS_COLUMN_MESSAGE
+          : 'שגיאה בעדכון שם המשתתף.',
+      )
+      return
+    }
+
+    setName(`${first} ${last}`.trim())
+    setEditingName(false)
+    onNameSaved?.(participant.id, first, last)
+  }
+
   function handleNameKey(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') { e.preventDefault(); saveName() }
-    if (e.key === 'Escape') { setName(participant.name); setEditingName(false) }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      // Enter on the first name moves to the family name rather than saving
+      // half an edit, the same way the add field steps on to the phone.
+      if (splitName && document.activeElement === nameRef.current) {
+        lastNameRef.current?.focus()
+        return
+      }
+      saveName()
+    }
+    if (e.key === 'Escape') resetName()
   }
 
   /**
@@ -208,19 +293,41 @@ export const ParticipantRow = memo(function ParticipantRow({
               {/* Real button when idle - see GroupCard for the same fix. */}
               <div className="flex min-w-0 flex-1 items-center self-stretch cursor-text">
                 {editingName ? (
-                  <input
-                    ref={nameRef}
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    onKeyDown={handleNameKey}
-                    onBlur={saveName}
-                    className={cn(
-                      'h-full w-full min-w-0 bg-transparent text-sm font-semibold leading-5 tracking-tight text-[color-mix(in_srgb,var(--color-on-warning)_92%,#2e221e)] outline-none border-0 shadow-[inset_0_-1px_0_0_color-mix(in_srgb,var(--color-on-warning)_35%,transparent)]',
-                      saving && 'opacity-50',
+                  // Moving between the two halves is not the end of the edit, so
+                  // the save hangs off the group and fires only when focus
+                  // leaves it altogether.
+                  <div
+                    className="flex h-full min-w-0 flex-1 items-center gap-1.5"
+                    onBlur={(e) => {
+                      if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+                      saveName()
+                    }}
+                  >
+                    <input
+                      ref={nameRef}
+                      type="text"
+                      value={splitName ? firstName : name}
+                      onChange={(e) => (splitName ? setFirstName(e.target.value) : setName(e.target.value))}
+                      onKeyDown={handleNameKey}
+                      aria-label={splitName ? 'שם פרטי' : 'שם המשתתף'}
+                      placeholder={splitName ? 'שם פרטי' : undefined}
+                      className={cn(NAME_INPUT_CLASS, saving && 'opacity-50')}
+                      disabled={saving}
+                    />
+                    {splitName && (
+                      <input
+                        ref={lastNameRef}
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        onKeyDown={handleNameKey}
+                        aria-label="שם משפחה"
+                        placeholder="שם משפחה"
+                        className={cn(NAME_INPUT_CLASS, saving && 'opacity-50')}
+                        disabled={saving}
+                      />
                     )}
-                    disabled={saving}
-                  />
+                  </div>
                 ) : (
                   <button
                     ref={nameTextRef}

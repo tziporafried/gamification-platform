@@ -22,8 +22,9 @@ import { UpgradeModal } from '@/components/UpgradeModal'
 import { readSpreadsheetFile, SPREADSHEET_ACCEPT, SpreadsheetError } from '@/lib/spreadsheet'
 import { downloadRosterTemplate, downloadRosterTemplateCsv } from '@/lib/roster/rosterTemplate'
 import {
+  FIRST_NAME_COLUMN_HEADER,
   GROUP_COLUMN_HEADER,
-  NAME_COLUMN_HEADER,
+  LAST_NAME_COLUMN_HEADER,
   PHONE_COLUMN_HEADER,
   planHasWork,
   planRosterImport,
@@ -225,8 +226,9 @@ export function RosterImportModal({
                 הורידו את קובץ הדוגמה.
               </ImportStep>
               <ImportStep index={2} icon={<FileSpreadsheet size={16} strokeWidth={2} />}>
-                מלאו שורה לכל משתתף: <strong className="font-semibold text-foreground">{NAME_COLUMN_HEADER}</strong>
-                {' '}ולצידו <strong className="font-semibold text-foreground">{GROUP_COLUMN_HEADER}</strong>
+                מלאו שורה לכל משתתף: <strong className="font-semibold text-foreground">{FIRST_NAME_COLUMN_HEADER}</strong>,
+                {' '}<strong className="font-semibold text-foreground">{LAST_NAME_COLUMN_HEADER}</strong>
+                {' '}ולצידם <strong className="font-semibold text-foreground">{GROUP_COLUMN_HEADER}</strong>
                 {collectPhones && <> ו-<strong className="font-semibold text-foreground">{PHONE_COLUMN_HEADER}</strong></>}.
                 מחקו את שורות הדוגמה.
               </ImportStep>
@@ -376,7 +378,8 @@ export function RosterImportModal({
                 <table className="w-full text-right text-sm">
                   <thead className="bg-surface-elevated text-xs text-muted">
                     <tr>
-                      <th scope="col" className="px-3 py-2 font-semibold">{NAME_COLUMN_HEADER}</th>
+                      <th scope="col" className="px-3 py-2 font-semibold">{FIRST_NAME_COLUMN_HEADER}</th>
+                      <th scope="col" className="px-3 py-2 font-semibold">{LAST_NAME_COLUMN_HEADER}</th>
                       <th scope="col" className="px-3 py-2 font-semibold">{GROUP_COLUMN_HEADER}</th>
                       {collectPhones && (
                         <th scope="col" className="px-3 py-2 font-semibold">{PHONE_COLUMN_HEADER}</th>
@@ -386,7 +389,13 @@ export function RosterImportModal({
                   <tbody>
                     {plan.entries.slice(0, PREVIEW_ROWS).map((entry, index) => (
                       <tr key={`${entry.name}-${index}`} className="border-t border-border">
-                        <td className="px-3 py-1.5 text-foreground">{entry.name}</td>
+                        {/* Shown apart rather than joined: this table is where a
+                            file whose columns landed the wrong way round is
+                            caught, and joining them would hide exactly that. */}
+                        <td className="px-3 py-1.5 text-foreground">{entry.firstName}</td>
+                        <td className="px-3 py-1.5 text-foreground">
+                          {entry.lastName || <span className="text-muted">—</span>}
+                        </td>
                         <td className="px-3 py-1.5 text-muted">{entry.group || 'כל הקבוצות'}</td>
                         {collectPhones && (
                           // The number as it will be stored, so a wrong column

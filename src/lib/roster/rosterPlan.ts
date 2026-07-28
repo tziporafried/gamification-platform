@@ -1,25 +1,46 @@
 /**
  * Turns an uploaded spreadsheet into a reviewable import plan.
  *
- * The roster file is one row per participant: their name, and optionally the
- * group they belong to. That single shape serves both wizard steps - the
- * participants step creates the groups named in the file, and the groups step
- * creates the participants listed alongside them.
+ * The roster file is one row per participant: their first name, their family
+ * name, and optionally the group they belong to. That single shape serves both
+ * wizard steps - the participants step creates the groups named in the file,
+ * and the groups step creates the participants listed alongside them.
  *
- * A game with the `sms_notifications` flag adds a third column, the phone
- * number, normalised on the way in (src/lib/phone.ts). Without the flag the
- * column is not read at all, so a file that happens to carry one imports
- * exactly as it always did.
+ * The family name is a column of its own because the file already has one.
+ * Whoever exported this list from a school system or a payroll sheet had the
+ * two fields separately, and joining them on the way in throws away something
+ * the customer already owns. A roster typed by hand has no such column and
+ * never did: there the whole typed name is the first name, which is why
+ * `lastName` here is very often ''.
+ *
+ * Older files still import. A sheet headed only שם המשתתף maps that column to
+ * the first name, and a sheet with no header row at all is read in the original
+ * order - name, then group. A headerless file is the one case the split cannot
+ * be found in: nothing distinguishes a family-name column from a group column
+ * without a label, so those files keep the meaning they have always had rather
+ * than being re-read into a new one.
+ *
+ * A game with the `sms_notifications` flag adds the phone number, normalised on
+ * the way in (src/lib/phone.ts). Without the flag the column is not read at
+ * all, so a file that happens to carry one imports exactly as it always did.
  */
 
 import { parsePhone } from '@/lib/phone'
 
-export const NAME_COLUMN_HEADER = 'שם המשתתף'
+export const FIRST_NAME_COLUMN_HEADER = 'שם פרטי'
+export const LAST_NAME_COLUMN_HEADER = 'שם משפחה'
 export const GROUP_COLUMN_HEADER = 'קבוצה'
 export const PHONE_COLUMN_HEADER = 'טלפון'
 
 /** Header spellings accepted on upload, so a translated or renamed file still maps. */
-const NAME_HEADERS = ['שם המשתתף', 'שם משתתף', 'שם', 'שם מלא', 'משתתף', 'name', 'full name', 'participant', 'participant name']
+const FIRST_NAME_HEADERS = ['שם פרטי', 'פרטי', 'first name', 'firstname', 'given name', 'first']
+const LAST_NAME_HEADERS = ['שם משפחה', 'משפחה', 'שם המשפחה', 'last name', 'lastname', 'surname', 'family name', 'last']
+/**
+ * The single-column heading files were written with before the split. Still
+ * accepted, and mapped to the first name - the same thing the typed field does
+ * with a whole name, and the only reading that cannot invent a family name.
+ */
+const FULL_NAME_HEADERS = ['שם המשתתף', 'שם משתתף', 'שם', 'שם מלא', 'משתתף', 'name', 'full name', 'participant', 'participant name']
 const GROUP_HEADERS = ['קבוצה', 'שם הקבוצה', 'קבוצות', 'צוות', 'כיתה', 'group', 'group name', 'team', 'class']
 const PHONE_HEADERS = ['טלפון', 'מספר טלפון', 'טלפון נייד', 'נייד', 'סלולרי', 'phone', 'phone number', 'mobile', 'mobile number', 'cell', 'cellphone']
 
@@ -28,6 +49,13 @@ export const MAX_IMPORT_ROWS = 2000
 const MAX_NAME_LENGTH = 80
 
 export interface RosterEntry {
+  firstName: string
+  /** Empty when the file has no family-name column, or the cell was blank. */
+  lastName: string
+  /**
+   * The two parts joined - what the app displays everywhere, and the key every
+   * duplicate check in the import works on.
+   */
   name: string
   /** Group name from the file; empty means "no group stated". */
   group: string
@@ -84,7 +112,9 @@ function headerIndex(row: string[], headers: string[]): number {
 }
 
 interface ColumnLayout {
-  nameColumn: number
+  firstNameColumn: number
+  /** -1 when the file has no family-name column - an older or headerless file. */
+  lastNameColumn: number
   groupColumn: number
   /** -1 when the game does not collect phones. */
   phoneColumn: number
@@ -96,36 +126,58 @@ interface ColumnLayout {
  * header does not name falls to the first position nobody else claimed, which
  * for the template is where it already sits. Beyond the file's last column it
  * simply reads as empty, so a two-column file is not made to invent a third.
+ *
+ * The family name is the one column never filled in by position. A file that
+ * does not name it has not got one, and claiming a spare column for it would
+ * turn a group or a phone into somebody's surname.
  */
 function resolveColumns(grid: string[][], collectPhones: boolean): ColumnLayout {
   const first = grid[0] ?? []
-  const namedName = headerIndex(first, NAME_HEADERS)
+  const namedFirst = headerIndex(first, FIRST_NAME_HEADERS)
+  const namedLast = headerIndex(first, LAST_NAME_HEADERS)
+  const namedFull = headerIndex(first, FULL_NAME_HEADERS)
   const namedGroup = headerIndex(first, GROUP_HEADERS)
   const namedPhone = collectPhones ? headerIndex(first, PHONE_HEADERS) : -1
 
-  if (namedName >= 0 || namedGroup >= 0 || namedPhone >= 0) {
-    const taken = new Set([namedName, namedGroup, namedPhone].filter((index) => index >= 0))
+  if (namedFirst >= 0 || namedLast >= 0 || namedFull >= 0 || namedGroup >= 0 || namedPhone >= 0) {
+    const taken = new Set(
+      [namedFirst, namedLast, namedFull, namedGroup, namedPhone].filter((index) => index >= 0),
+    )
     const nextFree = () => {
       let index = 0
       while (taken.has(index)) index++
       taken.add(index)
       return index
     }
+    // A file headed both שם פרטי and שם המשתתף is odd, but the more specific
+    // label is the one that means "given name".
+    const nameColumn = namedFirst >= 0 ? namedFirst : namedFull >= 0 ? namedFull : nextFree()
     return {
-      nameColumn: namedName >= 0 ? namedName : nextFree(),
+      firstNameColumn: nameColumn,
+      lastNameColumn: namedLast,
       groupColumn: namedGroup >= 0 ? namedGroup : nextFree(),
       phoneColumn: collectPhones ? (namedPhone >= 0 ? namedPhone : nextFree()) : -1,
       hasHeader: true,
     }
   }
 
-  if (!collectPhones) return { nameColumn: 0, groupColumn: 1, phoneColumn: -1, hasHeader: false }
+  // No header row: the original layout, name then group. See the note at the
+  // top of this file for why the split is not guessed at here.
+  if (!collectPhones) {
+    return { firstNameColumn: 0, lastNameColumn: -1, groupColumn: 1, phoneColumn: -1, hasHeader: false }
+  }
 
   // No header, and one of the two columns after the name holds phone numbers.
   // Worth reading them rather than trusting the template order: a phone column
   // mistaken for the group column would create a group per participant.
   const phoneColumn = looksLikePhones(grid, 2) ? 2 : looksLikePhones(grid, 1) ? 1 : 2
-  return { nameColumn: 0, groupColumn: phoneColumn === 1 ? 2 : 1, phoneColumn, hasHeader: false }
+  return {
+    firstNameColumn: 0,
+    lastNameColumn: -1,
+    groupColumn: phoneColumn === 1 ? 2 : 1,
+    phoneColumn,
+    hasHeader: false,
+  }
 }
 
 /** A column is phone numbers when the cells that have anything in them parse as one. */
@@ -166,15 +218,24 @@ export function planRosterImport(
     error: null,
   }
 
-  const { nameColumn, groupColumn, phoneColumn, hasHeader } = resolveColumns(grid, collectPhones)
+  const { firstNameColumn, lastNameColumn, groupColumn, phoneColumn, hasHeader } =
+    resolveColumns(grid, collectPhones)
   const dataRows = (hasHeader ? grid.slice(1) : grid)
-    .map((row) => ({
-      name: normalize(row[nameColumn] ?? ''),
-      group: normalize(row[groupColumn] ?? ''),
-      // An unreadable number is dropped rather than stored as typed: half a
-      // number in the column reads as done, and is found out at send time.
-      phone: phoneColumn < 0 ? '' : parsePhone(row[phoneColumn] ?? '').e164 ?? '',
-    }))
+    .map((row) => {
+      const firstName = normalize(row[firstNameColumn] ?? '')
+      const lastName = lastNameColumn < 0 ? '' : normalize(row[lastNameColumn] ?? '')
+      return {
+        firstName,
+        lastName,
+        // A row that filled in only the family name is still a person, and
+        // joining is what puts them under the one name the app displays.
+        name: normalize(`${firstName} ${lastName}`),
+        group: normalize(row[groupColumn] ?? ''),
+        // An unreadable number is dropped rather than stored as typed: half a
+        // number in the column reads as done, and is found out at send time.
+        phone: phoneColumn < 0 ? '' : parsePhone(row[phoneColumn] ?? '').e164 ?? '',
+      }
+    })
     .filter((row) => row.name !== '' || row.group !== '')
 
   if (dataRows.length === 0) return { ...empty, hasHeader, error: 'EMPTY_FILE' }
@@ -233,7 +294,13 @@ export function planRosterImport(
     // maps onto the existing group instead of creating a near-duplicate.
     const groupMatch = row.group === '' ? '' : existingGroupsByKey.get(nameKey(row.group)) ?? row.group
     if (collectPhones && row.phone === '') missingPhoneRows++
-    entries.push({ name: row.name, group: groupMatch, phone: row.phone })
+    entries.push({
+      firstName: row.firstName,
+      lastName: row.lastName,
+      name: row.name,
+      group: groupMatch,
+      phone: row.phone,
+    })
   }
 
   return {

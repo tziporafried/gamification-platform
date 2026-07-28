@@ -4,6 +4,20 @@ import { planRosterImport, skippedRowCount } from './rosterPlan.ts'
 
 const NONE = { participantNames: [], groupNames: [] }
 
+/**
+ * The entry a file without a שם משפחה column produces: the whole name lands in
+ * the first name and the family name is empty, which is the same rule the typed
+ * add field follows. Every expectation below written this way is a file from
+ * before the split, asserting it still reads exactly as it used to.
+ */
+const whole = (name: string, group = '', phone = '') => ({
+  firstName: name,
+  lastName: '',
+  name,
+  group,
+  phone,
+})
+
 test('reads the template layout: header row, name then group', () => {
   const plan = planRosterImport(
     [['שם המשתתף', 'קבוצה'], ['דנה כהן', 'אדומים'], ['יוסי לוי', 'כחולים']],
@@ -12,8 +26,8 @@ test('reads the template layout: header row, name then group', () => {
 
   assert.equal(plan.hasHeader, true)
   assert.deepEqual(plan.entries, [
-    { name: 'דנה כהן', group: 'אדומים', phone: '' },
-    { name: 'יוסי לוי', group: 'כחולים', phone: '' },
+    whole('דנה כהן', 'אדומים', ''),
+    whole('יוסי לוי', 'כחולים', ''),
   ])
   assert.deepEqual(plan.newGroups, ['אדומים', 'כחולים'])
 })
@@ -22,21 +36,21 @@ test('a file with no header row is still read as name, group', () => {
   const plan = planRosterImport([['דנה כהן', 'אדומים']], NONE)
 
   assert.equal(plan.hasHeader, false)
-  assert.deepEqual(plan.entries, [{ name: 'דנה כהן', group: 'אדומים', phone: '' }])
+  assert.deepEqual(plan.entries, [whole('דנה כהן', 'אדומים', '')])
 })
 
 test('columns are located by header, so a group-first file still maps', () => {
   const plan = planRosterImport([['Group', 'Name'], ['אדומים', 'דנה כהן']], NONE)
 
-  assert.deepEqual(plan.entries, [{ name: 'דנה כהן', group: 'אדומים', phone: '' }])
+  assert.deepEqual(plan.entries, [whole('דנה כהן', 'אדומים', '')])
 })
 
 test('a name-only file imports participants and no groups', () => {
   const plan = planRosterImport([['שם'], ['דנה כהן'], ['יוסי לוי']], NONE)
 
   assert.deepEqual(plan.entries, [
-    { name: 'דנה כהן', group: '', phone: '' },
-    { name: 'יוסי לוי', group: '', phone: '' },
+    whole('דנה כהן', '', ''),
+    whole('יוסי לוי', '', ''),
   ])
   assert.deepEqual(plan.newGroups, [])
 })
@@ -57,7 +71,7 @@ test('a spelling variant maps onto the stored group name', () => {
     { participantNames: [], groupNames: ['Reds'] },
   )
 
-  assert.deepEqual(plan.entries, [{ name: 'דנה כהן', group: 'Reds', phone: '' }])
+  assert.deepEqual(plan.entries, [whole('דנה כהן', 'Reds', '')])
   assert.deepEqual(plan.newGroups, [])
 })
 
@@ -67,7 +81,7 @@ test('re-uploading the same file adds nobody twice', () => {
     { participantNames: ['דנה כהן'], groupNames: ['אדומים'] },
   )
 
-  assert.deepEqual(plan.entries, [{ name: 'יוסי לוי', group: 'אדומים', phone: '' }])
+  assert.deepEqual(plan.entries, [whole('יוסי לוי', 'אדומים', '')])
   assert.equal(plan.alreadyInEventRows, 1)
   assert.equal(skippedRowCount(plan), 1)
 })
@@ -113,6 +127,82 @@ test('an oversized file is rejected before any planning work', () => {
 })
 
 // ============================================================
+// FIRST AND FAMILY NAME
+// ============================================================
+
+test('the two name columns are read into the two fields', () => {
+  const plan = planRosterImport(
+    [['שם פרטי', 'שם משפחה', 'קבוצה'], ['דנה', 'כהן', 'אדומים'], ['יוסי', 'לוי', 'כחולים']],
+    NONE,
+  )
+
+  assert.deepEqual(plan.entries, [
+    { firstName: 'דנה', lastName: 'כהן', name: 'דנה כהן', group: 'אדומים', phone: '' },
+    { firstName: 'יוסי', lastName: 'לוי', name: 'יוסי לוי', group: 'כחולים', phone: '' },
+  ])
+  assert.deepEqual(plan.newGroups, ['אדומים', 'כחולים'])
+})
+
+test('the columns are found by their headers, in any order', () => {
+  const plan = planRosterImport(
+    [['Last Name', 'Group', 'First Name'], ['כהן', 'אדומים', 'דנה']],
+    NONE,
+  )
+
+  assert.deepEqual(plan.entries, [
+    { firstName: 'דנה', lastName: 'כהן', name: 'דנה כהן', group: 'אדומים', phone: '' },
+  ])
+})
+
+test('a family name is never filled in by position', () => {
+  // Three columns, and the header names only two of them. The spare column is
+  // the group - claiming it for the family name would make אדומים a surname.
+  const plan = planRosterImport(
+    [['שם פרטי', 'קבוצה'], ['דנה', 'אדומים']],
+    NONE,
+  )
+
+  assert.deepEqual(plan.entries, [whole('דנה', 'אדומים')])
+})
+
+test('a row with only a family name is still a participant', () => {
+  const plan = planRosterImport([['שם פרטי', 'שם משפחה'], ['', 'כהן']], NONE)
+
+  assert.deepEqual(plan.entries, [
+    { firstName: '', lastName: 'כהן', name: 'כהן', group: '', phone: '' },
+  ])
+})
+
+test('duplicates are judged on the whole name, not on either half', () => {
+  const plan = planRosterImport(
+    [['שם פרטי', 'שם משפחה'], ['דנה', 'כהן'], ['דנה', 'לוי'], ['דנה', 'כהן']],
+    NONE,
+  )
+
+  // Two different people named דנה, and one of them listed twice.
+  assert.equal(plan.entries.length, 2)
+  assert.equal(plan.duplicateRows, 1)
+})
+
+test('a name already in the event is matched however the file divides it', () => {
+  const plan = planRosterImport(
+    [['שם פרטי', 'שם משפחה'], ['דנה', 'כהן']],
+    { participantNames: ['דנה כהן'], groupNames: [] },
+  )
+
+  assert.equal(plan.alreadyInEventRows, 1)
+  assert.deepEqual(plan.entries, [])
+})
+
+test('the length limit applies to the whole name, not to each half', () => {
+  const long = 'א'.repeat(45)
+  const plan = planRosterImport([['שם פרטי', 'שם משפחה'], [long, long]], NONE)
+
+  assert.deepEqual(plan.entries, [])
+  assert.equal(plan.invalidRows, 1)
+})
+
+// ============================================================
 // PHONE NUMBERS - only for a game with the sms_notifications flag
 // ============================================================
 
@@ -124,7 +214,7 @@ test('the phone column is not read at all without the flag', () => {
     NONE,
   )
 
-  assert.deepEqual(plan.entries, [{ name: 'דנה כהן', group: 'אדומים', phone: '' }])
+  assert.deepEqual(plan.entries, [whole('דנה כהן', 'אדומים', '')])
   assert.equal(plan.missingPhoneRows, 0)
 })
 
@@ -155,7 +245,7 @@ test('a header spelling we did not write still maps to the phone column', () => 
     WITH_PHONES,
   )
 
-  assert.deepEqual(plan.entries, [{ name: 'דנה כהן', group: '', phone: '+972501234567' }])
+  assert.deepEqual(plan.entries, [whole('דנה כהן', '', '+972501234567')])
 })
 
 test('a participant whose number is unreadable is still imported, and counted', () => {
@@ -184,7 +274,7 @@ test('a file with no phone column leaves everyone without a number', () => {
     WITH_PHONES,
   )
 
-  assert.deepEqual(plan.entries, [{ name: 'דנה כהן', group: 'אדומים', phone: '' }])
+  assert.deepEqual(plan.entries, [whole('דנה כהן', 'אדומים', '')])
   assert.equal(plan.missingPhoneRows, 1)
   assert.deepEqual(plan.newGroups, ['אדומים'])
 })
@@ -198,8 +288,8 @@ test('a name-and-phone file does not turn phone numbers into groups', () => {
 
   assert.deepEqual(plan.newGroups, [])
   assert.deepEqual(plan.entries, [
-    { name: 'דנה כהן', group: '', phone: '+972501234567' },
-    { name: 'יוסי לוי', group: '', phone: '+972527654321' },
+    whole('דנה כהן', '', '+972501234567'),
+    whole('יוסי לוי', '', '+972527654321'),
   ])
 })
 
@@ -213,8 +303,8 @@ test('a headerless file is read by what the columns hold, not by their order', (
   assert.equal(plan.hasHeader, false)
   assert.deepEqual(plan.newGroups, [])
   assert.deepEqual(plan.entries, [
-    { name: 'דנה כהן', group: '', phone: '+972501234567' },
-    { name: 'יוסי לוי', group: '', phone: '+972527654321' },
+    whole('דנה כהן', '', '+972501234567'),
+    whole('יוסי לוי', '', '+972527654321'),
   ])
 })
 
@@ -226,5 +316,5 @@ test('a headerless file in template order keeps the group column a group', () =>
   )
 
   assert.deepEqual(plan.newGroups, ['אדומים'])
-  assert.deepEqual(plan.entries, [{ name: 'דנה כהן', group: 'אדומים', phone: '+972501234567' }])
+  assert.deepEqual(plan.entries, [whole('דנה כהן', 'אדומים', '+972501234567')])
 })

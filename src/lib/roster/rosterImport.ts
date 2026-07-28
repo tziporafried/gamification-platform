@@ -6,6 +6,9 @@
  * that migration has not been applied yet the same work runs from the client -
  * participants one at a time, because the `participants_auto_code` trigger
  * derives each external_id from the rows already committed.
+ *
+ * The name goes over in two parts as well as joined, so that neither an older
+ * database nor an older client has a broken state - see the payload below.
  */
 
 import { supabase } from '@/lib/supabase'
@@ -66,13 +69,23 @@ export async function importRoster(
   options: ImportOptions = {},
 ): Promise<RosterImportResult> {
   const groups = colorsForNewGroups(plan.newGroups, usedColors)
+  // Every row carries both shapes of the name: the two parts, and the two
+  // joined. A pre-083 function reads `name` and ignores keys it has never heard
+  // of, so an updated client against an older database still imports the whole
+  // roster - it just stores each name undivided. From 083 the parts win.
+  //
   // A row with no phone omits the key rather than sending an empty one: the
   // same rows the import always sent, which is what the pre-081 function reads.
-  const rows = plan.entries.map((entry) => (
-    entry.phone === ''
-      ? { name: entry.name, group: entry.group }
-      : { name: entry.name, group: entry.group, phone: entry.phone }
-  ))
+  const rows = plan.entries.map((entry) => {
+    const row: Record<string, string> = {
+      name: entry.name,
+      first_name: entry.firstName,
+      last_name: entry.lastName,
+      group: entry.group,
+    }
+    if (entry.phone !== '') row.phone = entry.phone
+    return row
+  })
   const skipped = plan.duplicateRows + plan.alreadyInEventRows + plan.invalidRows
 
   let participantsCreated = 0
@@ -146,6 +159,9 @@ async function importRosterFromClient(
   let participantsCreated = 0
   const total = plan.entries.length
 
+  // The joined name and nothing else. This path only runs when the import RPC
+  // is missing altogether, which means a database from before 073 - and one
+  // that old has no first_name column to write the parts into either.
   for (const entry of plan.entries) {
     const { data, error } = await supabase
       .from('participants')

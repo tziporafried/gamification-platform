@@ -166,7 +166,21 @@ export interface Participant {
   id: string;
   event_id: string;
   external_id: string;
+  /**
+   * The name the whole app displays - first and family joined. Kept derived
+   * from the two fields below by a database trigger, so it can never drift
+   * from them, and it is what every leaderboard, lottery screen, QR card and
+   * SMS reads. Nothing in the app displays half a name.
+   */
   name: string;
+  /**
+   * The given name. On a game without the `import_csv` flag this is the whole
+   * of what was typed and `last_name` is '' - a single field cannot say where a
+   * name divides. Undefined on a database where migration 083 has not run.
+   */
+  first_name?: string;
+  /** The family name, or '' when there is none. See src/lib/roster/rosterPlan.ts. */
+  last_name?: string;
   /**
    * E.164 (`+972501234567`), collected only by games with the
    * `sms_notifications` flag. null everywhere else - and on an older database
