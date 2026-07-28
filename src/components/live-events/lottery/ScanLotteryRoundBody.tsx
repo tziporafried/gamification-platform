@@ -44,12 +44,16 @@ export function ScanLotteryRoundBody({
   const { status } = scan
   const isOpen = status === 'open'
 
-  // Picking this toggle offers a button; it never drops the organizer straight
-  // into the scan takeover. That matters most when a round is already
-  // collecting - switching to "לפי קבוצות" and back must not slam the stage
-  // over to the scanner without a press. Starting on an open round simply
-  // rejoins it, so the pool is never split.
-  if (!started || status === 'idle') {
+  // Picking this toggle offers a button rather than dropping the organizer
+  // straight into the scan takeover: switching to "לפי קבוצות" and back must
+  // not slam the stage over to the scanner without a press. Starting on a
+  // collection that is already open simply rejoins it.
+  //
+  // That guard is only about the takeover, so it applies only while there is
+  // one to take over. A *closed* collection has no stage to seize and is the
+  // pool about to be drawn from - hiding it behind "פתחו את ההגרלה" offered to
+  // throw it away, which is the last thing to offer at that moment.
+  if (status === 'idle' || (!started && isOpen)) {
     return (
       <>
         <button

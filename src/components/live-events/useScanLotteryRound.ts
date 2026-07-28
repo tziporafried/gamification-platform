@@ -38,14 +38,23 @@ export interface ScanLotteryRoundState {
 
 const NOBODY: EligibleParticipant[] = []
 
-export function useScanLotteryRound(eventId: string, enabled: boolean): ScanLotteryRoundState {
+export function useScanLotteryRound(eventId: string): ScanLotteryRoundState {
   const [round, setRound] = useState<ScanLotteryCollection | null>(null)
 
-  // Picks up a collection still open from a refresh. A closed one is history
-  // and an empty one is swept - both decided by loadScanLottery.
+  // Read once for the game, not every time the toggle moves.
+  //
+  // The stored collection answers one question - what survived arriving at
+  // this screen - and loadScanLottery decides it: an open one with people is
+  // resumed, a closed one is history, an empty one is swept.
+  //
+  // What is held here is a different question: what this visit has done since.
+  // Wiping it whenever another eligibility choice was selected meant that
+  // closing the collection and then glancing at "לפי קבוצות" threw the pool
+  // away, because a closed collection is exactly what the store will not hand
+  // back. Leaving the toggle is not leaving the lottery.
   useEffect(() => {
-    setRound(enabled && eventId ? loadScanLottery(eventId) : null)
-  }, [eventId, enabled])
+    setRound(eventId ? loadScanLottery(eventId) : null)
+  }, [eventId])
 
   const recount = useCallback(() => {
     if (!eventId) return

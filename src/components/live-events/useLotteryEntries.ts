@@ -58,7 +58,7 @@ export function useLotteryEntries({ eventId, criteria }: UseLotteryEntriesOption
     membership: roster.membership,
     enabled: !isScan,
   })
-  const scan = useScanLotteryRound(eventId, isScan)
+  const scan = useScanLotteryRound(eventId)
 
   return useMemo<LotteryEntryPool>(() => {
     if (!isScan) {
