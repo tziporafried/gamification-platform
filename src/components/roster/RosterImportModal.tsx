@@ -33,7 +33,7 @@ import {
 } from '@/lib/roster/rosterPlan'
 import { formatPhone } from '@/lib/phone'
 import { isMissingPhoneColumnError, MISSING_PHONE_COLUMN_MESSAGE, useSmsNotifications } from '@/lib/smsNotifications'
-import { importRoster, type RosterImportResult } from '@/lib/roster/rosterImport'
+import { importRoster, type RosterImportMode, type RosterImportResult } from '@/lib/roster/rosterImport'
 import type { Group } from '@/types'
 
 /** Which wizard step opened the dialog - only the wording differs. */
@@ -79,6 +79,11 @@ export function RosterImportModal({
   const [existingNames, setExistingNames] = useState<string[]>([])
   const [existingGroups, setExistingGroups] = useState<Pick<Group, 'name' | 'color'>[]>([])
   const [fileName, setFileName] = useState('')
+  /** Kept so switching merge/replace re-plans without asking for the file again. */
+  const [grid, setGrid] = useState<string[][] | null>(null)
+  const [mode, setMode] = useState<RosterImportMode>('merge')
+  /** Scans on the roster about to be replaced - what the warning has to name. */
+  const [existingScans, setExistingScans] = useState(0)
   const [plan, setPlan] = useState<RosterPlan | null>(null)
   const [error, setError] = useState('')
   const [dragging, setDragging] = useState(false)
@@ -94,6 +99,10 @@ export function RosterImportModal({
 
     setStage('pick')
     setPlan(null)
+    setGrid(null)
+    // Merging every time the dialog opens. Replacing is never what somebody
+    // meant by reflex, and a destructive choice must not survive a close.
+    setMode('merge')
     setError('')
     setFileName('')
     setProgress(0)
@@ -102,18 +111,36 @@ export function RosterImportModal({
 
     let cancelled = false
     async function loadExisting() {
-      const [participants, groups] = await Promise.all([
+      const [participants, groups, scans] = await Promise.all([
         supabase.from('participants').select('name').eq('event_id', eventId),
         supabase.from('groups').select('name, color').eq('event_id', eventId),
+        supabase
+          .from('point_transactions')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventId),
       ])
       if (cancelled) return
       setExistingNames((participants.data ?? []).map((p) => p.name as string))
       setExistingGroups((groups.data ?? []) as Pick<Group, 'name' | 'color'>[])
+      setExistingScans(scans.count ?? 0)
       setLoadingExisting(false)
     }
     loadExisting()
     return () => { cancelled = true }
   }, [isOpen, eventId])
+
+  const buildPlan = useCallback(
+    (source: string[][], forMode: RosterImportMode) => planRosterImport(
+      source,
+      {
+        // A replace deletes them all first, so none of them can be matched.
+        participantNames: forMode === 'replace' ? [] : existingNames,
+        groupNames: existingGroups.map((group) => group.name),
+      },
+      { collectPhones },
+    ),
+    [existingNames, existingGroups, collectPhones],
+  )
 
   const handleFile = useCallback(async (file: File) => {
     if (loadingExisting) {
@@ -136,14 +163,7 @@ export function RosterImportModal({
       return
     }
 
-    const next = planRosterImport(
-      grid,
-      {
-        participantNames: existingNames,
-        groupNames: existingGroups.map((group) => group.name),
-      },
-      { collectPhones },
-    )
+    const next = buildPlan(grid, mode)
 
     if (next.error) {
       setError(PLAN_ERRORS[next.error])
@@ -151,9 +171,31 @@ export function RosterImportModal({
       return
     }
 
+    setGrid(grid)
     setPlan(next)
     setStage('preview')
-  }, [existingNames, existingGroups, loadingExisting, collectPhones])
+  }, [buildPlan, mode, loadingExisting])
+
+  /**
+   * Switching the mode re-reads the file we already parsed.
+   *
+   * Replacing empties the event first, so nobody in it can be "already there" -
+   * the names the merge would have skipped are all created. Planning against an
+   * empty roster is what makes the preview count what is about to happen rather
+   * than what would have happened under the other choice.
+   */
+  function chooseMode(next: RosterImportMode) {
+    setMode(next)
+    if (!grid) return
+
+    const replanned = buildPlan(grid, next)
+    setPlan(replanned)
+    // Switching back to merge can leave nothing to do - a file listing exactly
+    // the people already in the event. Said here rather than left as a preview
+    // reading zero, and never fatal: the other choice is one click away and
+    // still has work in it, so the dialog stays where it is.
+    setError(replanned.error ? PLAN_ERRORS[replanned.error] : '')
+  }
 
   function handleInputChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -180,17 +222,22 @@ export function RosterImportModal({
         eventId,
         plan,
         existingGroups.map((group) => group.color),
-        { onProgress: (done, total) => setProgress(total > 0 ? done / total : 0) },
+        { mode, onProgress: (done, total) => setProgress(total > 0 ? done / total : 0) },
       )
 
       // A cap can stop the import part-way, so the lists are refreshed whenever
-      // anything at all was written.
-      if (imported.participantsCreated > 0 || imported.groupsCreated > 0) {
+      // anything at all was written - and a replace that emptied the event has
+      // to refresh even if the file then added nobody.
+      if (imported.participantsCreated > 0 || imported.groupsCreated > 0 || imported.participantsDeleted > 0) {
         onImported(imported)
       }
       if (imported.planLimitReached) setUpgradeOpen(true)
 
-      if (imported.participantsCreated === 0 && imported.groupsCreated === 0) {
+      if (
+        imported.participantsCreated === 0 &&
+        imported.groupsCreated === 0 &&
+        imported.participantsDeleted === 0
+      ) {
         setStage('preview')
         return
       }
@@ -321,10 +368,69 @@ export function RosterImportModal({
               <span className="min-w-0 truncate">{fileName}</span>
             </p>
 
+            {/*
+              Offered only when there is an existing roster to do something to.
+              An empty event has nothing to replace, and asking the question
+              there would be asking about a distinction that does not exist yet.
+            */}
+            {existingNames.length > 0 && (
+              <fieldset className={cn('rounded-xl border p-3', theme.border)}>
+                <legend className="px-1 text-xs font-semibold text-muted">
+                  מה לעשות עם {existingNames.length} המשתתפים שכבר באירוע?
+                </legend>
+                <div className="space-y-2">
+                  <ModeOption
+                    checked={mode === 'merge'}
+                    onSelect={() => chooseMode('merge')}
+                    title="הוספה לרשימה הקיימת"
+                    description="רק שמות חדשים ייווצרו. מי שכבר באירוע נשאר כמו שהוא, עם הנקודות שצבר."
+                  />
+                  <ModeOption
+                    checked={mode === 'replace'}
+                    onSelect={() => chooseMode('replace')}
+                    danger
+                    title="החלפת הרשימה בקובץ"
+                    description={
+                      existingScans > 0
+                        ? `${existingNames.length} המשתתפים הקיימים יימחקו, ואיתם ${existingScans} הסריקות שנרשמו להם. הקובץ יהיה הרשימה כולה.`
+                        : `${existingNames.length} המשתתפים הקיימים יימחקו, והקובץ יהיה הרשימה כולה.`
+                    }
+                  />
+                </div>
+              </fieldset>
+            )}
+
+            {mode === 'replace' && (
+              <Alert variant="error">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+                  <div className="space-y-1">
+                    <p className="font-semibold">
+                      {existingScans > 0
+                        ? `הפעולה הזו מוחקת ${existingNames.length} משתתפים ו-${existingScans} סריקות, ואי אפשר לבטל אותה.`
+                        : `הפעולה הזו מוחקת ${existingNames.length} משתתפים, ואי אפשר לבטל אותה.`}
+                    </p>
+                    <p className="leading-relaxed">
+                      הקבוצות עצמן נשארות, וגם היסטוריית ההגרלות. אם רק חסרים לכם שמות -
+                      בחרו "הוספה לרשימה הקיימת".
+                    </p>
+                  </div>
+                </div>
+              </Alert>
+            )}
+
             <div className="grid grid-cols-3 gap-2">
-              <SummaryTile icon={<Users size={15} />} value={plan.entries.length} label="משתתפים חדשים" />
+              <SummaryTile
+                icon={<Users size={15} />}
+                value={plan.entries.length}
+                label={mode === 'replace' ? 'משתתפים אחרי הייבוא' : 'משתתפים חדשים'}
+              />
               <SummaryTile icon={<Layers size={15} />} value={newGroupCount} label="קבוצות חדשות" />
-              <SummaryTile value={skipped} label="שורות שידולגו" muted />
+              <SummaryTile
+                value={mode === 'replace' ? existingNames.length : skipped}
+                label={mode === 'replace' ? 'משתתפים שיימחקו' : 'שורות שידולגו'}
+                muted={mode !== 'replace'}
+              />
             </div>
 
             {newGroupCount > 0 && (
@@ -421,8 +527,12 @@ export function RosterImportModal({
             {error && <Alert variant="error" message={error} />}
 
             <ModalActions>
-              <Button onClick={handleImport} disabled={!planHasWork(plan)}>
-                ייבוא {plan.entries.length > 0 ? `${plan.entries.length} משתתפים` : 'הקבוצות'}
+              {/* The button says which of the two it is about to do, so the
+                  last thing read before clicking is not the neutral word. */}
+              <Button onClick={handleImport} disabled={!planHasWork(plan)} variant={mode === 'replace' ? 'danger' : 'primary'}>
+                {mode === 'replace'
+                  ? `החלפת הרשימה ב-${plan.entries.length} משתתפים`
+                  : `ייבוא ${plan.entries.length > 0 ? `${plan.entries.length} משתתפים` : 'הקבוצות'}`}
               </Button>
               <Button variant="outline" onClick={() => { setStage('pick'); setPlan(null); setFileName('') }}>
                 בחירת קובץ אחר
@@ -449,7 +559,9 @@ export function RosterImportModal({
               <CheckCircle2 size={36} strokeWidth={1.75} className="text-success-text" aria-hidden="true" />
               <p className="text-base font-semibold text-foreground">הייבוא הושלם</p>
               <p className="text-sm leading-relaxed text-muted">
-                נוספו {result.participantsCreated} משתתפים
+                {result.participantsDeleted > 0
+                  ? `הרשימה הוחלפה: ${result.participantsDeleted} משתתפים הוסרו ו-${result.participantsCreated} נוספו`
+                  : `נוספו ${result.participantsCreated} משתתפים`}
                 {result.groupsCreated > 0 && ` ו-${result.groupsCreated} קבוצות`}.
                 {result.skipped > 0 && ` ${result.skipped} שורות דולגו.`}
               </p>
@@ -477,6 +589,56 @@ function ImportStep({ index, icon, children }: { index: number; icon: React.Reac
         {children}
       </span>
     </li>
+  )
+}
+
+/**
+ * One of the two things an uploaded file can do to the roster.
+ *
+ * A radio rather than a checkbox: "replace the list" and "add to the list" are
+ * two operations, not one operation with a modifier, and a radio is what says
+ * that both are always there to be read. A ticked box is also the easier thing
+ * to leave ticked by accident, which is the wrong property for the choice that
+ * deletes people.
+ */
+function ModeOption({
+  checked,
+  onSelect,
+  title,
+  description,
+  danger = false,
+}: {
+  checked: boolean
+  onSelect: () => void
+  title: string
+  description: string
+  danger?: boolean
+}) {
+  return (
+    <label
+      className={cn(
+        'flex cursor-pointer items-start gap-2.5 rounded-lg border p-2.5 transition-colors',
+        checked
+          ? danger
+            ? 'border-danger bg-surface-elevated'
+            : 'border-secondary-text bg-surface-elevated'
+          : cn(theme.border, 'hover:bg-surface-elevated'),
+      )}
+    >
+      <input
+        type="radio"
+        name="roster-import-mode"
+        checked={checked}
+        onChange={onSelect}
+        className={cn('mt-0.5 h-4 w-4 shrink-0 accent-current', danger ? 'text-danger-text' : 'text-secondary-text')}
+      />
+      <span className="min-w-0">
+        <span className={cn('block text-sm font-semibold', danger && checked ? 'text-danger-text' : 'text-foreground')}>
+          {title}
+        </span>
+        <span className="mt-0.5 block text-xs leading-relaxed text-muted">{description}</span>
+      </span>
+    </label>
   )
 }
 

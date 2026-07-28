@@ -17,8 +17,21 @@ import { isPlanLimitError } from '@/lib/plans'
 import { nameKey, type RosterPlan } from './rosterPlan'
 import type { Group } from '@/types'
 
+/**
+ * What an uploaded file does to the roster already in the event.
+ *
+ * `merge` adds the names that are new and leaves everyone else untouched - the
+ * only thing an import ever did before, and the default. `replace` makes the
+ * file the whole roster: everybody currently in the event is deleted first, and
+ * their scans and rewards go with them (both CASCADE off participants). The
+ * dialog says so in those words before it offers the choice.
+ */
+export type RosterImportMode = 'merge' | 'replace'
+
 export interface RosterImportResult {
   participantsCreated: number
+  /** Removed by a `replace`; always 0 after a merge. */
+  participantsDeleted: number
   groupsCreated: number
   /** Rows the plan already decided to skip (duplicates / existing names). */
   skipped: number
@@ -34,6 +47,8 @@ export interface NewGroupSpec {
 interface ImportOptions {
   /** Reports progress of the client fallback path only. */
   onProgress?: (done: number, total: number) => void
+  /** Defaults to 'merge' - the behaviour every import had before the choice existed. */
+  mode?: RosterImportMode
 }
 
 function isMissingRpcError(message: string): boolean {
@@ -89,25 +104,36 @@ export async function importRoster(
   const skipped = plan.duplicateRows + plan.alreadyInEventRows + plan.invalidRows
 
   let participantsCreated = 0
+  let participantsDeleted = 0
   let groupsCreated = 0
   let done = 0
   // The groups ride along with the first call so they exist before any row
   // referencing them is inserted.
   let pendingGroups = groups
+  // And so does the replace - on the first call and never again. A 2,000-name
+  // roster goes up in ten calls, and asking the second one to clear the event
+  // would delete the 200 names the first one just wrote.
+  let pendingReplace = options.mode === 'replace'
 
   for (let start = 0; start === 0 || start < rows.length; start += CHUNK_SIZE) {
     const chunk = rows.slice(start, start + CHUNK_SIZE)
 
+    // `p_replace` is sent only when it is true. PostgREST matches a function by
+    // the argument names it is given, so a merge that named a fourth argument
+    // would find nothing on a database still on the three-argument version and
+    // drop the whole import to the client fallback. Merging keeps the old call
+    // and works against either; only a replace needs 085 to be applied.
     const { data, error } = await supabase.rpc('import_event_roster', {
       p_event_id: eventId,
       p_groups: pendingGroups,
       p_rows: chunk,
+      ...(pendingReplace ? { p_replace: true } : {}),
     })
 
     if (error) {
       const message = error.message ?? ''
       if (isPlanLimitError(message)) {
-        return { participantsCreated, groupsCreated, skipped, planLimitReached: true }
+        return { participantsCreated, participantsDeleted, groupsCreated, skipped, planLimitReached: true }
       }
       if (isMissingRpcError(message) && start === 0) {
         return importRosterFromClient(eventId, plan, groups, options)
@@ -115,16 +141,22 @@ export async function importRoster(
       throw error
     }
 
-    const summary = (data ?? {}) as { participants_created?: number; groups_created?: number }
+    const summary = (data ?? {}) as {
+      participants_created?: number
+      participants_deleted?: number
+      groups_created?: number
+    }
     participantsCreated += summary.participants_created ?? chunk.length
+    participantsDeleted += summary.participants_deleted ?? 0
     groupsCreated += summary.groups_created ?? pendingGroups.length
     pendingGroups = []
+    pendingReplace = false
 
     done += chunk.length
     options.onProgress?.(done, rows.length)
   }
 
-  return { participantsCreated, groupsCreated, skipped, planLimitReached: false }
+  return { participantsCreated, participantsDeleted, groupsCreated, skipped, planLimitReached: false }
 }
 
 async function importRosterFromClient(
@@ -134,6 +166,21 @@ async function importRosterFromClient(
   options: ImportOptions,
 ): Promise<RosterImportResult> {
   let groupsCreated = 0
+  let participantsDeleted = 0
+
+  // Without the RPC there is no transaction to put this inside, so a replace
+  // that fails later leaves the event emptied. It is still the operation the
+  // operator asked for, and refusing it on an un-migrated database would mean
+  // the option silently does nothing - which is worse than doing it plainly.
+  if (options.mode === 'replace') {
+    const { data, error } = await supabase
+      .from('participants')
+      .delete()
+      .eq('event_id', eventId)
+      .select('id')
+    if (error) throw error
+    participantsDeleted = (data ?? []).length
+  }
 
   if (newGroups.length > 0) {
     const { data, error } = await supabase
@@ -178,6 +225,7 @@ async function importRosterFromClient(
         await linkParticipants(links)
         return {
           participantsCreated,
+          participantsDeleted,
           groupsCreated,
           skipped: plan.duplicateRows + plan.alreadyInEventRows + plan.invalidRows,
           planLimitReached: true,
@@ -204,6 +252,7 @@ async function importRosterFromClient(
 
   return {
     participantsCreated,
+    participantsDeleted,
     groupsCreated,
     skipped: plan.duplicateRows + plan.alreadyInEventRows + plan.invalidRows,
     planLimitReached: false,
