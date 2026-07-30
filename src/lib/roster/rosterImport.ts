@@ -89,14 +89,21 @@ export async function importRoster(
   // of, so an updated client against an older database still imports the whole
   // roster - it just stores each name undivided. From 083 the parts win.
   //
+  // The groups go the same way. `groups` is the whole list and is what 087
+  // reads; `group` beside it is the first of them, which is all an older
+  // function can put anybody in. So a row naming two groups against a database
+  // that has not had 087 applied lands the participant in the first one rather
+  // than failing or inventing a group called "קבוצה א, קבוצה ב".
+  //
   // A row with no phone omits the key rather than sending an empty one: the
   // same rows the import always sent, which is what the pre-081 function reads.
   const rows = plan.entries.map((entry) => {
-    const row: Record<string, string> = {
+    const row: Record<string, string | string[]> = {
       name: entry.name,
       first_name: entry.firstName,
       last_name: entry.lastName,
-      group: entry.group,
+      group: entry.groups[0] ?? '',
+      groups: entry.groups,
     }
     if (entry.phone !== '') row.phone = entry.phone
     return row
@@ -238,10 +245,13 @@ async function importRosterFromClient(
     options.onProgress?.(participantsCreated, total)
 
     // No group named in the file means "belongs everywhere", matching how a
-    // manually added participant defaults to every group.
-    const targetIds = entry.group === ''
+    // manually added participant defaults to every group. Several named means
+    // several memberships - participant_groups is many-to-many.
+    const targetIds = entry.groups.length === 0
       ? allGroupIds
-      : [groupIdByName.get(nameKey(entry.group))].filter((id): id is string => Boolean(id))
+      : entry.groups
+          .map((group) => groupIdByName.get(nameKey(group)))
+          .filter((id): id is string => Boolean(id))
 
     for (const groupId of targetIds) {
       links.push({ participant_id: data.id, group_id: groupId })

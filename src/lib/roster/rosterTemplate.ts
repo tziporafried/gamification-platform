@@ -21,12 +21,18 @@ export interface RosterTemplateOptions {
  * Example rows - the modal tells the user to replace them with their own. The
  * phones are written the way a person writes one, not in E.164: the import
  * normalises, and a template full of `+972…` would teach the wrong lesson.
+ *
+ * The last row is in two groups, because a comma in that cell is the one thing
+ * about this file nobody guesses. It teaches the rule the way the rest of the
+ * sheet teaches the columns - by being an example of it - and the groups it
+ * names are the two already above it, so the template still creates exactly the
+ * two groups it always did.
  */
 const SAMPLE_ROWS: string[][] = [
   ['ישראל', 'ישראלי', 'קבוצה א', '050-1234567'],
   ['דנה', 'כהן', 'קבוצה א', '052-7654321'],
   ['יוסי', 'לוי', 'קבוצה ב', '054-9876543'],
-  ['מיכל', 'אברהם', 'קבוצה ב', '053-1122334'],
+  ['מיכל', 'אברהם', 'קבוצה א, קבוצה ב', '053-1122334'],
 ]
 
 const FIRST_NAME = 0

@@ -345,6 +345,8 @@ export function RosterImportModal({
                 {collectPhones && <> ו-<strong className="font-semibold text-foreground">{PHONE_COLUMN_HEADER}</strong></>}.
                 {' '}מחקו את שורות הדוגמה. כל קבוצה בקובץ שאינה קיימת באירוע תיווצר
                 {groupsDisabled && ', והאירוע יעבור לתחרות בין קבוצות'}.
+                {' '}משתתף שמשתייך לכמה קבוצות – רשמו את כולן בתא אחד, מופרדות בפסיק
+                (למשל <span className="whitespace-nowrap font-semibold text-foreground">קבוצה א, קבוצה ב</span>).
                 {collectPhones && ' מי שאין לו מספר תקין ייובא, אבל לא יקבל SMS.'}
               </p>
 
@@ -507,7 +509,12 @@ export function RosterImportModal({
                         <td className="px-3 py-1.5 text-foreground">
                           {entry.lastName || <span className="text-muted">—</span>}
                         </td>
-                        <td className="px-3 py-1.5 text-muted">{entry.group || 'כל הקבוצות'}</td>
+                        {/* Every group the row named, so a cell meant as a list
+                            and read as one name - or the other way round - is
+                            caught here rather than after the import. */}
+                        <td className="px-3 py-1.5 text-muted">
+                          {entry.groups.length > 0 ? entry.groups.join(' · ') : 'כל הקבוצות'}
+                        </td>
                         {collectPhones && (
                           // The number as it will be stored, so a wrong column
                           // or a number we could not read shows up here first.

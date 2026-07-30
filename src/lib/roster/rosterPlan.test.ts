@@ -14,6 +14,7 @@ const whole = (name: string, group = '', phone = '') => ({
   firstName: name,
   lastName: '',
   name,
+  groups: group === '' ? [] : [group],
   group,
   phone,
 })
@@ -137,8 +138,8 @@ test('the two name columns are read into the two fields', () => {
   )
 
   assert.deepEqual(plan.entries, [
-    { firstName: 'דנה', lastName: 'כהן', name: 'דנה כהן', group: 'אדומים', phone: '' },
-    { firstName: 'יוסי', lastName: 'לוי', name: 'יוסי לוי', group: 'כחולים', phone: '' },
+    { firstName: 'דנה', lastName: 'כהן', name: 'דנה כהן', groups: ['אדומים'], group: 'אדומים', phone: '' },
+    { firstName: 'יוסי', lastName: 'לוי', name: 'יוסי לוי', groups: ['כחולים'], group: 'כחולים', phone: '' },
   ])
   assert.deepEqual(plan.newGroups, ['אדומים', 'כחולים'])
 })
@@ -150,7 +151,7 @@ test('the columns are found by their headers, in any order', () => {
   )
 
   assert.deepEqual(plan.entries, [
-    { firstName: 'דנה', lastName: 'כהן', name: 'דנה כהן', group: 'אדומים', phone: '' },
+    { firstName: 'דנה', lastName: 'כהן', name: 'דנה כהן', groups: ['אדומים'], group: 'אדומים', phone: '' },
   ])
 })
 
@@ -169,7 +170,7 @@ test('a row with only a family name is still a participant', () => {
   const plan = planRosterImport([['שם פרטי', 'שם משפחה'], ['', 'כהן']], NONE)
 
   assert.deepEqual(plan.entries, [
-    { firstName: '', lastName: 'כהן', name: 'כהן', group: '', phone: '' },
+    { firstName: '', lastName: 'כהן', name: 'כהן', groups: [], group: '', phone: '' },
   ])
 })
 
@@ -200,6 +201,92 @@ test('the length limit applies to the whole name, not to each half', () => {
 
   assert.deepEqual(plan.entries, [])
   assert.equal(plan.invalidRows, 1)
+})
+
+// ============================================================
+// SEVERAL GROUPS IN ONE CELL
+// ============================================================
+
+test('a comma in the group cell puts the participant in both groups', () => {
+  const plan = planRosterImport(
+    [['שם המשתתף', 'קבוצה'], ['דנה כהן', 'אדומים, כחולים']],
+    NONE,
+  )
+
+  assert.deepEqual(plan.entries[0].groups, ['אדומים', 'כחולים'])
+  assert.deepEqual(plan.newGroups, ['אדומים', 'כחולים'])
+})
+
+test('a semicolon and a pipe separate too, whatever the file was saved as', () => {
+  const plan = planRosterImport(
+    [['שם המשתתף', 'קבוצה'], ['דנה כהן', 'אדומים; כחולים'], ['יוסי לוי', 'ירוקים|צהובים']],
+    NONE,
+  )
+
+  assert.deepEqual(plan.entries[0].groups, ['אדומים', 'כחולים'])
+  assert.deepEqual(plan.entries[1].groups, ['ירוקים', 'צהובים'])
+})
+
+test('each group in the list is created once, however many rows name it', () => {
+  const plan = planRosterImport(
+    [['שם המשתתף', 'קבוצה'], ['דנה כהן', 'אדומים, כחולים'], ['יוסי לוי', 'כחולים, ירוקים']],
+    NONE,
+  )
+
+  assert.deepEqual(plan.newGroups, ['אדומים', 'כחולים', 'ירוקים'])
+})
+
+test('a group already in the event is matched inside a list as well', () => {
+  const plan = planRosterImport(
+    [['שם המשתתף', 'קבוצה'], ['דנה כהן', 'REDS, כחולים']],
+    { participantNames: [], groupNames: ['Reds'] },
+  )
+
+  assert.deepEqual(plan.entries[0].groups, ['Reds', 'כחולים'])
+  assert.deepEqual(plan.existingGroups, ['Reds'])
+  assert.deepEqual(plan.newGroups, ['כחולים'])
+})
+
+test('the same group twice in one cell is one membership', () => {
+  const plan = planRosterImport(
+    [['שם המשתתף', 'קבוצה'], ['דנה כהן', 'אדומים, אדומים , אדומים']],
+    NONE,
+  )
+
+  assert.deepEqual(plan.entries[0].groups, ['אדומים'])
+  assert.deepEqual(plan.newGroups, ['אדומים'])
+})
+
+test('stray separators and spaces do not create empty groups', () => {
+  const plan = planRosterImport(
+    [['שם המשתתף', 'קבוצה'], ['דנה כהן', ' , אדומים ,, '], ['יוסי לוי', ' , ']],
+    NONE,
+  )
+
+  assert.deepEqual(plan.entries[0].groups, ['אדומים'])
+  // Nothing but separators is no group at all - the row reads as ungrouped.
+  assert.deepEqual(plan.entries[1].groups, [])
+  assert.deepEqual(plan.newGroups, ['אדומים'])
+})
+
+test('a row naming only groups creates all of them', () => {
+  const plan = planRosterImport(
+    [['שם המשתתף', 'קבוצה'], ['', 'ירוקים, צהובים']],
+    NONE,
+  )
+
+  assert.deepEqual(plan.entries, [])
+  assert.deepEqual(plan.newGroups, ['ירוקים', 'צהובים'])
+  assert.equal(plan.groupOnlyRows, 1)
+})
+
+test('the first group is repeated as `group`, for a pre-087 database', () => {
+  const plan = planRosterImport(
+    [['שם המשתתף', 'קבוצה'], ['דנה כהן', 'אדומים, כחולים']],
+    NONE,
+  )
+
+  assert.equal(plan.entries[0].group, 'אדומים')
 })
 
 // ============================================================

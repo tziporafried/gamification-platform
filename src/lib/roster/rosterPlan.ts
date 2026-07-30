@@ -23,6 +23,10 @@
  * A game with the `sms_notifications` flag adds the phone number, normalised on
  * the way in (src/lib/phone.ts). Without the flag the column is not read at
  * all, so a file that happens to carry one imports exactly as it always did.
+ *
+ * One participant can belong to several groups - `participant_groups` has always
+ * been many-to-many - so the group cell is a list, not a name: קבוצה א, קבוצה ב.
+ * See `splitGroups` for which characters separate it and why.
  */
 
 import { parsePhone } from '@/lib/phone'
@@ -57,7 +61,15 @@ export interface RosterEntry {
    * duplicate check in the import works on.
    */
   name: string
-  /** Group name from the file; empty means "no group stated". */
+  /**
+   * Every group the row names, in file order, without repeats. Empty means "no
+   * group stated", which the import reads as belonging to all of them.
+   */
+  groups: string[]
+  /**
+   * The first of `groups`, or ''. Only the payload sent to a database still on
+   * the one-group import function reads this - see src/lib/roster/rosterImport.ts.
+   */
   group: string
   /**
    * Phone in E.164, or empty when the file had none, it could not be read, or
@@ -105,6 +117,33 @@ function normalize(value: string): string {
 /** Case/whitespace-insensitive key for matching names against each other. */
 export function nameKey(value: string): string {
   return normalize(value).toLowerCase()
+}
+
+/**
+ * Reads one group cell as the list of groups it names.
+ *
+ * Comma, semicolon and pipe all separate, because which of them is safe to type
+ * depends on a file format the person filling the sheet never sees: Excel on a
+ * Hebrew install writes CSV with ';' between columns, elsewhere with ','. A
+ * separator that reached us still inside one cell is one the file survived, so
+ * it is the one they meant. Excel quotes the cell for them either way.
+ *
+ * The cost is a group whose own name contains one of the three, which now
+ * imports as two. That is a name nobody gives a group, and the preview lists
+ * every group about to be created before anything is written.
+ */
+export function splitGroups(cell: string): string[] {
+  const seen = new Set<string>()
+  const names: string[] = []
+  for (const part of (cell ?? '').split(/[,;|]/)) {
+    const name = normalize(part)
+    if (name === '') continue
+    const key = name.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    names.push(name)
+  }
+  return names
 }
 
 function headerIndex(row: string[], headers: string[]): number {
@@ -230,13 +269,13 @@ export function planRosterImport(
         // A row that filled in only the family name is still a person, and
         // joining is what puts them under the one name the app displays.
         name: normalize(`${firstName} ${lastName}`),
-        group: normalize(row[groupColumn] ?? ''),
+        groups: splitGroups(row[groupColumn] ?? ''),
         // An unreadable number is dropped rather than stored as typed: half a
         // number in the column reads as done, and is found out at send time.
         phone: phoneColumn < 0 ? '' : parsePhone(row[phoneColumn] ?? '').e164 ?? '',
       }
     })
-    .filter((row) => row.name !== '' || row.group !== '')
+    .filter((row) => row.name !== '' || row.groups.length > 0)
 
   if (dataRows.length === 0) return { ...empty, hasHeader, error: 'EMPTY_FILE' }
   if (dataRows.length > MAX_IMPORT_ROWS) {
@@ -259,13 +298,13 @@ export function planRosterImport(
   let missingPhoneRows = 0
 
   for (const row of dataRows) {
-    if (row.group !== '') {
-      const key = nameKey(row.group)
+    for (const group of row.groups) {
+      const key = nameKey(group)
       if (!seenGroupKeys.has(key)) {
         seenGroupKeys.add(key)
         const match = existingGroupsByKey.get(key)
         if (match) existingGroups.push(match)
-        else newGroups.push(row.group)
+        else newGroups.push(group)
       }
     }
 
@@ -292,13 +331,14 @@ export function planRosterImport(
     seenNames.add(key)
     // Group names are re-emitted as stored, so a spelling variant in the file
     // maps onto the existing group instead of creating a near-duplicate.
-    const groupMatch = row.group === '' ? '' : existingGroupsByKey.get(nameKey(row.group)) ?? row.group
+    const groups = row.groups.map((group) => existingGroupsByKey.get(nameKey(group)) ?? group)
     if (collectPhones && row.phone === '') missingPhoneRows++
     entries.push({
       firstName: row.firstName,
       lastName: row.lastName,
       name: row.name,
-      group: groupMatch,
+      groups,
+      group: groups[0] ?? '',
       phone: row.phone,
     })
   }

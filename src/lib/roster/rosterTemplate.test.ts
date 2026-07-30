@@ -6,6 +6,7 @@ import {
   GROUP_COLUMN_HEADER,
   LAST_NAME_COLUMN_HEADER,
   PHONE_COLUMN_HEADER,
+  planRosterImport,
 } from './rosterPlan.ts'
 
 /**
@@ -21,8 +22,15 @@ test('the default template is first name, family name, group', () => {
     ['ישראל', 'ישראלי', 'קבוצה א'],
     ['דנה', 'כהן', 'קבוצה א'],
     ['יוסי', 'לוי', 'קבוצה ב'],
-    ['מיכל', 'אברהם', 'קבוצה ב'],
+    ['מיכל', 'אברהם', 'קבוצה א, קבוצה ב'],
   ])
+})
+
+test('the sample rows name only the two groups, however they are divided', () => {
+  const plan = planRosterImport(rosterTemplateRows(), { participantNames: [], groupNames: [] })
+
+  assert.deepEqual(plan.newGroups, ['קבוצה א', 'קבוצה ב'])
+  assert.deepEqual(plan.entries[plan.entries.length - 1].groups, ['קבוצה א', 'קבוצה ב'])
 })
 
 test('nothing in the default template so much as says "phone"', () => {
