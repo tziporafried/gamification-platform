@@ -71,27 +71,13 @@ function DeckDetail({ mode, counts, loading }: { mode: ScanMode; counts: CardCou
   )
 }
 
-/**
- * The one number an organiser should not meet at the printer.
- *
- * A combined card names its participant, so a question's three answers cannot be
- * shared - they are printed again for every player. Sixty players and four
- * questions is 720 cards where the split deck is twelve. Shown only when the
- * choice actually costs something, and it offers the other deck rather than
- * refusing this one: printing that many cards is allowed, being surprised by it
- * is not.
+/*
+ * There was a warning banner here about what a combined deck costs once a game
+ * has trivia in it. It said, at length, what the deck summary above already
+ * says in numbers: the total for this mode, and the trivia line that explains
+ * where those cards come from. Two ways of saying one thing, and the banner was
+ * the louder one.
  */
-function TriviaDeckWarning({ counts }: { counts: CardCounts }) {
-  const saving = counts.combined - counts.split
-  if (counts.triviaTasks === 0 || saving < 100) return null
-
-  return (
-    <Alert variant="warning" className="text-xs">
-      שאלות הטריוויה מדפיסות 3 כרטיסים לכל משתתף במצב "סריקה בודדת" - {he(counts.combined)}{' '}
-      כרטיסים בסך הכל. במצב "סריקה כפולה" אותו משחק מסתפק ב-{he(counts.split)} כרטיסים.
-    </Alert>
-  )
-}
 
 /**
  * The last step of the wizard for a game, in two acts on one page.
@@ -351,12 +337,6 @@ export function StepCards({
                       emphasizeDescription
                     />
                   </div>
-
-                  {selected === 'combined' && (
-                    <div className="mt-3 shrink-0">
-                      <TriviaDeckWarning counts={cardCounts} />
-                    </div>
-                  )}
 
                   {!selected && (
                     <p className="mt-3 text-center text-sm text-muted">

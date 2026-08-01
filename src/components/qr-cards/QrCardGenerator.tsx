@@ -508,9 +508,10 @@ function SplitPages({
                 event={event}
                 payload={{ actionCode: card.code }}
                 eyebrow="שאלת טריוויה"
+                question={card.question}
                 title={card.title}
                 scanHint="סרקו את התשובה שנראית לכם נכונה"
-                footer={<TriviaCardFooter question={card.question} />}
+                footer={<TriviaPointsRow points={card.points} />}
               />
             ))}
           </div>
@@ -520,16 +521,59 @@ function SplitPages({
   )
 }
 
-/** The question, small, on every one of its answer cards.
+/**
+ * The question, above the answer it belongs to, on every one of its cards.
  *
- *  No points row - deliberately. All three cards would have to carry the same
- *  number, and printing "+20 נקודות" on an answer that is worth nothing is a
- *  lie on paper that the participant only discovers after scanning it. */
-function TriviaCardFooter({ question }: { question: string | null }) {
+ * It used to print at 10px in the muted grey, below the answer - the size a
+ * card uses for its footnotes. But the answer means nothing without it: three
+ * cards saying "תשובה 1 / 2 / 3" are unreadable on their own, and whoever is
+ * holding one has to be able to tell what it answers at arm's length. So it
+ * leads the card, in the text colour, at a size meant to be read.
+ *
+ * Still smaller than the answer, which stays the largest line: the question is
+ * identical on all three cards, and the answer is the only thing that tells
+ * them apart in a pile.
+ */
+function TriviaQuestionLine({ question }: { question: string | null }) {
   if (!question) return null
   return (
-    <div className="trivia-question" style={{ marginTop: '2px', fontSize: '10px', lineHeight: 1.35, color: CARD_PALETTE.muted, direction: 'rtl' }}>
-      {question}
+    <div
+      className="trivia-question"
+      style={{
+        fontSize: '13px',
+        fontWeight: 700,
+        lineHeight: 1.3,
+        color: CARD_PALETTE.foreground,
+        direction: 'rtl',
+        marginBottom: '3px',
+        overflowWrap: 'anywhere',
+      }}
+    >
+      ❓ {question}
+    </div>
+  )
+}
+
+/**
+ * What the question pays, on all three of its cards.
+ *
+ * The card cannot print "+50 נקודות" the way a task does: two of the three are
+ * worth nothing, and a number on a wrong answer is a promise the participant
+ * only finds out was false after it has cost them their one attempt. So the
+ * number is attributed to the question rather than to the card - the same
+ * sentence the sheet's heading makes - which is true on the right card and on
+ * the wrong ones alike, and still tells the participant what is at stake.
+ */
+function TriviaPointsRow({ points }: { points: number }) {
+  return (
+    <div className="points-row" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
+      <span className="points-icon" style={{ fontSize: '14px' }}>⭐</span>
+      <span className="points-value" style={{ fontSize: '18px', fontWeight: 900, color: CARD_PALETTE.primary, letterSpacing: '-0.5px' }}>
+        {points}
+      </span>
+      <span className="points-label" style={{ fontSize: '10px', color: CARD_PALETTE.muted, fontWeight: 500 }}>
+        נקודות לתשובה הנכונה
+      </span>
     </div>
   )
 }
@@ -627,6 +671,7 @@ function QrCard({
   event,
   payload,
   eyebrow,
+  question,
   title,
   scanHint,
   footer,
@@ -634,6 +679,8 @@ function QrCard({
   event: Event
   payload: { participantCode: string } | { actionCode: string }
   eyebrow: string
+  /** A trivia answer card leads with the question its title answers. */
+  question?: string | null
   title: string
   scanHint: string
   footer?: ReactNode
@@ -655,6 +702,8 @@ function QrCard({
         <span className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: c }} />
         {eyebrow}
       </div>
+
+      <TriviaQuestionLine question={question ?? null} />
 
       <div className="action-name" style={actionNameStyle(title, { stacked: event.barcode_type === 'code128' })}>
         {title}
@@ -700,6 +749,10 @@ function ParticipantPage({ sheet, event }: { sheet: ParticipantSheet; event: Eve
               <span className="event-label" style={{ fontSize: '9px', color: CARD_PALETTE.muted }}>{event.name}</span>
             </div>
 
+            {/* The question first, when there is one - the answer under it is
+                meaningless on its own once the sheet has been cut up. */}
+            <TriviaQuestionLine question={card.question} />
+
             {/* The task, or the answer being offered */}
             <div className="action-name" style={actionNameStyle(card.title, { stacked: event.barcode_type === 'code128' })}>
               {card.title}
@@ -712,7 +765,7 @@ function ParticipantPage({ sheet, event }: { sheet: ParticipantSheet; event: Eve
             </div>
 
             {card.isTrivia ? (
-              <TriviaCardFooter question={card.question} />
+              <TriviaPointsRow points={card.points} />
             ) : (
               <div className="points-row" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
                 <span className="points-icon" style={{ fontSize: '14px' }}>⭐</span>
