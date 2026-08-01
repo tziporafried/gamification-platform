@@ -9,8 +9,9 @@ import { PanelCard } from '@/components/ui/PanelCard'
 import { theme } from '@/lib/theme'
 import { isActionRelevantTo } from '@/lib/cardCounts'
 import { encodeCardPayload } from '@/lib/cardPayload'
+import { isTriviaAction } from '@/lib/tasks/triviaScan'
 
-import type { Action, Group, ParticipantWithGroups, Event, ScanMode, BarcodeType } from '@/types'
+import type { Action, ActionOption, Group, ParticipantWithGroups, Event, ScanMode, BarcodeType } from '@/types'
 
 interface QrCardGeneratorProps {
   event: Event
@@ -33,8 +34,65 @@ interface QrCardGeneratorProps {
 }
 
 interface ActionGroupJoin { group_id: string; groups: Group }
-interface ActionWithGroupIds extends Action { groupIds: string[] }
+interface ActionWithGroupIds extends Action { groupIds: string[]; options: ActionOption[] }
 interface ParticipantSheet { participant: ParticipantWithGroups; actions: ActionWithGroupIds[] }
+
+/**
+ * One physical card's worth of task, after questions have been unfolded.
+ *
+ * A standard task is one of these; a trivia question is one per answer, each
+ * carrying its own code. Everything downstream lays out cards, not tasks, which
+ * is what keeps the two decks from having to know what a question is.
+ */
+interface PrintableTaskCard {
+  key: string
+  /** What the barcode encodes - the task's code, or one answer's. */
+  code: string
+  /** The line printed large: the task name, or the answer. */
+  title: string
+  /** Printed small underneath, on all three cards of a question. */
+  question: string | null
+  points: number
+  isTrivia: boolean
+}
+
+/**
+ * A question that would print a card nobody can win on is not printed at all.
+ *
+ * The composer cannot save one, so this is reached only if answers were removed
+ * behind its back. The readiness list names it; here it is simply left out of
+ * the deck rather than printed as a task with no way to score.
+ */
+function isPrintableAction(action: ActionWithGroupIds): boolean {
+  if (!isTriviaAction(action)) return true
+  return action.options.length >= 2 && action.options.filter((o) => o.is_correct).length === 1
+}
+
+function cardsForAction(action: ActionWithGroupIds): PrintableTaskCard[] {
+  if (!isTriviaAction(action)) {
+    return [{
+      key: action.id,
+      code: action.code,
+      title: action.name,
+      question: null,
+      points: action.points,
+      isTrivia: false,
+    }]
+  }
+
+  return [...action.options]
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((option) => ({
+      key: option.id,
+      code: option.code,
+      // The answer is what the participant chooses between, so it is the line
+      // they have to be able to read across a room.
+      title: option.label,
+      question: action.name,
+      points: action.points,
+      isTrivia: true,
+    }))
+}
 
 /** Palette literals for print/card inline styles (matches design-tokens.css) */
 const CARD_PALETTE = {
@@ -102,16 +160,27 @@ export function QrCardGenerator({ event, scanMode, previewOpen = false, onPrintR
   const printRef = useRef<HTMLDivElement>(null)
 
   const fetchData = useCallback(async () => {
-    const [participantsRes, actionsRes] = await Promise.all([
+    const [participantsRes, actionsRes, optionsRes] = await Promise.all([
       supabase.from('participants').select('*, participant_groups(group_id, groups(*))').eq('event_id', event.id).order('name'),
       supabase.from('actions').select('*, action_groups(group_id, groups(*))').eq('event_id', event.id).eq('is_active', true).order('name'),
+      // Errors to an empty list on a database without 088 - a game with no
+      // questions in it then prints exactly the deck it always did.
+      supabase.from('action_options').select('*').eq('event_id', event.id).order('sort_order'),
     ])
+    const optionsByAction = new Map<string, ActionOption[]>()
+    for (const option of (optionsRes.data ?? []) as ActionOption[]) {
+      const list = optionsByAction.get(option.action_id)
+      if (list) list.push(option)
+      else optionsByAction.set(option.action_id, [option])
+    }
     const mappedParticipants: ParticipantWithGroups[] = (participantsRes.data ?? []).map((p) => ({
       ...p, groups: ((p.participant_groups as unknown as { group_id: string; groups: Group }[]) ?? []).map((pg) => pg.groups),
     }))
     const mappedActions: ActionWithGroupIds[] = (actionsRes.data ?? []).map((a) => ({
-      ...a, groupIds: ((a.action_groups as unknown as ActionGroupJoin[]) ?? []).map((ag) => ag.group_id),
-    }))
+      ...a,
+      groupIds: ((a.action_groups as unknown as ActionGroupJoin[]) ?? []).map((ag) => ag.group_id),
+      options: optionsByAction.get(a.id) ?? [],
+    })).filter(isPrintableAction)
     setParticipants(mappedParticipants); setActions(mappedActions); setLoading(false)
   }, [event.id])
 
@@ -398,7 +467,7 @@ function SplitPages({
           נסרקים אחרי כרטיס המשתתף כדי לזכות בנקודות.
         </div>
         <div className="cards-grid" style={gridStyle}>
-          {actions.map((action) => (
+          {actions.filter((action) => !isTriviaAction(action)).map((action) => (
             <QrCard
               key={action.id}
               event={event}
@@ -419,7 +488,49 @@ function SplitPages({
           ))}
         </div>
       </div>
+
+      {/* A question's cards are cut apart and handed out as a set, so they are
+          laid out as a set - under a heading naming the question, in the order
+          they will be cut. The heading is for whoever is holding the scissors;
+          it is not part of any card, and it does not say which answer is right. */}
+      {actions.filter(isTriviaAction).map((action) => (
+        <div key={action.id} className="participant-section" style={{ marginBottom: '20px' }}>
+          <div className="section-heading" style={{ fontSize: '15px', fontWeight: 900, color: CARD_PALETTE.foreground, margin: '0 0 4px' }}>
+            ❓ {action.name}
+          </div>
+          <div className="section-hint" style={{ fontSize: '11px', color: CARD_PALETTE.muted, marginBottom: '10px' }}>
+            {action.options.length} תשובות · רק אחת מהן מזכה ב-{action.points} נקודות, ולכל משתתף ניסיון אחד.
+          </div>
+          <div className="cards-grid" style={gridStyle}>
+            {cardsForAction(action).map((card) => (
+              <QrCard
+                key={card.key}
+                event={event}
+                payload={{ actionCode: card.code }}
+                eyebrow="שאלת טריוויה"
+                title={card.title}
+                scanHint="סרקו את התשובה שנראית לכם נכונה"
+                footer={<TriviaCardFooter question={card.question} />}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
     </>
+  )
+}
+
+/** The question, small, on every one of its answer cards.
+ *
+ *  No points row - deliberately. All three cards would have to carry the same
+ *  number, and printing "+20 נקודות" on an answer that is worth nothing is a
+ *  lie on paper that the participant only discovers after scanning it. */
+function TriviaCardFooter({ question }: { question: string | null }) {
+  if (!question) return null
+  return (
+    <div className="trivia-question" style={{ marginTop: '2px', fontSize: '10px', lineHeight: 1.35, color: CARD_PALETTE.muted, direction: 'rtl' }}>
+      {question}
+    </div>
   )
 }
 
@@ -573,12 +684,15 @@ function ParticipantPage({ sheet, event }: { sheet: ParticipantSheet; event: Eve
         className="cards-grid"
         style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}
       >
-        {actions.map((action) => (
+        {/* A question unfolds here too - three cards, for this one participant.
+            This is the multiplication the cards step warns about: a combined
+            card names its participant, so nothing about it can be shared. */}
+        {actions.flatMap(cardsForAction).map((card) => (
           <CardFrame
-            key={action.id}
+            key={card.key}
             type={event.barcode_type}
-            codeValue={encodeCardPayload({ participantCode: participant.external_id, actionCode: action.code }, event.barcode_type)}
-            scanHint="סרקו לקבלת הנקודות"
+            codeValue={encodeCardPayload({ participantCode: participant.external_id, actionCode: card.code }, event.barcode_type)}
+            scanHint={card.isTrivia ? 'סרקו את התשובה שנראית לכם נכונה' : 'סרקו לקבלת הנקודות'}
           >
             {/* Event row */}
             <div className="event-row" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
@@ -586,9 +700,9 @@ function ParticipantPage({ sheet, event }: { sheet: ParticipantSheet; event: Eve
               <span className="event-label" style={{ fontSize: '9px', color: CARD_PALETTE.muted }}>{event.name}</span>
             </div>
 
-            {/* Task title */}
-            <div className="action-name" style={actionNameStyle(action.name, { stacked: event.barcode_type === 'code128' })}>
-              {action.name}
+            {/* The task, or the answer being offered */}
+            <div className="action-name" style={actionNameStyle(card.title, { stacked: event.barcode_type === 'code128' })}>
+              {card.title}
             </div>
 
             {/* Participant badge */}
@@ -597,14 +711,17 @@ function ParticipantPage({ sheet, event }: { sheet: ParticipantSheet; event: Eve
               {participant.name}
             </div>
 
-            {/* Points */}
-            <div className="points-row" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
-              <span className="points-icon" style={{ fontSize: '14px' }}>⭐</span>
-              <span className="points-value" style={{ fontSize: '18px', fontWeight: 900, color: c, letterSpacing: '-0.5px' }}>
-                +{action.points}
-              </span>
-              <span className="points-label" style={{ fontSize: '10px', color: CARD_PALETTE.muted, fontWeight: 500 }}>נקודות</span>
-            </div>
+            {card.isTrivia ? (
+              <TriviaCardFooter question={card.question} />
+            ) : (
+              <div className="points-row" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
+                <span className="points-icon" style={{ fontSize: '14px' }}>⭐</span>
+                <span className="points-value" style={{ fontSize: '18px', fontWeight: 900, color: c, letterSpacing: '-0.5px' }}>
+                  +{card.points}
+                </span>
+                <span className="points-label" style={{ fontSize: '10px', color: CARD_PALETTE.muted, fontWeight: 500 }}>נקודות</span>
+              </div>
+            )}
           </CardFrame>
         ))}
       </div>

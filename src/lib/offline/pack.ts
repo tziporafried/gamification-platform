@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Action, Group, Participant, Reward } from '@/types'
+import type { Action, ActionOption, Group, Participant, Reward } from '@/types'
 import { PACK_VERSION, type GamePack } from './types'
 
 /**
@@ -45,6 +45,7 @@ export async function buildEventPack(eventId: string): Promise<GamePack> {
     actionGroupsRes,
     rewardsRes,
     rewardGroupsRes,
+    actionOptionsRes,
   ] = await Promise.all([
     supabase.from('events').select('id, name, logo_url').eq('id', eventId).single(),
     supabase.from('groups').select('*').eq('event_id', eventId),
@@ -63,6 +64,10 @@ export async function buildEventPack(eventId: string): Promise<GamePack> {
       .from('reward_groups')
       .select('reward_id, group_id, rewards!inner(event_id)')
       .eq('rewards.event_id', eventId),
+    // Deliberately outside the error check below: a database that has not run
+    // 088 answers this with "relation does not exist", and that must not stop a
+    // game with no trivia in it from being exported at all.
+    supabase.from('action_options').select('*').eq('event_id', eventId),
   ])
 
   const firstError =
@@ -105,6 +110,11 @@ export async function buildEventPack(eventId: string): Promise<GamePack> {
       action_id: row.action_id,
       group_id: row.group_id,
     })),
+    // Only when the game actually has answers - an empty array in every pack
+    // would be a key that means nothing.
+    ...(actionOptionsRes.data && actionOptionsRes.data.length > 0
+      ? { actionOptions: actionOptionsRes.data as ActionOption[] }
+      : {}),
     rewards: (rewardsRes.data ?? []) as Reward[],
     rewardGroups: (rewardGroupsRes.data ?? []).map((row) => ({
       reward_id: row.reward_id,

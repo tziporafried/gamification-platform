@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Lock, Plus, CheckSquare } from 'lucide-react'
+import { Lock, Plus, CheckSquare, HelpCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { CenteredLoader } from '@/components/ui/CenteredLoader'
@@ -11,9 +11,14 @@ import { UpgradeModal } from '@/components/UpgradeModal'
 import { ActionForm } from './ActionForm'
 import { ActionRow } from './ActionRow'
 import { InlineAddAction } from './InlineAddAction'
+import { TriviaComposerModal } from './TriviaComposerModal'
 import { ScrollableListLayout } from '@/components/ui/ScrollableListLayout'
 import { getLockedTemplate, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
-import type { Action, ActionWithGroups, Group, GroupType, TemplateTask } from '@/types'
+import { useTriviaTasks } from '@/lib/tasks/triviaTasksFlag'
+import { useGroupPurpose } from '@/lib/groups/groupPurposeFlag'
+import { fetchEventOptions, type SavedQuestion } from '@/lib/tasks/triviaQuestions'
+import { isTriviaAction } from '@/lib/tasks/triviaScan'
+import type { Action, ActionOption, ActionWithGroups, Group, GroupType, TemplateTask } from '@/types'
 
 interface ActionListProps {
   eventId: string
@@ -60,6 +65,29 @@ function LockedActionCard({ task }: { task: TemplateTask }) {
   )
 }
 
+/**
+ * The other way to add a task, under the one-line field.
+ *
+ * Deliberately a quiet second button rather than a mode switch at the top: the
+ * fast path for an ordinary task is the thing most organisers came for, and it
+ * stays untouched. The sentence beside it is the whole pitch - somebody who has
+ * never heard of the feature should know from this line whether they want it.
+ */
+function AddTriviaButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group/trivia mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] text-muted transition-colors hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+    >
+      <HelpCircle size={13} strokeWidth={2} className="shrink-0" />
+      <span>
+        או הוסיפו <strong className="font-bold">שאלת טריוויה</strong> - 3 תשובות, אחת מזכה
+      </span>
+    </button>
+  )
+}
+
 export function ActionList({ eventId, onCountChange, embedded = false, groupType, groupCount }: ActionListProps) {
   const [actions, setActions] = useState<ActionWithGroups[]>([])
   const [lockedTasks, setLockedTasks] = useState<TemplateTask[]>([])
@@ -72,6 +100,14 @@ export function ActionList({ eventId, onCountChange, embedded = false, groupType
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
   const [showAddInput, setShowAddInput] = useState(false)
   const [addInputFocusRequest, setAddInputFocusRequest] = useState(0)
+  // The answers of every trivia task in the game, by task id. Empty for a game
+  // without the flag, and empty on a database that has not run 088.
+  const [optionsByAction, setOptionsByAction] = useState<Map<string, ActionOption[]>>(new Map())
+  const [composerOpen, setComposerOpen] = useState(false)
+  const [editingQuestion, setEditingQuestion] = useState<{ action: Action; options: ActionOption[] } | null>(null)
+  const triviaEnabled = useTriviaTasks()
+  // A game can have groups that only hand tasks out - see hasGroups below.
+  const canChoosePurpose = useGroupPurpose()
   const listRef = useRef<HTMLDivElement>(null)
   const prevCountRef = useRef(0)
   const addInputRef = useRef<HTMLInputElement>(null)
@@ -134,11 +170,23 @@ export function ActionList({ eventId, onCountChange, embedded = false, groupType
       setError('')
       onCountChange(mapped.length)
       setLoading(false)
+
+      // After the list is on screen rather than blocking it: a game with no
+      // trivia in it should not wait on a query that will come back empty.
+      if (mapped.some(isTriviaAction)) {
+        setOptionsByAction(await fetchEventOptions(eventId))
+      }
     }
     fetchActions()
   }, [eventId])
 
-  const hasGroups = groupType !== 'none' && (groupCount ?? 1) > 0
+  /**
+   * With purposes (090) a game whose competition is between individuals can
+   * still have groups - distribution ones, whose entire job is to be the answer
+   * to "who is this task for". So the groups it has decide, not the kind of
+   * competition it runs. Without the flag this is the old expression exactly.
+   */
+  const hasGroups = (canChoosePurpose || groupType !== 'none') && (groupCount ?? 1) > 0
 
   useEffect(() => {
     if (!hasGroups) {
@@ -195,6 +243,24 @@ export function ActionList({ eventId, onCountChange, embedded = false, groupType
     })
   }, [onCountChange])
 
+  const openComposer = useCallback((question: { action: Action; options: ActionOption[] } | null) => {
+    setEditingQuestion(question)
+    setComposerOpen(true)
+  }, [])
+
+  const handleQuestionSaved = useCallback((saved: SavedQuestion) => {
+    setOptionsByAction((prev) => new Map(prev).set(saved.action.id, saved.options))
+    setActions((prev) => {
+      const exists = prev.some((a) => a.id === saved.action.id)
+      const next = exists
+        ? prev.map((a) => (a.id === saved.action.id ? { ...a, ...saved.action } : a))
+        : [...prev, { ...saved.action, groups: [] }]
+      onCountChange(next.length)
+      return next
+    })
+    setEditingQuestion(null)
+  }, [onCountChange])
+
   const handleDeleted = useCallback((actionId: string) => {
     setActions((prev) => {
       const next = prev.filter((a) => a.id !== actionId)
@@ -226,6 +292,8 @@ export function ActionList({ eventId, onCountChange, embedded = false, groupType
           onUpdated={(patch) => handleActionPatched(action.id, patch)}
           onError={setError}
           siblingNames={existingNames.filter((n) => n !== action.name)}
+          options={optionsByAction.get(action.id)}
+          onEditQuestion={() => openComposer({ action, options: optionsByAction.get(action.id) ?? [] })}
         />
       ))}
     </div>
@@ -250,14 +318,17 @@ export function ActionList({ eventId, onCountChange, embedded = false, groupType
             listRef={listRef}
             footer={
               showAddInput ? (
-                <InlineAddAction
-                  eventId={eventId}
-                  onAdded={handleAdded}
-                  onPlanLimit={() => setUpgradeOpen(true)}
-                  existingNames={existingNames}
-                  onFeedback={showFeedback}
-                  nameInputRef={addInputRef}
-                />
+                <>
+                  <InlineAddAction
+                    eventId={eventId}
+                    onAdded={handleAdded}
+                    onPlanLimit={() => setUpgradeOpen(true)}
+                    existingNames={existingNames}
+                    onFeedback={showFeedback}
+                    nameInputRef={addInputRef}
+                  />
+                  {triviaEnabled && <AddTriviaButton onClick={() => openComposer(null)} />}
+                </>
               ) : undefined
             }
           >
@@ -298,6 +369,7 @@ export function ActionList({ eventId, onCountChange, embedded = false, groupType
                   onFeedback={showFeedback}
                   nameInputRef={addInputRef}
                 />
+                {triviaEnabled && <AddTriviaButton onClick={() => openComposer(null)} />}
               </div>
             )}
           </div>
@@ -308,14 +380,17 @@ export function ActionList({ eventId, onCountChange, embedded = false, groupType
           listRef={listRef}
           listClassName="space-y-1"
           footer={
-            <InlineAddAction
-              eventId={eventId}
-              onAdded={handleAdded}
-              onPlanLimit={() => setUpgradeOpen(true)}
-              existingNames={existingNames}
-              onFeedback={showFeedback}
-              nameInputRef={addInputRef}
-            />
+            <>
+              <InlineAddAction
+                eventId={eventId}
+                onAdded={handleAdded}
+                onPlanLimit={() => setUpgradeOpen(true)}
+                existingNames={existingNames}
+                onFeedback={showFeedback}
+                nameInputRef={addInputRef}
+              />
+              {triviaEnabled && <AddTriviaButton onClick={() => openComposer(null)} />}
+            </>
           }
         >
           {actionList}
@@ -336,6 +411,7 @@ export function ActionList({ eventId, onCountChange, embedded = false, groupType
               onFeedback={showFeedback}
               nameInputRef={addInputRef}
             />
+            {triviaEnabled && <AddTriviaButton onClick={() => openComposer(null)} />}
           </div>
         </>
       )}
@@ -347,6 +423,18 @@ export function ActionList({ eventId, onCountChange, embedded = false, groupType
           isOpen={formOpen}
           onClose={handleFormClose}
           onSaved={handleFormClose}
+        />
+      )}
+
+      {composerOpen && (
+        <TriviaComposerModal
+          eventId={eventId}
+          isOpen={composerOpen}
+          onClose={() => { setComposerOpen(false); setEditingQuestion(null) }}
+          onSaved={handleQuestionSaved}
+          onPlanLimit={() => setUpgradeOpen(true)}
+          siblingNames={existingNames}
+          existing={editingQuestion ?? undefined}
         />
       )}
 

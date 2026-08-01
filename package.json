@@ -13,7 +13,9 @@
     "test:scan": "node --import ./scripts/register-alias.mjs --test src/lib/qrPayload.test.ts src/lib/scanSequence.test.ts src/lib/cardCounts.test.ts",
     "test:finance": "node --import ./scripts/register-alias.mjs --test src/lib/financeSplit.test.ts",
     "test:features": "node --import ./scripts/register-alias.mjs --test src/lib/eventFeatures.test.ts",
+    "test:groups": "node --import ./scripts/register-alias.mjs --test src/lib/groups/*.test.ts",
     "test:lottery": "node --import ./scripts/register-alias.mjs --test src/components/live-events/lottery/*.test.ts",
+    "test:manage": "node --import ./scripts/register-alias.mjs --test src/lib/manage/*.test.ts",
     "test:roster": "node --import ./scripts/register-alias.mjs --test src/lib/spreadsheet/*.test.ts src/lib/roster/*.test.ts src/lib/phone.test.ts",
     "test:sms": "node --import ./scripts/register-alias.mjs --test src/lib/smsTemplate.test.ts",
     "test:wizard": "node --import ./scripts/register-alias.mjs --test src/lib/wizardSteps.test.ts"

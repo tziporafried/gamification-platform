@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { detectDelimiter, parseDelimited, toCsv } from './csv.ts'
-import { buildXlsx, columnIndex, columnName, readXlsx } from './xlsx.ts'
+import { buildXlsx, buildXlsxWorkbook, columnIndex, columnName, readXlsx } from './xlsx.ts'
 
 test('parses a comma-separated roster', () => {
   const rows = parseDelimited('שם המשתתף,קבוצה\nדנה כהן,אדומים\nיוסי לוי,כחולים')
@@ -88,4 +88,35 @@ test('reads shared strings, the encoding Excel actually saves', async () => {
   ])
 
   assert.deepEqual(await readXlsx(workbook), [['דנה כהן', 'אדומים']])
+})
+
+test('a workbook keeps every sheet it was given, and reads back on the first', async () => {
+  const { readZip } = await import('./zip.ts')
+  const workbook = buildXlsxWorkbook([
+    { sheetName: 'סיכום', rows: [['משתתפים', '128']] },
+    { sheetName: 'משתתפים', rows: [['שם'], ['דנה כהן']], rightToLeft: true },
+    { sheetName: 'סריקות', rows: [['משתתף', 'משימה']] },
+  ])
+
+  const files = await readZip(workbook)
+  assert.ok(files.has('xl/worksheets/sheet3.xml'))
+  assert.ok(!files.has('xl/worksheets/sheet4.xml'))
+  // The import only ever wants one sheet, and it should be the first.
+  assert.deepEqual(await readXlsx(workbook), [['משתתפים', '128']])
+})
+
+test('sheet names Excel would refuse are cleaned rather than passed through', async () => {
+  const { readZip } = await import('./zip.ts')
+  const decoder = new TextDecoder()
+  const workbook = buildXlsxWorkbook([
+    { sheetName: 'a/b:c*d?e[f]g', rows: [['x']] },
+    // Two tabs asking for the same name is the other way a workbook fails to open.
+    { sheetName: 'דוח', rows: [['y']] },
+    { sheetName: 'דוח', rows: [['z']] },
+  ])
+
+  const xml = decoder.decode((await readZip(workbook)).get('xl/workbook.xml')!)
+  assert.ok(!/name="[^"]*[:\\/?*[\]]/.test(xml), 'no illegal character survived')
+  const names = [...xml.matchAll(/<sheet name="([^"]+)"/g)].map((m) => m[1])
+  assert.equal(new Set(names).size, names.length, 'names are unique')
 })

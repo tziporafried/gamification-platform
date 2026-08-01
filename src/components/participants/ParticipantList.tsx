@@ -11,6 +11,8 @@ import { RosterImportButton } from '@/components/roster/RosterImportButton'
 import { RosterImportModal } from '@/components/roster/RosterImportModal'
 import { useSmsNotifications } from '@/lib/smsNotifications'
 import { useImportCsv } from '@/lib/roster/importCsvFlag'
+import { useGroupPurpose } from '@/lib/groups/groupPurposeFlag'
+import { competingGroups } from '@/lib/groups/groupPurpose'
 import type { RosterImportResult } from '@/lib/roster/rosterImport'
 import { InlineAddParticipant } from './InlineAddParticipant'
 import { ParticipantRow } from './ParticipantRow'
@@ -55,7 +57,13 @@ export function ParticipantList({
   const participantsRef = useRef<ParticipantWithGroups[]>([])
   useEffect(() => { participantsRef.current = participants }, [participants])
 
-  const hasGroups = groupType === 'custom'
+  /**
+   * With purposes (090) the roster can be sorted into groups even when the
+   * competition is between individuals - those groups exist to hand out tasks,
+   * prizes and draws, and someone has to be in them.
+   */
+  const canChoosePurpose = useGroupPurpose()
+  const hasGroups = groupType === 'custom' || canChoosePurpose
   // Building the roster from a file is sold with the organizations plan.
   const canImport = useImportCsv()
   /**
@@ -166,8 +174,10 @@ export function ParticipantList({
 
   const handleAdded = useCallback((participant: Participant) => {
     // A participant must belong to at least one group - new participants default
-    // to "all groups" so they're never left ungrouped.
-    const defaultGroups = hasGroups ? groups : []
+    // to "all groups" so they're never left ungrouped. All *competing* groups:
+    // being handed the staff prizes on the way in is not a sensible default,
+    // and without the flag every group competes, so nothing changes.
+    const defaultGroups = hasGroups ? competingGroups(groups) : []
     setParticipants((prev) => {
       const next = [...prev, { ...participant, groups: defaultGroups }]
       onCountChange(next.length)

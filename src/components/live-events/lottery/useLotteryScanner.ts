@@ -35,6 +35,8 @@ export type LotteryScanFeedback =
   | { kind: 'scored'; participantName: string; actionName: string }
   /** They already had one. The scan still scored; the hat is unchanged. */
   | { kind: 'duplicate'; participantName: string }
+  /** A trivia answer that was wrong: the scan counted, the ticket did not. */
+  | { kind: 'wrong_answer'; participantName: string; actionName: string }
   | { kind: 'error'; message: string }
 
 export interface LotteryScannerState {
@@ -93,6 +95,18 @@ export function useLotteryScanner({
         return
       }
       trackScanSuccess('qr_scan')
+
+      // A wrong trivia answer is a scan that saved and scored nothing, so it
+      // must not buy a ticket either. Letting it through would make a question
+      // the cheapest way into the hat: scan any of the three cards and you are in.
+      if (!response.result.isCorrect) {
+        show({
+          kind: 'wrong_answer',
+          participantName: response.result.participantName,
+          actionName: response.result.actionName,
+        })
+        return
+      }
 
       // The scan scored; now put them in the hat. This is the only thing that
       // enters anybody into the lottery - which is why scans taken at the

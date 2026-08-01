@@ -97,7 +97,9 @@ export function ScanLotteryCollectingStage({
                       ? `scored-${feedback.participantName}-${feedback.actionName}`
                       : feedback.kind === 'duplicate'
                         ? `duplicate-${feedback.participantName}`
-                        : `error-${feedback.message}`
+                        : feedback.kind === 'wrong_answer'
+                          ? `wrong-${feedback.participantName}-${feedback.actionName}`
+                          : `error-${feedback.message}`
                   }
                   className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 px-[8%] text-center"
                   style={{
@@ -139,6 +141,36 @@ export function ScanLotteryCollectingStage({
                         }}
                       >
                         כרטיס נוסף להגרלה
+                      </div>
+                      <div
+                        style={{ fontSize: 'clamp(12px, 2.7cqw, 15px)', fontWeight: 700, color: '#7D706A' }}
+                      >
+                        {feedback.actionName}
+                      </div>
+                    </>
+                  ) : feedback.kind === 'wrong_answer' ? (
+                    // The scan saved and spent the attempt; it just did not buy
+                    // a ticket. Said plainly, and without naming the right
+                    // answer to a room full of people who have not answered yet.
+                    <>
+                      <div style={{ fontSize: 'clamp(40px, 9cqw, 64px)', lineHeight: 1 }} aria-hidden="true">
+                        ❓
+                      </div>
+                      <div
+                        style={{ fontSize: 'clamp(20px, 5cqw, 30px)', fontWeight: 900, color: '#2E221E' }}
+                      >
+                        {feedback.participantName}
+                      </div>
+                      <div
+                        className="rounded-full px-5 py-2"
+                        style={{
+                          background: 'rgba(125,112,106,0.14)',
+                          color: '#6B605B',
+                          fontSize: 'clamp(13px, 3cqw, 17px)',
+                          fontWeight: 900,
+                        }}
+                      >
+                        התשובה לא נכונה - אין כרטיס להגרלה
                       </div>
                       <div
                         style={{ fontSize: 'clamp(12px, 2.7cqw, 15px)', fontWeight: 700, color: '#7D706A' }}

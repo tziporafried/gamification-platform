@@ -113,6 +113,8 @@ class QueryBuilder implements PromiseLike<Result> {
         return pack.rewardGroups.map((l) => ({ ...l }))
       case 'action_groups':
         return pack.actionGroups.map((l) => ({ ...l }))
+      case 'action_options':
+        return (pack.actionOptions ?? []).map((o) => ({ ...o }))
       case 'participant_groups':
         return pack.participantGroups.map((m) => {
           const g = pack.groups.find((x) => x.id === m.group_id)

@@ -1,4 +1,5 @@
 import type { GroupLeaderboardEntry, ParticipantLeaderboardEntry } from '@/types'
+import { isCompetingGroup } from '@/lib/groups/groupPurpose'
 import type { GamePack, LocalScan } from './types'
 
 /**
@@ -48,10 +49,16 @@ export function getParticipantLeaderboard(
 /**
  * A group's score is the sum of its members' scans. A participant in two groups
  * counts toward both - that is what the SQL's join produces, not a bug.
+ *
+ * Distribution groups (090) are left out, mirroring the WHERE clause the RPC
+ * grew in the same migration: they hand out tasks and prizes, they do not
+ * compete. A pack exported before that column existed has none, and every group
+ * in it ranks exactly as it always did.
  */
 export function getGroupLeaderboard(pack: GamePack, scans: LocalScan[]): GroupLeaderboardEntry[] {
   const perParticipant = pointsByParticipant(scans)
-  const totals = new Map<string, number>(pack.groups.map((group) => [group.id, 0]))
+  const ranked = pack.groups.filter(isCompetingGroup)
+  const totals = new Map<string, number>(ranked.map((group) => [group.id, 0]))
 
   for (const membership of pack.participantGroups) {
     const current = totals.get(membership.group_id)
@@ -59,7 +66,7 @@ export function getGroupLeaderboard(pack: GamePack, scans: LocalScan[]): GroupLe
     totals.set(membership.group_id, current + (perParticipant.get(membership.participant_id) ?? 0))
   }
 
-  return pack.groups
+  return ranked
     .map((group) => ({
       group_id: group.id,
       group_name: group.name,

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download, Search, LogIn, Check, RotateCcw, Flag } from 'lucide-react'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download, Search, LogIn, KeyRound, Check, RotateCcw, Flag } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
@@ -22,6 +22,7 @@ import { AdminFinancePanel } from '@/components/admin/AdminFinancePanel'
 import { AdminScannersPanel } from '@/components/admin/AdminScannersPanel'
 import { FeatureFlagsAdminPanel } from '@/components/admin/FeatureFlagsAdminPanel'
 import { EventDetailsModal } from '@/components/admin/EventDetailsModal'
+import { ResetPasswordModal } from '@/components/admin/ResetPasswordModal'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
 import { fetchEventsPlayMeta } from '@/lib/eventsPlayMeta'
 import { cn } from '@/lib/utils'
@@ -223,6 +224,9 @@ export function AdminPanel() {
   // Login-as (impersonation)
   const [impersonatingUserId, setImpersonatingUserId] = useState<string | null>(null)
   const [impersonateError, setImpersonateError] = useState<string | null>(null)
+
+  // Password reset
+  const [passwordTarget, setPasswordTarget] = useState<AdminUser | null>(null)
 
   // Upgrade request deletion
   const [deleteRequestTarget, setDeleteRequestTarget] = useState<UpgradeRequest | null>(null)
@@ -671,6 +675,14 @@ export function AdminPanel() {
                             <span className="hidden sm:inline">התחבר כלקוח</span>
                           </button>
                           <button
+                            onClick={() => setPasswordTarget(user)}
+                            title="איפוס סיסמה"
+                            aria-label={`איפוס סיסמה ל${user.display_name || user.email}`}
+                            className="flex items-center justify-center rounded-lg p-2 text-muted hover:bg-brand-600/10 hover:text-brand-400 transition-colors"
+                          >
+                            <KeyRound size={15} />
+                          </button>
+                          <button
                             onClick={() => { setDeleteError(null); setDeleteTarget(user) }}
                             title="מחק משתמש"
                             className="flex items-center justify-center rounded-lg p-2 text-muted hover:bg-danger/10 hover:text-danger-text transition-colors"
@@ -926,6 +938,14 @@ export function AdminPanel() {
           eventName={detailEvent.name}
           plan={detailEvent.plan}
           onClose={() => setDetailEvent(null)}
+        />
+      )}
+
+      {passwordTarget && (
+        <ResetPasswordModal
+          isOpen
+          user={passwordTarget}
+          onClose={() => setPasswordTarget(null)}
         />
       )}
 

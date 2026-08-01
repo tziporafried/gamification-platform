@@ -1,4 +1,4 @@
-import type { Action, Group, Participant, Reward } from '@/types'
+import type { Action, ActionOption, Group, Participant, Reward } from '@/types'
 import type { GamePack, GameState } from './types'
 
 /** Test helpers: build a pack and state without repeating boilerplate in every test. */
@@ -65,6 +65,31 @@ export function makeReward(over: Partial<Reward> = {}): Reward {
     updated_at: '2026-07-16T00:00:00.000Z',
     ...over,
   }
+}
+
+/**
+ * A trivia question and its answers, ready to drop into a pack.
+ *
+ * `correctIndex` picks which of the labels scores; the codes follow the same
+ * `<task code>-<n>` shape the database trigger produces (088).
+ */
+export function makeTriviaAction(
+  over: Partial<Action> = {},
+  labels: string[] = ['תשובה א', 'תשובה ב', 'תשובה ג'],
+  correctIndex = 0,
+): { action: Action; options: ActionOption[] } {
+  const action = makeAction({ ...over, kind: 'trivia' })
+  const options = labels.map((label, i) => ({
+    id: id('o'),
+    action_id: action.id,
+    event_id: action.event_id,
+    code: `${action.code}-${i + 1}`,
+    label,
+    is_correct: i === correctIndex,
+    sort_order: i,
+    created_at: '2026-07-16T00:00:00.000Z',
+  }))
+  return { action, options }
 }
 
 export function makePack(over: Partial<GamePack> = {}): GamePack {

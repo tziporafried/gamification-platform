@@ -7,7 +7,18 @@ import { ModalActions } from '@/components/ui/ModalActions'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { ColorPicker } from '@/components/ui/ColorPicker'
 import { getNextPresetColor } from '@/lib/paletteColors'
-import type { Group } from '@/types'
+import { useGroupPurpose } from '@/lib/groups/groupPurposeFlag'
+import {
+  GROUP_PURPOSE_DESCRIPTIONS,
+  GROUP_PURPOSE_LABELS,
+  groupPurpose,
+  isMissingGroupPurposeError,
+  MISSING_GROUP_PURPOSE_MESSAGE,
+} from '@/lib/groups/groupPurpose'
+import { cn } from '@/lib/utils'
+import type { Group, GroupPurpose } from '@/types'
+
+const PURPOSE_OPTIONS: GroupPurpose[] = ['competition', 'distribution']
 
 interface GroupFormProps {
   eventId: string
@@ -21,8 +32,11 @@ interface GroupFormProps {
 export function GroupForm({ eventId, group, usedColors = [], isOpen, onClose, onSaved }: GroupFormProps) {
   const [name, setName] = useState(group?.name ?? '')
   const [color, setColor] = useState(group?.color ?? getNextPresetColor(usedColors))
+  const [purpose, setPurpose] = useState<GroupPurpose>(groupPurpose(group))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  // Without the flag the choice is not offered and nothing writes the column.
+  const canChoosePurpose = useGroupPurpose()
 
   const isEdit = !!group
 
@@ -30,8 +44,9 @@ export function GroupForm({ eventId, group, usedColors = [], isOpen, onClose, on
     if (!isOpen) return
     setName(group?.name ?? '')
     setColor(group?.color ?? getNextPresetColor(usedColors))
+    setPurpose(groupPurpose(group))
     setError('')
-  }, [isOpen, group?.id, group?.name, group?.color, usedColors])
+  }, [isOpen, group?.id, group?.name, group?.color, group?.purpose, usedColors])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -44,11 +59,17 @@ export function GroupForm({ eventId, group, usedColors = [], isOpen, onClose, on
 
     setSaving(true)
 
+    // Named only when the game can choose: a database without 090 has no such
+    // column, and a game without the flag has nothing to say about it either.
+    const fields = canChoosePurpose
+      ? { name: name.trim(), color, purpose }
+      : { name: name.trim(), color }
+
     try {
       if (isEdit) {
         const { data, error: updateError } = await supabase
           .from('groups')
-          .update({ name: name.trim(), color })
+          .update(fields)
           .eq('id', group.id)
           .select()
           .single()
@@ -58,7 +79,7 @@ export function GroupForm({ eventId, group, usedColors = [], isOpen, onClose, on
       } else {
         const { data, error: insertError } = await supabase
           .from('groups')
-          .insert({ event_id: eventId, name: name.trim(), color })
+          .insert({ event_id: eventId, ...fields })
           .select()
           .single()
 
@@ -72,7 +93,8 @@ export function GroupForm({ eventId, group, usedColors = [], isOpen, onClose, on
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'משהו השתבש.')
+      const message = err instanceof Error ? err.message : 'משהו השתבש.'
+      setError(isMissingGroupPurposeError(message) ? MISSING_GROUP_PURPOSE_MESSAGE : message)
     } finally {
       setSaving(false)
     }
@@ -99,6 +121,35 @@ export function GroupForm({ eventId, group, usedColors = [], isOpen, onClose, on
           value={color}
           onChange={setColor}
         />
+
+        {canChoosePurpose && (
+          <fieldset className="space-y-2">
+            <legend className="mb-1 text-sm font-medium text-foreground">מה תפקיד הקבוצה?</legend>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {PURPOSE_OPTIONS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setPurpose(option)}
+                  aria-pressed={purpose === option}
+                  className={cn(
+                    'rounded-xl border p-3 text-right transition-colors',
+                    purpose === option
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-surface hover:bg-surface-elevated',
+                  )}
+                >
+                  <span className="block text-sm font-bold text-foreground">
+                    {GROUP_PURPOSE_LABELS[option]}
+                  </span>
+                  <span className="mt-0.5 block text-xs leading-snug text-muted">
+                    {GROUP_PURPOSE_DESCRIPTIONS[option]}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        )}
 
         <ModalActions>
           <Button type="submit" loading={saving}>

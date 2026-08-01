@@ -68,6 +68,7 @@ export function recordScan(row: {
   event_id: string
   participant_id: string
   action_id: string
+  action_option_id?: string | null
   points: number
 }): { id: string } {
   const scan: LocalScan = {
@@ -77,6 +78,7 @@ export function recordScan(row: {
         : 'tx-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2),
     participantId: row.participant_id,
     actionId: row.action_id,
+    actionOptionId: row.action_option_id ?? null,
     points: row.points,
     createdAt: new Date().toISOString(),
   }
@@ -301,14 +303,20 @@ export function scanRows() {
   const p = getPack()
   const pById = new Map(p.participants.map((x) => [x.id, x]))
   const aById = new Map(p.actions.map((x) => [x.id, x]))
+  const oById = new Map((p.actionOptions ?? []).map((x) => [x.id, x]))
   return state.scans
     .map((s) => ({
       id: s.clientTxId,
       event_id: p.event.id,
       participant_id: s.participantId,
       action_id: s.actionId,
+      action_option_id: s.actionOptionId ?? null,
       points: s.points,
       created_at: s.createdAt,
+      // Named `answer` to match the alias the manage screen selects it under.
+      answer: s.actionOptionId && oById.get(s.actionOptionId)
+        ? { label: oById.get(s.actionOptionId)!.label, is_correct: oById.get(s.actionOptionId)!.is_correct }
+        : null,
       participant: pById.get(s.participantId)
         ? { name: pById.get(s.participantId)!.name, external_id: pById.get(s.participantId)!.external_id }
         : null,

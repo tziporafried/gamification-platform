@@ -54,10 +54,42 @@ function DeckDetail({ mode, counts, loading }: { mode: ScanMode; counts: CardCou
           ? `${he(counts.participantCards)} כרטיסי משתתף · ${he(counts.actionCards)} כרטיסי משימה`
           : `${he(counts.participantCards)} משתתפים · כרטיס לכל משימה שרלוונטית להם`}
       </span>
+      {/* A question is three cards, and a total that does not say so reads like
+          an arithmetic error to whoever counted the tasks themselves. */}
+      {counts.triviaTasks > 0 && (
+        <span className="block leading-relaxed text-muted/75">
+          {counts.triviaTasks === 1
+            ? `כולל שאלת טריוויה אחת = 3 כרטיסים`
+            : `כולל ${he(counts.triviaTasks)} שאלות טריוויה = ${he(counts.triviaCards)} כרטיסים`}
+          {mode === 'combined' ? ' לכל משתתף' : ''}
+        </span>
+      )}
       <span className="mt-1 block font-semibold text-foreground/70">
         סה״כ {he(counts[mode])} כרטיסים להדפסה
       </span>
     </>
+  )
+}
+
+/**
+ * The one number an organiser should not meet at the printer.
+ *
+ * A combined card names its participant, so a question's three answers cannot be
+ * shared - they are printed again for every player. Sixty players and four
+ * questions is 720 cards where the split deck is twelve. Shown only when the
+ * choice actually costs something, and it offers the other deck rather than
+ * refusing this one: printing that many cards is allowed, being surprised by it
+ * is not.
+ */
+function TriviaDeckWarning({ counts }: { counts: CardCounts }) {
+  const saving = counts.combined - counts.split
+  if (counts.triviaTasks === 0 || saving < 100) return null
+
+  return (
+    <Alert variant="warning" className="text-xs">
+      שאלות הטריוויה מדפיסות 3 כרטיסים לכל משתתף במצב "סריקה בודדת" - {he(counts.combined)}{' '}
+      כרטיסים בסך הכל. במצב "סריקה כפולה" אותו משחק מסתפק ב-{he(counts.split)} כרטיסים.
+    </Alert>
   )
 }
 
@@ -319,6 +351,12 @@ export function StepCards({
                       emphasizeDescription
                     />
                   </div>
+
+                  {selected === 'combined' && (
+                    <div className="mt-3 shrink-0">
+                      <TriviaDeckWarning counts={cardCounts} />
+                    </div>
+                  )}
 
                   {!selected && (
                     <p className="mt-3 text-center text-sm text-muted">

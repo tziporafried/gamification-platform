@@ -11,8 +11,12 @@ export interface CardCounts {
   split: number
   /** One per participant - the split deck's first half. */
   participantCards: number
-  /** One per active action - the split deck's second half. */
+  /** One card per answer of every active task - the split deck's second half. */
   actionCards: number
+  /** How many of the tasks are questions. 0 in a game with no trivia. */
+  triviaTasks: number
+  /** The cards those questions account for - `triviaTasks × 3`, in the split deck. */
+  triviaCards: number
 }
 
 /** What every deck counts to before anything has loaded. */
@@ -21,6 +25,8 @@ export const EMPTY_CARD_COUNTS: CardCounts = {
   split: 0,
   participantCards: 0,
   actionCards: 0,
+  triviaTasks: 0,
+  triviaCards: 0,
 }
 
 /** Only the fields the deck maths needs - keeps this usable from tests. */
@@ -31,6 +37,12 @@ export interface CountableParticipant {
 export interface CountableAction {
   /** Empty means the action is open to every group. */
   groupIds: string[]
+  /**
+   * How many cards this one task prints: 1 for a standard task, one per answer
+   * for a trivia question (088). Absent counts as 1, which is what every caller
+   * written before questions existed means.
+   */
+  cardCount?: number
 }
 
 /**
@@ -43,6 +55,11 @@ export function isActionRelevantTo(action: CountableAction, participantGroupIds:
   return action.groupIds.length === 0 || action.groupIds.some((id) => participantGroupIds.has(id))
 }
 
+/** Cards one task prints. A task that never said is a plain one-card task. */
+export function actionCardCount(action: CountableAction): number {
+  return action.cardCount ?? 1
+}
+
 /**
  * Deck sizes for both scan modes.
  *
@@ -50,6 +67,13 @@ export function isActionRelevantTo(action: CountableAction, participantGroupIds:
  * targeting means many pairings never get printed, so it has to be summed
  * per participant. Callers must not substitute a flat multiplication, and must
  * not feed this inactive actions - pass the same rows that will be printed.
+ *
+ * A trivia question is where the two decks stop being comparable. It prints
+ * three cards, so in the split deck it costs two extra sheets once - but in the
+ * combined deck it costs two extra *per participant*, because a combined card
+ * names the participant on it. Sixty players and four questions is 720 cards
+ * one way and twelve the other. That is a number the cards step has to say out
+ * loud, which is what `triviaTasks` and `triviaCards` are here for.
  */
 export function computeCardCounts(
   participants: CountableParticipant[],
@@ -57,13 +81,20 @@ export function computeCardCounts(
 ): CardCounts {
   const combined = participants.reduce((sum, participant) => {
     const groupIds = new Set(participant.groupIds)
-    return sum + actions.filter((action) => isActionRelevantTo(action, groupIds)).length
+    return sum + actions
+      .filter((action) => isActionRelevantTo(action, groupIds))
+      .reduce((cards, action) => cards + actionCardCount(action), 0)
   }, 0)
+
+  const actionCards = actions.reduce((sum, action) => sum + actionCardCount(action), 0)
+  const trivia = actions.filter((action) => actionCardCount(action) > 1)
 
   return {
     combined,
-    split: participants.length + actions.length,
+    split: participants.length + actionCards,
     participantCards: participants.length,
-    actionCards: actions.length,
+    actionCards,
+    triviaTasks: trivia.length,
+    triviaCards: trivia.reduce((sum, action) => sum + actionCardCount(action), 0),
   }
 }

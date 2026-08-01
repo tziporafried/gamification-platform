@@ -14,17 +14,30 @@ import { UpgradeModal } from '@/components/UpgradeModal'
 import { RosterImportButton } from '@/components/roster/RosterImportButton'
 import { RosterImportModal } from '@/components/roster/RosterImportModal'
 import { useImportCsv } from '@/lib/roster/importCsvFlag'
+import { useGroupPurpose } from '@/lib/groups/groupPurposeFlag'
+import { countCompetingGroups } from '@/lib/groups/groupPurpose'
 import type { RosterImportResult } from '@/lib/roster/rosterImport'
 import { GroupForm } from './GroupForm'
 import { GroupCard } from './GroupCard'
 import { InlineAddGroup } from './InlineAddGroup'
 import { cn } from '@/lib/utils'
 import { getLockedTemplate, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
-import type { ActivityTemplateGroup, Group, GroupWithCount } from '@/types'
+import type { ActivityTemplateGroup, Group, GroupPurpose, GroupWithCount } from '@/types'
 
 interface GroupListProps {
   eventId: string
   onCountChange: (count: number) => void
+  /**
+   * How many of those groups compete (090). The total is what the plan counts;
+   * this is what the wizard needs, because a game whose only groups hand out
+   * tasks has nobody on the podium.
+   */
+  onCompetingCountChange?: (count: number) => void
+  /**
+   * What a group typed here is for. Only meaningful with the `group_purpose`
+   * flag, and 'competition' - the way it has always worked - when omitted.
+   */
+  defaultPurpose?: GroupPurpose
   embedded?: boolean
   header?: ReactNode
   /**
@@ -65,6 +78,8 @@ function LockedGroupCard({ group }: { group: ActivityTemplateGroup }) {
 export function GroupList({
   eventId,
   onCountChange,
+  onCompetingCountChange,
+  defaultPurpose,
   embedded = false,
   header,
   isActive = true,
@@ -87,6 +102,10 @@ export function GroupList({
   const prevCountRef = useRef(0)
   // Building the roster from a file is sold with the organizations plan.
   const canImport = useImportCsv()
+  // Telling a group that competes from one that only hands things out.
+  const canChoosePurpose = useGroupPurpose()
+  // Undefined without the flag, so no insert here names the column at all.
+  const purposeForNew = canChoosePurpose ? defaultPurpose ?? 'competition' : undefined
 
   function revealAddInput() {
     setShowAddInput(true)
@@ -146,6 +165,12 @@ export function GroupList({
     if (isActive && !wasActiveRef.current) refreshGroups()
     wasActiveRef.current = isActive
   }, [isActive, refreshGroups])
+
+  // Reported from the list itself rather than from each mutation: a group's
+  // purpose can also change on the card, long after it was added.
+  useEffect(() => {
+    onCompetingCountChange?.(countCompetingGroups(groups))
+  }, [groups, onCompetingCountChange])
 
   useEffect(() => {
     if (groups.length > prevCountRef.current && listRef.current) {
@@ -232,6 +257,26 @@ export function GroupList({
 
   const usedGroupColors = groups.map((g) => g.color)
 
+  function handlePurposeChanged(groupId: string, purpose: GroupPurpose) {
+    setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, purpose } : g)))
+  }
+
+  const groupGrid = (
+    <div className="grid grid-cols-1 items-stretch gap-4 px-1 py-1 sm:grid-cols-2 lg:grid-cols-3">
+      {groups.map((group) => (
+        <GroupCard
+          key={group.id}
+          group={group}
+          onEdit={() => handleEdit(group)}
+          onDelete={() => setDeletingGroup(group)}
+          showPurpose={canChoosePurpose}
+          onPurposeChange={(purpose) => handlePurposeChanged(group.id, purpose)}
+          onPurposeError={setError}
+        />
+      ))}
+    </div>
+  )
+
   if (loading) {
     return <CenteredLoader />
   }
@@ -272,6 +317,7 @@ export function GroupList({
       usedColors={usedGroupColors}
       onAdded={handleAdded}
       onPlanLimit={() => setUpgradeOpen(true)}
+      purpose={purposeForNew}
     />
   )
 
@@ -315,6 +361,7 @@ export function GroupList({
                   onAdded={handleAdded}
                   onPlanLimit={() => setUpgradeOpen(true)}
                   nameInputRef={addInputRef}
+                  purpose={purposeForNew}
                 />
               ) : undefined
             }
@@ -346,6 +393,7 @@ export function GroupList({
                   onAdded={handleAdded}
                   onPlanLimit={() => setUpgradeOpen(true)}
                   nameInputRef={addInputRef}
+                  purpose={purposeForNew}
                 />
               </div>
             )}
@@ -359,18 +407,7 @@ export function GroupList({
           listClassName="space-y-3 py-1"
           footer={footer}
         >
-          {groups.length > 0 && (
-            <div className="grid grid-cols-1 items-stretch gap-4 px-1 py-1 sm:grid-cols-2 lg:grid-cols-3">
-              {groups.map((group) => (
-                <GroupCard
-                  key={group.id}
-                  group={group}
-                  onEdit={() => handleEdit(group)}
-                  onDelete={() => setDeletingGroup(group)}
-                />
-              ))}
-            </div>
-          )}
+          {groups.length > 0 && groupGrid}
 
           {hasLocked && (
             <div className="grid grid-cols-1 items-stretch gap-4 px-1 py-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -382,18 +419,7 @@ export function GroupList({
         </ScrollableListLayout>
       ) : (
         <ScrollContainer ref={listRef} stableGutter={false} className="flex-1 space-y-3 py-1 px-0">
-          {groups.length > 0 && (
-            <div className="grid grid-cols-1 items-stretch gap-4 px-1 py-1 sm:grid-cols-2 lg:grid-cols-3">
-              {groups.map((group) => (
-                <GroupCard
-                  key={group.id}
-                  group={group}
-                  onEdit={() => handleEdit(group)}
-                  onDelete={() => setDeletingGroup(group)}
-                />
-              ))}
-            </div>
-          )}
+          {groups.length > 0 && groupGrid}
 
           {hasLocked && (
             <div className="grid grid-cols-1 items-stretch gap-4 px-1 py-1 sm:grid-cols-2 lg:grid-cols-3">

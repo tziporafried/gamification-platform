@@ -90,6 +90,14 @@ export interface TemplateTask {
   max_completions: number | null;
   sort_order: number;
   eligible_group_names: string[];
+  /** Absent means `standard`, exactly as on Action. */
+  kind?: ActionKind;
+  /**
+   * The answers, for a trivia question (088). A template that carries a
+   * question without them would apply as a task nobody can answer, so the two
+   * always travel together.
+   */
+  answers?: { label: string; is_correct: boolean; sort_order: number }[];
 }
 
 export interface TemplateReward {
@@ -191,11 +199,26 @@ export interface Participant {
   updated_at: string;
 }
 
+/**
+ * What a group was made for (090).
+ *
+ * `competition` is a side in the game: scored, ranked, able to win.
+ * `distribution` is a way of addressing part of the roster - a task for the
+ * juniors, a prize for staff, a draw among the guests - and is never ranked.
+ *
+ * Optional, and absent means `competition`. Two things leave it out: a database
+ * that has not run 090 yet, and the queries that name their columns explicitly
+ * rather than `select('*')`. Neither is a group that should vanish from the
+ * leaderboard, so read it through `groupPurpose` and never compare it raw.
+ */
+export type GroupPurpose = 'competition' | 'distribution';
+
 export interface Group {
   id: string;
   event_id: string;
   name: string;
   color: string;
+  purpose?: GroupPurpose;
   created_at: string;
   updated_at: string;
 }
@@ -214,6 +237,18 @@ export interface GroupWithCount extends Group {
   member_count: number;
 }
 
+/**
+ * What kind of task this is. `standard` is one card that scores when scanned;
+ * `trivia` is a question whose answers are rows in `action_options` (088), each
+ * printed on a card of its own and only one of them worth anything.
+ *
+ * Optional, and absent means `standard`. Two things leave it out: a database
+ * that has not run 088 yet, and the several queries that name their columns
+ * explicitly rather than `select('*')`. Neither is a task that scores
+ * differently, so read it through `isTriviaAction` and never compare it raw.
+ */
+export type ActionKind = 'standard' | 'trivia';
+
 export interface Action {
   id: string;
   event_id: string;
@@ -222,6 +257,7 @@ export interface Action {
   points: number;
   description: string | null;
   is_active: boolean;
+  kind?: ActionKind;
   max_completions: number | null;
   daily_limit: boolean;
   daily_start_hour: number | null;
@@ -234,6 +270,25 @@ export interface Action {
 
 export interface ActionWithGroups extends Action {
   groups: Group[];
+}
+
+/** One answer card of a trivia task - a row of `action_options`. */
+export interface ActionOption {
+  id: string;
+  action_id: string;
+  event_id: string;
+  /** `A-1003-2`. Generated from the task's code; says nothing about correctness. */
+  code: string;
+  /** The answer, as the participant reads it on the card. */
+  label: string;
+  is_correct: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+/** A trivia task with its answers, in print/display order. */
+export interface ActionWithOptions extends Action {
+  options: ActionOption[];
 }
 
 export interface PointTransaction {

@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, useLayoutEffect, useEffect, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, Check } from 'lucide-react'
+import { ChevronDown, Check, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getPanelLeftAlignedToTriggerRight, positionFloatingPanel } from '@/lib/floatingPanel'
 import { DropdownHeader } from '@/components/ui/DropdownPanel'
+import { GROUP_PURPOSE_LABELS, isDistributionGroup } from '@/lib/groups/groupPurpose'
 import type { Group } from '@/types'
 import { theme } from '@/lib/theme'
 
@@ -244,7 +245,18 @@ export function GroupSelectDropdown({
                   className="h-2.5 w-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: g.color }}
                 />
-                {g.name}
+                <span className="min-w-0 truncate">{g.name}</span>
+                {/* A group that hands things out looks exactly like a
+                    contestant here, and the two are chosen for different
+                    reasons. No marker at all on a game without purposes. */}
+                {isDistributionGroup(g) && (
+                  <Share2
+                    size={11}
+                    strokeWidth={2.5}
+                    className="ms-auto shrink-0 text-muted"
+                    aria-label={GROUP_PURPOSE_LABELS.distribution}
+                  />
+                )}
               </button>
             )
           })}

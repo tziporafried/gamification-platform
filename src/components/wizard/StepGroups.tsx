@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { GroupList } from '@/components/groups/GroupList'
 import { WizardUsageScroll } from './WizardUsageScroll'
+import { useGroupPurpose } from '@/lib/groups/groupPurposeFlag'
+import { GROUP_PURPOSE_LABELS } from '@/lib/groups/groupPurpose'
 import type { GroupType, EventCounts, UserPlan } from '@/types'
 
 interface StepGroupsProps {
@@ -62,13 +64,29 @@ export function StepGroups({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [localGroupCount, setLocalGroupCount] = useState(counts.groups)
+  /**
+   * How many of those groups are contestants (090). Without the flag every
+   * group is one, so this tracks the total and nothing below behaves
+   * differently; with it, the two part company.
+   */
+  const [competingCount, setCompetingCount] = useState(counts.groups)
+  const canChoosePurpose = useGroupPurpose()
 
   useEffect(() => {
     setLocalGroupCount(counts.groups)
-  }, [counts.groups])
+    // Without purposes every group is a contestant, so the two counts are the
+    // same number and this step behaves exactly as it did before 090.
+    if (!canChoosePurpose) setCompetingCount(counts.groups)
+  }, [counts.groups, canChoosePurpose])
 
-  const showGroupSetup = groupType === 'custom'
-  const canAdvance = groupType === 'none' || localGroupCount > 0
+  /**
+   * A game whose competition is between individuals can still keep groups -
+   * for handing out tasks, prizes and draws - once purposes exist. That is the
+   * whole reason the two questions were ever the same one.
+   */
+  const showGroupSetup = groupType === 'custom' || (canChoosePurpose && groupType === 'none')
+  const distributionOnly = canChoosePurpose && groupType === 'none'
+  const canAdvance = groupType === 'none' || competingCount > 0
 
   const handleCountChange = useCallback((count: number) => {
     setLocalGroupCount(count)
@@ -78,7 +96,10 @@ export function StepGroups({
   function handleOptionClick(type: GroupType) {
     if (groupType === type) return
 
-    if (type === 'none' && localGroupCount > 0) {
+    // Only the contestants are in the way of switching: distribution groups
+    // survive the move to an individual competition, which is where they are
+    // most useful.
+    if (type === 'none' && competingCount > 0) {
       setConfirmDelete(true)
     } else {
       onGroupTypeSelect(type)
@@ -89,20 +110,26 @@ export function StepGroups({
     setDeleting(true)
     const { data: groups } = await supabase
       .from('groups')
-      .select('id')
+      .select(canChoosePurpose ? 'id, purpose' : 'id')
       .eq('event_id', eventId)
 
-    if (groups && groups.length > 0) {
-      const groupIds = groups.map(g => g.id)
-      await supabase.from('participant_groups').delete().in('group_id', groupIds)
-      await supabase.from('groups').delete().eq('event_id', eventId)
+    const doomed = ((groups ?? []) as unknown as { id: string; purpose?: string }[])
+      .filter((g) => !canChoosePurpose || g.purpose !== 'distribution')
+      .map((g) => g.id)
+
+    if (doomed.length > 0) {
+      await supabase.from('participant_groups').delete().in('group_id', doomed)
+      await supabase.from('groups').delete().in('id', doomed)
     }
+
+    const remaining = (groups?.length ?? 0) - doomed.length
 
     setDeleting(false)
     setConfirmDelete(false)
     onGroupTypeSelect('none')
-    setLocalGroupCount(0)
-    onCountsPatch({ groups: 0 })
+    setLocalGroupCount(remaining)
+    setCompetingCount(0)
+    onCountsPatch({ groups: remaining })
     onCountsRefresh()
   }
 
@@ -113,6 +140,14 @@ export function StepGroups({
         onSelect={handleOptionClick}
         compact
       />
+      {/* Nothing on this screen would otherwise explain why an individual
+          competition is asking for groups at all. */}
+      {distributionOnly && (
+        <p className="mt-3 rounded-xl bg-surface-elevated px-3 py-2 text-xs leading-relaxed text-muted">
+          כל משתתף מתחרה באופן עצמאי. הקבוצות כאן הן {GROUP_PURPOSE_LABELS.distribution} בלבד -
+          לחלוקת משימות, פרסים והגרלות - והן לא מופיעות בטבלת הדירוג. אפשר גם לדלג ולהמשיך.
+        </p>
+      )}
     </div>
   )
 
@@ -175,6 +210,8 @@ export function StepGroups({
               header={compactGroupModeHeader}
               isActive={isActive}
               onCountChange={handleCountChange}
+              onCompetingCountChange={setCompetingCount}
+              defaultPurpose={distributionOnly ? 'distribution' : 'competition'}
               onImported={onCountsRefresh}
             />
           </WizardUsageScroll>
@@ -184,14 +221,26 @@ export function StepGroups({
       <Modal
         isOpen={confirmDelete}
         onClose={() => setConfirmDelete(false)}
-        title="מחיקת כל הקבוצות"
+        title={canChoosePurpose ? 'מחיקת קבוצות התחרות' : 'מחיקת כל הקבוצות'}
       >
         <div className="space-y-4">
           <div className="flex items-start gap-3 rounded-lg bg-surface-elevated border border-warning p-4">
             <AlertTriangle size={20} className="shrink-0 text-warning-text mt-0.5" />
             <div className="text-sm text-warning-foreground">
               <p className="font-medium mb-1">שים לב!</p>
-              <p>מעבר ל"בלי קבוצות" ימחק את כל הקבוצות הקיימות ({localGroupCount}) ואת כל שיוכי המשתתפים לקבוצות.</p>
+              {canChoosePurpose ? (
+                <>
+                  <p>מעבר לתחרות בין משתתפים ימחק את קבוצות התחרות ({competingCount}) ואת שיוכי המשתתפים אליהן.</p>
+                  {localGroupCount > competingCount && (
+                    <p className="mt-1">
+                      {GROUP_PURPOSE_LABELS.distribution} ({localGroupCount - competingCount}) יישארו,
+                      וימשיכו לשמש לחלוקת משימות, פרסים והגרלות.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p>מעבר ל"בלי קבוצות" ימחק את כל הקבוצות הקיימות ({localGroupCount}) ואת כל שיוכי המשתתפים לקבוצות.</p>
+              )}
               <p className="mt-1">לא ניתן לבטל פעולה זו.</p>
             </div>
           </div>

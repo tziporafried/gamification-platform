@@ -23,6 +23,7 @@ import { trackEventEditStart, trackCtaClick, trackLiveEventsModalOpen } from '@/
 import { FloatingContactButton } from '@/components/layout/FloatingContactButton'
 import { LiveEventsSelectModal, type LiveEventsOriginRect } from '@/components/live-events/LiveEventsSelectModal'
 import { ManageModal } from '@/components/manage/ManageModal'
+import { advancedManagePath, useAdvancedManagement } from '@/lib/manage/advancedManagementFlag'
 import type { Event, EventCounts } from '@/types'
 
 interface ControlCenterProps {
@@ -39,6 +40,13 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   const { canRunLottery } = usePlanPermissions(event.plan)
   const [settingsWarningOpen, setSettingsWarningOpen] = useState(false)
   const [manageOpen, setManageOpen] = useState(false)
+  /**
+   * A game that bought the full management screen goes there when "ניהול" is
+   * pressed, instead of opening the popup over this page. The popup is still
+   * the whole of management for every other game, and it is the only version
+   * an exported offline game can run - so it stays exactly as it was.
+   */
+  const hasAdvancedManagement = useAdvancedManagement()
   const [liveEventsOpen, setLiveEventsOpen] = useState(false)
   const [liveEventsOrigin, setLiveEventsOrigin] = useState<LiveEventsOriginRect | null>(null)
   const liveEventsCardRef = useRef<HTMLDivElement>(null)
@@ -264,7 +272,11 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setManageOpen(true)}
+                  onClick={() =>
+                    hasAdvancedManagement
+                      ? navigate(advancedManagePath(event.id))
+                      : setManageOpen(true)
+                  }
                   className={cn(
                     'inline-flex shrink-0 items-center gap-1 rounded-md',
                     'px-1.5 py-0.5 text-[11px] font-medium text-muted sm:text-xs',

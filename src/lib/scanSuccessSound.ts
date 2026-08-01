@@ -70,6 +70,43 @@ export function primeScanSuccess(): void {
   }
 }
 
+/**
+ * Two flat notes, for a trivia answer that was wrong.
+ *
+ * Not a buzzer and not an error sound: nothing went wrong, the participant
+ * simply picked the other card. A descending pair at a lower volume reads as
+ * "noted, not this one" - it has to be distinguishable from the chime above
+ * across a noisy room without sounding like the machine rejected the scan.
+ */
+export function playScanWrongAnswer(): void {
+  if (isSoundMuted('scan')) return
+  const audioCtx = getCtx()
+  if (!audioCtx) return
+  try {
+    if (audioCtx.state === 'suspended') void audioCtx.resume()
+
+    // G4 then D4 - a falling fourth, well below the success arpeggio.
+    ;[392.0, 293.66].forEach((freq, i) => {
+      const osc = audioCtx.createOscillator()
+      const gain = audioCtx.createGain()
+      osc.type = 'triangle'
+      osc.frequency.value = freq
+      osc.connect(gain)
+      gain.connect(audioCtx.destination)
+
+      const t = audioCtx.currentTime + i * 0.16
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.26, t + ATTACK_S)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4)
+
+      osc.start(t)
+      osc.stop(t + 0.4)
+    })
+  } catch {
+    /* Same as above - silence is always an acceptable outcome here. */
+  }
+}
+
 /** Play the confirmation chime. Call only after a scan has validated and saved. */
 export function playScanSuccess(): void {
   if (isSoundMuted('scan')) return

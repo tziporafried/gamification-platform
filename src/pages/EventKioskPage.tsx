@@ -48,7 +48,7 @@ import {
 } from '@/lib/analytics'
 import { TrialScanLimitModal } from '@/components/TrialScanLimitModal'
 import { TRIAL_SCAN_LIMIT } from '@/lib/plans'
-import { playScanSuccess } from '@/lib/scanSuccessSound'
+import { playScanSuccess, playScanWrongAnswer } from '@/lib/scanSuccessSound'
 import { playRewardFanfare, primeRewardFanfare, stopRewardFanfare } from '@/lib/rewardFanfareSound'
 import '@/styles/kiosk.css'
 import { ScannerFrame } from '@/components/kiosk/ScannerFrame'
@@ -137,7 +137,21 @@ type KioskAction = {
   daily_end_minute: number | null
   groups: KioskGroup[]
 }
-type ScanResultDisplay = { name: string; action: string; initial: string; emoji: string; points: number; totalPoints: number; tone: string }
+type ScanResultDisplay = {
+  name: string
+  action: string
+  initial: string
+  emoji: string
+  points: number
+  totalPoints: number
+  tone: string
+  /**
+   * 'wrong' is a trivia answer that scanned fine and scored nothing. It is not
+   * an error - the scan is saved, the attempt is spent - so it gets the same
+   * card with the celebration taken out of it, not a toast.
+   */
+  variant?: 'scored' | 'wrong'
+}
 type RewardWinDisplay = { emoji: string; title: string; sub: string; points: number }
 
 interface KioskStats {
@@ -998,19 +1012,23 @@ function ScanSuccessOverlay({
 
   if (!result) return null
 
+  const wrong = result.variant === 'wrong'
+
   return (
     <div
       onClick={onDismiss}
       style={{
         position: 'absolute', inset: 0, zIndex: 20,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'radial-gradient(circle at 50% 46%,rgba(255,248,243,0.88),rgba(255,240,228,0.78) 56%,rgba(255,248,243,0.65) 84%)',
+        background: wrong
+          ? 'radial-gradient(circle at 50% 46%,rgba(247,245,244,0.9),rgba(238,234,232,0.8) 56%,rgba(247,245,244,0.68) 84%)'
+          : 'radial-gradient(circle at 50% 46%,rgba(255,248,243,0.88),rgba(255,240,228,0.78) 56%,rgba(255,248,243,0.65) 84%)',
         backdropFilter: 'blur(3px)',
         cursor: 'pointer',
       }}
     >
-      {/* Confetti pop burst */}
-      {!reducedMotion && CONF_POPS.map((p, i) => (
+      {/* Confetti pop burst - nothing was won, so there is nothing to throw. */}
+      {!wrong && !reducedMotion && CONF_POPS.map((p, i) => (
         <div key={i} style={{
           position: 'absolute', left: p.left, top: p.top,
           width: p.size, height: p.size, borderRadius: i % 2 === 0 ? '50%' : 4,
@@ -1034,9 +1052,11 @@ function ScanSuccessOverlay({
           gap: 'clamp(10px, 1.4vw, 18px)', textAlign: 'center',
         }}
       >
-        {/* Green check disc */}
+        {/* The disc. Grey and still for a wrong answer - deliberately not red:
+            the participant did the right thing with the wrong card, and a red
+            cross at a kiosk reads as "the machine refused you". */}
         <div style={{ position: 'relative', width: 88, height: 88, flexShrink: 0 }}>
-          {!reducedMotion && (
+          {!wrong && !reducedMotion && (
             <>
               <div style={{
                 position: 'absolute', inset: -20, borderRadius: '50%',
@@ -1052,18 +1072,23 @@ function ScanSuccessOverlay({
           )}
           <div style={{
             width: '100%', height: '100%', borderRadius: '50%',
-            background: 'linear-gradient(135deg,#62C98A,#3E9E6B)',
+            background: wrong
+              ? 'linear-gradient(135deg,#B9AFAA,#8E8079)'
+              : 'linear-gradient(135deg,#62C98A,#3E9E6B)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 24px rgba(62,158,107,0.38)',
-            animation: reducedMotion ? 'none' : 'kiosk-checkIn 0.55s cubic-bezier(0.2,0.9,0.25,1.1) 0.1s both',
+            boxShadow: wrong
+              ? '0 8px 24px rgba(142,128,121,0.32)'
+              : '0 8px 24px rgba(62,158,107,0.38)',
+            animation: reducedMotion || wrong ? 'none' : 'kiosk-checkIn 0.55s cubic-bezier(0.2,0.9,0.25,1.1) 0.1s both',
           }}>
-            <span style={{ color: '#fff', fontSize: 46, lineHeight: 1 }}>✓</span>
+            <span style={{ color: '#fff', fontSize: 46, lineHeight: 1 }}>{wrong ? '✕' : '✓'}</span>
           </div>
         </div>
 
-        {/* Label */}
-        <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: 3, color: '#3E9E6B' }}>
-          נסרק בהצלחה!
+        {/* Label. The right answer is never named here - the next participant in
+            the queue can see this screen from where they are standing. */}
+        <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: 3, color: wrong ? '#8E8079' : '#3E9E6B' }}>
+          {wrong ? 'התשובה לא נכונה' : 'נסרק בהצלחה!'}
         </div>
 
         {/* Avatar + name */}
@@ -1098,16 +1123,16 @@ function ScanSuccessOverlay({
         {/* Action */}
         <div style={{ fontWeight: 800, fontSize: 15, color: '#7D706A', lineHeight: 1.3 }}>{result.action}</div>
 
-        {/* Points pill with count-up */}
-        <div className="kiosk-tickTap" style={{
-          background: 'linear-gradient(135deg,#FF9366,#F2B33C)',
-          color: '#fff', fontWeight: 900,
+        {/* Points pill with count-up. Zero has nothing to count up to. */}
+        <div className={wrong ? undefined : 'kiosk-tickTap'} style={{
+          background: wrong ? '#EFEBE9' : 'linear-gradient(135deg,#FF9366,#F2B33C)',
+          color: wrong ? '#8E8079' : '#fff', fontWeight: 900,
           fontSize: 'clamp(20px, 2.2vw, 28px)',
           padding: '10px 28px', borderRadius: 999,
-          boxShadow: '0 6px 18px rgba(255,147,102,0.4)',
+          boxShadow: wrong ? 'none' : '0 6px 18px rgba(255,147,102,0.4)',
           minWidth: 120,
         }}>
-          +{pointsShown} נק׳
+          {wrong ? '0 נק׳' : `+${pointsShown} נק׳`}
         </div>
         <div style={{ fontSize: 16, fontWeight: 900, color: '#3E8F88' }}>
           יש לך {result.totalPoints.toLocaleString('he-IL')} נקודות
@@ -3187,7 +3212,9 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const triggerScanSuccess = useCallback((result: ScoreSubmitResult, _txId: string, rm: boolean) => {
     // Short confirmation blip the instant the scan validates - independent of the
     // reward chime below and of reduced-motion (this is a functional audio cue).
-    playScanSuccess()
+    // A wrong trivia answer gets its own two notes: the scan did work.
+    if (result.isCorrect) playScanSuccess()
+    else playScanWrongAnswer()
     clearTimeout(scanDismissTimer.current)
     clearTimeout(rewardDismissTimer.current)
     const { celebrationRewards } = result
@@ -3198,12 +3225,17 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     refetch()
     setScanResult({
       name: result.participantName,
-      action: `השלים/ה · ${result.actionName}`,
+      // The answer they chose, named back to them - without a word about which
+      // one was right. That belongs to the organiser's screen, not this one.
+      action: result.isCorrect
+        ? `השלים/ה · ${result.actionName}`
+        : `${result.actionName} · ענה/תה "${result.optionLabel}"`,
       initial: result.participantName.charAt(0),
-      emoji: '🎯',
+      emoji: result.isCorrect ? '🎯' : '❓',
       points: result.points,
       totalPoints: result.participantTotalPoints,
-      tone: '#EF8A4E',
+      tone: result.isCorrect ? '#EF8A4E' : '#9C8F89',
+      variant: result.isCorrect ? 'scored' : 'wrong',
     })
     pendingWinsRef.current = {
       reducedMotion: rm,

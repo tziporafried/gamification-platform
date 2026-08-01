@@ -6,7 +6,8 @@ import { countCompletionsOnIsraelDate } from '@/lib/israelTime'
 import { isTrialScanLimitError } from '@/lib/plans'
 import { notifyScanBySms } from '@/lib/scanSms'
 import { useSmsNotifications } from '@/lib/smsNotifications'
-import type { NewlyAwardedReward } from '@/types'
+import { isCorrectScan, isTriviaAction, scanPoints, TRIVIA_ANSWER_REQUIRED_MESSAGE, type ScannedOption } from '@/lib/tasks/triviaScan'
+import type { Action, NewlyAwardedReward } from '@/types'
 
 export interface ScoreSubmitResult {
   transactionId: string
@@ -22,6 +23,19 @@ export interface ScoreSubmitResult {
   celebrationRewards: NewlyAwardedReward[]
   /** Total successful scans for this event after this insert (1-based for the new scan). */
   eventScanCount: number
+  /**
+   * Was the right answer scanned? Always true for a standard task, which has
+   * nothing to be wrong about - so a caller that ignores this field behaves
+   * exactly as it did before trivia existed.
+   *
+   * A wrong answer is a scan that succeeded and scored 0, NOT `ok: false`. That
+   * distinction is what lets the kiosk show an answer screen where an actual
+   * failure would only get a toast.
+   */
+  isCorrect: boolean
+  /** The answer that was scanned, for a trivia task. Null for a standard one. */
+  optionId: string | null
+  optionLabel: string | null
 }
 
 export type ScoreSubmitErrorCode = 'TRIAL_SCAN_LIMIT_REACHED'
@@ -80,19 +94,63 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
         return { ok: false, error }
       }
 
-      const { data: action, error: aError } = await supabase
+      // `select('*')` rather than a column list: `kind` (088) has to come back
+      // when the database has it, and naming it explicitly would break every
+      // scan on a database that has not run the migration yet. An action row is
+      // small enough that asking for all of it costs nothing.
+      const { data: scannedAction, error: aError } = await supabase
         .from('actions')
-        .select('id, name, code, points, is_active, max_completions, daily_limit, daily_start_hour, daily_start_minute, daily_end_hour, daily_end_minute')
+        .select('*')
         .eq('event_id', eventId)
         .eq('code', aCode)
         .maybeSingle()
 
       if (aError) throw aError
+
+      let action = scannedAction as Action | null
+      let option: ScannedOption | null = null
+
+      // Not a task code - so it may be one of a trivia task's answer cards.
+      // Only reached when the lookup above found nothing, which is why a game
+      // with no trivia never pays for this query.
+      if (!action) {
+        const { data: optionRow, error: oError } = await supabase
+          .from('action_options')
+          .select('id, label, is_correct, actions(*)')
+          .eq('event_id', eventId)
+          .eq('code', aCode)
+          .maybeSingle()
+
+        // A database without 088 has no such table. That is not an error worth
+        // showing anybody: the code simply does not exist here, which is what
+        // the message below already says.
+        if (!oError && optionRow) {
+          const parent = (optionRow as unknown as { actions: Action | null }).actions
+          if (parent) {
+            action = parent
+            option = {
+              id: optionRow.id as string,
+              label: optionRow.label as string,
+              is_correct: optionRow.is_correct as boolean,
+            }
+          }
+        }
+      }
+
       if (!action) {
         const error = `משימה "${aCode}" לא נמצאה.`
         setLastError(error)
         setSubmitting(false)
         return { ok: false, error }
+      }
+
+      // The question's own code, not one of its answers. Nothing prints it, so
+      // this comes from manual entry - where scoring it would award the full
+      // points for answering nothing.
+      if (!option && isTriviaAction(action)) {
+        setLastError(TRIVIA_ANSWER_REQUIRED_MESSAGE)
+        setSubmitting(false)
+        return { ok: false, error: TRIVIA_ANSWER_REQUIRED_MESSAGE }
       }
 
       const completionsPromise = action.daily_limit
@@ -160,14 +218,20 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
         return { ok: false, error: check.message }
       }
 
+      const isCorrect = isCorrectScan(option)
+      const awardedPoints = scanPoints(action.points, option)
+
       const { data: insertedTx, error: insertError } = await supabase
         .from('point_transactions')
         .insert({
           event_id: eventId,
           participant_id: participant.id,
           action_id: action.id,
-          points: action.points,
+          points: awardedPoints,
           created_by: user!.id,
+          // Only sent when an answer was actually scanned, so a database
+          // without 088 is never asked to store a column it does not have.
+          ...(option ? { action_option_id: option.id } : {}),
         })
         .select('id')
         .single()
@@ -226,13 +290,17 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
       // Deliberately not awaited: the scan is saved and the celebration is the
       // next thing that must happen. notifyScanBySms never rejects, and a text
       // that does not go out is not a scan that failed.
-      if (smsNotifications) {
+      //
+      // Nothing is sent for a wrong answer. The customer's template is built
+      // around "you earned X points for Y" (src/lib/smsTemplate.ts), and a text
+      // saying 0 is not the message they wrote.
+      if (smsNotifications && isCorrect) {
         void notifyScanBySms({
           eventId,
           participantId: participant.id,
           participantName: participant.name,
           actionName: action.name,
-          points: action.points,
+          points: awardedPoints,
           totalPoints: participantTotalPoints,
           transactionId: insertedTx.id,
         })
@@ -250,10 +318,13 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
           actionCode: action.code,
           participantName: participant.name,
           actionName: action.name,
-          points: action.points,
+          points: awardedPoints,
           participantTotalPoints,
           celebrationRewards,
           eventScanCount,
+          isCorrect,
+          optionId: option?.id ?? null,
+          optionLabel: option?.label ?? null,
         },
       }
     } catch (err) {

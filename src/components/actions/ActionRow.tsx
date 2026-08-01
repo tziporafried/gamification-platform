@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, memo, KeyboardEvent } from 'react'
+import { AlertTriangle, Check, HelpCircle, Pencil } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { WizardDeleteButton } from '@/components/wizard/WizardDeleteButton'
 import { cn } from '@/lib/utils'
@@ -7,7 +8,8 @@ import { TaskLimitSelect } from './TaskLimitSelect'
 import { ACTION_CARD_GRADIENT, getActionIcon, getActionIconMotion, getActionIconPlacement } from '@/lib/actionTiers'
 import { theme } from '@/lib/theme'
 import { toLimitDbValues, toLimitMode, getDailyTimeWindow, isSameLimitDbValues, type DailyTimeWindow, type LimitMode } from '@/lib/taskLimit'
-import type { ActionWithGroups, Group } from '@/types'
+import { isTriviaAction } from '@/lib/tasks/triviaScan'
+import type { ActionOption, ActionWithGroups, Group } from '@/types'
 
 interface ActionRowProps {
   action: ActionWithGroups
@@ -17,6 +19,10 @@ interface ActionRowProps {
   onUpdated?: (patch: Partial<ActionWithGroups>) => void
   onError?: (msg: string) => void
   siblingNames?: string[]
+  /** The answers, for a trivia task. Undefined for every standard one. */
+  options?: ActionOption[]
+  /** Opens the composer on this question. Only called for a trivia task. */
+  onEditQuestion?: () => void
 }
 
 export const ActionRow = memo(function ActionRow({
@@ -27,7 +33,20 @@ export const ActionRow = memo(function ActionRow({
   onUpdated,
   onError,
   siblingNames = [],
+  options,
+  onEditQuestion,
 }: ActionRowProps) {
+  const isTrivia = isTriviaAction(action)
+  /**
+   * A question that would print cards nobody can win on.
+   *
+   * The composer will not save one, but `updateTriviaQuestion` clears every
+   * correct flag before setting the new one - so a write that fails halfway
+   * leaves exactly this state. It is not printed (QrCardGenerator drops it), and
+   * silently not printing is the one thing that must not happen quietly.
+   */
+  const missingCorrectAnswer =
+    isTrivia && !!options && options.length > 0 && !options.some((o) => o.is_correct)
   const [editingName, setEditingName] = useState(false)
   const [editingPoints, setEditingPoints] = useState(false)
   const [name, setName] = useState(action.name)
@@ -240,6 +259,31 @@ export const ActionRow = memo(function ActionRow({
           {/* A real button when idle - the old role="button" tabIndex={-1}
               wrapper announced a button that keyboard users could not reach.
               Mirrors the points field just below. */}
+          {isTrivia && (
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold leading-none">
+                <HelpCircle size={10} strokeWidth={2.5} aria-hidden />
+                טריוויה
+              </span>
+              {missingCorrectAnswer && (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold leading-none text-danger-text">
+                  <AlertTriangle size={10} strokeWidth={2.5} aria-hidden />
+                  חסרה תשובה נכונה - לא תודפס
+                </span>
+              )}
+              {onEditQuestion && !!options?.length && (
+                <button
+                  type="button"
+                  onClick={onEditQuestion}
+                  className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white/80 transition-colors hover:bg-white/20 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                >
+                  <Pencil size={9} strokeWidth={2.5} aria-hidden />
+                  עריכת התשובות
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="flex min-w-0 items-start">
             {editingName ? (
               <input
@@ -266,6 +310,27 @@ export const ActionRow = memo(function ActionRow({
               </button>
             )}
           </div>
+
+          {isTrivia && options && options.length > 0 && (
+            /* The only place in the app that says which answer is right. Not on
+               the card, not at the kiosk, not in the scan log. */
+            <ul className="flex flex-col gap-0.5">
+              {[...options].sort((a, b) => a.sort_order - b.sort_order).map((option) => (
+                <li
+                  key={option.id}
+                  className={cn(
+                    'flex items-center gap-1 text-[11px] leading-tight',
+                    option.is_correct ? 'font-bold text-white' : 'text-white/70',
+                  )}
+                >
+                  {option.is_correct
+                    ? <Check size={10} strokeWidth={3} className="shrink-0" aria-label="התשובה הנכונה" />
+                    : <span className="w-2.5 shrink-0" aria-hidden />}
+                  <span className="min-w-0 break-words">{option.label}</span>
+                </li>
+              ))}
+            </ul>
+          )}
 
           <div className="flex flex-wrap items-center gap-1.5">
             <div className="flex shrink-0 items-center">
@@ -294,19 +359,31 @@ export const ActionRow = memo(function ActionRow({
                 </button>
               )}
             </div>
-            <TaskLimitSelect
-              limitMode={limitMode}
-              customLimit={customLimit}
-              dailyWindow={dailyWindow}
-              editingLimit={editingLimit}
-              limitRef={limitRef}
-              onSaveLimitMode={saveLimitMode}
-              onSetEditingLimit={setEditingLimit}
-              onSetCustomLimit={setCustomLimit}
-              onResetLimit={resetLimit}
-              tone="onColor"
-              size="compact"
-            />
+            {isTrivia ? (
+              /* Not a choice to offer. Any other limit lets a participant scan
+                 the second and third answer cards after getting the first one
+                 wrong, which is the whole game gone. */
+              <span
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/40 bg-white/20 px-3 py-1.5 text-xs font-bold leading-none"
+                title="לשאלת טריוויה יש ניסיון אחד - אחרת אפשר לסרוק את שלושת הכרטיסים"
+              >
+                ניסיון אחד
+              </span>
+            ) : (
+              <TaskLimitSelect
+                limitMode={limitMode}
+                customLimit={customLimit}
+                dailyWindow={dailyWindow}
+                editingLimit={editingLimit}
+                limitRef={limitRef}
+                onSaveLimitMode={saveLimitMode}
+                onSetEditingLimit={setEditingLimit}
+                onSetCustomLimit={setCustomLimit}
+                onResetLimit={resetLimit}
+                tone="onColor"
+                size="compact"
+              />
+            )}
 
             {groups.length > 0 && (
               <GroupSelectDropdown

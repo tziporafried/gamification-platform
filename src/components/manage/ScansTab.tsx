@@ -7,23 +7,19 @@ import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Input } from '@/components/ui/Input'
 import { DeleteScanDialog } from '@/components/manage/DeleteScanDialog'
 import { useEventScans, type EventScan, type ParticipantScans } from '@/hooks/useEventScans'
-import { formatTimeOfDay, getIsraelHour, getIsraelLocalDateString, getIsraelMinute } from '@/lib/israelTime'
+import { getIsraelLocalDateString } from '@/lib/israelTime'
+import { formatMoment } from '@/lib/manage/participantsReport'
+import { WRONG_ANSWER_LABEL } from '@/lib/tasks/triviaScan'
 import { cn } from '@/lib/utils'
 import { theme } from '@/lib/theme'
 
 interface ScansTabProps {
   eventId: string
-}
-
-/** "14:32" for a scan from today, "12.7 · 14:32" for an earlier one. */
-function formatScanTime(iso: string, todayKey: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  const time = formatTimeOfDay(getIsraelHour(date), getIsraelMinute(date))
-  const dayKey = getIsraelLocalDateString(date)
-  if (dayKey === todayKey) return time
-  const [, month, day] = dayKey.split('-')
-  return `${Number(day)}.${Number(month)} · ${time}`
+  /**
+   * Opens with the search already filled in - the participants table sends a
+   * name here rather than growing its own copy of the scan log.
+   */
+  initialQuery?: string
 }
 
 function matches(entry: ParticipantScans, query: string): boolean {
@@ -32,7 +28,11 @@ function matches(entry: ParticipantScans, query: string): boolean {
   if (!q) return true
   return (
     entry.name.toLowerCase().includes(q) ||
-    entry.scans.some((scan) => scan.actionName.toLowerCase().includes(q))
+    entry.scans.some(
+      (scan) =>
+        scan.actionName.toLowerCase().includes(q) ||
+        (scan.answerLabel ?? '').toLowerCase().includes(q),
+    )
   )
 }
 
@@ -47,9 +47,9 @@ function matches(entry: ParticipantScans, query: string): boolean {
  * Participants who have not scanned yet are listed too (last, greyed out) -
  * "who is missing" is the other question this screen gets asked.
  */
-export function ScansTab({ eventId }: ScansTabProps) {
+export function ScansTab({ eventId, initialQuery = '' }: ScansTabProps) {
   const { participants, loading, error, previewDelete, deleteScan } = useEventScans(eventId)
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialQuery)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [pending, setPending] = useState<{ scan: EventScan; participantName: string } | null>(null)
 
@@ -220,15 +220,29 @@ export function ScansTab({ eventId }: ScansTabProps) {
                                 aria-hidden="true"
                               />
                               {scan.actionName}
+                              {/* The answer they picked, and whether it scored.
+                                  A 0 next to a task worth 20 is unreadable
+                                  without it. */}
+                              {scan.answerLabel && (
+                                <span className={cn('ms-1.5 text-[11px]', theme.textSubtle)}>
+                                  · {scan.answerLabel}
+                                  {scan.isCorrect === false && ` (${WRONG_ANSWER_LABEL})`}
+                                </span>
+                              )}
                             </td>
                             <td className={cn('px-2 py-2 text-end tabular-nums', theme.textSubtle)}>
-                              {formatScanTime(scan.createdAt, todayKey)}
+                              {formatMoment(scan.createdAt, todayKey)}
                             </td>
                             <td />
                             <td className="px-2 py-2">
                               <span className="flex items-center justify-end gap-1.5">
-                                <span className="font-semibold tabular-nums text-success-text">
-                                  +{scan.points.toLocaleString('he-IL')}
+                                <span
+                                  className={cn(
+                                    'font-semibold tabular-nums',
+                                    scan.isCorrect === false ? theme.textSubtle : 'text-success-text',
+                                  )}
+                                >
+                                  {scan.isCorrect === false ? '0' : `+${scan.points.toLocaleString('he-IL')}`}
                                 </span>
                                 {/* Always visible, not hover-revealed: this list is
                                     worked through on a phone at the event, where

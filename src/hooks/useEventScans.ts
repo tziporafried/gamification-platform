@@ -14,6 +14,16 @@ export interface EventScan {
   actionName: string
   points: number
   createdAt: string
+  /**
+   * The answer scanned, for a trivia task. Null for every standard scan.
+   *
+   * Without it the log shows a scan worth 0 points against a task worth 20 and
+   * offers no explanation - which reads as a bug in the scoring rather than a
+   * participant who picked the wrong card.
+   */
+  answerLabel?: string | null
+  /** False only for a wrong trivia answer. */
+  isCorrect?: boolean
 }
 
 export interface ParticipantScans {
@@ -84,6 +94,11 @@ interface ParticipantQueryRow {
   name: string
 }
 
+interface AnswerQueryRow {
+  id: string
+  answer: { label: string; is_correct: boolean } | null
+}
+
 /** The JSONB the two RPCs in migration 074 return, as it arrives. */
 interface PreviewRow {
   participant_name: string | null
@@ -126,7 +141,14 @@ function sortParticipants(rows: ParticipantScans[]): ParticipantScans[] {
   })
 }
 
-function buildRows(scans: ScanQueryRow[], participants: ParticipantQueryRow[]): ParticipantScans[] {
+/** The answer each trivia scan carried, by transaction id. Empty without 088. */
+type AnswersByScan = Map<string, { label: string; isCorrect: boolean }>
+
+function buildRows(
+  scans: ScanQueryRow[],
+  participants: ParticipantQueryRow[],
+  answers: AnswersByScan = new Map(),
+): ParticipantScans[] {
   const byParticipant = new Map<string, ParticipantScans>()
 
   for (const p of participants) {
@@ -151,12 +173,15 @@ function buildRows(scans: ScanQueryRow[], participants: ParticipantQueryRow[]): 
       }
       byParticipant.set(scan.participant_id, entry)
     }
+    const answer = answers.get(scan.id)
     entry.scans.push({
       id: scan.id,
       participantId: scan.participant_id,
       actionName: scan.action?.name ?? 'משימה שנמחקה',
       points: scan.points ?? 0,
       createdAt: scan.created_at,
+      answerLabel: answer?.label ?? null,
+      isCorrect: answer ? answer.isCorrect : true,
     })
     entry.totalPoints += scan.points ?? 0
   }
@@ -193,10 +218,26 @@ export function useEventScans(eventId: string | undefined) {
       return
     }
 
+    // Asked separately rather than joined into the query above: a database
+    // that has not run 088 has no such column, and the join would take the
+    // whole scan log down with it. On its own, a failure here just means no
+    // scan carried an answer - which is exactly true of such a database.
+    const answers: AnswersByScan = new Map()
+    const answersRes = await supabase
+      .from('point_transactions')
+      .select('id, answer:action_options(label, is_correct)')
+      .eq('event_id', eventId)
+
+    // Rows with no `answer` are ordinary scans - most of them, usually.
+    for (const row of (answersRes.data ?? []) as unknown as AnswerQueryRow[]) {
+      if (row.answer) answers.set(row.id, { label: row.answer.label, isCorrect: row.answer.is_correct })
+    }
+
     setParticipants(
       buildRows(
         (scansRes.data ?? []) as unknown as ScanQueryRow[],
         (participantsRes.data ?? []) as unknown as ParticipantQueryRow[],
+        answers,
       ),
     )
     setLoading(false)

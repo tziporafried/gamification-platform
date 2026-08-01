@@ -13,6 +13,7 @@ import { Login } from '@/pages/Login'
 import { MyEvents } from '@/pages/MyEvents'
 import { EventWizard } from '@/pages/EventWizard'
 import { EventControlCenterPage } from '@/pages/EventControlCenter'
+import { EventManagePage } from '@/pages/EventManagePage'
 import { LiveEventsPage } from '@/pages/LiveEventsPage'
 import { LotteryPresentationPage } from '@/pages/LotteryPresentationPage'
 import { EventDisplayPage } from '@/pages/EventDisplay'
@@ -46,6 +47,9 @@ export default function App() {
             <Route path="/events/:id" element={<ProtectedRoute><AppShell atmosphere="wizard"><EventWizard /></AppShell></ProtectedRoute>} />
             <Route path="/events/:id/step/:step" element={<ProtectedRoute><AppShell atmosphere="wizard"><EventWizard /></AppShell></ProtectedRoute>} />
             <Route path="/events/:id/control" element={<ProtectedRoute><AppShell atmosphere="control"><EventControlCenterPage /></AppShell></ProtectedRoute>} />
+            {/* Both paths, so /manage and /manage/scans are the same screen. */}
+            <Route path="/events/:id/manage" element={<ProtectedRoute><AppShell atmosphere="control"><EventManagePage /></AppShell></ProtectedRoute>} />
+            <Route path="/events/:id/manage/:tab" element={<ProtectedRoute><AppShell atmosphere="control"><EventManagePage /></AppShell></ProtectedRoute>} />
             <Route path="/events/:id/live-events" element={<ProtectedRoute><AppShell atmosphere="control"><LiveEventsPage /></AppShell></ProtectedRoute>} />
             <Route path="/events/:id/lottery" element={<ProtectedRoute><LotteryPresentationPage /></ProtectedRoute>} />
             <Route path="/events/:id/display" element={<ProtectedRoute><EventDisplayPage /></ProtectedRoute>} />

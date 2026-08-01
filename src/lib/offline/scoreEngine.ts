@@ -1,5 +1,6 @@
 import { canPerformAction } from '@/lib/canPerformAction'
 import { countCompletionsOnIsraelDate } from '@/lib/israelTime'
+import { isCorrectScan, isTriviaAction, scanPoints, TRIVIA_ANSWER_REQUIRED_MESSAGE, type ScannedOption } from '@/lib/tasks/triviaScan'
 import type { ScoreSubmitResult } from '@/hooks/useScoreSubmit'
 import type { GamePack, GameState, LocalScan } from './types'
 import { checkAndAwardRewards, toLocalAwards } from './rewardEngine'
@@ -56,8 +57,28 @@ export function submitOfflineScan(
   const participant = pack.participants.find((p) => p.external_id === pCode)
   if (!participant) return { ok: false, error: 'קוד לא תקין' }
 
-  const action = pack.actions.find((a) => a.code === aCode)
+  // Same two steps as useScoreSubmit: a task's code first, then a trivia answer
+  // card's. A pack exported before 088 has no `actionOptions` at all, and the
+  // fallback below simply finds nothing.
+  let action = pack.actions.find((a) => a.code === aCode)
+  let option: ScannedOption | null = null
+
+  if (!action) {
+    const match = (pack.actionOptions ?? []).find((o) => o.code === aCode)
+    const parent = match && pack.actions.find((a) => a.id === match.action_id)
+    if (match && parent) {
+      action = parent
+      option = { id: match.id, label: match.label, is_correct: match.is_correct }
+    }
+  }
+
   if (!action) return { ok: false, error: `משימה "${aCode}" לא נמצאה.` }
+
+  // The question's own code rather than one of its answers - manual entry only,
+  // and worth the full points if it were let through.
+  if (!option && isTriviaAction(action)) {
+    return { ok: false, error: TRIVIA_ANSWER_REQUIRED_MESSAGE }
+  }
 
   const timestamps = completionTimestamps(state.scans, participant.id, action.id)
   const previousCompletions = timestamps.length
@@ -91,11 +112,14 @@ export function submitOfflineScan(
 
   if (!check.allowed) return { ok: false, error: check.message }
 
+  const isCorrect = isCorrectScan(option)
+
   const scan: LocalScan = {
     clientTxId: generateClientTxId(),
     participantId: participant.id,
     actionId: action.id,
-    points: action.points,
+    actionOptionId: option?.id ?? null,
+    points: scanPoints(action.points, option),
     createdAt: now.toISOString(),
   }
 
@@ -120,10 +144,13 @@ export function submitOfflineScan(
       actionCode: action.code,
       participantName: participant.name,
       actionName: action.name,
-      points: action.points,
+      points: scan.points,
       participantTotalPoints,
       celebrationRewards: earned,
       eventScanCount: scans.length,
+      isCorrect,
+      optionId: option?.id ?? null,
+      optionLabel: option?.label ?? null,
     },
   }
 }

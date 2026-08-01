@@ -124,7 +124,11 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
       if (pData.length > 0) {
         const ids = pData.map((p) => p.participant_id); const allPg: PgMapping[] = []
         for (let i = 0; i < ids.length; i += 100) { const { data } = await supabase.from('participant_groups').select('participant_id, groups(id, name, color)').in('participant_id', ids.slice(i, i + 100)); if (data) allPg.push(...(data as unknown as PgMapping[])) }
-        const map = new Map<string, { id: string; name: string; color: string }>(); for (const m of allPg) { if (m.groups) map.set(m.participant_id, m.groups) }; setPgMap(map)
+        // Only the groups the board itself ranks: get_group_leaderboard leaves
+        // the distribution groups out (090), and a participant tagged "צוות
+        // היגוי" must not be shown competing for a group that has no row here.
+        const ranked = new Set(gData.map((g) => g.group_id))
+        const map = new Map<string, { id: string; name: string; color: string }>(); for (const m of allPg) { if (m.groups && ranked.has(m.groups.id)) map.set(m.participant_id, m.groups) }; setPgMap(map)
       }
       setLoading(false)
       if (silent) return

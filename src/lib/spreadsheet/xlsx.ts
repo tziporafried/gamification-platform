@@ -1,9 +1,13 @@
 /**
  * Minimal .xlsx (SpreadsheetML) reader and writer.
  *
- * Only the sliver the roster import needs: a single sheet of text cells. Values
- * are written as inline strings, and reading resolves shared strings so files
- * saved by Excel, Google Sheets or LibreOffice all come back as plain text.
+ * Only the sliver this app needs: sheets of text cells. Values are written as
+ * inline strings, and reading resolves shared strings so files saved by Excel,
+ * Google Sheets or LibreOffice all come back as plain text.
+ *
+ * Writing takes a list of sheets; the roster template happens to pass one and
+ * the management export passes five. Reading still returns the first sheet
+ * only - the import asks a file for a roster, not for a workbook.
  */
 
 import { createZip, readZip, type ZipEntry } from './zip'
@@ -16,6 +20,11 @@ export interface XlsxSheetOptions {
   rightToLeft?: boolean
   /** Column widths in characters, left to right. */
   columnWidths?: number[]
+}
+
+/** One tab of a workbook: its grid, plus how it should look when opened. */
+export interface XlsxSheet extends XlsxSheetOptions {
+  rows: string[][]
 }
 
 function escapeXml(value: string): string {
@@ -95,16 +104,51 @@ function sheetXml(rows: string[][], options: XlsxSheetOptions): string {
 /** Bold header row - style index 1 referenced by `s="1"` above. */
 const STYLES_XML = `${XML_HEADER}<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>`
 
-/** Builds a single-sheet workbook from a grid of text values. */
-export function buildXlsx(rows: string[][], options: XlsxSheetOptions = {}): Uint8Array {
+/**
+ * A tab name Excel will actually open.
+ *
+ * `: \ / ? * [ ]` are illegal in a sheet name and 31 characters is the limit -
+ * both of which Excel enforces by refusing the whole file rather than by
+ * trimming, so a Hebrew name someone typed is cleaned here instead.
+ */
+function safeSheetName(name: string | undefined, index: number): string {
+  const cleaned = (name ?? '').replace(/[:\\/?*[\]]/g, ' ').trim().slice(0, 31)
+  return cleaned || `Sheet${index + 1}`
+}
+
+/** Builds a workbook with one tab per sheet, in the order given. */
+export function buildXlsxWorkbook(sheets: readonly XlsxSheet[]): Uint8Array {
   const encoder = new TextEncoder()
-  const sheetName = escapeXml(options.sheetName ?? 'Sheet1')
+  // An empty workbook is not a valid file - Excel needs at least one tab.
+  const tabs = sheets.length > 0 ? sheets : [{ rows: [] as string[][] }]
+
+  // Names must be unique as well as legal: two tabs called the same thing is
+  // the other way a workbook fails to open.
+  const used = new Set<string>()
+  const names = tabs.map((sheet, i) => {
+    const base = safeSheetName(sheet.sheetName, i)
+    let name = base
+    let suffix = 2
+    while (used.has(name)) name = `${base.slice(0, 28)} ${suffix++}`
+    used.add(name)
+    return name
+  })
+
+  const part = (i: number) => `worksheets/sheet${i + 1}.xml`
+  // The styles part shares the workbook's relationship namespace, so it takes
+  // the id after the last sheet rather than a fixed rId2.
+  const stylesRelId = `rId${tabs.length + 1}`
 
   const files: ZipEntry[] = [
     {
       name: '[Content_Types].xml',
       data: encoder.encode(
-        `${XML_HEADER}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,
+        `${XML_HEADER}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${tabs
+          .map(
+            (_, i) =>
+              `<Override PartName="/xl/${part(i)}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`,
+          )
+          .join('')}<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,
       ),
     },
     {
@@ -116,20 +160,37 @@ export function buildXlsx(rows: string[][], options: XlsxSheetOptions = {}): Uin
     {
       name: 'xl/workbook.xml',
       data: encoder.encode(
-        `${XML_HEADER}<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${sheetName}" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+        `${XML_HEADER}<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${names
+          .map((name, i) => `<sheet name="${escapeXml(name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`)
+          .join('')}</sheets></workbook>`,
       ),
     },
     {
       name: 'xl/_rels/workbook.xml.rels',
       data: encoder.encode(
-        `${XML_HEADER}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
+        `${XML_HEADER}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${tabs
+          .map(
+            (_, i) =>
+              `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="${part(i)}"/>`,
+          )
+          .join(
+            '',
+          )}<Relationship Id="${stylesRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
       ),
     },
     { name: 'xl/styles.xml', data: encoder.encode(STYLES_XML) },
-    { name: 'xl/worksheets/sheet1.xml', data: encoder.encode(sheetXml(rows, options)) },
+    ...tabs.map((sheet, i) => ({
+      name: `xl/${part(i)}`,
+      data: encoder.encode(sheetXml(sheet.rows, sheet)),
+    })),
   ]
 
   return createZip(files)
+}
+
+/** Builds a single-sheet workbook from a grid of text values. */
+export function buildXlsx(rows: string[][], options: XlsxSheetOptions = {}): Uint8Array {
+  return buildXlsxWorkbook([{ ...options, rows }])
 }
 
 function textOf(xml: string): string {

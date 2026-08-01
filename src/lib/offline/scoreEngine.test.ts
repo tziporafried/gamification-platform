@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { submitOfflineScan } from './scoreEngine.ts'
-import { emptyState, makeAction, makeGroup, makePack, makeParticipant } from './fixtures.ts'
+import { emptyState, makeAction, makeGroup, makePack, makeParticipant, makeTriviaAction } from './fixtures.ts'
 
 test('awards points for a valid scan and returns the kiosk result shape', () => {
   const participant = makeParticipant({ external_id: 'P-1001', name: 'דנה' })
@@ -129,4 +129,75 @@ test('each scan gets a unique client transaction id', () => {
   if (!second.ok) return
 
   assert.notEqual(first.scan.clientTxId, second.scan.clientTxId)
+})
+
+// ── Trivia (088) ─────────────────────────────────────────────────────────────
+
+test('the correct answer card scores the task points', () => {
+  const participant = makeParticipant({ external_id: 'P-1' })
+  const { action, options } = makeTriviaAction(
+    { code: 'A-9', name: 'באיזו שנה?', points: 20 },
+    ['1948', '1952', '1967'],
+    1,
+  )
+  const pack = makePack({ participants: [participant], actions: [action], actionOptions: options })
+
+  const res = submitOfflineScan(pack, emptyState(), 'P-1', 'A-9-2')
+  assert.equal(res.ok, true)
+  if (!res.ok) return
+  assert.equal(res.result.points, 20)
+  assert.equal(res.result.isCorrect, true)
+  assert.equal(res.result.optionLabel, '1952')
+  assert.equal(res.result.actionName, 'באיזו שנה?')
+})
+
+test('a wrong answer card scores 0 but is still recorded', () => {
+  const participant = makeParticipant({ external_id: 'P-1' })
+  const { action, options } = makeTriviaAction({ code: 'A-9', points: 20 }, undefined, 0)
+  const pack = makePack({ participants: [participant], actions: [action], actionOptions: options })
+
+  const res = submitOfflineScan(pack, emptyState(), 'P-1', 'A-9-3')
+  assert.equal(res.ok, true)
+  if (!res.ok) return
+  assert.equal(res.result.points, 0)
+  assert.equal(res.result.isCorrect, false)
+  assert.equal(res.result.optionLabel, 'תשובה ג')
+  // The row is what spends the attempt - see scanPoints() in triviaScan.ts.
+  assert.equal(res.state.scans.length, 1)
+  assert.equal(res.state.scans[0].actionOptionId, options[2].id)
+})
+
+test('a wrong answer spends the single attempt, so the other cards are refused', () => {
+  const participant = makeParticipant({ external_id: 'P-1' })
+  const { action, options } = makeTriviaAction({ code: 'A-9', points: 20, max_completions: 1 }, undefined, 0)
+  const pack = makePack({ participants: [participant], actions: [action], actionOptions: options })
+
+  const wrong = submitOfflineScan(pack, emptyState(), 'P-1', 'A-9-2')
+  assert.equal(wrong.ok, true)
+  if (!wrong.ok) return
+
+  const thenRight = submitOfflineScan(pack, wrong.state, 'P-1', 'A-9-1')
+  assert.equal(thenRight.ok, false)
+})
+
+test('the question own code cannot be scanned in place of an answer', () => {
+  const participant = makeParticipant({ external_id: 'P-1' })
+  const { action, options } = makeTriviaAction({ code: 'A-9', points: 20 })
+  const pack = makePack({ participants: [participant], actions: [action], actionOptions: options })
+
+  const res = submitOfflineScan(pack, emptyState(), 'P-1', 'A-9')
+  assert.equal(res.ok, false)
+})
+
+test('a standard task is unaffected: isCorrect true, no answer', () => {
+  const participant = makeParticipant({ external_id: 'P-1' })
+  const action = makeAction({ code: 'A-1', points: 5 })
+  const pack = makePack({ participants: [participant], actions: [action] })
+
+  const res = submitOfflineScan(pack, emptyState(), 'P-1', 'A-1')
+  assert.equal(res.ok, true)
+  if (!res.ok) return
+  assert.equal(res.result.isCorrect, true)
+  assert.equal(res.result.optionId, null)
+  assert.equal(res.result.optionLabel, null)
 })

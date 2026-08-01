@@ -74,6 +74,33 @@ test('a participant in two groups counts toward both (mirrors the SQL join)', ()
   assert.equal(byId.get(g2.id), 40)
 })
 
+test('a distribution group is not ranked, and its members still score', () => {
+  const team = makeGroup({ name: 'אדומים' })
+  const staff = makeGroup({ name: 'צוות היגוי', purpose: 'distribution' })
+  const p = makeParticipant()
+  const pack = makePack({
+    groups: [team, staff],
+    participants: [p],
+    participantGroups: [
+      { participant_id: p.id, group_id: team.id },
+      { participant_id: p.id, group_id: staff.id },
+    ],
+  })
+
+  const board = getGroupLeaderboard(pack, [scan(p.id, 40)])
+  assert.deepEqual(board.map((row) => row.group_id), [team.id])
+  // The distribution membership takes nothing away from the group that competes.
+  assert.equal(board[0].total_points, 40)
+  assert.equal(getParticipantLeaderboard(pack, [scan(p.id, 40)])[0].total_points, 40)
+})
+
+test('a pack from before 090 ranks every group - the fixture has no purpose at all', () => {
+  const team = makeGroup({ name: 'ותיקה' })
+  assert.equal(team.purpose, undefined)
+
+  assert.equal(getGroupLeaderboard(makePack({ groups: [team] }), []).length, 1)
+})
+
 test('empty groups appear at zero', () => {
   const team = makeGroup({ name: 'ריקה' })
   const pack = makePack({ groups: [team] })

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { isMissingColumn, isMissingTable } from '@/lib/supabaseErrors'
 import type { LotteryEligibilityMode } from '@/components/live-events/types'
 
 /**
@@ -87,40 +88,6 @@ interface DrawQueryRow {
   draw_index: number | null
   drawn_at: string
   entrants: { participant_id: string | null; participant_name: string }[] | null
-}
-
-interface QueryError {
-  code?: string
-  message?: string
-}
-
-/**
- * The table itself is absent - the migration has never run. That is "no
- * lotteries yet", not an error to put in front of the operator.
- *
- * 42P01 is postgres' undefined_table; PGRST205 is PostgREST failing to find it
- * in its schema cache.
- */
-function isMissingTable(error: QueryError): boolean {
-  if (error.code === '42P01' || error.code === 'PGRST205') return true
-  const message = error.message ?? ''
-  // Narrowed to the table's own wording. A column error mentions the table
-  // too, and reading it as "no lotteries yet" is exactly how a schema that had
-  // fallen a migration behind came out looking like an empty history.
-  return message.includes('lottery_draws') && message.includes('relation')
-}
-
-/**
- * The table is there but a column this build asks for is not - the schema is a
- * migration behind. Recoverable: everything except that column still exists,
- * so the read is retried without it rather than reported as nothing.
- *
- * 42703 is undefined_column; PGRST204 is PostgREST's version.
- */
-function isMissingColumn(error: QueryError): boolean {
-  if (error.code === '42703' || error.code === 'PGRST204') return true
-  const message = error.message ?? ''
-  return message.includes('column') && message.includes('does not exist')
 }
 
 const COLUMNS =
@@ -213,7 +180,9 @@ export function useEventLotteryRuns(eventId: string | undefined) {
     }
 
     if (queryError) {
-      if (isMissingTable(queryError)) {
+      // The table itself is absent: this game's database predates 080, which
+      // is "no lotteries yet" rather than an error to put in front of anyone.
+      if (isMissingTable(queryError, 'lottery_draws')) {
         setDraws([])
       } else {
         setError('טעינת ההגרלות נכשלה. נסו לרענן את הדף.')

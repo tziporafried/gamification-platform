@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect, KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { Users, Palette } from 'lucide-react'
+import { Users, Palette, Trophy, Share2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { ColorPicker } from '@/components/ui/ColorPicker'
 import { WizardDeleteButton } from '@/components/wizard/WizardDeleteButton'
@@ -8,12 +8,25 @@ import { Tooltip, useIsTruncated } from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
 import { getPanelLeftAlignedToTriggerRight, positionFloatingPanel } from '@/lib/floatingPanel'
 import { isPresetColor } from '@/lib/paletteColors'
-import type { GroupWithCount } from '@/types'
+import {
+  GROUP_PURPOSE_DESCRIPTIONS,
+  GROUP_PURPOSE_LABELS,
+  groupPurpose,
+  isMissingGroupPurposeError,
+  MISSING_GROUP_PURPOSE_MESSAGE,
+} from '@/lib/groups/groupPurpose'
+import type { GroupPurpose, GroupWithCount } from '@/types'
 
 interface GroupCardProps {
   group: GroupWithCount
   onEdit: () => void
   onDelete: () => void
+  /** The `group_purpose` flag is on: the card says what the group is for, and can change it. */
+  showPurpose?: boolean
+  /** Saved - so the list, and the wizard's count of who competes, keep up. */
+  onPurposeChange?: (purpose: GroupPurpose) => void
+  /** Migration 090 has not been applied, so the choice could not be stored. */
+  onPurposeError?: (message: string) => void
 }
 
 const VIEWPORT_PADDING = 8
@@ -23,10 +36,17 @@ function getGroupCardStyle(color: string): React.CSSProperties {
   return { backgroundColor: color }
 }
 
-export function GroupCard({ group, onDelete }: GroupCardProps) {
+export function GroupCard({
+  group,
+  onDelete,
+  showPurpose = false,
+  onPurposeChange,
+  onPurposeError,
+}: GroupCardProps) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(group.name)
   const [color, setColor] = useState(group.color)
+  const [purpose, setPurpose] = useState<GroupPurpose>(groupPurpose(group))
   const [saving, setSaving] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [panelStyle, setPanelStyle] = useState<{ top: number; left: number } | null>(null)
@@ -40,6 +60,7 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
 
   useEffect(() => { setName(group.name) }, [group.name])
   useEffect(() => { setColor(group.color) }, [group.color])
+  useEffect(() => { setPurpose(groupPurpose(group)) }, [group.purpose]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (editing) {
@@ -118,6 +139,26 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
     setEditing(false)
   }
 
+  /**
+   * Optimistic, like the colour above: the pill is a statement about what the
+   * group is for, and a round trip before it flips reads as a dead control. A
+   * failed write puts it back and says why.
+   */
+  async function togglePurpose() {
+    const next: GroupPurpose = purpose === 'distribution' ? 'competition' : 'distribution'
+    setPurpose(next)
+    onPurposeChange?.(next)
+
+    const { error } = await supabase.from('groups').update({ purpose: next }).eq('id', group.id)
+    if (!error) return
+
+    setPurpose(purpose)
+    onPurposeChange?.(purpose)
+    onPurposeError?.(
+      isMissingGroupPurposeError(error.message) ? MISSING_GROUP_PURPOSE_MESSAGE : error.message,
+    )
+  }
+
   async function changeColor(newColor: string, closePicker = false) {
     setColor(newColor)
     if (closePicker) setShowColorPicker(false)
@@ -183,6 +224,31 @@ export function GroupCard({ group, onDelete }: GroupCardProps) {
           <div className="inline-flex h-7 items-center justify-center rounded-full bg-white/20 px-3 text-xs font-bold">
             {group.member_count.toLocaleString()} {memberLabel}
           </div>
+
+          {/* Both states are shown, not just the unusual one: the pill is the
+              control that changes it, and a badge that appears only on half the
+              cards would leave the other half with nothing to press.
+              Portalled, because the card clips its own overflow. */}
+          {showPurpose && (
+            <Tooltip portal rich content={GROUP_PURPOSE_DESCRIPTIONS[purpose]}>
+              <button
+                type="button"
+                onClick={togglePurpose}
+                aria-label={`${GROUP_PURPOSE_LABELS[purpose]} - לחצו כדי להחליף`}
+                className={cn(
+                  'inline-flex h-6 items-center justify-center gap-1 rounded-full border px-2.5 text-[10px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80',
+                  purpose === 'distribution'
+                    ? 'border-white/70 bg-white/85 text-neutral-900 hover:bg-white'
+                    : 'border-white/40 bg-transparent text-white/90 hover:bg-white/20',
+                )}
+              >
+                {purpose === 'distribution'
+                  ? <Share2 size={11} strokeWidth={2.5} className="shrink-0" />
+                  : <Trophy size={11} strokeWidth={2.5} className="shrink-0" />}
+                {GROUP_PURPOSE_LABELS[purpose]}
+              </button>
+            </Tooltip>
+          )}
         </div>
 
         <div className="absolute right-2 top-2 z-20">

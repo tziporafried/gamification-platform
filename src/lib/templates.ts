@@ -10,6 +10,12 @@ import type {
   TemplateTask,
 } from '@/types'
 
+interface TemplateAnswerRow {
+  label: string
+  is_correct: boolean
+  sort_order: number
+}
+
 interface ActionGroupJoin {
   group_id: string
   groups: { name: string }
@@ -70,15 +76,26 @@ async function loadTemplatesWithContent(
     { data: tasks },
     { data: taskGroupLinks },
     { data: rewards },
+    { data: taskOptions },
   ] = await Promise.all([
     supabase.from('activity_template_groups').select('*').in('activity_template_id', templateIds).order('sort_order'),
     supabase.from('activity_template_tasks').select('*').in('activity_template_id', templateIds).order('sort_order'),
     supabase.from('template_tasks').select('*').order('sort_order'),
     supabase.from('template_task_groups').select('*'),
     supabase.from('template_rewards').select('*').in('activity_template_id', templateIds).order('sort_order'),
+    // Its own query, and its failure ignored: a database without 088 has no
+    // such table, and no template on it holds a question either.
+    supabase.from('template_task_options').select('*').order('sort_order'),
   ])
 
   const tasksById = new Map((tasks ?? []).map((t) => [t.id, t]))
+
+  const answersByTaskId = new Map<string, { label: string; is_correct: boolean; sort_order: number }[]>()
+  for (const row of taskOptions ?? []) {
+    const list = answersByTaskId.get(row.template_task_id) ?? []
+    list.push({ label: row.label, is_correct: row.is_correct, sort_order: row.sort_order })
+    answersByTaskId.set(row.template_task_id, list)
+  }
 
   const eligibleGroupsByTaskId = new Map<string, string[]>()
   for (const link of taskGroupLinks ?? []) {
@@ -97,7 +114,11 @@ async function loadTemplatesWithContent(
           .flatMap((link) => {
             const task = tasksById.get(link.template_task_id)
             if (!task) return []
-            return [{ ...task, eligible_group_names: eligibleGroupsByTaskId.get(task.id) ?? [] } as TemplateTask]
+            return [{
+              ...task,
+              eligible_group_names: eligibleGroupsByTaskId.get(task.id) ?? [],
+              answers: answersByTaskId.get(task.id),
+            } as TemplateTask]
           })
           .map((t) => [t.id, t]),
       ).values(),
@@ -294,7 +315,7 @@ async function syncEventToTemplateInner(
     supabase.from('groups').select('*').eq('event_id', eventId).order('created_at'),
     supabase
       .from('actions')
-      .select('*, action_groups(group_id, groups(name))')
+      .select('*, action_groups(group_id, groups(name)), action_options(label, is_correct, sort_order)')
       .eq('event_id', eventId)
       .order('created_at'),
     supabase.from('rewards').select('*').eq('event_id', eventId).order('created_at'),
@@ -352,12 +373,29 @@ async function syncEventToTemplateInner(
         points: action.points,
         description: action.description ?? null,
         max_completions: action.max_completions ?? null,
+        kind: action.kind ?? 'standard',
         sort_order: i + 1,
       })
       .select('id')
       .single()
 
     if (taskError || !task) throw taskError ?? new Error('Failed to create template task')
+
+    // A question's answers travel with it. Without this the template would hold
+    // a task whose name is a question and no way to answer it - and it would
+    // look finished in every list that counts tasks.
+    const answers = (action.action_options as unknown as TemplateAnswerRow[]) ?? []
+    if (answers.length > 0) {
+      const { error: answersError } = await supabase.from('template_task_options').insert(
+        answers.map((answer) => ({
+          template_task_id: task.id,
+          label: answer.label,
+          is_correct: answer.is_correct,
+          sort_order: answer.sort_order,
+        })),
+      )
+      if (answersError) throw answersError
+    }
 
     const { error: linkError } = await supabase.from('activity_template_tasks').insert({
       activity_template_id: templateId,
@@ -489,12 +527,34 @@ export async function applyActivityTemplate(
           name: t.name,
           points: t.points,
           description: t.description ?? null,
-          max_completions: t.max_completions ?? null,
+          // A question is one attempt whatever the template happens to say.
+          max_completions: t.kind === 'trivia' ? 1 : (t.max_completions ?? null),
+          kind: t.kind ?? 'standard',
         })),
       )
       .select('id, name')
     if (error) throw error
     for (const a of insertedActions ?? []) actionNameToId.set(a.name, a.id)
+  }
+
+  // The answers, for every question that was just created. New rows, so the
+  // codes are this game's - a template carries no codes for that reason.
+  const answerRows: { action_id: string; label: string; is_correct: boolean; sort_order: number }[] = []
+  for (const task of tasksToInsert) {
+    const actionId = actionNameToId.get(task.name)
+    if (!actionId || !task.answers?.length) continue
+    for (const answer of task.answers) {
+      answerRows.push({
+        action_id: actionId,
+        label: answer.label,
+        is_correct: answer.is_correct,
+        sort_order: answer.sort_order,
+      })
+    }
+  }
+  if (answerRows.length > 0) {
+    const { error } = await supabase.from('action_options').insert(answerRows)
+    if (error) throw error
   }
 
   const actionGroupRows: { action_id: string; group_id: string }[] = []

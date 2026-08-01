@@ -14,7 +14,9 @@ const MEDALS = ['🥇', '🥈', '🥉']
 export function OfflineDisplay({ pack, scans, onBack }: OfflineDisplayProps) {
   const people = useMemo(() => getParticipantLeaderboard(pack, scans), [pack, scans])
   const groups = useMemo(() => getGroupLeaderboard(pack, scans), [pack, scans])
-  const hasGroups = pack.groups.length > 0
+  // From the board, not from the pack: a game whose groups only hand tasks out
+  // (090) has nothing to rank, and an empty group section would say it does.
+  const hasGroups = groups.length > 0
 
   // Podium wants the order 2 · 1 · 3 so the winner sits in the middle.
   const podium = [people[1], people[0], people[2]]

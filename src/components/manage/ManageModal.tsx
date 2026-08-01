@@ -12,6 +12,13 @@ import { LotteryTab } from '@/components/manage/LotteryTab'
  * the operator never loses the screen they were on.
  *
  * Tabs are local state - the popup is a detour, not a place to link into.
+ *
+ * A game with `advanced_management` never opens this: its "ניהול" button goes
+ * to the full screen instead. Two doors labelled the same thing, one of them a
+ * link inside the other, is a worse answer than one door that leads to what
+ * the game actually has. The popup stays because it is still the whole of
+ * management for every other game, and because it is the only version an
+ * exported offline file can run - there is no route inside that file.
  */
 
 interface ManageModalProps {

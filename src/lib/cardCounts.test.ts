@@ -7,7 +7,7 @@ const a = (...groupIds: string[]) => ({ groupIds })
 
 test('with no group targeting the combined deck is participants × actions', () => {
   const counts = computeCardCounts([p(), p(), p()], [a(), a()])
-  assert.deepEqual(counts, { combined: 6, split: 5, participantCards: 3, actionCards: 2 })
+  assert.deepEqual(counts, { combined: 6, split: 5, participantCards: 3, actionCards: 2, triviaTasks: 0, triviaCards: 0 })
 })
 
 test('the split deck is reported as its two halves, and they add up', () => {
@@ -58,9 +58,9 @@ test('split beats combined exactly when targeting is loose enough', () => {
 })
 
 test('empty inputs count as zero, not NaN', () => {
-  assert.deepEqual(computeCardCounts([], []), { combined: 0, split: 0, participantCards: 0, actionCards: 0 })
-  assert.deepEqual(computeCardCounts([p()], []), { combined: 0, split: 1, participantCards: 1, actionCards: 0 })
-  assert.deepEqual(computeCardCounts([], [a()]), { combined: 0, split: 1, participantCards: 0, actionCards: 1 })
+  assert.deepEqual(computeCardCounts([], []), { combined: 0, split: 0, participantCards: 0, actionCards: 0, triviaTasks: 0, triviaCards: 0 })
+  assert.deepEqual(computeCardCounts([p()], []), { combined: 0, split: 1, participantCards: 1, actionCards: 0, triviaTasks: 0, triviaCards: 0 })
+  assert.deepEqual(computeCardCounts([], [a()]), { combined: 0, split: 1, participantCards: 0, actionCards: 1, triviaTasks: 0, triviaCards: 0 })
 })
 
 test('isActionRelevantTo: open actions match anyone', () => {
@@ -72,4 +72,35 @@ test('isActionRelevantTo: restricted actions need a shared group', () => {
   assert.equal(isActionRelevantTo(a('g1'), new Set(['g1'])), true)
   assert.equal(isActionRelevantTo(a('g1'), new Set(['g2'])), false)
   assert.equal(isActionRelevantTo(a('g1'), new Set()), false)
+})
+
+// ── Trivia questions print a card per answer (088) ───────────────────────────
+
+/** A question: open to everyone unless groups are named, three answer cards. */
+const q = (...groupIds: string[]) => ({ groupIds, cardCount: 3 })
+
+test('a question costs three cards in the split deck, once', () => {
+  const counts = computeCardCounts([p(), p(), p()], [a(), q()])
+  assert.equal(counts.actionCards, 4)
+  assert.equal(counts.split, 7)
+  assert.equal(counts.triviaTasks, 1)
+  assert.equal(counts.triviaCards, 3)
+})
+
+test('a question costs three cards per participant in the combined deck', () => {
+  // This is the number the cards step has to warn about: 3 players × 1 question
+  // is 9 combined cards against 6 split ones, and it diverges from there.
+  const counts = computeCardCounts([p(), p(), p()], [q()])
+  assert.equal(counts.combined, 9)
+  assert.equal(counts.split, 6)
+})
+
+test('group targeting still applies to a question', () => {
+  const counts = computeCardCounts([p('g1'), p('g2')], [q('g1')])
+  assert.equal(counts.combined, 3)
+})
+
+test('a task that never states a card count is a one-card task', () => {
+  assert.equal(computeCardCounts([p()], [a()]).combined, 1)
+  assert.equal(computeCardCounts([p()], [a()]).triviaTasks, 0)
 })

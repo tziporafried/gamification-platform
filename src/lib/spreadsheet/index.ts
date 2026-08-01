@@ -1,10 +1,11 @@
 /** Reading and writing the spreadsheet files used by the roster import. */
 
 import { CSV_BOM, parseDelimited, toCsv } from './csv'
-import { buildXlsx, readXlsx, type XlsxSheetOptions } from './xlsx'
+import { buildXlsx, buildXlsxWorkbook, readXlsx, type XlsxSheet, type XlsxSheetOptions } from './xlsx'
 
 export { CSV_BOM, parseDelimited, toCsv } from './csv'
-export { buildXlsx, readXlsx } from './xlsx'
+export { buildXlsx, buildXlsxWorkbook, readXlsx } from './xlsx'
+export type { XlsxSheet, XlsxSheetOptions } from './xlsx'
 
 /** `accept` attribute for the upload input. */
 export const SPREADSHEET_ACCEPT = '.xlsx,.csv,.txt,.tsv'
@@ -60,11 +61,16 @@ export async function readSpreadsheetFile(file: File): Promise<string[][]> {
   throw new SpreadsheetError('UNSUPPORTED_FORMAT')
 }
 
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
 /** Builds a downloadable .xlsx blob. */
 export function xlsxBlob(rows: string[][], options?: XlsxSheetOptions): Blob {
-  return new Blob([buildXlsx(rows, options) as BlobPart], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  })
+  return new Blob([buildXlsx(rows, options) as BlobPart], { type: XLSX_MIME })
+}
+
+/** Builds a downloadable .xlsx blob with one tab per sheet. */
+export function xlsxWorkbookBlob(sheets: readonly XlsxSheet[]): Blob {
+  return new Blob([buildXlsxWorkbook(sheets) as BlobPart], { type: XLSX_MIME })
 }
 
 /** Builds a downloadable CSV blob, BOM-prefixed so Excel reads it as UTF-8. */

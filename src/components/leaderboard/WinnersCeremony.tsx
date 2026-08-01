@@ -239,9 +239,13 @@ function useLeaderboardData(eventId: string) {
             .in('participant_id', ids.slice(i, i + 100))
           if (data) allPg.push(...(data as unknown as PgMapping[]))
         }
+        // Only the groups the ceremony ranks: get_group_leaderboard leaves the
+        // distribution groups out (090), and no one should be announced under a
+        // group that was never in the competition.
+        const ranked = new Set(gData.map((g) => g.group_id))
         const map = new Map<string, ParticipantGroupRef[]>()
         for (const m of allPg) {
-          if (!m.groups) continue
+          if (!m.groups || !ranked.has(m.groups.id)) continue
           const existing = map.get(m.participant_id) ?? []
           const next = [...existing, m.groups]
           next.sort((a, b) => a.name.localeCompare(b.name, 'he'))

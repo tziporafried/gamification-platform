@@ -25,17 +25,26 @@ export function useCardCounts(eventId: string, enabled = true) {
     let cancelled = false
 
     async function load() {
-      const [participantsRes, actionsRes] = await Promise.all([
+      const [participantsRes, actionsRes, optionsRes] = await Promise.all([
         supabase.from('participants').select('id, participant_groups(group_id)').eq('event_id', eventId),
         supabase.from('actions').select('id, action_groups(group_id)').eq('event_id', eventId).eq('is_active', true),
+        // A database without 088 answers with an error, which counts as no
+        // answers - every task is then the one-card task it has always been.
+        supabase.from('action_options').select('action_id').eq('event_id', eventId),
       ])
       if (cancelled) return
+
+      const answersPerAction = new Map<string, number>()
+      for (const row of (optionsRes.data ?? []) as { action_id: string }[]) {
+        answersPerAction.set(row.action_id, (answersPerAction.get(row.action_id) ?? 0) + 1)
+      }
 
       const participants = (participantsRes.data ?? []).map((p) => ({
         groupIds: ((p.participant_groups as unknown as GroupJoin[]) ?? []).map((pg) => pg.group_id),
       }))
       const actions = (actionsRes.data ?? []).map((a) => ({
         groupIds: ((a.action_groups as unknown as GroupJoin[]) ?? []).map((ag) => ag.group_id),
+        cardCount: answersPerAction.get(a.id),
       }))
 
       setCardCounts(computeCardCounts(participants, actions))
