@@ -1449,45 +1449,6 @@ function RewardsActiveNoAwardsFeed() {
   )
 }
 
-function RewardsNotConfiguredState({ onCreate }: { onCreate: () => void }) {
-  return (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div className="kiosk-fadeUp kiosk-cardBreathe" style={{
-        borderRadius: 22, padding: 22,
-        background: '#FFFFFF', boxShadow: '0 10px 24px rgba(120,50,10,0.18)',
-        color: '#2E221E', border: '1.5px solid #FFD8BC',
-        textAlign: 'center', overflow: 'hidden',
-      }}>
-        <div className="kiosk-bob" style={{ fontSize: 34, lineHeight: 1 }}>🎁</div>
-        <div style={{ marginTop: 9, fontSize: 17, fontWeight: 900, lineHeight: 1.3 }}>
-          הפרס הראשון מתחיל כאן
-        </div>
-        <div style={{ marginTop: 6, fontSize: 14, fontWeight: 800, color: '#7D706A', lineHeight: 1.42 }}>
-          צרו את הפרס הראשון והפכו כל נקודה לרגע של התרגשות.
-        </div>
-        <button
-          onClick={onCreate}
-          style={{
-            marginTop: 14,
-            border: 'none',
-            borderRadius: 999,
-            background: 'linear-gradient(135deg,#FF9366,#F2B33C)',
-            color: '#FFFFFF',
-            cursor: 'pointer',
-            fontSize: 14,
-            fontWeight: 900,
-            padding: '10px 18px',
-            boxShadow: '0 6px 16px rgba(255,147,102,0.35)',
-          }}
-        >
-          יצירת הפרס הראשון
-        </button>
-      </div>
-      <SkeletonRows count={2} />
-    </div>
-  )
-}
-
 function StartedNoActivityState() {
   return (
     <div style={{
@@ -3624,7 +3585,17 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
 
         {/* LEFT PANEL - teal / rewards:
             clip-path clips the bottom (like orange activity) while allowing
-            trophy/badges to hang outside on top and sides */}
+            trophy/badges to hang outside on top and sides.
+
+            Dropped entirely when the game has no prizes. Everything this panel
+            exists for - the chase, the rotating next prize, the winners feed -
+            needs a reward row to exist, so there is nothing being withheld and
+            nothing arriving later. The two remaining columns take the width.
+            This does move the scanner off centre (~50% -> ~30% of the screen,
+            the side panels no longer balancing each other) - a deliberate
+            trade for not parking a dead third of a public display in front of
+            participants for the length of the event. */}
+        {hasConfiguredRewards && (
         <div
           data-kiosk-panel="rewards"
           className="kiosk-fadeUp"
@@ -3640,7 +3611,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           <GlowingStarsTeal />
 
           {/* Prize hero - chase cards + rotating prize (2/3 of panel height) */}
-          {hasConfiguredRewards && topPrizes.length > 0 && (
+          {topPrizes.length > 0 && (
             <div style={{
               position: 'relative', zIndex: 3, flex: '2 1 0', minHeight: 0, minWidth: 0,
               overflow: 'visible',
@@ -3662,9 +3633,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             display: 'flex', flexDirection: 'column',
             overflow: 'hidden', paddingBottom: 4,
           }}>
-            {!hasConfiguredRewards ? (
-              <RewardsNotConfiguredState onCreate={() => navigate(`/events/${event.id}/step/5`)} />
-            ) : hasAwardedRewards ? (
+            {hasAwardedRewards ? (
               <AwardedRewardsFeed rewards={rewards} newestId={newestRewardId} now={now} />
             ) : gameStarted && hasActivity ? (
               <RewardsActiveNoAwardsFeed />
@@ -3675,6 +3644,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             )}
           </div>
         </div>
+        )}
       </div>
       </div>
 
