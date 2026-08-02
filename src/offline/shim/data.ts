@@ -1,5 +1,12 @@
 import type { Reward } from '@/types'
-import type { GamePack, GameState, LocalAward, LocalScan } from '@/lib/offline/types'
+import type {
+  GamePack,
+  GameState,
+  LocalAward,
+  LocalLotteryDraw,
+  LocalLotteryEntrant,
+  LocalScan,
+} from '@/lib/offline/types'
 import { loadGameState, saveGameState } from '@/offline/gameState'
 import { getGroupLeaderboard, getParticipantLeaderboard, getParticipantTotal } from '@/lib/offline/leaderboard'
 import { checkAndAwardRewards, toLocalAwards } from '@/lib/offline/rewardEngine'
@@ -12,7 +19,7 @@ import { isParticipantEligibleForReward } from '@/lib/rewardTargeting'
  */
 
 let pack: GamePack | null = null
-let state: GameState = { scans: [], awards: [] }
+let state: GameState = { scans: [], awards: [], draws: [] }
 
 type ChangeTable = 'point_transactions' | 'participant_rewards' | 'events'
 type Listener = (payload: { new: Record<string, unknown> }) => void
@@ -63,6 +70,12 @@ function emit(table: ChangeTable, row: Record<string, unknown>): void {
   listeners.get(table)?.forEach((fn) => fn({ new: row }))
 }
 
+function localId(prefix: string): string {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+}
+
 /** Records a scan (eligibility already checked by useScoreSubmit) and notifies. */
 export function recordScan(row: {
   event_id: string
@@ -72,10 +85,7 @@ export function recordScan(row: {
   points: number
 }): { id: string } {
   const scan: LocalScan = {
-    clientTxId:
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : 'tx-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2),
+    clientTxId: localId('tx'),
     participantId: row.participant_id,
     actionId: row.action_id,
     actionOptionId: row.action_option_id ?? null,
@@ -86,6 +96,96 @@ export function recordScan(row: {
   saveGameState(getPack(), state)
   emit('point_transactions', { id: scan.clientTxId, event_id: row.event_id })
   return { id: scan.clientTxId }
+}
+
+/**
+ * Records one lottery draw, mirroring the lottery_draws insert the ceremony
+ * makes online.
+ *
+ * Its entrants arrive in a second call against lottery_draw_entrants, exactly
+ * as they do online, so the new row's id has to come back from here.
+ *
+ * Nothing is emitted: a draw is not a scan and no screen watches for one. It is
+ * saved because the management screen's lottery tab reads it back, and on a
+ * disconnected machine this is the only copy of what was given away.
+ */
+export function recordLotteryDraw(row: Record<string, unknown>): { id: string } {
+  const draw: LocalLotteryDraw = {
+    id: localId('draw'),
+    runId: (row.run_id as string | null) ?? null,
+    prizeName: (row.prize_name as string) ?? '',
+    prizeIcon: (row.prize_icon as string | null) ?? null,
+    eligibilityMode: (row.eligibility_mode as string) ?? 'all',
+    minPoints: (row.min_points as number | null) ?? null,
+    poolLabel: (row.pool_label as string | null) ?? null,
+    entrantCount: (row.entrant_count as number) ?? 0,
+    winnerName: (row.winner_name as string) ?? '',
+    winnerParticipantId: (row.winner_participant_id as string | null) ?? null,
+    drawIndex: (row.draw_index as number) ?? 0,
+    // The column defaults to now() online; here the local clock is all there is.
+    drawnAt: (row.drawn_at as string) ?? new Date().toISOString(),
+    entrants: [],
+  }
+  state = { ...state, draws: [...state.draws, draw] }
+  saveGameState(getPack(), state)
+  return { id: draw.id }
+}
+
+/**
+ * Adds the names that were in a draw's hat.
+ *
+ * A row whose draw is unknown is dropped rather than kept as an orphan - the
+ * same thing the online foreign key does, and the only way it can happen here
+ * is a draw that was never recorded.
+ */
+export function recordLotteryEntrants(
+  rows: Record<string, unknown>[],
+): Record<string, unknown>[] {
+  const byDraw = new Map<string, LocalLotteryEntrant[]>()
+  for (const row of rows) {
+    const drawId = row.draw_id as string
+    const entrant: LocalLotteryEntrant = {
+      participantId: (row.participant_id as string | null) ?? null,
+      name: (row.participant_name as string) ?? '',
+    }
+    const existing = byDraw.get(drawId)
+    if (existing) existing.push(entrant)
+    else byDraw.set(drawId, [entrant])
+  }
+
+  state = {
+    ...state,
+    draws: state.draws.map((draw) => {
+      const added = byDraw.get(draw.id)
+      return added ? { ...draw, entrants: [...draw.entrants, ...added] } : draw
+    }),
+  }
+  saveGameState(getPack(), state)
+  return rows
+}
+
+/** lottery_draws as flat rows with their entrants nested, as PostgREST returns them. */
+export function lotteryDrawRows() {
+  const p = getPack()
+  return state.draws.map((draw) => ({
+    id: draw.id,
+    event_id: p.event.id,
+    run_id: draw.runId,
+    prize_name: draw.prizeName,
+    prize_icon: draw.prizeIcon,
+    eligibility_mode: draw.eligibilityMode,
+    min_points: draw.minPoints,
+    pool_label: draw.poolLabel,
+    entrant_count: draw.entrantCount,
+    winner_name: draw.winnerName,
+    winner_participant_id: draw.winnerParticipantId,
+    draw_index: draw.drawIndex,
+    drawn_at: draw.drawnAt,
+    entrants: draw.entrants.map((e) => ({
+      participant_id: e.participantId,
+      participant_name: e.name,
+    })),
+  }))
 }
 
 /** The rewards this participant holds that a new total no longer covers. */
@@ -252,7 +352,7 @@ export function deleteScan(
     return { reward, transferredTo: { participant_id: next.participant_id, name: next.name } }
   })
 
-  state = { scans, awards }
+  state = { ...state, scans, awards }
   saveGameState(p, state)
   emit('point_transactions', { id: txId, event_id: p.event.id })
 

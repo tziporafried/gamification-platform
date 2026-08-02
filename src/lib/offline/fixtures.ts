@@ -109,5 +109,5 @@ export function makePack(over: Partial<GamePack> = {}): GamePack {
 }
 
 export function emptyState(): GameState {
-  return { scans: [], awards: [] }
+  return { scans: [], awards: [], draws: [] }
 }

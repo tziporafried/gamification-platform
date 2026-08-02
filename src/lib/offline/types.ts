@@ -55,10 +55,44 @@ export interface LocalAward {
   awardedAt: string
 }
 
+/** One name that was in a draw's hat, mirroring a lottery_draw_entrants row. */
+export interface LocalLotteryEntrant {
+  participantId: string | null
+  /** Copied in beside the id, exactly as the online table stores it. */
+  name: string
+}
+
+/**
+ * A lottery draw recorded on the disconnected machine, mirroring one
+ * lottery_draws row plus the entrants that hang off it.
+ *
+ * Kept in the game state rather than thrown away: the management screen's
+ * lottery tab is the record of what was given away, and offline it has nowhere
+ * else to read that from.
+ */
+export interface LocalLotteryDraw {
+  id: string
+  /** Ties every draw of one lottery together, as online. */
+  runId: string | null
+  prizeName: string
+  prizeIcon: string | null
+  eligibilityMode: string
+  minPoints: number | null
+  poolLabel: string | null
+  entrantCount: number
+  winnerName: string
+  winnerParticipantId: string | null
+  drawIndex: number
+  drawnAt: string
+  entrants: LocalLotteryEntrant[]
+}
+
 /** The whole mutable state of a running offline game. */
 export interface GameState {
   scans: LocalScan[]
   awards: LocalAward[]
+  /** Empty in every game saved before the lottery was recorded locally. */
+  draws: LocalLotteryDraw[]
 }
 
 /**

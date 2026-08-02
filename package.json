@@ -9,7 +9,7 @@
     "build:offline": "vite build --config vite.offline.config.ts",
     "preview": "vite preview",
     "test:utm": "npx tsx --test src/lib/utmAttribution.test.ts",
-    "test:offline": "node --import ./scripts/register-alias.mjs --test src/lib/offline/*.test.ts",
+    "test:offline": "node --import ./scripts/register-alias.mjs --test src/lib/offline/*.test.ts src/offline/*.test.ts src/offline/shim/*.test.ts",
     "test:scan": "node --import ./scripts/register-alias.mjs --test src/lib/qrPayload.test.ts src/lib/scanSequence.test.ts src/lib/cardCounts.test.ts",
     "test:finance": "node --import ./scripts/register-alias.mjs --test src/lib/financeSplit.test.ts",
     "test:features": "node --import ./scripts/register-alias.mjs --test src/lib/eventFeatures.test.ts",

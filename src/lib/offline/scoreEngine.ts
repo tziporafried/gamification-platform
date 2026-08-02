@@ -129,7 +129,7 @@ export function submitOfflineScan(
   const earned = checkAndAwardRewards(pack, scans, state.awards, participant.id)
   const awards = [...state.awards, ...toLocalAwards(earned, participant.id, now)]
 
-  const nextState: GameState = { scans, awards }
+  const nextState: GameState = { ...state, scans, awards }
 
   return {
     ok: true,

@@ -15,7 +15,7 @@ function scan(participantId: string, points: number): LocalScan {
 }
 
 function stateWith(scans: LocalScan[], awards: GameState['awards'] = []): GameState {
-  return { scans, awards }
+  return { scans, awards, draws: [] }
 }
 
 test('awards a reward once the threshold is reached', () => {

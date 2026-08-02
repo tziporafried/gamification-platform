@@ -6,8 +6,11 @@ import {
   getEventRow,
   getPack,
   groupLeaderboard,
+  lotteryDrawRows,
   participantLeaderboard,
   previewDeleteScan,
+  recordLotteryDraw,
+  recordLotteryEntrants,
   recordScan,
   scanRows,
   subscribeToTable,
@@ -24,6 +27,24 @@ type Filter = { op: 'eq' | 'neq' | 'in'; col: string; val: unknown }
 
 function ok(data: unknown, count: number | null = null): Result {
   return { data, error: null, count }
+}
+
+/**
+ * The answer for a write this shim does not implement.
+ *
+ * Shaped like postgres' undefined_table so isMissingTable() reads it the way
+ * the caller's own fallback expects, and - far more importantly - so a write
+ * aimed at an unknown table fails loudly instead of landing somewhere else. It
+ * used to land in the scan log: every lottery draw wrote itself and each of its
+ * entrants in as pointless scans, which turned those players' totals into NaN
+ * and quietly dropped them out of every points-based lottery afterwards.
+ */
+function missingTable(table: string): Result {
+  return {
+    data: null,
+    error: { code: '42P01', message: `relation "${table}" does not exist` },
+    count: null,
+  }
 }
 
 function applyFilters<T extends Record<string, unknown>>(rows: T[], filters: Filter[]): T[] {
@@ -48,7 +69,13 @@ class QueryBuilder implements PromiseLike<Result> {
   private singleMode: 'single' | 'maybe' | null = null
   private insertRows: Record<string, unknown>[] | null = null
 
-  constructor(private table: string) {}
+  private table: string
+
+  // Written out rather than as a constructor parameter property, so the file
+  // loads under node's type-stripping test runner.
+  constructor(table: string) {
+    this.table = table
+  }
 
   select(str = '*', opts?: { count?: string; head?: boolean }) {
     this.selectStr = str
@@ -126,17 +153,35 @@ class QueryBuilder implements PromiseLike<Result> {
         return scanRows() as unknown as Record<string, unknown>[]
       case 'participant_rewards':
         return awardRows() as unknown as Record<string, unknown>[]
+      case 'lottery_draws':
+        return lotteryDrawRows() as unknown as Record<string, unknown>[]
       default:
         return []
     }
   }
 
-  private run(): Result {
-    if (this.insertRows) {
-      const inserted = this.insertRows.map((r) => recordScan(r as never))
-      const data = this.singleMode ? inserted[0] : inserted
-      return ok(data)
+  /** Writes, per table. Anything else is a table this shim does not have. */
+  private insertRun(rows: Record<string, unknown>[]): Result {
+    switch (this.table) {
+      case 'point_transactions': {
+        const inserted = rows.map((r) => recordScan(r as never))
+        return ok(this.singleMode ? inserted[0] : inserted)
+      }
+      case 'lottery_draws': {
+        const inserted = rows.map((r) => recordLotteryDraw(r))
+        return ok(this.singleMode ? inserted[0] : inserted)
+      }
+      case 'lottery_draw_entrants': {
+        const inserted = recordLotteryEntrants(rows)
+        return ok(this.singleMode ? inserted[0] : inserted)
+      }
+      default:
+        return missingTable(this.table)
     }
+  }
+
+  private run(): Result {
+    if (this.insertRows) return this.insertRun(this.insertRows)
 
     let rows = applyFilters(this.rows(), this.filters)
 
@@ -200,7 +245,10 @@ function rpc(name: string, params?: Record<string, unknown>): PromiseLike<Result
 interface ChannelFilter { event?: string; table?: string }
 class Channel {
   private unsub: (() => void)[] = []
-  constructor(public name: string) {}
+  name: string
+  constructor(name: string) {
+    this.name = name
+  }
   on(_type: string, filter: ChannelFilter, cb: (payload: { new: Record<string, unknown> }) => void) {
     const table = filter?.table
     if (table === 'point_transactions' || table === 'participant_rewards' || table === 'events') {
