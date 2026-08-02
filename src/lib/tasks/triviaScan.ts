@@ -1,25 +1,25 @@
 /**
  * What a scanned trivia answer is worth, and what a scan that is not one means.
  *
- * The rules live here rather than in the hook because there are two scoring
- * engines that have to agree to the letter: `useScoreSubmit` (online) and
- * `src/lib/offline/scoreEngine.ts` (the exported game, no network). Both resolve
- * a code the same way and then ask this file the same two questions.
- *
- * The resolution itself cannot be shared - one of them queries Postgres and the
- * other walks arrays in a downloaded file - but it is the same two steps in both:
+ * The rules live here rather than in the hook so that scoring is one answer,
+ * asked the same way wherever a card is read. `useScoreSubmit` resolves a code
+ * in two steps and then asks this file what the scan is worth:
  *
  *   1. a task whose `code` matches   -> a standard scan, as it has always been
  *   2. otherwise an answer whose `code` matches -> the task it belongs to
  *
  * Step 2 only runs when step 1 found nothing, so a game with no trivia in it
  * pays nothing for this.
+ *
+ * The exported offline game runs that same hook over the supabase shim, which
+ * is why the rules below have to hold with no network behind them.
  */
 
 /**
- * Nothing in this file may import from `triviaTasksFlag.ts`: that module reaches
- * a React context, and half of what is here runs inside the exported offline
- * game, which has no React and no network. Pure functions only.
+ * Nothing in this file may import from `triviaTasksFlag.ts`: that module reads a
+ * feature flag through a React context, and scanning is deliberately not gated
+ * on the flag - a printed deck must stay readable after the flag is withdrawn,
+ * and a downloaded game resolves every flag off. Pure functions only.
  */
 
 import type { Action, ActionKind } from '@/types'

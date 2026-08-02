@@ -1,18 +1,20 @@
+/**
+ * Styles for the only screen the exported game draws itself: the message shown
+ * when the file carries no readable pack (see NoPack in main.tsx).
+ *
+ * Everything else offline is the real app - the kiosk, the board, the lottery
+ * and the management screen, running over the supabase shim - and it is styled
+ * by the app's own Tailwind build. This file used to dress a second, hand-built
+ * player that has since been retired; what is left is what NoPack uses.
+ */
+
 :root {
   --pl-primary: #D83000;
-  --pl-primary-accent: #FC6024;
   --pl-secondary: #009090;
   --pl-amber: #FC9000;
-  --pl-gold: #E8A33D;
   --pl-bg: #FFF8F3;
-  --pl-surface: #FFF1EC;
   --pl-ink: #2E221E;
   --pl-muted: #7D706A;
-  --pl-border: #E7D6CF;
-  --pl-success: #45CF6B;
-  --pl-danger: #C8341B;
-  --pl-shadow: 0 10px 34px rgba(46, 34, 30, 0.12);
-  --pl-shadow-lg: 0 20px 60px rgba(46, 34, 30, 0.18);
   /* No webfont is fetched - the player runs offline. Heebo only if the machine
      already has it; otherwise the OS Hebrew stack renders cleanly. */
   --pl-font: 'Heebo', system-ui, 'Segoe UI', 'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif;
@@ -35,47 +37,7 @@
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
-/* ============ shared chrome ============ */
-.pl-topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; padding: 18px 28px;
-  border-bottom: 1px solid var(--pl-border);
-  background: color-mix(in srgb, var(--pl-surface) 70%, white);
-  backdrop-filter: blur(6px);
-}
-.pl-brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
-/* Height is fixed, width follows the uploaded artwork - never cropped. */
-.pl-logo { height: 44px; width: auto; max-width: 180px; border-radius: 12px; object-fit: contain; border: 1px solid var(--pl-border); }
-.pl-brand-name { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pl-chip {
-  font-size: 11px; font-weight: 800; letter-spacing: 0.06em;
-  color: var(--pl-primary); background: color-mix(in srgb, var(--pl-primary) 12%, white);
-  padding: 4px 11px; border-radius: 999px; white-space: nowrap;
-}
-.pl-topbar-actions { display: flex; align-items: center; gap: 10px; }
-
-.pl-btn {
-  font-family: inherit; font-size: 15px; font-weight: 700;
-  padding: 10px 18px; border-radius: 12px; cursor: pointer;
-  border: 1px solid var(--pl-border); background: white; color: var(--pl-ink);
-  display: inline-flex; align-items: center; gap: 8px; transition: transform .08s, background .12s;
-}
-.pl-btn:hover { background: var(--pl-surface); }
-.pl-btn:active { transform: scale(0.97); }
-.pl-btn--primary { background: var(--pl-primary); color: white; border-color: transparent; }
-.pl-btn--primary:hover { background: var(--pl-primary-accent); }
-.pl-btn:disabled { opacity: 0.45; cursor: default; }
-
-/* ============ SCAN screen ============ */
-.pl-scan { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
-.pl-scan-body { display: grid; grid-template-columns: 1fr 340px; min-height: 0; }
-@media (max-width: 820px) { .pl-scan-body { grid-template-columns: 1fr; } }
-
-.pl-stage {
-  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 40px; overflow: hidden;
-}
-.pl-hidden-input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+.pl-nopack { min-height: 100vh; display: grid; place-items: center; text-align: center; padding: 40px; }
 
 .pl-prompt { text-align: center; max-width: 460px; }
 .pl-prompt-badge {
@@ -85,120 +47,3 @@
 }
 .pl-prompt-title { font-size: 32px; font-weight: 900; margin: 0 0 8px; }
 .pl-prompt-sub { font-size: 17px; color: var(--pl-muted); }
-
-/* Split-scan events: participant card is in, waiting on the action card. */
-.pl-prompt--awaiting .pl-prompt-badge {
-  border-style: solid;
-  background: color-mix(in srgb, var(--pl-primary) 16%, white);
-  border-color: var(--pl-primary);
-}
-.pl-prompt-countdown {
-  display: inline-block; margin-top: 14px; padding: 6px 18px; border-radius: 999px;
-  font-size: 16px; font-weight: 900; color: var(--pl-primary);
-  background: white; border: 2px solid color-mix(in srgb, var(--pl-primary) 30%, white);
-}
-.pl-prompt-dots { display: flex; justify-content: center; gap: 6px; margin-top: 14px; }
-.pl-prompt-dots span {
-  width: 7px; height: 7px; border-radius: 50%; background: var(--pl-primary); display: block;
-}
-
-.pl-fb { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.pl-fb-name { font-size: 40px; font-weight: 900; letter-spacing: -0.02em; }
-.pl-fb-action { font-size: 20px; color: var(--pl-muted); }
-.pl-fb-points { font-size: 92px; font-weight: 900; line-height: 1; color: var(--pl-primary); font-variant-numeric: tabular-nums; }
-.pl-fb-total { font-size: 18px; color: var(--pl-muted); font-weight: 600; }
-.pl-fb-reward {
-  margin-top: 14px; padding: 14px 26px; border-radius: 16px; font-weight: 900; font-size: 21px;
-  display: inline-flex; align-items: center; gap: 10px;
-  background: linear-gradient(135deg, #FFE9B8, #F5C86A); color: #6A4A12; box-shadow: var(--pl-shadow);
-}
-.pl-err { text-align: center; }
-.pl-err-badge { width: 100px; height: 100px; border-radius: 28px; margin: 0 auto 18px; display: grid; place-items: center; background: color-mix(in srgb, var(--pl-danger) 10%, white); color: var(--pl-danger); }
-.pl-err-msg { font-size: 26px; font-weight: 800; color: var(--pl-danger); }
-
-.pl-manual { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
-.pl-manual input { font-family: inherit; font-size: 15px; padding: 11px 14px; border: 1px solid var(--pl-border); border-radius: 12px; width: 128px; text-align: center; background: white; }
-.pl-manual input:focus { outline: 2px solid color-mix(in srgb, var(--pl-primary) 40%, transparent); outline-offset: 1px; }
-
-/* side rail (compact board on scan screen) */
-.pl-rail { border-right: 1px solid var(--pl-border); background: color-mix(in srgb, var(--pl-surface) 60%, white); padding: 22px; overflow-y: auto; }
-.pl-rail h3 { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; color: var(--pl-muted); margin: 0 0 14px; }
-
-/* ============ DISPLAY (live leaderboard) ============ */
-.pl-display { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
-
-/* Branding header: logo + resort name carry the screen, no frame around them. */
-.pl-display-head { position: relative; display: flex; justify-content: center; padding: 30px 28px 22px; }
-.pl-display-back { position: absolute; top: 22px; right: 28px; }
-.pl-hero { display: flex; align-items: center; gap: 26px; min-width: 0; }
-.pl-hero-logo {
-  height: 118px; width: auto; max-width: min(38vw, 420px);
-  flex-shrink: 0; border-radius: 30px; object-fit: contain;
-  filter: drop-shadow(0 14px 30px rgba(46, 34, 30, 0.22));
-}
-.pl-hero-logo--fallback {
-  width: 118px;
-  display: grid; place-items: center; font-size: 42px; font-weight: 900;
-  background: linear-gradient(135deg, #FFF1D2, #FFB84D); color: var(--pl-ink);
-}
-.pl-hero-text { min-width: 0; }
-/* Nearly as large as the resort name - the two read as one title block. */
-.pl-hero-eyebrow {
-  margin: 0; line-height: 1; font-weight: 900; color: var(--pl-primary);
-  font-size: clamp(27px, 3.6vw, 46px); letter-spacing: -0.01em;
-}
-.pl-hero-name {
-  margin: 8px 0 0; font-size: clamp(38px, 5vw, 64px); font-weight: 900; line-height: 1.05;
-  letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-@media (max-width: 700px) {
-  .pl-display-head { padding-top: 74px; }
-  .pl-hero { gap: 16px; }
-  .pl-hero-logo { height: 76px; width: auto; max-width: 46vw; border-radius: 20px; }
-  .pl-hero-logo--fallback { width: 76px; }
-}
-.pl-display-body { padding: 28px clamp(20px, 4vw, 56px) 48px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 34px; align-items: start; }
-@media (max-width: 900px) { .pl-display-body { grid-template-columns: 1fr; } }
-.pl-section-title { font-size: 15px; font-weight: 800; letter-spacing: 0.08em; color: var(--pl-muted); margin: 0 0 18px; display: flex; align-items: center; gap: 10px; }
-
-/* podium */
-.pl-podium { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: end; margin-bottom: 22px; }
-.pl-podium-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.pl-podium-medal { font-size: 34px; }
-.pl-podium-name { font-weight: 800; font-size: 17px; text-align: center; }
-.pl-podium-bar { width: 100%; border-radius: 16px 16px 0 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 14px; color: white; font-weight: 900; font-size: 26px; font-variant-numeric: tabular-nums; box-shadow: var(--pl-shadow); }
-.pl-podium-col--1 .pl-podium-bar { height: 150px; background: linear-gradient(180deg, #F6C34B, #E29A24); }
-.pl-podium-col--2 .pl-podium-bar { height: 112px; background: linear-gradient(180deg, #C9CDD4, #9AA0AB); }
-.pl-podium-col--3 .pl-podium-bar { height: 88px; background: linear-gradient(180deg, #E4A579, #C67C4A); }
-/* CSS entrance - reliable across headless/slow loads where JS animation may not
-   settle. Ends fully visible; content is never hidden if it doesn't run. */
-.pl-rise { animation: plRise 0.4s ease both; }
-@keyframes plRise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
-
-/* rows */
-.pl-list { display: flex; flex-direction: column; gap: 8px; }
-.pl-lrow { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 16px; background: white; border: 1px solid var(--pl-border); box-shadow: 0 2px 8px rgba(46,34,30,0.04); }
-.pl-lrow-rank { font-size: 18px; font-weight: 900; width: 30px; text-align: center; color: var(--pl-muted); font-variant-numeric: tabular-nums; }
-.pl-lrow-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
-.pl-lrow-name { flex: 1; font-weight: 700; font-size: 19px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pl-lrow-pts { font-weight: 900; font-size: 22px; color: var(--pl-primary); font-variant-numeric: tabular-nums; }
-.pl-lrow--empty { color: var(--pl-muted); font-weight: 600; justify-content: center; }
-
-/* compact rows (rail) */
-.pl-crow { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 11px; }
-.pl-crow + .pl-crow { margin-top: 3px; }
-.pl-crow--1 { background: linear-gradient(135deg, #FFF3D6, #FBE6B4); }
-.pl-crow--2 { background: #F1EEEA; }
-.pl-crow--3 { background: #F7EDE6; }
-.pl-crow-rank { font-size: 14px; font-weight: 900; width: 22px; text-align: center; color: var(--pl-muted); }
-.pl-crow-name { flex: 1; font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pl-crow-pts { font-weight: 800; font-size: 16px; font-variant-numeric: tabular-nums; }
-
-.pl-stat { text-align: center; }
-.pl-stat-num { font-size: 26px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
-.pl-stat-label { font-size: 11px; color: var(--pl-muted); margin-top: 3px; }
-
-.pl-empty { color: var(--pl-muted); font-size: 16px; text-align: center; padding: 30px 0; }
-
-/* full-screen fallback view (no game) */
-.pl-nopack { min-height: 100vh; display: grid; place-items: center; text-align: center; padding: 40px; }
