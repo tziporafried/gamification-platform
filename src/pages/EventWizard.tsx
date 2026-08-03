@@ -11,6 +11,7 @@ import {
   normalizeWizardStep,
   isSkippedWizardStep,
   hiddenWizardSteps,
+  resolveEventEntryPath,
 } from '@/lib/wizard'
 import { getTemplateByDraftEventId, fetchActivityTemplateById, seedTemplateDraftEvent, isDraftBehindTemplate } from '@/lib/templates'
 import { useTemplateAutoSync } from '@/hooks/useTemplateAutoSync'
@@ -243,6 +244,12 @@ export function EventWizard() {
 
   const isTrial = !isSuperAdmin && event.plan === 'free'
 
+  // Template editing has no step 7 to send anyone to - its ending is the step-8
+  // summary - so it keeps the plain control-board link.
+  const breadcrumbEventPath = isTemplateMode
+    ? undefined
+    : resolveEventEntryPath(event, counts, groupType)
+
   return (
     <EventFeaturesProvider eventId={event.id} plan={event.plan}>
     <WizardLayout
@@ -252,6 +259,7 @@ export function EventWizard() {
       onStepClick={goToStep}
       hiddenSteps={hiddenWizardSteps(scope)}
       headerSuffix={isTemplateMode ? 'עריכת תבנית' : undefined}
+      eventPath={breadcrumbEventPath}
     >
       <WizardStepPanel active={currentStep === 1}>
         <StepEventDetails

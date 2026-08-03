@@ -10,6 +10,26 @@ const STORAGE_PREFIX = 'wizard_prefs_'
  */
 export const ACTIVATION_STEP = WIZARD_STEPS.find((step) => step.id === 'cards')!.step
 
+/**
+ * Where pressing an event lands its owner. One rule, so the events list and the
+ * wizard breadcrumb cannot drift apart:
+ *   started        → the control center, on the DB flag alone
+ *   ready, unstarted → the step that starts it
+ *   otherwise      → wherever they left off
+ * `counts` is optional because the breadcrumb does not always have them; without
+ * it a game simply resumes where it stopped rather than jumping to the ending.
+ */
+export function resolveEventEntryPath(
+  event: Event,
+  counts?: EventCounts,
+  groupType?: GroupType | null,
+): string {
+  if (event.status === 'active') return `/events/${event.id}/control`
+  const ready = counts ? isEventReady(event, counts, groupType) : false
+  const step = ready ? ACTIVATION_STEP : getWizardPrefs(event.id).lastStep
+  return `/events/${event.id}/step/${step}`
+}
+
 export function getWizardStepId(stepNumber: number): WizardStepId | null {
   return WIZARD_STEPS.find((step) => step.step === stepNumber)?.id ?? null
 }

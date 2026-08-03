@@ -11,6 +11,12 @@ interface WizardLayoutProps {
   onStepClick: (step: number) => void
   hiddenSteps?: number[]
   headerSuffix?: string
+  /**
+   * Where the event name in the header goes. An unstarted game passes its
+   * wizard step, so the header answers to the same rule as the events list
+   * instead of dropping it at a control board that cannot open its scanner.
+   */
+  eventPath?: string
   children: React.ReactNode
 }
 
@@ -21,10 +27,12 @@ export function WizardLayout({
   onStepClick,
   hiddenSteps,
   headerSuffix,
+  eventPath,
   children,
 }: WizardLayoutProps) {
   useEventHeaderBreadcrumb(event.name, headerSuffix, event.plan, event.id, {
     showTrialBadge: true,
+    eventPath,
   })
   const { hasIntroPlayed, markIntroPlayed } = useWizardIntroTracking()
 

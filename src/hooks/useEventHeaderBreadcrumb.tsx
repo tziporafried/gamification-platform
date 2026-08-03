@@ -7,6 +7,8 @@ import type { UserPlan } from '@/types'
 interface EventHeaderBreadcrumbOptions {
   /** Show My Events-style trial activation pill after the event name (wizard). */
   showTrialBadge?: boolean
+  /** Where the event name links to; defaults to the control board. */
+  eventPath?: string
 }
 
 export function useEventHeaderBreadcrumb(
@@ -21,6 +23,7 @@ export function useEventHeaderBreadcrumb(
   const { isSuperAdmin } = useAuth()
   const showTrialBadge =
     !!options?.showTrialBadge && !!eventId && plan === 'free' && !isSuperAdmin
+  const eventPath = options?.eventPath
 
   useEffect(() => {
     setCenterSlot(
@@ -28,11 +31,12 @@ export function useEventHeaderBreadcrumb(
         eventName={eventName}
         suffix={suffix}
         eventId={eventId}
+        eventPath={eventPath}
         trialEventId={showTrialBadge ? eventId : undefined}
       />,
     )
     return () => setCenterSlot(null)
-  }, [eventName, suffix, eventId, showTrialBadge, setCenterSlot])
+  }, [eventName, suffix, eventId, eventPath, showTrialBadge, setCenterSlot])
 
   useEffect(() => {
     setCurrentPlan(plan ?? null)

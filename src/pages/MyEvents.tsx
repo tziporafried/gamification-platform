@@ -18,7 +18,7 @@ import { FloatingContactButton } from '@/components/layout/FloatingContactButton
 import { fetchEventsPlayMeta, type EventPlayMeta } from '@/lib/eventsPlayMeta'
 import { EventPlayStatus, resolveEventPlayStatus, EVENT_PLAY_STATUS, ACTIVATION_MODE_LABELS } from '@/components/event/EventPlayStatus'
 import { TrialActivationBadge } from '@/components/event/TrialActivationBadge'
-import { isEventReady, getWizardPrefs, ACTIVATION_STEP } from '@/lib/wizard'
+import { isEventReady, resolveEventEntryPath } from '@/lib/wizard'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
 import {
   trackEventCreationStart,
@@ -307,19 +307,8 @@ function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: Ev
     // partly reads localStorage (resolveGroupType falls back to wizard prefs),
     // so a live game opened on a second device or a cleared browser scores as
     // unready - and must not be dragged back into the wizard mid-event.
-    if (gameEvent.status === 'active') {
-      navigate(`/events/${gameEvent.id}/control`)
-      return
-    }
-    trackEventOpen('wizard')
-    // A game whose content is ready but was never started has exactly one thing
-    // left to do, and it lives on the wizard's last step: "התחל את הפעילות" is
-    // the only place that flips the status the scan screen runs on. Dropping
-    // such a game at the control center used to hand it a live "התחילו לסרוק"
-    // card that opened a scan screen where the scanner is deliberately unbound.
-    navigate(
-      `/events/${gameEvent.id}/step/${isReady ? ACTIVATION_STEP : getWizardPrefs(gameEvent.id).lastStep}`,
-    )
+    if (gameEvent.status !== 'active') trackEventOpen('wizard')
+    navigate(resolveEventEntryPath(gameEvent, playMeta?.counts))
   }
 
   function handleDelete(e: React.MouseEvent) {

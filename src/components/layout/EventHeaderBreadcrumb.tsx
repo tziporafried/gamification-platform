@@ -4,8 +4,15 @@ import { TrialActivationBadge } from '@/components/event/TrialActivationBadge'
 interface EventHeaderBreadcrumbProps {
   eventName: string
   suffix?: string
-  /** When set, the event name links back to the control board. */
+  /** When set, the event name is a link back into the event. */
   eventId?: string
+  /**
+   * Where that link goes. Defaults to the control board, but an unstarted game
+   * passes its wizard step instead - the control board's scan card cannot open
+   * a scan screen for it, so it is not the place to land. Same rule as the
+   * events list, from `resolveEventEntryPath`.
+   */
+  eventPath?: string
   /** When set (trial wizard), shows the same activation pill as My Events after the name. */
   trialEventId?: string
 }
@@ -14,12 +21,13 @@ export function EventHeaderBreadcrumb({
   eventName,
   suffix,
   eventId,
+  eventPath,
   trialEventId,
 }: EventHeaderBreadcrumbProps) {
   const navigate = useNavigate()
   const backPath = suffix === 'עריכת תבנית' ? '/admin/templates' : '/events'
   const backLabel = suffix === 'עריכת תבנית' ? 'ניהול מערכת' : 'האירועים שלי'
-  const controlPath = eventId ? `/events/${eventId}/control` : null
+  const controlPath = eventId ? (eventPath ?? `/events/${eventId}/control`) : null
   const nameLabel = eventName || 'אירוע חדש'
 
   return (
@@ -37,7 +45,7 @@ export function EventHeaderBreadcrumb({
           type="button"
           onClick={() => navigate(controlPath)}
           className="truncate max-w-[200px] text-sm font-bold leading-none text-primary-text transition-colors hover:opacity-80"
-          aria-label={`חזרה ללוח הבקרה - ${nameLabel}`}
+          aria-label={`${eventPath ? 'חזרה לאירוע' : 'חזרה ללוח הבקרה'} - ${nameLabel}`}
         >
           {nameLabel}
         </button>

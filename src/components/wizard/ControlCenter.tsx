@@ -5,6 +5,8 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { ControlActionCard, FloatingActionIcon } from './ControlActionCard'
 import { Modal } from '@/components/ui/Modal'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { supabase } from '@/lib/supabase'
 import { ShimmerText } from '@/components/ui/ShimmerText'
 import { ModalActions } from '@/components/ui/ModalActions'
 import { ReadinessChecklist } from './ReadinessChecklist'
@@ -29,9 +31,11 @@ import type { Event, EventCounts } from '@/types'
 interface ControlCenterProps {
   event: Event
   counts: EventCounts
+  /** Lets the start-anyway confirmation reflect the new status without a reload. */
+  onEventUpdated?: (event: Event) => void
 }
 
-export function ControlCenter({ event, counts }: ControlCenterProps) {
+export function ControlCenter({ event, counts, onEventUpdated }: ControlCenterProps) {
   const navigate = useNavigate()
   const { isSuperAdmin } = useAuth()
   const { setHeaderActivationCta } = useHeaderSlot()
@@ -39,6 +43,9 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   const isTrial = !isSuperAdmin && event.plan === 'free'
   const { canRunLottery } = usePlanPermissions(event.plan)
   const [settingsWarningOpen, setSettingsWarningOpen] = useState(false)
+  const [startAnywayOpen, setStartAnywayOpen] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const [startError, setStartError] = useState('')
   const [manageOpen, setManageOpen] = useState(false)
   /**
    * A game that bought the full management screen goes there when "ניהול" is
@@ -91,6 +98,48 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   const checks = calculateReadiness(event, counts)
   const showPrimaryActivationCta = isTrial && ready
 
+  // What the game is actually missing, in the owner's words. Only things the DB
+  // can vouch for - printing is never recorded anywhere, so it is a reminder
+  // below rather than a claim here.
+  const openSetupItems = useMemo(() => {
+    const items = checks
+      .filter((c) => c.required && !c.passed)
+      // wizardFailedLabel is optional on the type; label is the guaranteed one.
+      .map((c) => ({ id: c.id, text: c.wizardFailedLabel ?? c.label }))
+    if (!event.scan_mode) {
+      items.push({ id: 'scan_mode', text: 'לא נבחר סוג כרטיסים (סריקה משולבת או כפולה)' })
+    }
+    return items
+  }, [checks, event.scan_mode])
+
+  // Landing here unstarted means arriving by a saved link or a back-navigation -
+  // both routes that lead here now check the flag first. The game is asked about
+  // once, before the board it cannot yet run is handed over.
+  useEffect(() => {
+    if (needsActivation) setStartAnywayOpen(true)
+  }, [needsActivation])
+
+  async function handleStartAnyway() {
+    setStarting(true)
+    setStartError('')
+    const { error } = await supabase
+      .from('events')
+      .update({ status: 'active' })
+      .eq('id', event.id)
+    setStarting(false)
+    if (error) {
+      setStartError('לא הצלחנו להפעיל את המשחק. נסו שוב.')
+      return
+    }
+    trackCtaClick({
+      cta_name: 'start_event_from_control',
+      cta_location: 'control_center',
+      destination: `/events/${event.id}/control`,
+    })
+    onEventUpdated?.({ ...event, status: 'active' })
+    setStartAnywayOpen(false)
+  }
+
   const cardAnim = useMemo(() => ({
     kioskFloat: Math.random(),
     displayFloat: Math.random(),
@@ -125,15 +174,17 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
   })
 
   function handleAction(route: string) {
-    // An unstarted game gets sent to start itself instead of to a scan screen
-    // that cannot scan. The leaderboard is left alone - it reads fine empty.
+    // The board reads normally for an unstarted game - the confirmation carries
+    // the warning, so the cards below it do not repeat it. Reaching for the
+    // scanner raises that same confirmation again rather than opening a screen
+    // whose scanner is unbound.
     if (route === 'kiosk' && needsActivation) {
       trackCtaClick({
         cta_name: 'start_event',
         cta_location: 'control_center',
         destination: `/events/${event.id}/step/${ACTIVATION_STEP}`,
       })
-      navigate(`/events/${event.id}/step/${ACTIVATION_STEP}`)
+      setStartAnywayOpen(true)
       return
     }
     trackCtaClick({
@@ -206,6 +257,57 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
 
   return (
     <div ref={scrollRootRef} className="relative flex h-[calc(100vh-4rem)] flex-col overflow-y-auto">
+      {/* Unstarted game reached by a saved link: asked before it gets a board
+          whose scan card cannot open a scanner. Confirming starts it in place,
+          and the ordinary control center is underneath. */}
+      <Modal
+        isOpen={startAnywayOpen}
+        onClose={() => setStartAnywayOpen(false)}
+        title="המשחק עדיין לא הופעל"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted leading-relaxed">
+            {openSetupItems.length > 0
+              ? 'לא סיימתם את הגדרת המשחק. הדברים הבאים עדיין חסרים:'
+              : 'הגדרת המשחק הושלמה, אבל המשחק מעולם לא הופעל.'}
+          </p>
+
+          {openSetupItems.length > 0 && (
+            <ul className="space-y-1.5 rounded-xl bg-warning/10 p-3 text-sm text-foreground">
+              {openSetupItems.map((item) => (
+                <li key={item.id} className="flex gap-2 leading-relaxed">
+                  <span aria-hidden="true" className="text-warning-text">•</span>
+                  <span>{item.text}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <p className="text-sm text-muted leading-relaxed">
+            ודאו גם שהדפסתם את כרטיסי המשחק - המשתתפים משחקים באמצעותם.
+          </p>
+
+          <p className="text-sm font-bold text-foreground leading-relaxed">
+            האם אתם בטוחים שברצונכם להפעיל את המשחק כעת?
+          </p>
+
+          {startError && <ErrorAlert message={startError} />}
+
+          <ModalActions className="pt-0">
+            <Button onClick={handleStartAnyway} disabled={starting}>
+              {starting ? 'מפעיל...' : 'כן, הפעילו את המשחק'}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={starting}
+              onClick={() => navigate(`/events/${event.id}/step/${ACTIVATION_STEP}`)}
+            >
+              חזרה להגדרות
+            </Button>
+          </ModalActions>
+        </div>
+      </Modal>
+
       <Modal
         isOpen={settingsWarningOpen}
         onClose={() => setSettingsWarningOpen(false)}
@@ -373,11 +475,9 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
             <ControlActionCard
               onClick={() => handleAction('kiosk')}
               gradient="gradient-reward-legendary"
-              title={needsActivation ? '🚀 הפעילו את המשחק' : isTrial ? 'נסו את המשחק 🎯' : '🔥 שחקו בלי להפסיק'}
-              description={needsActivation
-                ? 'המשחק עדיין לא הופעל. הפעילו אותו כדי לפתוח את עמדת הסריקה'
-                : isTrial ? 'בצעו סריקות ניסיון וצפו בתוצאות בזמן אמת' : 'סרקו משימות וצברו נקודות'}
-              cta={needsActivation ? 'להפעלת המשחק ←' : 'התחילו לסרוק ←'}
+              title={isTrial ? 'נסו את המשחק 🎯' : '🔥 שחקו בלי להפסיק'}
+              description={isTrial ? 'בצעו סריקות ניסיון וצפו בתוצאות בזמן אמת' : 'סרקו משימות וצברו נקודות'}
+              cta="התחילו לסרוק ←"
               decoration={
                 <>
                   <motion.div

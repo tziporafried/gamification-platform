@@ -53,7 +53,7 @@ export function EventControlCenterPage() {
 
   return (
     <EventFeaturesProvider eventId={event.id} plan={event.plan}>
-      <ControlCenter event={event} counts={counts} />
+      <ControlCenter event={event} counts={counts} onEventUpdated={setEvent} />
     </EventFeaturesProvider>
   )
 }
