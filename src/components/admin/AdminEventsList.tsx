@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Calendar, Search, SlidersHorizontal, X } from 'lucide-react'
+import { Calendar, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
 import { fetchEventsPlayMeta } from '@/lib/eventsPlayMeta'
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { StatusBadge, STATUS_COLORS, PLAN_BADGE_COLORS } from '@/components/ui/StatusBadge'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { EventDetailsModal } from '@/components/admin/EventDetailsModal'
 import { cn } from '@/lib/utils'
 import type { EventStatus, UserPlan } from '@/types'
@@ -63,6 +64,9 @@ export function AdminEventsList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<AdminEventRow | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<AdminEventRow | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [planFilter, setPlanFilter] = useState<UserPlan | 'all'>('all')
   const [extrasOnly, setExtrasOnly] = useState(false)
@@ -154,6 +158,32 @@ export function AdminEventsList() {
   useEffect(() => {
     void fetchEvents()
   }, [fetchEvents])
+
+  /**
+   * Drops the game and everything hanging off it (091). The list holds the
+   * counts already, so the row just disappears instead of a refetch.
+   */
+  const deleteEvent = useCallback(async () => {
+    if (!deleteTarget) return
+    const target = deleteTarget
+    setDeleting(true)
+    setDeleteError(null)
+
+    const { error: rpcError } = await supabase.rpc('delete_event_admin', {
+      p_event_id: target.id,
+    })
+
+    setDeleting(false)
+
+    if (rpcError) {
+      setDeleteError(rpcError.message)
+      return
+    }
+
+    setEvents((prev) => prev.filter((event) => event.id !== target.id))
+    setPreview((prev) => (prev?.id === target.id ? null : prev))
+    setDeleteTarget(null)
+  }, [deleteTarget])
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -302,6 +332,9 @@ export function AdminEventsList() {
                   <th scope="col" className="px-4 py-3 text-center font-medium">פרסים</th>
                   <th scope="col" className="px-4 py-3 text-center font-medium">מספר סריקות</th>
                   <th scope="col" className="px-4 py-3 text-right font-medium">נוצר</th>
+                  <th scope="col" className="px-4 py-3 text-center font-medium">
+                    <span className="sr-only">פעולות</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-game-border/50">
@@ -374,6 +407,23 @@ export function AdminEventsList() {
                     <td className="px-4 py-3 whitespace-nowrap text-muted">
                       {new Date(event.created_at).toLocaleDateString('he-IL')}
                     </td>
+                    <td className="px-2 py-3 text-center">
+                      <button
+                        type="button"
+                        title="מחק אירוע"
+                        aria-label={`מחק את האירוע ${event.name?.trim() || 'ללא שם'}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeleteError(null)
+                          setDeleteTarget(event)
+                        }}
+                        // The row itself opens the details modal on Enter/Space.
+                        onKeyDown={(e) => e.stopPropagation()}
+                        className="flex items-center justify-center rounded-lg p-2 text-muted transition-colors hover:bg-danger/10 hover:text-danger-text"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -391,8 +441,53 @@ export function AdminEventsList() {
           onFeaturesChanged={() => void fetchEvents()}
         />
       )}
+
+      <ConfirmModal
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title="מחיקת אירוע"
+        confirmLabel="מחק לצמיתות"
+        onConfirm={() => void deleteEvent()}
+        loading={deleting}
+      >
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-foreground">
+            האם למחוק את האירוע {deleteTarget?.name?.trim() || 'ללא שם'}
+            {deleteTarget?.owner_name && <> של {deleteTarget.owner_name}</>}?
+          </p>
+          <p className="text-muted">
+            כל הרשומות של האירוע יימחקו יחד איתו
+            {deleteTarget && <> — {contentSummary(deleteTarget)}</>}. לא ניתן לשחזר.
+          </p>
+          <p className="text-muted">
+            הזמנות סורקים שקושרו לאירוע לא יימחקו, אלא רק ינותקו ממנו.
+          </p>
+          {deleteError && (
+            <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-danger-text">
+              שגיאה במחיקה: {deleteError}
+            </p>
+          )}
+        </div>
+      </ConfirmModal>
     </>
   )
+}
+
+/** "12 משתתפים, 3 קבוצות" - only what this game actually has. */
+function contentSummary(event: AdminEventRow) {
+  const parts = [
+    [event.participants, 'משתתפים'],
+    [event.groups, 'קבוצות'],
+    [event.tasks, 'משימות'],
+    [event.rewards, 'פרסים'],
+    [event.scans, 'סריקות'],
+  ] as const
+
+  const filled = parts.filter(([count]) => count > 0)
+
+  if (filled.length === 0) return 'האירוע ריק מתוכן'
+
+  return filled.map(([count, label]) => `${count} ${label}`).join(', ')
 }
 
 /** "+2 / -1" for a game whose flags differ from its plan; a dash otherwise. */
