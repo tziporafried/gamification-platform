@@ -2,7 +2,12 @@ import { useNavigate } from 'react-router-dom'
 import { Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { trackLiveEventSelect } from '@/lib/analytics'
-import { LIVE_EVENT_CATALOG, isLiveEventLaunchable } from './types'
+import {
+  LIVE_EVENT_CATALOG,
+  isLiveEventLaunchable,
+  liveEventDestination,
+  type LiveEventCatalogItem,
+} from './types'
 import { LiveEventLibraryCard } from './LiveEventLibraryCard'
 
 interface LiveEventsPanelProps {
@@ -14,18 +19,23 @@ interface LiveEventsPanelProps {
  */
 export function LiveEventsPanel({ eventId }: LiveEventsPanelProps) {
   const navigate = useNavigate()
-  const lottery = LIVE_EVENT_CATALOG.find((item) => item.id === 'lottery')!
-  const lotteryLaunchable = isLiveEventLaunchable(lottery)
+  // Every launchable item, not the lottery by name: this page used to hard-code
+  // the one thing that had shipped, so the second one to ship would have
+  // vanished from it entirely - neither launchable here nor listed as upcoming.
+  const launchable = LIVE_EVENT_CATALOG.filter((item) => isLiveEventLaunchable(item))
+  const featured = launchable[0] ?? null
+  const alsoLaunchable = launchable.slice(1)
   const upcoming = LIVE_EVENT_CATALOG.filter((item) => !isLiveEventLaunchable(item))
 
-  function openLotteryBroadcast() {
-    if (!lotteryLaunchable) return
+  function launch(item: LiveEventCatalogItem) {
+    const destination = liveEventDestination(item.id, eventId)
+    if (!destination) return
     trackLiveEventSelect({
       eventId,
-      catalogId: 'lottery',
+      catalogId: item.id,
       launchable: true,
     })
-    navigate(`/events/${eventId}/lottery`)
+    navigate(destination)
   }
 
   return (
@@ -48,9 +58,17 @@ export function LiveEventsPanel({ eventId }: LiveEventsPanelProps) {
         </p>
       </header>
 
-      {lotteryLaunchable && (
+      {featured && (
         <div className="mx-auto mb-5 w-full max-w-xl sm:mb-6">
-          <LiveEventLibraryCard item={lottery} featured onLaunch={openLotteryBroadcast} />
+          <LiveEventLibraryCard item={featured} featured onLaunch={() => launch(featured)} />
+        </div>
+      )}
+
+      {alsoLaunchable.length > 0 && (
+        <div className="mb-6 grid grid-cols-1 items-stretch gap-3.5 sm:grid-cols-2">
+          {alsoLaunchable.map((item) => (
+            <LiveEventLibraryCard key={item.id} item={item} onLaunch={() => launch(item)} />
+          ))}
         </div>
       )}
 

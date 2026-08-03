@@ -12,6 +12,7 @@ import {
 import {
   LIVE_EVENT_CATALOG,
   isLiveEventLaunchable,
+  liveEventDestination,
   type LiveEventCatalogId,
   type LiveEventCatalogItem,
 } from './types'
@@ -88,12 +89,22 @@ const CARD_SHADOW_HOVER: Record<LiveEventCatalogItem['accent'], string> = {
 
 const CARD_BLURB: Record<LiveEventCatalogId, string> = {
   lottery: 'בחרו פרס ומשתתפים - והשיקו הגרלה משלכם.',
-  'bonus-points': 'העניקו נקודות בונוס לשחקנים או לקבוצות שבחרתם.',
+  'bonus-points': 'העניקו נקודות למשתתף על משהו שאין לו כרטיס.',
   'flash-challenge': 'השיקו אתגר פתע באמצע המשחק.',
 }
 
 const UPCOMING_SLOT = 'w-full sm:w-[calc((100%-0.875rem)/2)]'
+/**
+ * Half the row, and a little over when there is only one thing to launch.
+ *
+ * The 1.07 is emphasis: a lone launchable card standing above two greyed-out
+ * teasers should read as the one you came here for. Two of them side by side
+ * do not need it, and cannot have it - 107% of a row does not fit in a row, so
+ * every card wraps onto a line of its own and the grid the popup is built on
+ * disappears.
+ */
 const AVAILABLE_SLOT = 'w-full sm:w-[calc((100%-0.875rem)/2*1.07)]'
+const AVAILABLE_SLOT_SHARED = 'w-full sm:w-[calc((100%-0.875rem)/2)]'
 
 const FOCUSABLE = [
   'a[href]',
@@ -342,7 +353,8 @@ export function LiveEventsSelectModal({
   }
 
   function launch(id: LiveEventCatalogId) {
-    if (id !== 'lottery') return
+    const destination = liveEventDestination(id, eventId)
+    if (!destination) return
     trackLiveEventSelect({
       eventId,
       catalogId: id,
@@ -353,7 +365,7 @@ export function LiveEventsSelectModal({
       onLockedSelect?.()
       return
     }
-    navigate(`/events/${eventId}/lottery`)
+    navigate(destination)
   }
 
   function handleClose() {
@@ -518,7 +530,10 @@ export function LiveEventsSelectModal({
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-5 sm:px-5 sm:pb-5">
                 <div className="flex flex-wrap justify-center gap-3.5">
                   {available.map((item) => (
-                    <div key={item.id} className={AVAILABLE_SLOT}>
+                    <div
+                      key={item.id}
+                      className={available.length > 1 ? AVAILABLE_SLOT_SHARED : AVAILABLE_SLOT}
+                    >
                       <AvailableEventCard
                         item={item}
                         blurb={CARD_BLURB[item.id]}

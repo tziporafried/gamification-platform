@@ -24,6 +24,13 @@ export interface EventScan {
   answerLabel?: string | null
   /** False only for a wrong trivia answer. */
   isCorrect?: boolean
+  /**
+   * Awarded by the operator rather than scanned (092). `actionName` then holds
+   * the reason they typed, so the row still explains itself - but the log has
+   * to say which of the two it is, or a bonus reads as a task nobody can find
+   * in the game's task list.
+   */
+  isBonus?: boolean
 }
 
 export interface ParticipantScans {
@@ -85,6 +92,8 @@ interface ScanQueryRow {
   points: number | null
   created_at: string
   participant_id: string
+  /** Undefined on a database that has not run 092 - see the note on the query. */
+  bonus_reason?: string | null
   participant: { name: string } | null
   action: { name: string } | null
 }
@@ -174,14 +183,18 @@ function buildRows(
       byParticipant.set(scan.participant_id, entry)
     }
     const answer = answers.get(scan.id)
+    // A bonus has no task by design, so "משימה שנמחקה" would be a lie about a
+    // row that is intact and says why it exists.
+    const bonusReason = scan.bonus_reason ?? null
     entry.scans.push({
       id: scan.id,
       participantId: scan.participant_id,
-      actionName: scan.action?.name ?? 'משימה שנמחקה',
+      actionName: bonusReason ?? scan.action?.name ?? 'משימה שנמחקה',
       points: scan.points ?? 0,
       createdAt: scan.created_at,
       answerLabel: answer?.label ?? null,
       isCorrect: answer ? answer.isCorrect : true,
+      isBonus: !!bonusReason,
     })
     entry.totalPoints += scan.points ?? 0
   }
@@ -201,9 +214,11 @@ export function useEventScans(eventId: string | undefined) {
     const [scansRes, participantsRes] = await Promise.all([
       supabase
         .from('point_transactions')
-        .select(
-          'id, points, created_at, participant_id, participant:participants(name), action:actions(name)',
-        )
+        // `*` rather than a column list, so `bonus_reason` (092) comes back
+        // where the database has it and its absence does not take the whole
+        // scan log down - the same reason useScoreSubmit reads an action that
+        // way. The row is seven small columns.
+        .select('*, participant:participants(name), action:actions(name)')
         .eq('event_id', eventId)
         .order('created_at', { ascending: false }),
       supabase

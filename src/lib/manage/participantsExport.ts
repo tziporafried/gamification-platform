@@ -84,6 +84,8 @@ export function downloadParticipantsCsv(
 interface ScanExportRow {
   points: number | null
   created_at: string
+  /** Set only on an operator-awarded bonus (092), which has no task. */
+  bonus_reason?: string | null
   participant: { name: string } | null
   action: { name: string } | null
 }
@@ -115,7 +117,10 @@ function scansSheet(rows: readonly ScanExportRow[]): XlsxSheet {
       ['משתתף', 'משימה', 'נקודות', 'מתי'],
       ...rows.map((row) => [
         row.participant?.name ?? 'משתתף שנמחק',
-        row.action?.name ?? 'משימה שנמחקה',
+        // A bonus has no task by design; its reason is what earned the points.
+        row.bonus_reason
+          ? `בונוס · ${row.bonus_reason}`
+          : row.action?.name ?? 'משימה שנמחקה',
         String(row.points ?? 0),
         formatFullMoment(row.created_at),
       ]),
@@ -269,7 +274,9 @@ export async function downloadFullWorkbook(
     fetchAllRows<ScanExportRow>((from, to) =>
       supabase
         .from('point_transactions')
-        .select('points, created_at, participant:participants(name), action:actions(name)')
+        // `*` so bonus_reason (092) comes back where the database has it, and
+        // its absence does not take the whole export down.
+        .select('*, participant:participants(name), action:actions(name)')
         .eq('event_id', eventId)
         .order('created_at')
         .range(from, to),

@@ -2,8 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Gift, Sparkles, Zap } from 'lucide-react'
 
 /** Discriminated union - add new live event kinds here as they ship. */
-export type LiveEventKind = 'lottery'
-// | 'bonus-points'
+export type LiveEventKind = 'lottery' | 'bonus-points'
 // | 'flash-challenge'
 
 export interface EligibleParticipant {
@@ -104,11 +103,12 @@ export const LIVE_EVENT_CATALOG: LiveEventCatalogItem[] = [
   },
   {
     id: 'bonus-points',
+    kind: 'bonus-points',
     title: 'נקודות בונוס',
-    description: 'העניקו נקודות בונוס לשחקנים או לקבוצות שבחרתם.',
+    description: 'העניקו נקודות למשתתף על משהו שאין לו כרטיס.',
     icon: Zap,
-    available: false,
-    cta: 'יושק בקרוב',
+    available: true,
+    cta: 'העניקו בונוס',
     accent: 'accent',
   },
   {
@@ -125,6 +125,20 @@ export const LIVE_EVENT_CATALOG: LiveEventCatalogItem[] = [
 /** Public availability from the catalog. */
 export function isLiveEventLaunchable(item: LiveEventCatalogItem): boolean {
   return item.available
+}
+
+/**
+ * Where launching each event takes the organizer. Null for anything not built.
+ *
+ * The lottery owns a screen of its own; a bonus does not. A bonus ends in a
+ * confirmation card and a row on the orange activity feed, and both of those
+ * already exist on the scan screen - so it opens as a popup there rather than
+ * as a second screen built around the same three fields.
+ */
+export function liveEventDestination(id: LiveEventCatalogId, eventId: string): string | null {
+  if (id === 'lottery') return `/events/${eventId}/lottery`
+  if (id === 'bonus-points') return `/events/${eventId}/kiosk?bonus=1`
+  return null
 }
 
 /** @deprecated Prefer LIVE_EVENT_CATALOG */

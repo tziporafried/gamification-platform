@@ -19,6 +19,7 @@
     "test:manage": "node --import ./scripts/register-alias.mjs --test src/lib/manage/*.test.ts",
     "test:roster": "node --import ./scripts/register-alias.mjs --test src/lib/spreadsheet/*.test.ts src/lib/roster/*.test.ts src/lib/phone.test.ts",
     "test:sms": "node --import ./scripts/register-alias.mjs --test src/lib/smsTemplate.test.ts",
+    "test:bonus": "node --import ./scripts/register-alias.mjs --test src/lib/bonusPoints.test.ts",
     "test:wizard": "node --import ./scripts/register-alias.mjs --test src/lib/wizardSteps.test.ts"
   },
   "dependencies": {

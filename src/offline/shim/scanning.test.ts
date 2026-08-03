@@ -213,6 +213,61 @@ test('deleting a scan takes back the prize it paid for', async () => {
   assert.equal(awards.length, 0)
 })
 
+test('a bonus scores without a task, and says what it was for', async () => {
+  // The one score in the app with no action behind it (092). Offline that means
+  // a LocalScan whose actionId is null - the thing the scan log used to assume
+  // it could always look up.
+  const dana = makeParticipant({ name: 'דנה', external_id: 'P-1' })
+  const dance = makeAction({ name: 'ריקוד', code: 'A-1', points: 15 })
+  const trophy = makeReward({ name: 'גביע', required_points: 20 })
+  const pack = startGame({ participants: [dana], actions: [dance], rewards: [trophy] })
+
+  await scan(pack.event.id, dana.id, dance.id, 15)
+
+  const { data, error } = await supabase
+    .from('point_transactions')
+    .insert({
+      event_id: pack.event.id,
+      participant_id: dana.id,
+      action_id: null,
+      points: 10,
+      bonus_reason: 'עזרה לצוות',
+    })
+    .select('id')
+    .single()
+  assert.equal(error, null)
+  const bonusId = (data as { id: string }).id
+
+  // It counts toward the total like any other row, prize threshold included.
+  const board = (await supabase.rpc('get_participant_leaderboard')).data as {
+    total_points: number
+  }[]
+  assert.equal(board[0].total_points, 25)
+  const earned = (await supabase.rpc('check_and_award_rewards', { p_participant_id: dana.id }))
+    .data as { out_reward_id: string }[]
+  assert.deepEqual(earned.map((r) => r.out_reward_id), [trophy.id])
+
+  // The scan log reads it as a row with no task and a reason, the same shape
+  // the online LEFT JOIN produces.
+  const rows = (
+    await supabase
+      .from('point_transactions')
+      .select('id, points, action:actions(name)')
+      .eq('event_id', pack.event.id)
+  ).data as { id: string; action: { name: string } | null; bonus_reason: string | null }[]
+  const logged = rows.find((r) => r.id === bonusId)!
+  assert.equal(logged.action, null)
+  assert.equal(logged.bonus_reason, 'עזרה לצוות')
+
+  // And deleting it names the reason where a scan would name its task, rather
+  // than claiming the task was deleted.
+  const preview = (await supabase.rpc('preview_delete_event_scan', { p_transaction_id: bonusId }))
+    .data as { action_name: string; deleted_points: number; new_total: number }
+  assert.equal(preview.action_name, 'עזרה לצוות')
+  assert.equal(preview.deleted_points, 10)
+  assert.equal(preview.new_total, 15)
+})
+
 test('a scan is announced on the channel the kiosk listens to', async () => {
   const dana = makeParticipant({ external_id: 'P-1' })
   const dance = makeAction({ code: 'A-1', points: 5 })

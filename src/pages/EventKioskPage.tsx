@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { FullPageLoader } from '@/components/ui/FullPageLoader'
 import { ScreenControls } from '@/components/ui/ScreenControls'
@@ -36,8 +36,11 @@ import {
 } from '@/lib/rewardTargeting'
 import { formatDistanceToNow } from 'date-fns'
 import { he } from 'date-fns/locale'
-import type { Event, GroupLeaderboardEntry, ParticipantLeaderboardEntry } from '@/types'
+import type { Event, GroupLeaderboardEntry, NewlyAwardedReward, ParticipantLeaderboardEntry } from '@/types'
 import type { ScoreSubmitResult } from '@/hooks/useScoreSubmit'
+import { useBonusAward } from '@/hooks/useBonusAward'
+import { BonusAwardModal, type BonusParticipantOption } from '@/components/kiosk/BonusAwardModal'
+import type { BonusDraft } from '@/lib/bonusPoints'
 import {
   trackScannerView,
   trackScanSuccess,
@@ -103,6 +106,8 @@ type ActivityRow = {
   points: string
   accent: string
   createdAt: string
+  /** Awarded by the operator, not scanned. Says so, rather than posing as a task. */
+  bonus?: boolean
 }
 type RewardRow = { id: string; icon: string; title: string; recipient: string; score: number; accent: string; createdAt: string }
 type TopPrizeRow = {
@@ -150,8 +155,13 @@ type ScanResultDisplay = {
    * 'wrong' is a trivia answer that scanned fine and scored nothing. It is not
    * an error - the scan is saved, the attempt is spent - so it gets the same
    * card with the celebration taken out of it, not a toast.
+   *
+   * 'bonus' is the same card for points nobody scanned for: the operator gave
+   * them. It celebrates like a scored one and says where the points came from,
+   * because a card reading "נסרק בהצלחה" over a player who never presented a
+   * card is the screen telling the room something that did not happen.
    */
-  variant?: 'scored' | 'wrong'
+  variant?: 'scored' | 'wrong' | 'bonus'
 }
 type RewardWinDisplay = { emoji: string; title: string; sub: string; points: number }
 
@@ -175,6 +185,8 @@ interface KioskData {
   actions: KioskAction[]
   kioskParticipants: KioskAvailabilityParticipant[]
   actionCompletionIndex: ActionCompletionIndex
+  /** Current total per participant id - what the bonus popup lists beside a name. */
+  participantTotals: Map<string, number>
   stats: KioskStats
   totalScans: number
   loading: boolean
@@ -518,7 +530,12 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
         supabase.rpc('get_participant_leaderboard', { p_event_id: eventId }),
         supabase
           .from('point_transactions')
-          .select('id, points, created_at, participant:participants(name), action:actions(id, name, code)')
+          // `*` rather than a column list, for the reason useScoreSubmit gives
+          // for reading an action that way: `bonus_reason` (092) has to come
+          // back when the database has it, and naming it explicitly would blank
+          // this panel on a database that has not run the migration yet. The
+          // row is seven small columns.
+          .select('*, participant:participants(name), action:actions(id, name, code)')
           .eq('event_id', eventId)
           .order('created_at', { ascending: false })
           .limit(10),
@@ -788,18 +805,28 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
     txData.slice(0, 10).map((tx: any) => {
       const action = Array.isArray(tx.action) ? tx.action[0] : tx.action
       const participant = Array.isArray(tx.participant) ? tx.participant[0] : tx.participant
+      // A bonus has no task to take its look from: one fixed bolt and one fixed
+      // amber, so the operator's own awards read as a set on the feed rather
+      // than as ten unrelated tasks nobody printed a card for.
+      const bonusReason: string | null = tx.bonus_reason ?? null
       const visualKey = action?.id ?? tx.id
       return {
         id: tx.id,
-        icon: activityIconForId(visualKey),
-        title: action?.name ?? 'משימה',
+        icon: bonusReason ? '⚡' : activityIconForId(visualKey),
+        title: bonusReason ?? action?.name ?? 'משימה',
         subtitle: participant?.name ?? '',
         points: tx.points > 0 ? `+${tx.points}` : String(tx.points),
-        accent: activityAccentForId(visualKey),
+        accent: bonusReason ? '#F2B33C' : activityAccentForId(visualKey),
         createdAt: tx.created_at ?? '',
+        bonus: !!bonusReason,
       }
     })
   , [txData])
+
+  const participantTotals = useMemo(
+    () => new Map(participantData.map((p) => [p.participant_id, p.total_points])),
+    [participantData],
+  )
 
   const stats = useMemo<KioskStats>(() => ({
     totalMissions: txCount,
@@ -817,6 +844,7 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
     actions: actionsData,
     kioskParticipants,
     actionCompletionIndex,
+    participantTotals,
     stats, totalScans: txCount,
     loading, error, refetch: fetchAll, holdPrizeReveal,
   }
@@ -1014,6 +1042,7 @@ function ScanSuccessOverlay({
   if (!result) return null
 
   const wrong = result.variant === 'wrong'
+  const bonus = result.variant === 'bonus'
 
   return (
     <div
@@ -1061,12 +1090,12 @@ function ScanSuccessOverlay({
             <>
               <div style={{
                 position: 'absolute', inset: -20, borderRadius: '50%',
-                border: '3px solid rgba(62,158,107,0.5)',
+                border: `3px solid ${bonus ? 'rgba(242,145,60,0.5)' : 'rgba(62,158,107,0.5)'}`,
                 animation: 'kiosk-ringBurst 1.6s ease-out 0.3s infinite',
               }} />
               <div style={{
                 position: 'absolute', inset: -10, borderRadius: '50%',
-                border: '2px solid rgba(62,158,107,0.3)',
+                border: `2px solid ${bonus ? 'rgba(242,145,60,0.3)' : 'rgba(62,158,107,0.3)'}`,
                 animation: 'kiosk-ringBurst 1.6s ease-out 0.7s infinite',
               }} />
             </>
@@ -1075,21 +1104,25 @@ function ScanSuccessOverlay({
             width: '100%', height: '100%', borderRadius: '50%',
             background: wrong
               ? 'linear-gradient(135deg,#B9AFAA,#8E8079)'
-              : 'linear-gradient(135deg,#62C98A,#3E9E6B)',
+              : bonus
+                ? 'linear-gradient(135deg,#FFC65C,#F2913C)'
+                : 'linear-gradient(135deg,#62C98A,#3E9E6B)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: wrong
               ? '0 8px 24px rgba(142,128,121,0.32)'
-              : '0 8px 24px rgba(62,158,107,0.38)',
+              : bonus
+                ? '0 8px 24px rgba(242,145,60,0.4)'
+                : '0 8px 24px rgba(62,158,107,0.38)',
             animation: reducedMotion || wrong ? 'none' : 'kiosk-checkIn 0.55s cubic-bezier(0.2,0.9,0.25,1.1) 0.1s both',
           }}>
-            <span style={{ color: '#fff', fontSize: 46, lineHeight: 1 }}>{wrong ? '✕' : '✓'}</span>
+            <span style={{ color: '#fff', fontSize: 46, lineHeight: 1 }}>{wrong ? '✕' : bonus ? '⚡' : '✓'}</span>
           </div>
         </div>
 
         {/* Label. The right answer is never named here - the next participant in
             the queue can see this screen from where they are standing. */}
-        <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: 3, color: wrong ? '#8E8079' : '#3E9E6B' }}>
-          {wrong ? 'התשובה לא נכונה' : 'נסרק בהצלחה!'}
+        <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: 3, color: wrong ? '#8E8079' : bonus ? '#C87A1E' : '#3E9E6B' }}>
+          {wrong ? 'התשובה לא נכונה' : bonus ? 'קיבל/ה בונוס!' : 'נסרק בהצלחה!'}
         </div>
 
         {/* Avatar + name */}
@@ -1941,7 +1974,7 @@ function ActivityView({
                   stripExitingIds.has(topStripRow.row.id) ? 'kiosk-activityCelebrateStrip--out' : '',
                 ].filter(Boolean).join(' ')}
               >
-                ✓ משימה בוצעה!
+                {topStripRow.row.bonus ? '⚡ בונוס הוענק!' : '✓ משימה בוצעה!'}
               </div>
             </div>
           )}
@@ -3053,7 +3086,8 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const {
     recentActivity, rewards, topPrizes, allClaimablePrizes, prizeChaseParticipants, prizeAwardedPairs,
     configuredRewardsCount, newestRewardId,
-    stats, actions, kioskParticipants, actionCompletionIndex, refetch, holdPrizeReveal,
+    stats, actions, kioskParticipants, actionCompletionIndex, participantTotals,
+    refetch, holdPrizeReveal,
   } = data
   const hasActivity = recentActivity.length > 0
   const hasAwardedRewards = rewards.length > 0
@@ -3130,6 +3164,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const [scanResult, setScanResult] = useState<ScanResultDisplay | null>(null)
   const [rewardWin, setRewardWin] = useState<RewardWinDisplay | null>(null)
   const [showManual, setShowManual] = useState(false)
+  const [showBonus, setShowBonus] = useState(false)
   const [trialLimitOpen, setTrialLimitOpen] = useState(false)
   const [toast, setToast] = useState<{ text: string; icon: string } | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout>>()
@@ -3160,6 +3195,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     setScanResult(null)
     setRewardWin(null)
     setShowManual(false)
+    setShowBonus(false)
     // No celebration is coming to release it.
     holdPrizeReveal(false)
   }, [gameStarted, holdPrizeReveal])
@@ -3210,39 +3246,33 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     refetch()
   }, [showNextReward, refetch, holdPrizeReveal])
 
-  const triggerScanSuccess = useCallback((result: ScoreSubmitResult, _txId: string, rm: boolean) => {
-    // Short confirmation blip the instant the scan validates - independent of the
-    // reward chime below and of reduced-motion (this is a functional audio cue).
-    // A wrong trivia answer gets its own two notes: the scan did work.
-    if (result.isCorrect) playScanSuccess()
-    else playScanWrongAnswer()
+  /**
+   * Puts a result card on screen and queues whatever it won behind it.
+   *
+   * Shared by the scanner and by a bonus, which differ only in the card's
+   * wording: everything after it - the prize hold, the queue, the dismissal
+   * timer, the refetch - is the same sequence, and it is a sequence where the
+   * order matters. Two copies of it would drift.
+   */
+  const presentResultCard = useCallback((
+    display: ScanResultDisplay,
+    celebrationRewards: NewlyAwardedReward[],
+    winnerName: string,
+    rm: boolean,
+  ) => {
     clearTimeout(scanDismissTimer.current)
     clearTimeout(rewardDismissTimer.current)
-    const { celebrationRewards } = result
-    // A win must not surface in the rewards banner while the scan card is still
-    // up - the prize takeover reveals it first, and releases the hold. Nothing
-    // won here means nothing to protect, so the banners resume at once.
+    // A win must not surface in the rewards banner while the result card is
+    // still up - the prize takeover reveals it first, and releases the hold.
+    // Nothing won here means nothing to protect, so the banners resume at once.
     if (celebrationRewards.length === 0) holdPrizeReveal(false)
     refetch()
-    setScanResult({
-      name: result.participantName,
-      // The answer they chose, named back to them - without a word about which
-      // one was right. That belongs to the organiser's screen, not this one.
-      action: result.isCorrect
-        ? `השלים/ה · ${result.actionName}`
-        : `${result.actionName} · ענה/תה "${result.optionLabel}"`,
-      initial: result.participantName.charAt(0),
-      emoji: result.isCorrect ? '🎯' : '❓',
-      points: result.points,
-      totalPoints: result.participantTotalPoints,
-      tone: result.isCorrect ? '#EF8A4E' : '#9C8F89',
-      variant: result.isCorrect ? 'scored' : 'wrong',
-    })
+    setScanResult(display)
     pendingWinsRef.current = {
       reducedMotion: rm,
       wins: celebrationRewards.map(rw => {
         const { icon } = rewardTier(rw.out_required_points)
-        return { emoji: icon, title: rw.out_reward_name, sub: result.participantName, points: rw.out_required_points }
+        return { emoji: icon, title: rw.out_reward_name, sub: winnerName, points: rw.out_required_points }
       }),
     }
     if (celebrationRewards.length > 0) {
@@ -3250,6 +3280,33 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     }
     scanDismissTimer.current = setTimeout(finishScanCard, SCAN_SUCCESS_MS)
   }, [finishScanCard, refetch, holdPrizeReveal])
+
+  const triggerScanSuccess = useCallback((result: ScoreSubmitResult, _txId: string, rm: boolean) => {
+    // Short confirmation blip the instant the scan validates - independent of the
+    // reward chime below and of reduced-motion (this is a functional audio cue).
+    // A wrong trivia answer gets its own two notes: the scan did work.
+    if (result.isCorrect) playScanSuccess()
+    else playScanWrongAnswer()
+    presentResultCard(
+      {
+        name: result.participantName,
+        // The answer they chose, named back to them - without a word about which
+        // one was right. That belongs to the organiser's screen, not this one.
+        action: result.isCorrect
+          ? `השלים/ה · ${result.actionName}`
+          : `${result.actionName} · ענה/תה "${result.optionLabel}"`,
+        initial: result.participantName.charAt(0),
+        emoji: result.isCorrect ? '🎯' : '❓',
+        points: result.points,
+        totalPoints: result.participantTotalPoints,
+        tone: result.isCorrect ? '#EF8A4E' : '#9C8F89',
+        variant: result.isCorrect ? 'scored' : 'wrong',
+      },
+      result.celebrationRewards,
+      result.participantName,
+      rm,
+    )
+  }, [presentResultCard])
 
   const logScoreSubmit = useCallback((source: 'qr_scan' | 'manual_entry', result: ScoreSubmitResult) => {
     // Dev only - this prints participant name and code, which should not land in
@@ -3348,16 +3405,20 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     return match?.name ?? null
   }, [pendingScan, catalog.participants])
 
-  // Switching to manual entry (or hitting the trial wall) abandons the flow -
-  // an armed participant must not survive to pair with a later action scan.
+  // Switching to manual entry or a bonus (or hitting the trial wall) abandons
+  // the flow - an armed participant must not survive to pair with a later
+  // action scan.
   useEffect(() => {
-    if (showManual || trialLimitOpen) resetScanSequence()
-  }, [showManual, trialLimitOpen, resetScanSequence])
+    if (showManual || showBonus || trialLimitOpen) resetScanSequence()
+  }, [showManual, showBonus, trialLimitOpen, resetScanSequence])
 
   // Deliberately not gated on gameStarted: the wedge stays bound so an unstarted
   // event answers a scan with a toast. Unbinding it left the hidden input
   // unfocused, and every keystroke the scanner typed fell on the floor.
-  const bind = useHardwareScanner(!showManual && !submitting && !noScan && !trialLimitOpen, handleScanGuarded)
+  // The wedge types into whatever has focus, so it stays unbound while the
+  // bonus popup owns the keyboard - otherwise a scanned card lands in the
+  // reason field.
+  const bind = useHardwareScanner(!showManual && !showBonus && !submitting && !noScan && !trialLimitOpen, handleScanGuarded)
 
   const handleManualSubmit = useCallback(async (participantCode: string, actionCode: string) => {
     if (!gameStarted) {
@@ -3391,6 +3452,94 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     setShowManual(false)
     triggerScanSuccess(response.result, response.result.transactionId, reducedMotion)
   }, [gameStarted, submitScan, showToast, rejectScanWhileBusy, logScoreSubmit, triggerScanSuccess, reducedMotion, isTrial, event.id])
+
+  // ── Bonus points ──────────────────────────────────────────────────────────
+  // Opened from the live-events popup, which links here with ?bonus=1 rather
+  // than owning a screen of its own: the award has to end in the confirmation
+  // card and the orange feed, and both of those live here.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const bonusRequested = searchParams.get('bonus') === '1'
+  const { award: awardBonus, submitting: awardingBonus } = useBonusAward(event.id)
+
+  useEffect(() => {
+    if (!bonusRequested) return
+    // Consumed once. Left in the address bar it would reopen the popup on every
+    // refresh of a display that may be running unattended for hours.
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('bonus')
+      return next
+    }, { replace: true })
+    // An unstarted game cannot score, and says so in the centre column with the
+    // button that fixes it. Opening a popup on top of that message would hide
+    // the one thing worth reading.
+    if (gameStarted) setShowBonus(true)
+  }, [bonusRequested, gameStarted, setSearchParams])
+
+  const bonusParticipants = useMemo<BonusParticipantOption[]>(
+    () => catalog.participants.map((p) => ({
+      id: p.id,
+      name: p.name,
+      points: participantTotals.get(p.id) ?? 0,
+    })),
+    [catalog.participants, participantTotals],
+  )
+
+  const handleBonusSubmit = useCallback(async (draft: BonusDraft) => {
+    if (!gameStarted) {
+      showToast('המשחק עדיין לא הופעל', { icon: '🚀' })
+      return
+    }
+    // Same rule as every other way into this screen - one player at a time.
+    if (popupBusyRef.current) {
+      rejectScanWhileBusy()
+      return
+    }
+    // The prize half of the banners freezes for the same reason a scan freezes
+    // it: a bonus can carry someone over a threshold, and the win belongs to
+    // the celebration before it belongs to the feed.
+    holdPrizeReveal(true)
+    const response = await awardBonus(draft)
+    if (!response.ok) {
+      holdPrizeReveal(false)
+      if (response.code === 'TRIAL_SCAN_LIMIT_REACHED') {
+        trackTrialScanLimitReached(event.id, TRIAL_SCAN_LIMIT)
+        trackScanFailed('trial_scan_limit', 'manual_entry')
+        setShowBonus(false)
+        setTrialLimitOpen(true)
+        return
+      }
+      trackScanFailed('submit_failed', 'manual_entry')
+      showToast(response.error)
+      return
+    }
+
+    const { result } = response
+    trackScanSuccess('manual_entry')
+    if (isTrial) {
+      trackTrialScanCompleted(event.id, result.eventScanCount)
+    }
+    playScanSuccess()
+    setShowBonus(false)
+    presentResultCard(
+      {
+        name: result.participantName,
+        action: `בונוס · ${result.reason}`,
+        initial: result.participantName.charAt(0),
+        emoji: '⚡',
+        points: result.points,
+        totalPoints: result.participantTotalPoints,
+        tone: '#F2A03C',
+        variant: 'bonus',
+      },
+      result.celebrationRewards,
+      result.participantName,
+      reducedMotion,
+    )
+  }, [
+    gameStarted, awardBonus, showToast, rejectScanWhileBusy, holdPrizeReveal,
+    presentResultCard, reducedMotion, isTrial, event.id,
+  ])
 
   return (
     <div style={{
@@ -3753,6 +3902,16 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           </div>
         </div>
       )}
+
+      {/* Bonus points - the operator awards, the card and the feed do the rest */}
+      <BonusAwardModal
+        isOpen={showBonus}
+        onClose={() => setShowBonus(false)}
+        participants={bonusParticipants}
+        loadingParticipants={catalog.loading}
+        submitting={awardingBonus}
+        onSubmit={handleBonusSubmit}
+      />
 
       {/* Error / nudge toast - above every popup, so it reads mid-celebration */}
       {toast && (

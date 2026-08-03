@@ -219,6 +219,15 @@ export function ScansTab({ eventId, initialQuery = '' }: ScansTabProps) {
                                 className={cn('me-2 inline-block h-1 w-1 rounded-full align-middle', 'bg-current opacity-40')}
                                 aria-hidden="true"
                               />
+                              {/* Says which of the two it is. The text beside it
+                                  is the operator's reason, not a task, and the
+                                  game's task list has no such entry to check it
+                                  against. */}
+                              {scan.isBonus && (
+                                <span className={cn('me-1.5 text-[11px] font-bold', theme.textSubtle)}>
+                                  בונוס ·
+                                </span>
+                              )}
                               {scan.actionName}
                               {/* The answer they picked, and whether it scored.
                                   A 0 next to a task worth 20 is unreadable

@@ -76,19 +76,27 @@ function localId(prefix: string): string {
     : `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
 }
 
-/** Records a scan (eligibility already checked by useScoreSubmit) and notifies. */
+/**
+ * Records a score and notifies.
+ *
+ * Both kinds land here, because both are one insert into point_transactions
+ * online: a scan (eligibility already checked by useScoreSubmit) and a bonus
+ * (no task, no eligibility, a reason instead - see useBonusAward).
+ */
 export function recordScan(row: {
   event_id: string
   participant_id: string
-  action_id: string
+  action_id: string | null
   action_option_id?: string | null
+  bonus_reason?: string | null
   points: number
 }): { id: string } {
   const scan: LocalScan = {
     clientTxId: localId('tx'),
     participantId: row.participant_id,
-    actionId: row.action_id,
+    actionId: row.action_id ?? null,
     actionOptionId: row.action_option_id ?? null,
+    bonusReason: row.bonus_reason ?? null,
     points: row.points,
     createdAt: new Date().toISOString(),
   }
@@ -288,7 +296,9 @@ export function previewDeleteScan(txId: string): Record<string, unknown> {
     event_id: p.event.id,
     participant_id: scan.participantId,
     participant_name: p.participants.find((x) => x.id === scan.participantId)?.name ?? null,
-    action_name: p.actions.find((a) => a.id === scan.actionId)?.name ?? null,
+    // The bonus reason stands where the task name would, the same COALESCE
+    // migration 092 put in the online RPC.
+    action_name: p.actions.find((a) => a.id === scan.actionId)?.name ?? scan.bonusReason ?? null,
     deleted_points: scan.points,
     current_total: getParticipantTotal(state.scans, scan.participantId),
     new_total: newTotal,
@@ -411,6 +421,7 @@ export function scanRows() {
       participant_id: s.participantId,
       action_id: s.actionId,
       action_option_id: s.actionOptionId ?? null,
+      bonus_reason: s.bonusReason ?? null,
       points: s.points,
       created_at: s.createdAt,
       // Named `answer` to match the alias the manage screen selects it under.
@@ -420,7 +431,8 @@ export function scanRows() {
       participant: pById.get(s.participantId)
         ? { name: pById.get(s.participantId)!.name, external_id: pById.get(s.participantId)!.external_id }
         : null,
-      action: aById.get(s.actionId)
+      // Null for a bonus, exactly as the LEFT JOIN returns online.
+      action: s.actionId && aById.get(s.actionId)
         ? { id: aById.get(s.actionId)!.id, name: aById.get(s.actionId)!.name, code: aById.get(s.actionId)!.code }
         : null,
     }))

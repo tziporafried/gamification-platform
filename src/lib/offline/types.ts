@@ -34,14 +34,21 @@ export interface GamePack {
   rewardGroups: { reward_id: string; group_id: string }[]
 }
 
-/** A scan recorded on the disconnected machine. */
+/** A score recorded on the disconnected machine - a scan, or a bonus. */
 export interface LocalScan {
   /** Client-generated; the queue's identity and its de-dupe key. */
   clientTxId: string
   participantId: string
-  actionId: string
+  /**
+   * Null on a bonus, which no task earned - mirroring the nullable column
+   * migration 092 gives point_transactions. Every scan saved before bonuses
+   * existed has one, and reads back exactly as it always did.
+   */
+  actionId: string | null
   /** The answer scanned, for a trivia task. Null for every standard one. */
   actionOptionId?: string | null
+  /** What the operator awarded it for. Null on every scan of a task. */
+  bonusReason?: string | null
   points: number
   /** ISO timestamp from the local clock. */
   createdAt: string

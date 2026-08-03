@@ -13,7 +13,8 @@ import { Spinner } from '@/components/ui/Spinner'
 import type { ParticipantLeaderboardEntry, GroupLeaderboardEntry } from '@/types'
 
 interface LeaderboardSectionProps { eventId: string; eventName?: string; eventLogoUrl?: string | null }
-interface TxRow { id: string; participant_id: string; action_id: string; points: number; created_at: string; participant: { name: string; external_id: string }; action: { name: string; code: string } }
+/** `action_id` is null and `bonus_reason` set on an operator-awarded bonus (092). */
+interface TxRow { id: string; participant_id: string; action_id: string | null; bonus_reason?: string | null; points: number; created_at: string; participant: { name: string; external_id: string }; action: { name: string; code: string } | null }
 interface PgMapping { participant_id: string; groups: { id: string; name: string; color: string } | null }
 
 function computeRanks<T extends { total_points: number }>(entries: T[]): (T & { rank: number })[] {
@@ -116,7 +117,9 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
     try {
       const [pRes, gRes, txRes] = await Promise.all([
         supabase.rpc('get_participant_leaderboard', { p_event_id: eventId }), supabase.rpc('get_group_leaderboard', { p_event_id: eventId }),
-        supabase.from('point_transactions').select('id, participant_id, action_id, points, created_at, participant:participants(name, external_id), action:actions(name, code)').eq('event_id', eventId).order('created_at', { ascending: false }).limit(200),
+        // `*` so bonus_reason (092) comes back where the database has it - see
+        // the note on the same query in useEventScans.
+        supabase.from('point_transactions').select('*, participant:participants(name, external_id), action:actions(name, code)').eq('event_id', eventId).order('created_at', { ascending: false }).limit(200),
       ])
       if (pRes.error || gRes.error) { setError('טבלת הדירוג בהכנה. אנא נסו שוב בקרוב.'); setLoading(false); return }
       const pData = (pRes.data ?? []) as ParticipantLeaderboardEntry[]; const gData = (gRes.data ?? []) as GroupLeaderboardEntry[]
@@ -152,7 +155,10 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
   const taskCountByP = useMemo(() => { const m = new Map<string, number>(); for (const tx of transactions) m.set(tx.participant_id, (m.get(tx.participant_id) || 0) + 1); return m }, [transactions])
   const groupTaskCounts = useMemo(() => { const m = new Map<string, number>(); for (const [pid, c] of taskCountByP) { const g = pgMap.get(pid); if (g) m.set(g.id, (m.get(g.id) || 0) + c) }; return m }, [taskCountByP, pgMap])
   const topPByGroup = useMemo(() => { const m = new Map<string, { name: string }>(); for (const p of rankedP) { const g = pgMap.get(p.participant_id); if (!g) continue; if (!m.has(g.id)) m.set(g.id, { name: p.participant_name }) }; return m }, [rankedP, pgMap])
-  const taskStats = useMemo(() => { const m = new Map<string, { name: string; count: number; points: number }>(); for (const tx of transactions) { const c = m.get(tx.action_id); if (c) { c.count++; c.points += tx.points } else m.set(tx.action_id, { name: tx.action?.name ?? '', count: 1, points: tx.points }) }; return [...m.values()].sort((a, b) => b.count - a.count) }, [transactions])
+  // Bonuses share one bucket: they have no action_id to group by and each one
+  // has a reason of its own, so a row per reason would bury the tasks this
+  // breakdown is about - while dropping them would stop the points adding up.
+  const taskStats = useMemo(() => { const m = new Map<string, { name: string; count: number; points: number }>(); for (const tx of transactions) { const key = tx.action_id ?? 'bonus'; const c = m.get(key); if (c) { c.count++; c.points += tx.points } else m.set(key, { name: tx.action?.name ?? (tx.action_id ? '' : 'נקודות בונוס'), count: 1, points: tx.points }) }; return [...m.values()].sort((a, b) => b.count - a.count) }, [transactions])
   const recentActivity = useMemo(() => transactions.slice(0, 5), [transactions])
   const showTasksCol = taskStats.length > 1
 
@@ -457,7 +463,9 @@ export function LeaderboardSection({ eventId, eventName, eventLogoUrl }: Leaderb
                         <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${pos ? 'bg-success/20' : 'bg-danger/20'}`}>
                           {pos ? <ArrowUp size={12} className="text-success-text" /> : <ArrowDown size={12} className="text-danger-text" />}
                         </div>
-                        <span className="min-w-0 flex-1 truncate text-xs text-foreground"><span className="font-bold text-foreground">{tx.participant?.name}</span> ביצע <span className="font-medium text-foreground">{tx.action?.name}</span></span>
+                        {/* "ביצע" is wrong for a bonus - nobody did anything to
+                            earn it; it was given. */}
+                        <span className="min-w-0 flex-1 truncate text-xs text-foreground"><span className="font-bold text-foreground">{tx.participant?.name}</span> {tx.bonus_reason ? 'קיבל/ה בונוס על' : 'ביצע'} <span className="font-medium text-foreground">{tx.bonus_reason ?? tx.action?.name}</span></span>
                         <span className={`shrink-0 text-xs font-black tabular-nums ${pos ? 'text-success-text' : 'text-danger-text'}`}>{pos ? '+' : ''}{tx.points}</span>
                         <span className="shrink-0 text-[10px] text-muted">{formatDistanceToNow(new Date(tx.created_at), { addSuffix: true, locale: he })}</span>
                       </motion.div>
