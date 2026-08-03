@@ -69,12 +69,19 @@ const FIELD_BOX: React.CSSProperties = {
   background: '#fff',
   fontSize: 15.5,
   fontWeight: 700,
-  color: '#2E221E',
+  color: '#3F2B22',
   outline: 'none',
   fontFamily: 'inherit',
   width: '100%',
   boxSizing: 'border-box',
 }
+
+/**
+ * The player picker draws its own chevron: the native one is a black triangle,
+ * the one bit of the popup that is not on the brand's warm scale.
+ */
+const CHEVRON =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23B4552A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")"
 
 export function BonusAwardModal({
   isOpen,
@@ -141,8 +148,10 @@ export function BonusAwardModal({
         position: 'absolute', inset: 0, zIndex: 50,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 'clamp(12px, 2vw, 28px)',
-        background: 'rgba(46,34,30,0.65)',
-        backdropFilter: 'blur(8px)',
+        // Warm brown at the app modal's weight, not a near-black wash: the
+        // scan screen behind it should still read as the game's own colours.
+        background: 'rgba(74,42,26,0.42)',
+        backdropFilter: 'blur(10px)',
         direction: 'rtl',
       }}
     >
@@ -178,7 +187,7 @@ export function BonusAwardModal({
               <div style={{ fontSize: 'clamp(20px, 2.2vw, 25px)', fontWeight: 900, color: '#2E221E' }}>
                 נקודות בונוס
               </div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#7D706A', marginTop: 2 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#A08172', marginTop: 2 }}>
                 בחרו משתתף, כתבו על מה, וקבעו כמה
               </div>
             </div>
@@ -186,10 +195,11 @@ export function BonusAwardModal({
               type="button"
               onClick={onClose}
               aria-label="סגירה"
+              className="kiosk-bonusClose"
               style={{
                 width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                background: '#2E221E', color: '#fff',
-                border: 'none', cursor: 'pointer', fontSize: 19,
+                background: '#FFF1E7', color: '#B4552A',
+                border: '1.5px solid #FFE1CC', cursor: 'pointer', fontSize: 19,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
@@ -210,7 +220,18 @@ export function BonusAwardModal({
               value={participantId ?? ''}
               disabled={loadingParticipants || participants.length === 0}
               onChange={(e) => { setParticipantId(e.target.value || null); setTouched(false) }}
-              style={{ ...FIELD_BOX, cursor: 'pointer' }}
+              className="kiosk-bonusField"
+              style={{
+                ...FIELD_BOX,
+                cursor: 'pointer',
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                backgroundImage: CHEVRON,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'left 14px center',
+                backgroundSize: '12px 8px',
+                paddingLeft: 38,
+              }}
             >
               <option value="">
                 {loadingParticipants
@@ -241,6 +262,7 @@ export function BonusAwardModal({
               onChange={(e) => { setReason(e.target.value.slice(0, BONUS_REASON_MAX_LENGTH)); setTouched(false) }}
               placeholder="למשל: עזרה בהקמת התחנה"
               maxLength={BONUS_REASON_MAX_LENGTH}
+              className="kiosk-bonusField"
               style={FIELD_BOX}
             />
           </div>
@@ -257,7 +279,14 @@ export function BonusAwardModal({
               inputMode="numeric"
               onChange={(e) => { setPoints(sanitizeBonusPoints(e.target.value)); setTouched(false) }}
               placeholder="0"
-              style={{ ...FIELD_BOX, fontSize: 22, fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}
+              className="kiosk-bonusField"
+              style={{
+                ...FIELD_BOX,
+                fontSize: 22,
+                fontWeight: 900,
+                color: '#B4552A',
+                fontVariantNumeric: 'tabular-nums',
+              }}
             />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {POINT_PRESETS.map((preset) => (
@@ -283,9 +312,11 @@ export function BonusAwardModal({
           {/* What is about to happen, in one line, before it does */}
           <div style={{
             borderRadius: 14, padding: '10px 14px',
-            background: validation.ok ? 'linear-gradient(135deg,#EAF7F1,#E0F2EC)' : '#F6F1EE',
+            background: validation.ok
+              ? 'linear-gradient(135deg,#EAF7F1,#E0F2EC)'
+              : 'linear-gradient(135deg,#FFF4EC,#FFEADD)',
             fontSize: 13.5, fontWeight: 800, lineHeight: 1.45,
-            color: validation.ok ? '#2F7A5E' : '#8E8079',
+            color: validation.ok ? '#2F7A5E' : '#A8806B',
           }}>
             {validation.ok && selected
               ? `${selected.name} יקבל/תקבל ${validation.points.toLocaleString('he-IL')} נקודות על ${validation.reason}`
@@ -311,8 +342,11 @@ export function BonusAwardModal({
               padding: '14px 24px', borderRadius: 999, border: 'none',
               background: validation.ok && !submitting
                 ? 'linear-gradient(135deg,#FF9366,#F2B33C)'
-                : 'linear-gradient(135deg,#E2D6CF,#D5C7BF)',
-              color: '#fff', fontSize: 17, fontWeight: 900,
+                // Sand rather than grey: an unfilled form should look like it
+                // is waiting, not like a disabled control from another product.
+                : 'linear-gradient(135deg,#FBE0CE,#F4D2BB)',
+              color: validation.ok && !submitting ? '#fff' : '#C08560',
+              fontSize: 17, fontWeight: 900,
               cursor: submitting ? 'wait' : 'pointer',
               boxShadow: validation.ok && !submitting ? '0 8px 22px rgba(255,147,102,0.42)' : 'none',
               fontFamily: 'inherit',

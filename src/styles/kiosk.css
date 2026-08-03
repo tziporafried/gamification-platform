@@ -1473,3 +1473,28 @@
   .kiosk-waitPanel, .kiosk-waitCard, .kiosk-waitHalo,
   .kiosk-waitPing, .kiosk-waitSlot, .kiosk-waitDot { animation: none; }
 }
+
+/* ── Bonus popup ──────────────────────────────────────────────────────────
+   The three fields and the close button, whose states cannot be expressed in
+   the inline styles the rest of the popup is built from. All on the warm
+   scale - nothing here should read as a grey system control.
+   !important because the popup styles its controls inline, which otherwise
+   wins over any rule here; background-color rather than the shorthand, so the
+   player picker keeps its drawn chevron. */
+.kiosk-bonusField::placeholder {
+  color: #D2AE97;
+  font-weight: 700;
+}
+.kiosk-bonusField:focus {
+  border-color: #FFB182 !important;
+  box-shadow: 0 0 0 4px rgba(255,177,130,0.26);
+}
+.kiosk-bonusField:disabled {
+  background-color: #FFF8F3 !important;
+  color: #BFA292 !important;
+  cursor: default;
+}
+.kiosk-bonusClose:hover {
+  background-color: #FFE3D0 !important;
+  color: #8E3D16 !important;
+}
