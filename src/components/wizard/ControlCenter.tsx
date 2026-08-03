@@ -15,7 +15,7 @@ import { useEventHeaderBreadcrumb } from '@/hooks/useEventHeaderBreadcrumb'
 import { useHeaderSlot } from '@/contexts/HeaderSlotContext'
 import { usePlansModal } from '@/contexts/PlansModalContext'
 import { usePlanPermissions } from '@/hooks/usePlanPermissions'
-import { calculateReadiness, isEventReady, getWizardPrefs, resolveGroupType } from '@/lib/wizard'
+import { calculateReadiness, isEventReady, getWizardPrefs, resolveGroupType, ACTIVATION_STEP } from '@/lib/wizard'
 import { getLockedTemplate, completeTemplateImport, LOCKED_TEMPLATE_CHANGED } from '@/lib/lockedTemplate'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -80,7 +80,14 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
     return () => window.removeEventListener(LOCKED_TEMPLATE_CHANGED, importLocked)
   }, [event.id, isTrial])
 
-  const ready = isEventReady(event, counts)
+  // The scan screen binds its scanner to `status === 'active'` and to nothing
+  // else, so a game that was never started has no working scan path. Sending
+  // one to the kiosk anyway is the dead screen owners have been landing on.
+  const needsActivation = event.status !== 'active'
+  // Started settles it. The readiness checks lean on localStorage for the
+  // groups answer, so a running game on a fresh browser would otherwise be
+  // told it is still in preparation and handed a checklist it already passed.
+  const ready = !needsActivation || isEventReady(event, counts)
   const checks = calculateReadiness(event, counts)
   const showPrimaryActivationCta = isTrial && ready
 
@@ -112,9 +119,23 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
     }),
     [liveStats, isGroupsMode, counts.rewards],
   )
-  const playStatus = resolveEventPlayStatus(ready, liveStats.totalScans, { isTrial })
+  const playStatus = resolveEventPlayStatus(ready, liveStats.totalScans, {
+    isTrial,
+    isStarted: !needsActivation,
+  })
 
   function handleAction(route: string) {
+    // An unstarted game gets sent to start itself instead of to a scan screen
+    // that cannot scan. The leaderboard is left alone - it reads fine empty.
+    if (route === 'kiosk' && needsActivation) {
+      trackCtaClick({
+        cta_name: 'start_event',
+        cta_location: 'control_center',
+        destination: `/events/${event.id}/step/${ACTIVATION_STEP}`,
+      })
+      navigate(`/events/${event.id}/step/${ACTIVATION_STEP}`)
+      return
+    }
     trackCtaClick({
       cta_name: route === 'kiosk' ? 'open_scanner' : 'open_leaderboard',
       cta_location: 'control_center',
@@ -352,9 +373,11 @@ export function ControlCenter({ event, counts }: ControlCenterProps) {
             <ControlActionCard
               onClick={() => handleAction('kiosk')}
               gradient="gradient-reward-legendary"
-              title={isTrial ? 'נסו את המשחק 🎯' : '🔥 שחקו בלי להפסיק'}
-              description={isTrial ? 'בצעו סריקות ניסיון וצפו בתוצאות בזמן אמת' : 'סרקו משימות וצברו נקודות'}
-              cta="התחילו לסרוק ←"
+              title={needsActivation ? '🚀 הפעילו את המשחק' : isTrial ? 'נסו את המשחק 🎯' : '🔥 שחקו בלי להפסיק'}
+              description={needsActivation
+                ? 'המשחק עדיין לא הופעל. הפעילו אותו כדי לפתוח את עמדת הסריקה'
+                : isTrial ? 'בצעו סריקות ניסיון וצפו בתוצאות בזמן אמת' : 'סרקו משימות וצברו נקודות'}
+              cta={needsActivation ? 'להפעלת המשחק ←' : 'התחילו לסרוק ←'}
               decoration={
                 <>
                   <motion.div

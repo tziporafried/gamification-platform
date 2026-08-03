@@ -18,7 +18,7 @@ import { FloatingContactButton } from '@/components/layout/FloatingContactButton
 import { fetchEventsPlayMeta, type EventPlayMeta } from '@/lib/eventsPlayMeta'
 import { EventPlayStatus, resolveEventPlayStatus, EVENT_PLAY_STATUS, ACTIVATION_MODE_LABELS } from '@/components/event/EventPlayStatus'
 import { TrialActivationBadge } from '@/components/event/TrialActivationBadge'
-import { isEventReady, getWizardPrefs } from '@/lib/wizard'
+import { isEventReady, getWizardPrefs, ACTIVATION_STEP } from '@/lib/wizard'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
 import {
   trackEventCreationStart,
@@ -284,25 +284,42 @@ function EventRow({ event: gameEvent, playMeta, isOwner, onDelete, onShare }: Ev
   const navigate = useNavigate()
 
   const isReady = useMemo(() => {
+    // Started outranks the checks - a game already running is past the question,
+    // and the checks would answer it from localStorage this browser may not have.
+    if (gameEvent.status === 'active') return true
     if (!playMeta) return false
     return isEventReady(gameEvent, playMeta.counts)
   }, [gameEvent, playMeta])
 
   const playStatus = useMemo(() => {
     if (!playMeta) return 'preparing' as const
-    return resolveEventPlayStatus(isReady, playMeta.totalScans, { isTrial })
-  }, [isReady, playMeta, isTrial])
+    return resolveEventPlayStatus(isReady, playMeta.totalScans, {
+      isTrial,
+      isStarted: gameEvent.status === 'active',
+    })
+  }, [isReady, playMeta, isTrial, gameEvent.status])
 
   const statusColor = EVENT_PLAY_STATUS[playStatus].color
   const activationLabel = !isSuperAdmin ? ACTIVATION_MODE_LABELS[gameEvent.plan] : null
 
   function navigateToPlay() {
-    if (isReady) {
+    // A started game is settled by the DB flag, and by nothing else. Readiness
+    // partly reads localStorage (resolveGroupType falls back to wizard prefs),
+    // so a live game opened on a second device or a cleared browser scores as
+    // unready - and must not be dragged back into the wizard mid-event.
+    if (gameEvent.status === 'active') {
       navigate(`/events/${gameEvent.id}/control`)
       return
     }
     trackEventOpen('wizard')
-    navigate(`/events/${gameEvent.id}/step/${getWizardPrefs(gameEvent.id).lastStep}`)
+    // A game whose content is ready but was never started has exactly one thing
+    // left to do, and it lives on the wizard's last step: "התחל את הפעילות" is
+    // the only place that flips the status the scan screen runs on. Dropping
+    // such a game at the control center used to hand it a live "התחילו לסרוק"
+    // card that opened a scan screen where the scanner is deliberately unbound.
+    navigate(
+      `/events/${gameEvent.id}/step/${isReady ? ACTIVATION_STEP : getWizardPrefs(gameEvent.id).lastStep}`,
+    )
   }
 
   function handleDelete(e: React.MouseEvent) {

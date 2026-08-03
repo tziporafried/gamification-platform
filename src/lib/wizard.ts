@@ -3,6 +3,13 @@ import { WIZARD_STEPS } from '@/types'
 
 const STORAGE_PREFIX = 'wizard_prefs_'
 
+/**
+ * The step holding "התחל את הפעילות" - the one and only place in the app that
+ * writes `events.status = 'active'`. Anything that needs to send an owner off
+ * to start their game points here rather than hard-coding the number.
+ */
+export const ACTIVATION_STEP = WIZARD_STEPS.find((step) => step.id === 'cards')!.step
+
 export function getWizardStepId(stepNumber: number): WizardStepId | null {
   return WIZARD_STEPS.find((step) => step.step === stepNumber)?.id ?? null
 }

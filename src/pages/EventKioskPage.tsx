@@ -14,6 +14,7 @@ import { useEventCatalog } from '@/hooks/useEventCatalog'
 import { useScanSequence } from '@/hooks/useScanSequence'
 import { hexToRgb } from '@/lib/accentColor'
 import { getIsraelSecond } from '@/lib/israelTime'
+import { ACTIVATION_STEP } from '@/lib/wizard'
 import {
   buildActionCompletionIndex,
   filterActionsWithAvailableParticipants,
@@ -958,7 +959,7 @@ function KioskManualEntryPanel({
             <div style={{ fontSize: 14, fontWeight: 700, color: '#7D706A', lineHeight: 1.4 }}>
               {gameStarted
                 ? 'בחרו שחקן ומשימה - הנקודות נזקפות מיד'
-                : 'בחרו את המשתתף הראשון כדי לפתוח את התחרות'}
+                : 'המשחק עדיין לא הופעל - הזנה תיחסם עד שיופעל'}
             </div>
           </div>
 
@@ -3287,7 +3288,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const handlePair = useCallback(async (participantCode: string, actionCode: string) => {
     if (!gameStarted) {
       trackScanFailed('not_started', 'qr_scan')
-      showToast('התחרות עדיין לא התחילה')
+      showToast('המשחק עדיין לא הופעל', { icon: '🚀' })
       return
     }
     const response = await submitScan(participantCode, actionCode)
@@ -3328,8 +3329,16 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
       rejectScanWhileBusy()
       return
     }
+    // Answered here rather than in handlePair, which only speaks once a full
+    // participant+action pair is assembled - in split mode that is the second
+    // card, leaving the first one to vanish without a word.
+    if (!gameStarted) {
+      trackScanFailed('not_started', 'qr_scan')
+      showToast('המשחק עדיין לא הופעל', { icon: '🚀' })
+      return
+    }
     handleScan(raw)
-  }, [handleScan, rejectScanWhileBusy])
+  }, [gameStarted, handleScan, rejectScanWhileBusy, showToast])
 
   // Greet the waiting participant by name. Unknown codes still arm - the code
   // is only validated on submit - so this stays null and the copy falls back.
@@ -3345,12 +3354,15 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     if (showManual || trialLimitOpen) resetScanSequence()
   }, [showManual, trialLimitOpen, resetScanSequence])
 
-  const bind = useHardwareScanner(gameStarted && !showManual && !submitting && !noScan && !trialLimitOpen, handleScanGuarded)
+  // Deliberately not gated on gameStarted: the wedge stays bound so an unstarted
+  // event answers a scan with a toast. Unbinding it left the hidden input
+  // unfocused, and every keystroke the scanner typed fell on the floor.
+  const bind = useHardwareScanner(!showManual && !submitting && !noScan && !trialLimitOpen, handleScanGuarded)
 
   const handleManualSubmit = useCallback(async (participantCode: string, actionCode: string) => {
     if (!gameStarted) {
       trackScanFailed('not_started', 'manual_entry')
-      showToast('התחרות עדיין לא התחילה')
+      showToast('המשחק עדיין לא הופעל', { icon: '🚀' })
       return
     }
     // Same rule as the scanner - one participant on screen at a time.
@@ -3499,15 +3511,30 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             <EventBrandMark event={event} onLogoClick={() => navigate(`/events/${event.id}/control`)} />
 
             {/* Headlines */}
+            {/* Nothing on this screen works before the event is started - the
+                scanner is unbound, the board does not refresh, and a score
+                cannot be submitted. So it says that, instead of inviting a
+                scan it will silently swallow. */}
             {!gameStarted && (
               <div style={{ textAlign: 'center', maxWidth: 620, flexShrink: 0 }}>
-                <div style={{ fontSize: 42, fontWeight: 900, color: '#FF8A3D' }}>מוכנים לשחק?</div>
+                <div style={{ fontSize: 42, fontWeight: 900, color: '#FF8A3D' }}>המשחק עדיין לא הופעל</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#7D706A', marginTop: 10, lineHeight: 1.5 }}>
-                  הלוח, המשימות והפרסים יופיעו ברגע שהתחרות תתחיל.
+                  {noScan
+                    ? 'עד שהמשחק יופעל אי אפשר להזין ניקוד, והלוח לא יתעדכן.'
+                    : 'עד שהמשחק יופעל הסורק לא יגיב, והלוח לא יתעדכן.'}
                 </div>
-                <div className="kiosk-arrowBounce" style={{ marginTop: 14, fontSize: 24, fontWeight: 900, color: '#3E8F88' }}>
-                  {noScan ? '👇 הזינו את המשתתף הראשון כדי להתחיל' : '👇 סרקו כאן כדי להתחיל'}
-                </div>
+                <button
+                  onClick={() => navigate(`/events/${event.id}/step/${ACTIVATION_STEP}`)}
+                  className="kiosk-arrowBounce"
+                  style={{
+                    marginTop: 16, fontSize: 20, fontWeight: 900, color: '#fff',
+                    background: 'linear-gradient(135deg,#FF9366,#F2B33C)',
+                    border: 'none', cursor: 'pointer',
+                    padding: '14px 32px', borderRadius: 999,
+                    boxShadow: '0 8px 22px rgba(255,147,102,0.42)',
+                  }}>
+                  🚀 הפעילו את המשחק
+                </button>
               </div>
             )}
 
@@ -3600,8 +3627,8 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
                         </button>
                       )}
                       {!gameStarted && (
-                        <div style={{ fontSize: 15, fontWeight: 900, color: '#7D706A', marginTop: 8 }}>
-                          התחרות מתחילה ברגע שהמשתתף הראשון סורק 🚀
+                        <div style={{ fontSize: 15, fontWeight: 900, color: '#B4552A', marginTop: 8 }}>
+                          הסריקה תיפתח מיד לאחר הפעלת המשחק
                         </div>
                       )}
                     </>

@@ -1,7 +1,12 @@
 import { cn } from '@/lib/utils'
 import type { UserPlan } from '@/types'
 
-export type EventPlayStatusKind = 'preparing' | 'settings_complete' | 'ready' | 'active'
+export type EventPlayStatusKind =
+  | 'preparing'
+  | 'settings_complete'
+  | 'awaiting_activation'
+  | 'ready'
+  | 'active'
 
 export interface EventPlayStatusConfig {
   label: string
@@ -22,6 +27,12 @@ export const EVENT_PLAY_STATUS: Record<EventPlayStatusKind, EventPlayStatusConfi
     color: 'var(--color-secondary)',
     dotClass: 'bg-secondary',
     textClass: 'text-secondary-text',
+  },
+  awaiting_activation: {
+    label: 'ממתין להפעלה',
+    color: 'var(--color-primary)',
+    dotClass: 'bg-primary',
+    textClass: 'text-primary-text',
   },
   ready: {
     label: 'מוכן למשחק',
@@ -45,13 +56,24 @@ export const ACTIVATION_MODE_LABELS: Record<UserPlan, string> = {
   organizations: 'פתרון לארגונים',
 }
 
+/**
+ * The badge and the click have to agree. Every kind below names where pressing
+ * the event actually lands the owner:
+ *   preparing / settings_complete → the wizard, wherever they left off
+ *   awaiting_activation           → the wizard's start step
+ *   ready / active                → the control center
+ * `isStarted` is `events.status === 'active'` - the DB flag the scan screen
+ * itself runs on. Without it a game that was never started still read as
+ * "מוכן למשחק" while the click sent its owner back into the wizard.
+ */
 export function resolveEventPlayStatus(
   ready: boolean,
   totalScans: number,
-  opts?: { isTrial?: boolean },
+  opts?: { isTrial?: boolean; isStarted?: boolean },
 ): EventPlayStatusKind {
   if (!ready) return 'preparing'
   if (opts?.isTrial) return 'settings_complete'
+  if (opts?.isStarted === false) return 'awaiting_activation'
   if (totalScans > 0) return 'active'
   return 'ready'
 }
