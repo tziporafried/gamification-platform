@@ -378,7 +378,6 @@ export const ActionRow = memo(function ActionRow({
                 limitRef={limitRef}
                 onSaveLimitMode={saveLimitMode}
                 onSetEditingLimit={setEditingLimit}
-                onSetCustomLimit={setCustomLimit}
                 onResetLimit={resetLimit}
                 tone="onColor"
                 size="compact"

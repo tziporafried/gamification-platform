@@ -26,12 +26,12 @@ interface TaskLimitSelectProps {
   limitRef: React.RefObject<HTMLInputElement>
   onSaveLimitMode: (mode: LimitMode, options?: { limit?: number; dailyWindow?: DailyTimeWindow }) => void
   onSetEditingLimit: (v: boolean) => void
-  onSetCustomLimit: (v: number) => void
   onResetLimit: () => void
   tone?: 'default' | 'onColor'
   size?: 'default' | 'compact'
 }
 
+const LIMIT_SAVE_DELAY_MS = 500
 const PANEL_WIDTH = 272
 const PANEL_GAP = 4
 const PANEL_EST_HEIGHT = 320
@@ -68,7 +68,6 @@ export function TaskLimitSelect({
   limitRef,
   onSaveLimitMode,
   onSetEditingLimit,
-  onSetCustomLimit,
   onResetLimit,
   tone = 'default',
   size = 'compact',
@@ -78,10 +77,12 @@ export function TaskLimitSelect({
   const [dailyTimeMode, setDailyTimeMode] = useState<DailyTimeMode>('anytime')
   const [openTimeField, setOpenTimeField] = useState<'start' | 'end' | null>(null)
   const [panelStyle, setPanelStyle] = useState<{ top: number; left: number; maxHeight: number } | null>(null)
+  const [limitDraft, setLimitDraft] = useState<string | null>(null)
   const [draftStart, setDraftStart] = useState<TimeOfDay>(() => getEditorTimeDraft(dailyWindow).start)
   const [draftEnd, setDraftEnd] = useState<TimeOfDay>(() => getEditorTimeDraft(dailyWindow).end)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const limitSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const draftStartRef = useRef(draftStart)
   const draftEndRef = useRef(draftEnd)
   const dailyTimeModeRef = useRef(dailyTimeMode)
@@ -201,6 +202,38 @@ export function TaskLimitSelect({
 
   function flushDailyDraft() {
     persistDraftRange()
+  }
+
+  // The field holds what was typed, not a number, until the organiser is done
+  // typing it. Clamping on every keystroke rewrote a half-typed "1" into "2",
+  // so the next digit landed after it: typing 12 produced 22.
+  //
+  // What is typed still saves on its own - no Enter needed. The pause is only
+  // long enough for the second digit of "12" to arrive, so 12 is written once
+  // instead of writing 1 and then 12.
+  function cancelPendingLimitSave() {
+    if (!limitSaveTimer.current) return
+    clearTimeout(limitSaveTimer.current)
+    limitSaveTimer.current = null
+  }
+
+  function typeLimit(raw: string) {
+    setLimitDraft(raw)
+    cancelPendingLimitSave()
+    const typed = parseInt(raw, 10)
+    if (Number.isNaN(typed) || typed < 2) return
+    limitSaveTimer.current = setTimeout(() => {
+      limitSaveTimer.current = null
+      onSaveLimitMode('limited', { limit: typed })
+    }, LIMIT_SAVE_DELAY_MS)
+  }
+
+  function commitLimit() {
+    cancelPendingLimitSave()
+    const typed = parseInt(limitDraft ?? '', 10)
+    const next = Math.max(2, Number.isNaN(typed) ? customLimit : typed)
+    setLimitDraft(null)
+    onSaveLimitMode('limited', { limit: next })
   }
 
   function close() {
@@ -474,13 +507,13 @@ export function TaskLimitSelect({
                   ref={limitRef}
                   type="number"
                   min={2}
-                  value={customLimit}
-                  onChange={(e) => onSetCustomLimit(Math.max(2, parseInt(e.target.value, 10) || 2))}
+                  value={limitDraft ?? String(customLimit)}
+                  onChange={(e) => typeLimit(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') { e.preventDefault(); onSaveLimitMode('limited', { limit: Math.max(2, customLimit) }); close() }
-                    if (e.key === 'Escape') { close(); onResetLimit() }
+                    if (e.key === 'Enter') { e.preventDefault(); commitLimit(); close() }
+                    if (e.key === 'Escape') { cancelPendingLimitSave(); setLimitDraft(null); close(); onResetLimit() }
                   }}
-                  onBlur={() => { onSaveLimitMode('limited', { limit: Math.max(2, customLimit) }); onSetEditingLimit(false) }}
+                  onBlur={() => { commitLimit(); onSetEditingLimit(false) }}
                   className="w-12 rounded border border-border bg-surface-elevated px-1.5 py-0.5 text-xs text-center font-medium text-foreground outline-none focus:border-tertiary"
                   autoFocus
                 />
