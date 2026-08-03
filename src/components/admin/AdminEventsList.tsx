@@ -373,10 +373,20 @@ export function AdminEventsList() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="min-w-0">
+                      {/*
+                        Capped so a long address sets the column's width no
+                        further, and pulled to the physical right - dir="ltr"
+                        keeps the address readable but would otherwise align it
+                        to the left, leaving the two lines staggered.
+                      */}
+                      <div className="w-[11rem] max-w-full">
                         <p className="truncate text-foreground">{event.owner_name}</p>
                         {event.owner_email && (
-                          <p className="truncate text-xs text-muted" dir="ltr">
+                          <p
+                            className="truncate text-right text-xs text-muted"
+                            dir="ltr"
+                            title={event.owner_email}
+                          >
                             {event.owner_email}
                           </p>
                         )}
