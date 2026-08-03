@@ -1494,7 +1494,8 @@
   color: #BFA292 !important;
   cursor: default;
 }
-.kiosk-bonusClose:hover {
+.kiosk-bonusClose:hover,
+.kiosk-bonusClear:hover {
   background-color: #FFE3D0 !important;
   color: #8E3D16 !important;
 }

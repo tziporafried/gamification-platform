@@ -19,7 +19,8 @@ import {
  * Deliberately not the manual-entry form with a third field: that form's whole
  * job is picking a task the player is still eligible for, and a bonus has no
  * task, no eligibility and no limit. What it does borrow is the shape - pick
- * the player first, then say what they get.
+ * the player first, then say what they get - and the way the player is picked:
+ * type a few letters, choose from what matches.
  *
  * Styled inline like the rest of the kiosk rather than with the app's Tailwind
  * components: this screen is a full-bleed display with its own palette, and a
@@ -76,12 +77,8 @@ const FIELD_BOX: React.CSSProperties = {
   boxSizing: 'border-box',
 }
 
-/**
- * The player picker draws its own chevron: the native one is a black triangle,
- * the one bit of the popup that is not on the brand's warm scale.
- */
-const CHEVRON =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23B4552A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")"
+/** Long enough to scroll, short enough to stay inside the popup. */
+const PLAYER_SUGGESTION_LIMIT = 40
 
 export function BonusAwardModal({
   isOpen,
@@ -95,7 +92,7 @@ export function BonusAwardModal({
   const [reason, setReason] = useState('')
   const [points, setPoints] = useState('')
   const [touched, setTouched] = useState(false)
-  const playerRef = useRef<HTMLSelectElement>(null)
+  const playerRef = useRef<HTMLInputElement>(null)
 
   // A fresh popup every time it is opened - a half-typed bonus from the last
   // one reappearing behind a different operator is how the wrong player gets
@@ -210,42 +207,13 @@ export function BonusAwardModal({
           {/* ── Who ────────────────────────────────────────────────── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <label htmlFor="bonus-player" style={FIELD_LABEL}>משתתף</label>
-            {/* A native select rather than a search box over a list: the roster
-                is the whole of the choice, the browser gives an operator
-                type-ahead and a touch-sized picker for free, and it keeps the
-                popup one column of three fields. */}
-            <select
-              id="bonus-player"
-              ref={playerRef}
-              value={participantId ?? ''}
-              disabled={loadingParticipants || participants.length === 0}
-              onChange={(e) => { setParticipantId(e.target.value || null); setTouched(false) }}
-              className="kiosk-bonusField"
-              style={{
-                ...FIELD_BOX,
-                cursor: 'pointer',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                backgroundImage: CHEVRON,
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'left 14px center',
-                backgroundSize: '12px 8px',
-                paddingLeft: 38,
-              }}
-            >
-              <option value="">
-                {loadingParticipants
-                  ? 'טוען משתתפים...'
-                  : participants.length === 0
-                    ? 'אין משתתפים במשחק'
-                    : 'בחרו משתתף...'}
-              </option>
-              {participants.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            <PlayerPicker
+              inputRef={playerRef}
+              participants={participants}
+              loading={loadingParticipants}
+              selected={selected}
+              onSelect={(p) => { setParticipantId(p?.id ?? null); setTouched(false) }}
+            />
             {selected && (
               <div style={{ fontSize: 12.5, fontWeight: 800, color: '#3E8F88' }}>
                 {selected.points.toLocaleString('he-IL')} נקודות כרגע
@@ -357,6 +325,196 @@ export function BonusAwardModal({
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * The player field: type a few letters, pick from what matches - the same way
+ * the manual-entry form picks a player, because an operator who has used one
+ * screen should not have to learn the other. Built here in the kiosk's own
+ * styling rather than reusing that form's field, which is drawn from the admin
+ * UI's tokens and reads as a different product on a full-bleed display.
+ *
+ * An empty box lists the whole roster: on a small game that is the fastest path
+ * to a name, and on a large one the first keystroke narrows it anyway.
+ */
+function PlayerPicker({
+  inputRef,
+  participants,
+  loading,
+  selected,
+  onSelect,
+}: {
+  inputRef: React.RefObject<HTMLInputElement>
+  participants: BonusParticipantOption[]
+  loading: boolean
+  selected: BonusParticipantOption | null
+  onSelect: (participant: BonusParticipantOption | null) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const [highlight, setHighlight] = useState(0)
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  const empty = !loading && participants.length === 0
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    const pool = q
+      ? participants.filter((p) => p.name.toLowerCase().includes(q))
+      : participants
+    return pool.slice(0, PLAYER_SUGGESTION_LIMIT)
+  }, [participants, query])
+
+  // Keep the highlighted row in view when the keyboard walks past the fold.
+  useEffect(() => {
+    if (!open) return
+    listRef.current?.children[highlight]?.scrollIntoView({ block: 'nearest' })
+  }, [highlight, open])
+
+  useEffect(() => () => { if (blurTimer.current) clearTimeout(blurTimer.current) }, [])
+
+  function choose(participant: BonusParticipantOption) {
+    onSelect(participant)
+    setQuery(participant.name)
+    setOpen(false)
+    setHighlight(0)
+  }
+
+  function clear() {
+    onSelect(null)
+    setQuery('')
+    setHighlight(0)
+    setOpen(true)
+    inputRef.current?.focus()
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Escape' && open) {
+      // The popup closes on Escape from a document listener; with the list open
+      // the key belongs to the list, so it must not reach it.
+      e.stopPropagation()
+      setOpen(false)
+      return
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (!open) { setOpen(true); return }
+      if (matches.length === 0) return
+      const step = e.key === 'ArrowDown' ? 1 : -1
+      setHighlight((i) => (i + step + matches.length) % matches.length)
+      return
+    }
+    if (e.key === 'Enter' && open && matches[highlight]) {
+      e.preventDefault()
+      choose(matches[highlight])
+    }
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        id="bonus-player"
+        ref={inputRef}
+        value={query}
+        disabled={loading || empty}
+        autoComplete="off"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="bonus-player-list"
+        aria-autocomplete="list"
+        placeholder={
+          loading ? 'טוען משתתפים...' : empty ? 'אין משתתפים במשחק' : 'הקלידו שם משתתף...'
+        }
+        onChange={(e) => {
+          setQuery(e.target.value)
+          setHighlight(0)
+          setOpen(true)
+          // Typing over a chosen name unpicks it - the field and the award must
+          // never disagree about who is getting the points.
+          if (selected) onSelect(null)
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => {
+          // Late enough for a click on a row to land first.
+          blurTimer.current = setTimeout(() => setOpen(false), 150)
+        }}
+        onKeyDown={handleKeyDown}
+        className="kiosk-bonusField"
+        style={{
+          ...FIELD_BOX,
+          paddingLeft: 40,
+          borderColor: selected ? '#B7E0C6' : '#FFE1CC',
+        }}
+      />
+
+      {selected && (
+        <button
+          type="button"
+          onClick={clear}
+          aria-label="ניקוי הבחירה"
+          className="kiosk-bonusClear"
+          style={{
+            position: 'absolute', left: 8, top: (FIELD_HEIGHT - 28) / 2,
+            width: 28, height: 28, borderRadius: '50%',
+            border: 'none', background: 'transparent',
+            color: '#B4552A', fontSize: 16, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: 'inherit',
+          }}
+        >
+          ×
+        </button>
+      )}
+
+      {open && !loading && !empty && (
+        <div
+          id="bonus-player-list"
+          role="listbox"
+          ref={listRef}
+          style={{
+            position: 'absolute', top: FIELD_HEIGHT + 6, insetInline: 0, zIndex: 5,
+            maxHeight: 208, overflowY: 'auto',
+            borderRadius: 14, border: '2px solid #FFE1CC', background: '#fff',
+            boxShadow: '0 18px 40px rgba(171,53,0,0.18)',
+          }}
+        >
+          {matches.length === 0 ? (
+            <div style={{ padding: '14px', fontSize: 13.5, fontWeight: 800, color: '#A8806B', textAlign: 'center' }}>
+              לא נמצא משתתף בשם הזה
+            </div>
+          ) : (
+            matches.map((p, i) => (
+              <button
+                key={p.id}
+                type="button"
+                role="option"
+                aria-selected={i === highlight}
+                // Down beats blur, so the click still has a field to fill.
+                onMouseDown={(e) => e.preventDefault()}
+                onMouseEnter={() => setHighlight(i)}
+                onClick={() => choose(p)}
+                style={{
+                  display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
+                  gap: 10, padding: '10px 14px', border: 'none', textAlign: 'right',
+                  background: i === highlight ? '#FFF1E7' : 'transparent',
+                  color: '#3F2B22', fontSize: 14.5, fontWeight: 800,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {p.name}
+                </span>
+                <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 800, color: '#A8806B', fontVariantNumeric: 'tabular-nums' }}>
+                  {p.points.toLocaleString('he-IL')} נק׳
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   )
 }
