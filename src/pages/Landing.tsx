@@ -714,19 +714,22 @@ function LandingDemoVideo() {
     video.currentTime = 0
   }
 
+  // preload="none": the poster stands in until play, so nothing is fetched
+  // before the click - a visitor who scrolls past the demo costs no video bytes.
   return (
     <video
       className="aspect-video w-full bg-[#fff5ef] object-cover"
       controls
       playsInline
-      preload="metadata"
+      preload="none"
       poster="/demo/gamify-tour-poster.jpg"
       dir="ltr"
       onPlay={handlePlay}
       onTimeUpdate={handleTimeUpdate}
       onEnded={handleEnded}
     >
-      <source src="/demo/gamify-tour.mp4" type="video/mp4" />
+      {/* Versioned name: /demo/ is cached immutably, so a new cut ships as -v3. */}
+      <source src="/demo/gamify-tour-v2.mp4" type="video/mp4" />
     </video>
   )
 }
