@@ -441,6 +441,31 @@ export function AdminPanel() {
     setDeleteTarget(null)
   }
 
+  /**
+   * A game was deleted from its details dialog. The owner keeps their account,
+   * so only their expanded list and their game count need to catch up.
+   */
+  function handleEventDeleted(eventId: string) {
+    const ownerId = [...userEvents.entries()].find(([, events]) =>
+      events.some(ev => ev.event_id === eventId),
+    )?.[0]
+
+    if (ownerId) {
+      setUserEvents(prev => {
+        const next = new Map(prev)
+        next.set(ownerId, (next.get(ownerId) ?? []).filter(ev => ev.event_id !== eventId))
+        return next
+      })
+      setUsers(prev =>
+        prev.map(u =>
+          u.user_id === ownerId ? { ...u, event_count: Math.max(0, u.event_count - 1) } : u,
+        ),
+      )
+    }
+
+    setDetailEvent(null)
+  }
+
   async function loginAsUser(target: AdminUser) {
     setImpersonateError(null)
     setImpersonatingUserId(target.user_id)
@@ -938,6 +963,7 @@ export function AdminPanel() {
           eventName={detailEvent.name}
           plan={detailEvent.plan}
           onClose={() => setDetailEvent(null)}
+          onDeleted={() => handleEventDeleted(detailEvent.id)}
         />
       )}
 

@@ -439,6 +439,10 @@ export function AdminEventsList() {
           plan={preview.plan}
           onClose={() => setPreview(null)}
           onFeaturesChanged={() => void fetchEvents()}
+          onDeleted={() => {
+            setEvents((prev) => prev.filter((event) => event.id !== preview.id))
+            setPreview(null)
+          }}
         />
       )}
 
