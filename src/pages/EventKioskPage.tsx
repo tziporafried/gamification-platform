@@ -3462,7 +3462,11 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             {[
               { value: stats.totalMissions, label: 'משימות', color: '#E07A3E' },
               { value: stats.totalPoints, label: 'נקודות', color: '#4C9E6E' },
-              { value: stats.totalGroups, label: 'קבוצות', color: '#3E8F88' },
+              // A game without competing groups has nothing to say here - the tile
+              // would only ever read 0, so it is left out entirely.
+              ...(stats.totalGroups > 0
+                ? [{ value: stats.totalGroups, label: 'קבוצות', color: '#3E8F88' }]
+                : []),
             ].map((s, i) => (
               <div key={s.label} className="kiosk-fadeUp kiosk-liftHover" style={{
                 flex: 1, background: '#FFFFFF', borderRadius: 16, padding: '12px 6px',
