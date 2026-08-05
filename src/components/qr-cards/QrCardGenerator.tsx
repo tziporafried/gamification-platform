@@ -103,6 +103,35 @@ const CARD_PALETTE = {
   surface: '#FFFFFF',
 } as const
 
+/** Shared chrome for the two notices the print window can show on its own. */
+function printNotice(title: string, body: string): string {
+  return `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8" /><title>${title}</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 20mm; text-align: center; color: ${CARD_PALETTE.foreground}; }
+h1 { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+p { font-size: 13px; color: ${CARD_PALETTE.muted}; }
+</style></head><body><h1>${title}</h1><p>${body}</p></body></html>`
+}
+
+/**
+ * What the print window holds while the deck is being reloaded and laid out.
+ *
+ * The window has to be opened by the click itself to survive the popup blocker,
+ * which is before there is anything to put in it - so it says what it is waiting
+ * for rather than sitting blank.
+ */
+const PRINT_WAITING_HTML = printNotice(
+  'מכינים את הכרטיסים…',
+  'טוענים את הנתונים העדכניים של המשחק. חלון ההדפסה ייפתח מיד.',
+)
+
+/** The reload came back with nothing left to print. */
+const PRINT_EMPTY_HTML = printNotice(
+  'אין כרטיסים להדפסה',
+  'לא נמצאו משתתפים או משימות פעילות במשחק. הוסיפו אותם ונסו שוב.',
+)
+
 /**
  * How a task name is sized on a card, by how long it is. A fixed size clamped
  * to two lines used to print long names with an ellipsis, so a card could go
@@ -151,40 +180,127 @@ export function QrCardGenerator({ event, scanMode, previewOpen = false, onPrintR
   const isSplit = scanMode === 'split'
   const [participants, setParticipants] = useState<ParticipantWithGroups[]>([])
   const [actions, setActions] = useState<ActionWithGroupIds[]>([])
+  /**
+   * The event row as the database has it now, which is not necessarily the prop:
+   * the wizard loads the event once when the page opens and keeps it in state,
+   * so the barcode type - changed from the scanners panel, on another screen
+   * entirely - can move under a deck that has already been laid out. Everything
+   * the card prints off the event (its type, name, logo) reads this.
+   */
+  const [eventRow, setEventRow] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
+  /** A reload is in flight; the deck on screen is the previous answer. */
+  const [refreshing, setRefreshing] = useState(false)
   // Laying out a deck means rendering a QR for every card, which is heavy for a
   // large game. It is put off until something actually needs it: the preview
   // being opened, or a print being asked for.
   const [mountedForPrint, setMountedForPrint] = useState(false)
   const [pendingPrint, setPendingPrint] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
+  /** Opened by the click that asked to print, filled once the deck is current. */
+  const printWindowRef = useRef<Window | null>(null)
+  /** Last known answers per task, so a failed reload cannot drop trivia cards. */
+  const optionsRef = useRef<Map<string, ActionOption[]>>(new Map())
+  /** Only the newest reload may write; a slow earlier one is discarded. */
+  const requestRef = useRef(0)
+  const aliveRef = useRef(true)
 
-  const fetchData = useCallback(async () => {
-    const [participantsRes, actionsRes, optionsRes] = await Promise.all([
+  useEffect(() => {
+    aliveRef.current = true
+    return () => { aliveRef.current = false }
+  }, [])
+
+  /**
+   * Everything a card is printed from, read fresh.
+   *
+   * A partial answer is never merged in: a query that failed leaves what we had
+   * standing, because a deck printed short a participant - or with a question's
+   * answers missing - is worse than one printed a moment stale, and the caller
+   * has no way to tell the two apart once it is on paper.
+   */
+  const refresh = useCallback(async () => {
+    const requestId = ++requestRef.current
+    setRefreshing(true)
+
+    // Nothing here rejects in normal operation - a failed query comes back as an
+    // `error` on the response. An offline browser is the exception, and it must
+    // not leave a print waiting on a reload that will never land.
+    const responses = await Promise.all([
+      supabase.from('events').select('*').eq('id', event.id).maybeSingle(),
       supabase.from('participants').select('*, participant_groups(group_id, groups(*))').eq('event_id', event.id).order('name'),
       supabase.from('actions').select('*, action_groups(group_id, groups(*))').eq('event_id', event.id).eq('is_active', true).order('name'),
-      // Errors to an empty list on a database without 088 - a game with no
-      // questions in it then prints exactly the deck it always did.
+      // Errors to the last known answers - an empty map on a database without
+      // 088, so a game with no questions prints exactly the deck it always did.
       supabase.from('action_options').select('*').eq('event_id', event.id).order('sort_order'),
-    ])
-    const optionsByAction = new Map<string, ActionOption[]>()
-    for (const option of (optionsRes.data ?? []) as ActionOption[]) {
-      const list = optionsByAction.get(option.action_id)
-      if (list) list.push(option)
-      else optionsByAction.set(option.action_id, [option])
+    ]).catch(() => null)
+
+    // A reload that lost its race, or outlived the component, writes nothing.
+    if (!aliveRef.current || requestId !== requestRef.current) return
+
+    if (!responses) {
+      // Whatever was loaded before stands, and a print goes ahead with it.
+      setLoading(false)
+      setRefreshing(false)
+      return
     }
-    const mappedParticipants: ParticipantWithGroups[] = (participantsRes.data ?? []).map((p) => ({
-      ...p, groups: ((p.participant_groups as unknown as { group_id: string; groups: Group }[]) ?? []).map((pg) => pg.groups),
-    }))
-    const mappedActions: ActionWithGroupIds[] = (actionsRes.data ?? []).map((a) => ({
-      ...a,
-      groupIds: ((a.action_groups as unknown as ActionGroupJoin[]) ?? []).map((ag) => ag.group_id),
-      options: optionsByAction.get(a.id) ?? [],
-    })).filter(isPrintableAction)
-    setParticipants(mappedParticipants); setActions(mappedActions); setLoading(false)
+
+    const [eventRes, participantsRes, actionsRes, optionsRes] = responses
+
+    let optionsByAction = optionsRef.current
+    if (!optionsRes.error) {
+      optionsByAction = new Map<string, ActionOption[]>()
+      for (const option of (optionsRes.data ?? []) as ActionOption[]) {
+        const list = optionsByAction.get(option.action_id)
+        if (list) list.push(option)
+        else optionsByAction.set(option.action_id, [option])
+      }
+      optionsRef.current = optionsByAction
+    }
+
+    if (eventRes.data) setEventRow(eventRes.data as Event)
+
+    if (participantsRes.data) {
+      setParticipants(participantsRes.data.map((p) => ({
+        ...p, groups: ((p.participant_groups as unknown as { group_id: string; groups: Group }[]) ?? []).map((pg) => pg.groups),
+      })) as ParticipantWithGroups[])
+    }
+
+    if (actionsRes.data) {
+      setActions((actionsRes.data.map((a) => ({
+        ...a,
+        groupIds: ((a.action_groups as unknown as ActionGroupJoin[]) ?? []).map((ag) => ag.group_id),
+        options: optionsByAction.get(a.id) ?? [],
+      })) as ActionWithGroupIds[]).filter(isPrintableAction))
+    }
+
+    setLoading(false)
+    setRefreshing(false)
   }, [event.id])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => { refresh() }, [refresh])
+
+  /**
+   * The deck as it will print: the event row from the database, over the prop.
+   *
+   * `scan_mode` is the exception - the step above owns that choice and saves it
+   * before telling us, so its value is the newer one while a save is in flight.
+   */
+  const deckEvent = useMemo<Event>(
+    () => (eventRow ? { ...event, ...eventRow, scan_mode: event.scan_mode } : event),
+    [event, eventRow],
+  )
+
+  /**
+   * Reopening the preview reloads it. The dialog it lives in unmounts when it
+   * closes, so this is belt and braces for that caller - and the whole story for
+   * any caller that keeps it mounted.
+   */
+  const previewWasOpen = useRef(previewOpen)
+  useEffect(() => {
+    const wasOpen = previewWasOpen.current
+    previewWasOpen.current = previewOpen
+    if (previewOpen && !wasOpen) refresh()
+  }, [previewOpen, refresh])
 
   const getRelevantActions = useCallback((participant: ParticipantWithGroups): ActionWithGroupIds[] => {
     const participantGroupIds = new Set(participant.groups.map((g) => g.id))
@@ -204,13 +320,15 @@ export function QrCardGenerator({ event, scanMode, previewOpen = false, onPrintR
   const showDeck = previewOpen && hasDeck
   const deckInDom = showDeck || mountedForPrint
 
-  const printDeck = useCallback(() => {
+  const printDeck = useCallback((printWindow: Window) => {
     const content = printRef.current; if (!content) return
-    const printWindow = window.open('', '_blank'); if (!printWindow) return
     const c = CARD_PALETTE.primary
 
+    // The window already holds the waiting notice, so it is reopened rather
+    // than appended to.
+    printWindow.document.open()
     printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8" />
-<title>כרטיסי ברקוד – ${event.name}</title>
+<title>כרטיסי ברקוד – ${deckEvent.name}</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm; }
@@ -278,24 +396,57 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
     printWindow.document.close(); printWindow.focus()
     setTimeout(() => printWindow.print(), 300)
     onPrinted?.()
-  }, [event.name, onPrinted])
+  }, [deckEvent.name, onPrinted])
 
   /**
-   * Print on demand. When the preview has never been opened there is no deck in
-   * the DOM to read, so this mounts it and leaves the printing to the effect
-   * below - one render later, when the ref is filled.
+   * Print on demand, off data read at the moment of the click.
+   *
+   * The deck can have been sitting in the DOM since the step was first opened,
+   * and the game is edited from the steps behind this one - change a task's
+   * points, come back, print, and the cards used to come out carrying the points
+   * the task had when the step was first visited. So a print always reloads
+   * first and lays the deck out again before any of it is read.
+   *
+   * The window is opened here, inside the click, rather than after the reload:
+   * a popup opened from an async continuation has lost the user gesture that
+   * permits it, and browsers block it. It holds a waiting notice until the
+   * effect below fills it in.
    */
   const requestPrint = useCallback(() => {
-    if (printRef.current) { printDeck(); return }
+    // A second click while the first is still reloading reuses its window -
+    // opening another would leave the first stranded on the waiting notice.
+    const opened = printWindowRef.current
+    const printWindow = opened && !opened.closed ? opened : window.open('', '_blank')
+    if (!printWindow) return
+    printWindow.document.open()
+    printWindow.document.write(PRINT_WAITING_HTML)
+    printWindow.document.close()
+    printWindowRef.current = printWindow
+
     setMountedForPrint(true)
     setPendingPrint(true)
-  }, [printDeck])
+    refresh()
+  }, [refresh])
 
   useEffect(() => {
-    if (!pendingPrint || !printRef.current) return
+    if (!pendingPrint || refreshing) return
+    // The deck is current but not yet laid out - mounting it re-runs this.
+    if (hasDeck && !printRef.current) return
+
+    const printWindow = printWindowRef.current
     setPendingPrint(false)
-    printDeck()
-  }, [pendingPrint, deckInDom, printDeck])
+    printWindowRef.current = null
+    if (!printWindow || printWindow.closed) return
+
+    // The reload can empty the deck - every task deactivated behind this step,
+    // say. Better an empty window that says so than one waiting forever.
+    if (hasDeck) printDeck(printWindow)
+    else {
+      printWindow.document.open()
+      printWindow.document.write(PRINT_EMPTY_HTML)
+      printWindow.document.close()
+    }
+  }, [pendingPrint, refreshing, hasDeck, deckInDom, printDeck])
 
   useEffect(() => {
     if (!onPrintReady) return
@@ -327,9 +478,9 @@ body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; padding: 10mm
       <PrintSheet active={showDeck}>
         <div ref={printRef}>
           {isSplit ? (
-            <SplitPages participants={participants} actions={actions} event={event} />
+            <SplitPages participants={participants} actions={actions} event={deckEvent} />
           ) : (
-            sheets.map((sheet) => (<ParticipantPage key={sheet.participant.id} sheet={sheet} event={event} />))
+            sheets.map((sheet) => (<ParticipantPage key={sheet.participant.id} sheet={sheet} event={deckEvent} />))
           )}
         </div>
       </PrintSheet>
