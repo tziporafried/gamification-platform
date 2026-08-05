@@ -716,16 +716,6 @@ function RankBadge({ rank }: { rank: number }) {
   )
 }
 
-/** How long a scroll holds the ceremony on the table it is scrolling. */
-const SCROLL_HOLD_MS = 6000
-
-/** The rows stagger in, but only the first screenful of them: a table of thirty
- *  groups would otherwise still be dealing itself out half a minute later, and
- *  a row scrolled to before its turn would be blank when it arrived. */
-function rowDelay(idx: number) {
-  return Math.min(idx, 7) * 0.08
-}
-
 function LeaderboardPhase({
   title,
   subtitle,
@@ -736,7 +726,6 @@ function LeaderboardPhase({
   taskCountByP,
   groupTaskCounts,
   topPByGroup,
-  onInteractingChange,
 }: {
   title: string
   subtitle: string
@@ -747,32 +736,10 @@ function LeaderboardPhase({
   taskCountByP: Map<string, number>
   groupTaskCounts: Map<string, number>
   topPByGroup: Map<string, { name: string }>
-  onInteractingChange?: (interacting: boolean) => void
 }) {
-  // "דירוג מלא" now means it: the whole ranking is here and the list scrolls,
-  // where before it stopped at eight and the rest of the groups had nowhere to
-  // be seen.
-  const visible = items.filter((item) => item.total_points > 0)
+  const visible = items.filter((item) => item.total_points > 0).slice(0, 8)
   const topPoints = Math.max(1, visible[0]?.total_points || 1)
   void topPByGroup
-
-  // A phase that changes out from under a scrolling hand is worse than one that
-  // runs long, so each scroll holds the ceremony here and it picks up again a
-  // few seconds after the last one.
-  const holding = useRef(false)
-  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const releaseHold = useCallback(() => {
-    if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null }
-    if (holding.current) { holding.current = false; onInteractingChange?.(false) }
-  }, [onInteractingChange])
-  const handleScroll = useCallback(() => {
-    if (!holding.current) { holding.current = true; onInteractingChange?.(true) }
-    if (holdTimer.current) clearTimeout(holdTimer.current)
-    holdTimer.current = setTimeout(releaseHold, SCROLL_HOLD_MS)
-  }, [onInteractingChange, releaseHold])
-  // Leaving the phase with the hold still on would freeze the ceremony on
-  // whatever comes next.
-  useEffect(() => releaseHold, [releaseHold])
 
   if (visible.length === 0) return <EmptyPhase title="אין עדיין ניקוד להצגה" />
 
@@ -784,7 +751,7 @@ function LeaderboardPhase({
           <h2 className="text-[clamp(3.5rem,6vw,6rem)] font-black leading-none text-foreground">{title}</h2>
         </div>
       </div>
-      <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto overscroll-contain pe-1 summary-scroll" onScroll={handleScroll}>
+      <div className="grid flex-1 content-start gap-3">
         {visible.map((item, idx) => {
           const isGroup = 'group_name' in item
           const name = isGroup ? item.group_name : item.participant_name
@@ -811,7 +778,7 @@ function LeaderboardPhase({
               }}
               initial={{ opacity: 0, x: 34 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: rowDelay(idx), duration: 0.45 }}
+              transition={{ delay: idx * 0.08, duration: 0.45 }}
             >
               <RankBadge rank={item.rank} />
               {isGroup && (
@@ -837,7 +804,7 @@ function LeaderboardPhase({
                     style={{ background: `linear-gradient(90deg, ${type === 'group' ? ORANGE : GOLD}, ${type === 'group' ? GOLD : TEAL})` }}
                     initial={{ scaleX: 0 }}
                     animate={{ scaleX: pct / 100 }}
-                    transition={{ delay: 0.15 + rowDelay(idx), duration: 0.85, ease: 'easeOut' }}
+                    transition={{ delay: 0.15 + idx * 0.08, duration: 0.85, ease: 'easeOut' }}
                   />
                 </div>
               </div>
@@ -1655,12 +1622,12 @@ export function WinnersCeremony({ eventId, eventName, eventLogoUrl }: WinnersCer
                 {phase.kind === 'groupChampion' && <ChampionPhase type="group" champ={champGroup} runnerUp={groupRunnerUp} totalGroups={totalGroupCount} />}
                 {phase.kind === 'groupPodium' && <PodiumPhase title="הקבוצות המובילות" type="group" items={rankedG.slice(0, 3)} />}
                 {phase.kind === 'groupLeaderboard' && (
-                  <LeaderboardPhase title="טבלת הקבוצות" subtitle="דירוג מלא" type="group" items={rankedG} pgMap={pgMap} totalGroups={totalGroupCount} taskCountByP={taskCountByP} groupTaskCounts={groupTaskCounts} topPByGroup={topPByGroup} onInteractingChange={setSummaryInteracting} />
+                  <LeaderboardPhase title="טבלת הקבוצות" subtitle="דירוג מלא" type="group" items={rankedG} pgMap={pgMap} totalGroups={totalGroupCount} taskCountByP={taskCountByP} groupTaskCounts={groupTaskCounts} topPByGroup={topPByGroup} />
                 )}
                 {phase.kind === 'participantChampion' && <ChampionPhase type="participant" champ={champParticipant} runnerUp={participantRunnerUp} groups={participantGroups} totalGroups={totalGroupCount} />}
                 {phase.kind === 'participantPodium' && <PodiumPhase title="המשתתפים המובילים" type="participant" items={rankedP.slice(0, 3)} />}
                 {phase.kind === 'participantLeaderboard' && (
-                  <LeaderboardPhase title="טבלת המשתתפים" subtitle="דירוג מלא" type="participant" items={rankedP} pgMap={pgMap} totalGroups={totalGroupCount} taskCountByP={taskCountByP} groupTaskCounts={groupTaskCounts} topPByGroup={topPByGroup} onInteractingChange={setSummaryInteracting} />
+                  <LeaderboardPhase title="טבלת המשתתפים" subtitle="דירוג מלא" type="participant" items={rankedP} pgMap={pgMap} totalGroups={totalGroupCount} taskCountByP={taskCountByP} groupTaskCounts={groupTaskCounts} topPByGroup={topPByGroup} />
                 )}
                 {phase.kind === 'groupMissions' && <MissionsPhase type="group" winners={groupMissionWinners} />}
                 {phase.kind === 'participantMissions' && <MissionsPhase type="participant" winners={participantMissionWinners} />}
