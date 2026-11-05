@@ -729,7 +729,7 @@ function LandingDemoVideo() {
       onEnded={handleEnded}
     >
       {/* Versioned name: /demo/ is cached immutably, so a new cut ships as -v3. */}
-      <source src="/demo/gamify-tour-v2.mp4" type="video/mp4" />
+      <source src="/demo/gamify-tour.mp4" type="video/mp4" />
     </video>
   )
 }
