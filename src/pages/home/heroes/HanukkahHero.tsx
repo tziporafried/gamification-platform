@@ -1,31 +1,15 @@
-import { useEffect } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
+import { BrandLogo } from '@/components/icons/BrandLogo'
 import { Brand, HERO_EASE_OUT, HERO_SECTION_CLASS, heroFadeUp, heroStagger } from './shared'
 
 /**
- * Hanukkah opening section: a menorah whose candles light one after another,
- * a display font for the headline, and holiday copy.
+ * Hanukkah opening section: the Gamify logo, a menorah whose candles light one
+ * after another, and holiday copy - in the same fonts as the regular hero.
  */
-
-const DISPLAY_FONT_ID = 'hero-font-suez-one'
-const DISPLAY_FONT_HREF = 'https://fonts.googleapis.com/css2?family=Suez+One&display=swap'
-const DISPLAY_FONT = "'Suez One', 'Heebo', sans-serif"
 
 const GOLD = '#E0A526'
 const GOLD_DEEP = '#B47A0E'
 const CANDLE_BLUE = '#4F7FE0'
-
-/** Load the headline font only on this hero. */
-function useDisplayFont() {
-  useEffect(() => {
-    if (document.getElementById(DISPLAY_FONT_ID)) return
-    const link = document.createElement('link')
-    link.id = DISPLAY_FONT_ID
-    link.rel = 'stylesheet'
-    link.href = DISPLAY_FONT_HREF
-    document.head.appendChild(link)
-  }, [])
-}
 
 /** Candle x positions; index 4 is the shamash in the middle. */
 const CANDLE_X = [40, 70, 100, 130, 160, 190, 220, 250, 280]
@@ -57,7 +41,7 @@ function Flame({ x, top, delay, motionSafe }: { x: number; top: number; delay: n
 
 function Menorah({ motionSafe }: { motionSafe: boolean }) {
   return (
-    <svg viewBox="0 0 320 210" className="h-auto w-[260px] sm:w-[320px]" role="img" aria-label="חנוכיה דולקת">
+    <svg viewBox="0 0 320 210" className="h-auto w-[220px] sm:w-[260px]" role="img" aria-label="חנוכיה דולקת">
       <defs>
         <linearGradient id="hero-hanukkah-gold" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={GOLD} />
@@ -113,7 +97,6 @@ function Menorah({ motionSafe }: { motionSafe: boolean }) {
 
 export function HanukkahHero() {
   const motionSafe = !useReducedMotion()
-  useDisplayFont()
 
   return (
     <motion.section
@@ -122,6 +105,19 @@ export function HanukkahHero() {
       initial={motionSafe ? 'hidden' : false}
       animate="visible"
     >
+      <motion.div
+        variants={heroFadeUp}
+        transition={{ duration: 0.55, ease: HERO_EASE_OUT }}
+        className="mb-5 flex justify-center"
+      >
+        <motion.div
+          animate={motionSafe ? { y: [0, -10, 0], rotate: [0, -2.5, 2.5, 0] } : undefined}
+          transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <BrandLogo className="h-28 w-28 sm:h-36 sm:w-36 drop-shadow-[0_12px_28px_rgba(171,53,0,0.28)]" />
+        </motion.div>
+      </motion.div>
+
       <motion.div
         variants={heroFadeUp}
         transition={{ duration: 0.5, ease: HERO_EASE_OUT }}
@@ -150,8 +146,7 @@ export function HanukkahHero() {
       <motion.h1
         variants={heroFadeUp}
         transition={{ duration: 0.55, ease: HERO_EASE_OUT }}
-        className="mb-5 text-[34px] leading-[1.25] text-foreground sm:text-[44px]"
-        style={{ fontFamily: DISPLAY_FONT }}
+        className="mb-5 text-[34px] font-black leading-[1.2] text-foreground sm:text-[42px]"
       >
         שמונה ערבי חנוכה,
         <br />
@@ -179,8 +174,7 @@ export function HanukkahHero() {
       <motion.p
         variants={heroFadeUp}
         transition={{ duration: 0.5, ease: HERO_EASE_OUT }}
-        className="mb-5 text-[26px] leading-[1.3] text-foreground sm:text-[30px]"
-        style={{ fontFamily: DISPLAY_FONT }}
+        className="mb-5 text-[26px] font-black leading-[1.3] text-foreground sm:text-[30px]"
       >
         עם <Brand>Gamify</Brand> כל נר פותח שלב חדש.
       </motion.p>
