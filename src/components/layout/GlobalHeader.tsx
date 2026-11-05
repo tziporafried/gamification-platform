@@ -65,7 +65,7 @@ export function GlobalHeader() {
             ) : (
               <>
                 <BrandWordmark className="hidden sm:inline-flex" />
-                <BrandLogo className="sm:hidden" />
+                <BrandLogo className="h-[2.375rem] w-[2.375rem] sm:hidden" />
               </>
             )}
           </button>

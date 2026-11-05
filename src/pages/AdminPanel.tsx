@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download, Search, LogIn, KeyRound, Check, RotateCcw, Flag } from 'lucide-react'
+import { Crown, Users, ListTodo, MessageSquare, Sparkles, ChevronDown, Loader2, Trash2, BarChart3, Calendar, Wallet, CalendarDays, Download, Search, LogIn, KeyRound, Check, RotateCcw, Flag, House } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
@@ -21,6 +21,7 @@ import { AdminEventsList } from '@/components/admin/AdminEventsList'
 import { AdminFinancePanel } from '@/components/admin/AdminFinancePanel'
 import { AdminScannersPanel } from '@/components/admin/AdminScannersPanel'
 import { FeatureFlagsAdminPanel } from '@/components/admin/FeatureFlagsAdminPanel'
+import { HomePageAdminPanel } from '@/components/admin/HomePageAdminPanel'
 import { EventDetailsModal } from '@/components/admin/EventDetailsModal'
 import { ResetPasswordModal } from '@/components/admin/ResetPasswordModal'
 import { fetchTemplateDraftEventIds } from '@/lib/templates'
@@ -28,7 +29,7 @@ import { fetchEventsPlayMeta } from '@/lib/eventsPlayMeta'
 import { cn } from '@/lib/utils'
 import type { EventStatus, UserPlan } from '@/types'
 
-type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates' | 'analytics' | 'events' | 'finance' | 'scanners' | 'feature-flags'
+type AdminTab = 'todos' | 'customers' | 'upgrade-requests' | 'templates' | 'analytics' | 'events' | 'finance' | 'scanners' | 'feature-flags' | 'home-page'
 
 const DEFAULT_ADMIN_TAB: AdminTab = 'analytics'
 
@@ -42,6 +43,7 @@ const TABS: { id: AdminTab; label: string; icon: typeof ListTodo }[] = [
   { id: 'finance', label: 'הכנסות והוצאות', icon: Wallet },
   { id: 'templates', label: 'תבניות', icon: Sparkles },
   { id: 'feature-flags', label: 'פיצ׳ר פלאגים', icon: Flag },
+  { id: 'home-page', label: 'דף הבית', icon: House },
   { id: 'todos', label: 'משימות פיתוח', icon: ListTodo },
 ]
 
@@ -548,6 +550,8 @@ export function AdminPanel() {
       {tab === 'scanners' && <AdminScannersPanel />}
 
       {tab === 'feature-flags' && <FeatureFlagsAdminPanel />}
+
+      {tab === 'home-page' && <HomePageAdminPanel />}
 
       {tab === 'customers' && (
         loadingUsers ? (

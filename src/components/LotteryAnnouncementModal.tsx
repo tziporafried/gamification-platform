@@ -136,7 +136,8 @@ export function LotteryAnnouncementModal() {
     }
   }
 
-  if (!ALLOWED_ROUTES.has(pathname)) return null
+  // /home/<id> are the seasonal homepages - same audience as `/`.
+  if (!ALLOWED_ROUTES.has(pathname) && !pathname.startsWith('/home/')) return null
 
   return (
     <>

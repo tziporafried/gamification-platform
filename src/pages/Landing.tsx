@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, Fragment, type ReactNode } from 'react'
+import { useState, useMemo, useRef, useEffect, Fragment, Suspense, type ComponentType, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ScanLine,
@@ -25,7 +25,6 @@ import { ContactModal } from '@/components/ContactModal'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { GlobalHeader } from '@/components/layout/GlobalHeader'
-import { BrandLogo } from '@/components/icons/BrandLogo'
 import {
   trackCtaClick,
   trackContactFormOpen,
@@ -38,6 +37,7 @@ import {
 import { LaunchOfferBanner } from '@/components/ui/LaunchOfferBanner'
 import { formatPriceIls, isLaunchOfferActive, resolvePlanPrice } from '@/lib/planPrices'
 import { cn } from '@/lib/utils'
+import { codeDefaultHomePage } from '@/pages/home/homePages'
 
 const SETUP_STEPS = [
   {
@@ -158,18 +158,6 @@ const FAQ_ITEMS: { question: string; answer: ReactNode }[] = [
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 22 },
-  visible: { opacity: 1, y: 0 },
-}
-
-const stagger = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.08, delayChildren: 0.06 },
-  },
-}
-
 /** Re-plays when elements re-enter the viewport on scroll. */
 const viewportReveal = { once: false, amount: 0.2 } as const
 
@@ -184,7 +172,8 @@ function revealProps(motionSafe: boolean, delay = 0) {
   }
 }
 
-export function Landing() {
+/** The page around the hero is shared; `Hero` is the seasonal opening section (src/pages/home/homePages.ts). */
+export function Landing({ Hero = codeDefaultHomePage().Hero }: { Hero?: ComponentType } = {}) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { openPlans, isOpen: plansOpen } = usePlansModal()
@@ -377,84 +366,10 @@ export function Landing() {
         />
 
         <main className="mx-auto max-w-4xl px-4 pb-20 pt-12 sm:px-6">
-          {/* 1. Hero */}
-          <motion.section
-            className="mx-auto mb-10 max-w-2xl text-center sm:mb-12"
-            variants={stagger}
-            initial={motionSafe ? 'hidden' : false}
-            animate="visible"
-          >
-            <motion.div
-              variants={fadeUp}
-              transition={{ duration: 0.55, ease: EASE_OUT }}
-              className="mb-6 flex justify-center"
-            >
-              <motion.div
-                animate={
-                  motionSafe
-                    ? { y: [0, -10, 0], rotate: [0, -2.5, 2.5, 0] }
-                    : undefined
-                }
-                transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                <BrandLogo className="h-28 w-28 sm:h-36 sm:w-36 drop-shadow-[0_12px_28px_rgba(171,53,0,0.28)]" />
-              </motion.div>
-            </motion.div>
-
-            <motion.h1
-              variants={fadeUp}
-              transition={{ duration: 0.55, ease: EASE_OUT }}
-              className="mb-5 text-[34px] font-black leading-[1.2] text-foreground sm:text-[42px]"
-            >
-              סבתא? דודה?
-              <br />
-              אחראית על ה-
-              <span className={cn('text-primary-text', motionSafe && 'landing-brand-shimmer')}>Vibe</span>
-              {' '}בנופש המשפחתי?
-            </motion.h1>
-
-            <motion.p
-              variants={fadeUp}
-              transition={{ duration: 0.5, ease: EASE_OUT }}
-              className="mb-4 text-lg leading-[1.6] text-foreground"
-            >
-              מכירים את הרגע בנופש שמישהו אומר...
-            </motion.p>
-
-            <motion.p
-              variants={fadeUp}
-              transition={{ duration: 0.5, ease: EASE_OUT }}
-              className="mb-5 text-xl font-bold italic text-muted"
-            >
-              "טוב... אז מה עושים עכשיו?"
-            </motion.p>
-
-            <motion.p
-              variants={fadeUp}
-              transition={{ duration: 0.5, ease: EASE_OUT }}
-              className="mb-5 text-[26px] font-black leading-[1.3] text-foreground sm:text-[30px]"
-            >
-              עם{' '}
-              <span className={cn('text-primary-text', motionSafe && 'landing-brand-shimmer')}>Gamify</span>
-              {' '}זה פשוט לא קורה.
-            </motion.p>
-
-            <motion.p
-              variants={fadeUp}
-              transition={{ duration: 0.5, ease: EASE_OUT }}
-              className="mx-auto mb-6 max-w-[500px] text-[17px] leading-[1.7] text-foreground"
-            >
-              הופכים את כל הנופש לכיף אחד גדול עם משימות, אתגרים, תחרויות, ניקוד, פרסים ולוח אלופים שכווווולם רוצים לכבוש.
-            </motion.p>
-
-            <motion.p
-              variants={fadeUp}
-              transition={{ duration: 0.5, ease: EASE_OUT }}
-              className="mx-auto mb-0 max-w-[500px] text-base font-bold leading-[1.6] text-primary-text [text-shadow:0_0_18px_rgba(171,53,0,0.35)]"
-            >
-              פחות שעמום, יותר צחוק, יותר גיבוש, ורגעים שלא שוכחים.
-            </motion.p>
-          </motion.section>
+          {/* 1. Hero - swappable per season (src/pages/home/homePages.ts) */}
+          <Suspense fallback={<div className="mx-auto mb-10 min-h-[420px] max-w-2xl sm:mb-12" aria-hidden="true" />}>
+            <Hero />
+          </Suspense>
 
           {/* 2. Video */}
           <motion.section

@@ -8,7 +8,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { ImpersonationBanner } from '@/components/ImpersonationBanner'
 import { AnalyticsListener } from '@/components/AnalyticsListener'
 import { LotteryAnnouncementModal } from '@/components/LotteryAnnouncementModal'
-import { Landing } from '@/pages/Landing'
+import { ActiveHomeRoute, HomeVariantRoute } from '@/pages/home/HomeRoutes'
 import { Login } from '@/pages/Login'
 import { MyEvents } from '@/pages/MyEvents'
 import { EventWizard } from '@/pages/EventWizard'
@@ -37,7 +37,9 @@ export default function App() {
         <PlansModalProvider>
           <LotteryAnnouncementModal />
           <Routes>
-            <Route path="/" element={<Landing />} />
+            {/* Which homepage `/` shows: admin panel choice, else CODE_DEFAULT_HOME (src/pages/home/homePages.ts) */}
+            <Route path="/" element={<ActiveHomeRoute />} />
+            <Route path="/home/:variant" element={<HomeVariantRoute />} />
             <Route path="/welcome" element={<Navigate to="/" replace />} />
             <Route path="/login" element={<AuthRedirect><Login /></AuthRedirect>} />
             <Route path="/auth/callback" element={<AuthCallback />} />
