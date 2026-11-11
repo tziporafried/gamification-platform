@@ -120,23 +120,6 @@ export function HanukkahHero() {
 
       <motion.div
         variants={heroFadeUp}
-        transition={{ duration: 0.5, ease: HERO_EASE_OUT }}
-        className="mb-4 flex justify-center"
-      >
-        <span
-          className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-bold"
-          style={{
-            color: GOLD_DEEP,
-            backgroundColor: 'color-mix(in srgb, #E0A526 14%, transparent)',
-            border: '1px solid color-mix(in srgb, #E0A526 45%, transparent)',
-          }}
-        >
-          ✨ מהדורת חנוכה
-        </span>
-      </motion.div>
-
-      <motion.div
-        variants={heroFadeUp}
         transition={{ duration: 0.55, ease: HERO_EASE_OUT }}
         className="mb-6 flex justify-center drop-shadow-[0_14px_30px_rgba(224,165,38,0.35)]"
       >
