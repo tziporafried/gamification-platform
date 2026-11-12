@@ -5,13 +5,14 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Lock, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { theme } from '@/lib/theme'
+import { useFlashChallengeEnabled } from '@/lib/flashChallenge/flashChallengeFlag'
 import {
   trackLiveEventSelect,
   trackLiveEventsModalClose,
 } from '@/lib/analytics'
 import {
-  LIVE_EVENT_CATALOG,
   isLiveEventLaunchable,
+  resolveLiveEventCatalog,
   liveEventDestination,
   type LiveEventCatalogId,
   type LiveEventCatalogItem,
@@ -267,11 +268,13 @@ export function LiveEventsSelectModal({
   lotteryLocked = false,
   onLockedSelect,
 }: LiveEventsSelectModalProps) {
+  const flashChallenge = useFlashChallengeEnabled()
   const { available, upcoming } = useMemo(() => {
-    const launchable = LIVE_EVENT_CATALOG.filter((item) => isLiveEventLaunchable(item))
-    const soon = LIVE_EVENT_CATALOG.filter((item) => !isLiveEventLaunchable(item))
+    const catalog = resolveLiveEventCatalog({ flashChallenge })
+    const launchable = catalog.filter((item) => isLiveEventLaunchable(item))
+    const soon = catalog.filter((item) => !isLiveEventLaunchable(item))
     return { available: launchable, upcoming: soon }
-  }, [])
+  }, [flashChallenge])
   const reduceMotion = useReducedMotion()
   const navigate = useNavigate()
   const dialogRef = useRef<HTMLDivElement>(null)

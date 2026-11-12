@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { findParticipantByCode } from '@/lib/participantByCode'
 import { canPerformAction } from '@/lib/canPerformAction'
 import { countCompletionsOnIsraelDate } from '@/lib/israelTime'
 import { isTrialScanLimitError } from '@/lib/plans'
@@ -79,12 +80,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
     setSubmitting(true)
 
     try {
-      const { data: participant, error: pError } = await supabase
-        .from('participants')
-        .select('id, name')
-        .eq('event_id', eventId)
-        .eq('external_id', pCode)
-        .maybeSingle()
+      const { data: participant, error: pError } = await findParticipantByCode(eventId, pCode)
 
       if (pError) throw pError
       if (!participant) {

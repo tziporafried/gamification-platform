@@ -339,7 +339,7 @@ export function BonusAwardModal({
  * An empty box lists the whole roster: on a small game that is the fastest path
  * to a name, and on a large one the first keystroke narrows it anyway.
  */
-function PlayerPicker({
+export function PlayerPicker({
   inputRef,
   participants,
   loading,

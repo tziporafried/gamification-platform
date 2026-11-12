@@ -183,7 +183,15 @@ export function useBonusAward(eventId: string) {
         },
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'משהו השתבש.'
+      // Supabase hands back its errors as plain { message, code, ... } objects,
+      // not Error instances - reading only an Error's message turned every
+      // database refusal into a sentence nobody could act on.
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err !== null && typeof (err as { message?: unknown }).message === 'string'
+            ? (err as { message: string }).message
+            : 'משהו השתבש.'
       setSubmitting(false)
       if (isTrialScanLimitError(message)) {
         return { ok: false, error: message, code: 'TRIAL_SCAN_LIMIT_REACHED' }

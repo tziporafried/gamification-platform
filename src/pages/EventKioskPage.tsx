@@ -56,6 +56,15 @@ import { playScanSuccess, playScanWrongAnswer } from '@/lib/scanSuccessSound'
 import { playRewardFanfare, primeRewardFanfare, stopRewardFanfare } from '@/lib/rewardFanfareSound'
 import '@/styles/kiosk.css'
 import { ScannerFrame } from '@/components/kiosk/ScannerFrame'
+import { useFlashChallenge } from '@/components/live-events/flash/useFlashChallenge'
+import {
+  KioskFlashCard,
+  KioskFlashCompleters,
+  KioskFlashFeedback,
+  KioskFlashHeadline,
+  KioskFlashLayer,
+  KioskFlashManualModal,
+} from '@/components/live-events/flash/KioskFlash'
 
 const KIOSK_ACCENT = hexToRgb('#AB3500') ?? { r: 171, g: 53, b: 0 }
 const KIOSK_CENTER_GAP = 32
@@ -3161,6 +3170,16 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   const isTrial = event.plan === 'free'
   const { submit, submitting } = useScoreSubmit(event.id)
   const catalog = useEventCatalog(event.id)
+  // ⚡ אתגר בזק runs on this screen: while it is up, the scanner in the middle
+  // reads cards for the challenge (who is standing here) instead of scoring
+  // their tasks. See components/live-events/flash.
+  const flash = useFlashChallenge({ eventId: event.id, scanMode: event.scan_mode, onCompleted: refetch })
+  const flashLive = flash.phase === 'live'
+  const [showFlashManual, setShowFlashManual] = useState(false)
+  // The challenge's manual popup cannot outlive the challenge it is for.
+  useEffect(() => {
+    if (!flashLive) setShowFlashManual(false)
+  }, [flashLive])
   const [scanResult, setScanResult] = useState<ScanResultDisplay | null>(null)
   const [rewardWin, setRewardWin] = useState<RewardWinDisplay | null>(null)
   const [showManual, setShowManual] = useState(false)
@@ -3394,8 +3413,14 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
       showToast('המשחק עדיין לא הופעל', { icon: '🚀' })
       return
     }
+    // A running challenge takes the scan whole: one card, one participant,
+    // no task scored - see resolveChallengeScan.
+    if (flash.ownsScanner) {
+      flash.handleScan(raw)
+      return
+    }
     handleScan(raw)
-  }, [gameStarted, handleScan, rejectScanWhileBusy, showToast])
+  }, [gameStarted, handleScan, rejectScanWhileBusy, showToast, flash.ownsScanner, flash.handleScan])
 
   // Greet the waiting participant by name. Unknown codes still arm - the code
   // is only validated on submit - so this stays null and the copy falls back.
@@ -3409,8 +3434,8 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   // the flow - an armed participant must not survive to pair with a later
   // action scan.
   useEffect(() => {
-    if (showManual || showBonus || trialLimitOpen) resetScanSequence()
-  }, [showManual, showBonus, trialLimitOpen, resetScanSequence])
+    if (showManual || showBonus || trialLimitOpen || flash.phase !== 'idle') resetScanSequence()
+  }, [showManual, showBonus, trialLimitOpen, flash.phase, resetScanSequence])
 
   // Deliberately not gated on gameStarted: the wedge stays bound so an unstarted
   // event answers a scan with a toast. Unbinding it left the hidden input
@@ -3418,7 +3443,11 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
   // The wedge types into whatever has focus, so it stays unbound while the
   // bonus popup owns the keyboard - otherwise a scanned card lands in the
   // reason field.
-  const bind = useHardwareScanner(!showManual && !showBonus && !submitting && !noScan && !trialLimitOpen, handleScanGuarded)
+  // The challenge's form owns the keyboard the same way the bonus popup does.
+  const bind = useHardwareScanner(
+    !showManual && !showBonus && !submitting && !noScan && !trialLimitOpen && flash.phase !== 'setup' && !showFlashManual && !flash.busy,
+    handleScanGuarded,
+  )
 
   const handleManualSubmit = useCallback(async (participantCode: string, actionCode: string) => {
     if (!gameStarted) {
@@ -3475,6 +3504,26 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     // the one thing worth reading.
     if (gameStarted) setShowBonus(true)
   }, [bonusRequested, gameStarted, setSearchParams])
+
+  // ⚡ אתגר בזק - opened from the live-events popup with ?flash=1, like the
+  // bonus. It runs on the scanner, so a game that cannot scan is told why
+  // instead of being handed a challenge nobody can complete.
+  const flashRequested = searchParams.get('flash') === '1'
+  const openFlashSetup = flash.openSetup
+  useEffect(() => {
+    if (!flashRequested) return
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('flash')
+      return next
+    }, { replace: true })
+    if (!gameStarted) return
+    if (noScan) {
+      showToast('אתגר בזק עובד עם סורק - הסריקה אינה כלולה במסלול הזה', { icon: '⚡', ms: 5000 })
+      return
+    }
+    openFlashSetup()
+  }, [flashRequested, gameStarted, noScan, setSearchParams, showToast, openFlashSetup])
 
   const bonusParticipants = useMemo<BonusParticipantOption[]>(
     () => catalog.participants.map((p) => ({
@@ -3615,11 +3664,17 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
             maxWidth: '100%',
             boxSizing: 'border-box',
           }}>
-            <RecommendedMissionSwap action={recommendedAction} now={now} reducedMotion={reducedMotion} />
+            {flashLive && flash.challenge ? (
+              <KioskFlashCard challenge={flash.challenge} remainingMs={flash.remainingMs} />
+            ) : (
+              <RecommendedMissionSwap action={recommendedAction} now={now} reducedMotion={reducedMotion} />
+            )}
           </div>
 
+          {flashLive && flash.challenge && <KioskFlashCompleters challenge={flash.challenge} />}
+
           {/* Stat tiles */}
-          <div style={{ display: gameStarted && hasActivity ? 'flex' : 'none', gap: 10, position: 'relative', zIndex: 1 }}>
+          <div style={{ display: gameStarted && hasActivity && !flashLive ? 'flex' : 'none', gap: 10, position: 'relative', zIndex: 1 }}>
             {[
               { value: stats.totalMissions, label: 'משימות', color: '#E07A3E' },
               { value: stats.totalPoints, label: 'נקודות', color: '#4C9E6E' },
@@ -3641,7 +3696,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
           </div>
 
           {/* Recent activity feed */}
-          <div style={{ display: gameStarted ? 'block' : 'none', flex: 1, minHeight: 0, position: 'relative', zIndex: 1, overflow: 'hidden', paddingBottom: 4 }}>
+          <div style={{ display: gameStarted && !flashLive ? 'block' : 'none', flex: 1, minHeight: 0, position: 'relative', zIndex: 1, overflow: 'hidden', paddingBottom: 4 }}>
             <ActivityView rows={recentActivity} active={true} reducedMotion={reducedMotion} />
           </div>
         </div>
@@ -3687,7 +3742,9 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
               </div>
             )}
 
-            {gameStarted && !hasActivity && (
+            {gameStarted && flashLive && <KioskFlashHeadline />}
+
+            {gameStarted && !flashLive && !hasActivity && (
               <div style={{ textAlign: 'center', maxWidth: 620, flexShrink: 0 }}>
                 <div style={{ fontSize: 40, fontWeight: 900, color: '#FF8A3D' }}>🎉 הכול מוכן לרגע הגדול</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#7D706A', lineHeight: 1.45 }}>
@@ -3701,7 +3758,7 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
               </div>
             )}
 
-            {gameStarted && hasActivity && (
+            {gameStarted && !flashLive && hasActivity && (
               <div style={{ textAlign: 'center', maxWidth: 620, flexShrink: 0 }}>
                 <div className="kiosk-scanWinHeadline" style={{ fontSize: 40, fontWeight: 900 }}>
                   <span className="kiosk-scanWinWord" style={{ color: '#FF8A3D', animationDelay: '0s' }}>{noScan ? 'שחקו' : 'סרקו'}</span>
@@ -3732,17 +3789,29 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
               <>
                 <div className="kiosk-scannerSlot">
                   <ScannerFrame
-                    processing={gameStarted && submitting}
+                    processing={gameStarted && (submitting || (flashLive && flash.busy))}
                     locked={scanningLocked}
                     awaiting={!!pendingScan}
                     awaitingName={pendingParticipantName}
                     awaitingSeconds={remainingSeconds}
                     waitProgress={waitProgress}
+                    overlay={flashLive ? <KioskFlashFeedback feedback={flash.feedback} feedbackId={flash.feedbackId} /> : undefined}
                   />
                 </div>
 
                 <div className="kiosk-centerHints">
-                  {scanningLocked ? (
+                  {flashLive ? (
+                    <button
+                      onClick={() => setShowFlashManual(true)}
+                      style={{
+                        display: 'inline',
+                        fontSize: 15, fontWeight: 800, color: '#3E8F88',
+                        textDecoration: 'underline', textUnderlineOffset: 3,
+                        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                      }}>
+                      או בחרו משתתף ידנית
+                    </button>
+                  ) : scanningLocked ? (
                     gameStarted ? (
                       <button
                         onClick={() => setShowManual(true)}
@@ -3911,6 +3980,20 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
         loadingParticipants={catalog.loading}
         submitting={awardingBonus}
         onSubmit={handleBonusSubmit}
+      />
+
+      {/* ⚡ אתגר בזק - its form, takeovers, summary and the operator's corner */}
+      <KioskFlashLayer flash={flash} scanMode={event.scan_mode} />
+      <KioskFlashManualModal
+        isOpen={showFlashManual}
+        onClose={() => setShowFlashManual(false)}
+        participants={bonusParticipants}
+        loading={catalog.loading}
+        challenge={flash.challenge}
+        onSubmit={(participant) => {
+          setShowFlashManual(false)
+          void flash.handleManual(participant)
+        }}
       />
 
       {/* Error / nudge toast - above every popup, so it reads mid-celebration */}

@@ -2,8 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Gift, Sparkles, Zap } from 'lucide-react'
 
 /** Discriminated union - add new live event kinds here as they ship. */
-export type LiveEventKind = 'lottery' | 'bonus-points'
-// | 'flash-challenge'
+export type LiveEventKind = 'lottery' | 'bonus-points' | 'flash-challenge'
 
 export interface EligibleParticipant {
   id: string
@@ -122,6 +121,30 @@ export const LIVE_EVENT_CATALOG: LiveEventCatalogItem[] = [
   },
 ]
 
+/** Per-game feature flags that open catalog items up. */
+export interface LiveEventFlags {
+  /** `flash_challenge` - see lib/flashChallenge/flashChallengeFlag. */
+  flashChallenge: boolean
+}
+
+/**
+ * The catalog as this game sees it. With `flash_challenge` off the flash card
+ * is exactly the static teaser above ("בקרוב"); with it on, it is launchable.
+ */
+export function resolveLiveEventCatalog(flags: LiveEventFlags): LiveEventCatalogItem[] {
+  return LIVE_EVENT_CATALOG.map((item) =>
+    item.id === 'flash-challenge' && flags.flashChallenge
+      ? {
+          ...item,
+          kind: 'flash-challenge',
+          description: 'אתגר פתע עם שעון - מי שמשלים סורק כרטיס ומקבל נקודות.',
+          available: true,
+          cta: 'השיקו אתגר',
+        }
+      : item,
+  )
+}
+
 /** Public availability from the catalog. */
 export function isLiveEventLaunchable(item: LiveEventCatalogItem): boolean {
   return item.available
@@ -133,11 +156,14 @@ export function isLiveEventLaunchable(item: LiveEventCatalogItem): boolean {
  * The lottery owns a screen of its own; a bonus does not. A bonus ends in a
  * confirmation card and a row on the orange activity feed, and both of those
  * already exist on the scan screen - so it opens as a popup there rather than
- * as a second screen built around the same three fields.
+ * as a second screen built around the same three fields. The flash challenge
+ * opens there too, for the same reason and one more: the scanner it runs on is
+ * the one in the middle of that screen.
  */
 export function liveEventDestination(id: LiveEventCatalogId, eventId: string): string | null {
   if (id === 'lottery') return `/events/${eventId}/lottery`
   if (id === 'bonus-points') return `/events/${eventId}/kiosk?bonus=1`
+  if (id === 'flash-challenge') return `/events/${eventId}/kiosk?flash=1`
   return null
 }
 

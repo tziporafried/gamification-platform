@@ -2,9 +2,10 @@ import { useNavigate } from 'react-router-dom'
 import { Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { trackLiveEventSelect } from '@/lib/analytics'
+import { useFlashChallengeEnabled } from '@/lib/flashChallenge/flashChallengeFlag'
 import {
-  LIVE_EVENT_CATALOG,
   isLiveEventLaunchable,
+  resolveLiveEventCatalog,
   liveEventDestination,
   type LiveEventCatalogItem,
 } from './types'
@@ -22,10 +23,11 @@ export function LiveEventsPanel({ eventId }: LiveEventsPanelProps) {
   // Every launchable item, not the lottery by name: this page used to hard-code
   // the one thing that had shipped, so the second one to ship would have
   // vanished from it entirely - neither launchable here nor listed as upcoming.
-  const launchable = LIVE_EVENT_CATALOG.filter((item) => isLiveEventLaunchable(item))
+  const catalog = resolveLiveEventCatalog({ flashChallenge: useFlashChallengeEnabled() })
+  const launchable = catalog.filter((item) => isLiveEventLaunchable(item))
   const featured = launchable[0] ?? null
   const alsoLaunchable = launchable.slice(1)
-  const upcoming = LIVE_EVENT_CATALOG.filter((item) => !isLiveEventLaunchable(item))
+  const upcoming = catalog.filter((item) => !isLiveEventLaunchable(item))
 
   function launch(item: LiveEventCatalogItem) {
     const destination = liveEventDestination(item.id, eventId)
