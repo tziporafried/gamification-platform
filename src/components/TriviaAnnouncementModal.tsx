@@ -29,7 +29,7 @@ const PARTICLES = [
 ]
 
 const CHIPS = [
-  { icon: '❓', label: 'שאלה ו-3 תשובות' },
+  { icon: '❓', label: '3 תשובות' },
   { icon: '🖨️', label: 'כרטיס לכל תשובה' },
   { icon: '🎯', label: 'רק הנכונה מזכה' },
 ]
@@ -236,20 +236,21 @@ export function TriviaAnnouncementModal({ onCollapse }: { onCollapse?: () => voi
           </div>
 
           {/* ---- copy ---- */}
-          <div className="relative z-10 px-6 pb-6 pt-4 text-center">
-            <ul className="flex flex-wrap items-center justify-center gap-1.5">
+          <div className="relative z-10 px-4 pb-6 pt-4 text-center sm:px-6">
+            {/* One row down to a 360px phone: small type, tight padding. */}
+            <ul className="flex flex-nowrap items-center justify-center gap-1">
               {CHIPS.map((chip) => (
                 <li
                   key={chip.label}
-                  className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-white/70 bg-white/55 px-2.5 py-1.5 text-[12px] font-semibold text-foreground shadow-[0_2px_10px_-3px_rgba(46,34,30,0.18)]"
+                  className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full border border-white/70 bg-white/55 px-1.5 py-1 text-[11px] font-semibold text-foreground shadow-[0_2px_10px_-3px_rgba(46,34,30,0.18)]"
                 >
-                  <span aria-hidden="true" className="text-[13px] leading-none">{chip.icon}</span>
+                  <span aria-hidden="true" className="text-[11px] leading-none">{chip.icon}</span>
                   {chip.label}
                 </li>
               ))}
             </ul>
 
-            <div className="mt-5 rounded-2xl border border-border bg-[var(--color-background)] px-4 py-4 shadow-[0_2px_12px_-4px_rgba(46,34,30,0.16)]">
+            <div className="mt-5 rounded-2xl border border-border bg-[var(--color-background)] px-2.5 py-4 sm:px-4 shadow-[0_2px_12px_-4px_rgba(46,34,30,0.16)]">
               <p className="flex items-center justify-center gap-1.5 text-[14px] font-bold text-primary-text">
                 <MapPin size={15} strokeWidth={2.5} aria-hidden="true" />
                 איפה מוצאים את זה?
@@ -257,13 +258,13 @@ export function TriviaAnnouncementModal({ onCollapse }: { onCollapse?: () => voi
               <p className="mt-1.5 text-[13px] leading-[1.6] text-muted">
                 זמין עכשיו בכל פעילות, מתחת לשדה הוספת משימה.
               </p>
-              <ol className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5">
+              <ol className="mt-3 flex flex-nowrap items-center justify-center gap-x-1 sm:gap-x-1.5">
                 {PATH_STEPS.map((step, i) => (
-                  <li key={step.label} className="flex items-center gap-2">
-                    {i > 0 && <span aria-hidden="true" className="text-[13px] text-muted">←</span>}
+                  <li key={step.label} className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+                    {i > 0 && <span aria-hidden="true" className="text-[12px] text-muted">←</span>}
                     <span
                       className={cn(
-                        'rounded-lg px-2.5 py-1 text-[13px] font-semibold shadow-[0_1px_3px_rgba(46,34,30,0.14)]',
+                        'whitespace-nowrap rounded-lg px-1.5 py-1 text-[11px] font-semibold shadow-[0_1px_3px_rgba(46,34,30,0.14)] sm:px-2 sm:text-[12px]',
                         step.dark ? 'border border-border text-foreground' : 'text-white',
                       )}
                       style={{ background: step.background }}
