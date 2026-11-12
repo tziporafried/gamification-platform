@@ -30,6 +30,10 @@ interface TriviaComposerModalProps {
   siblingNames?: string[]
   /** Present when editing rather than creating. */
   existing?: { action: Action; options: ActionOption[] }
+  /** A new question's text, already typed into the add field. */
+  initialQuestion?: string
+  /** A new question's points, from the same field. */
+  initialPoints?: number
 }
 
 /**
@@ -55,10 +59,14 @@ export function TriviaComposerModal({
   onPlanLimit,
   siblingNames = [],
   existing,
+  initialQuestion = '',
+  initialPoints,
 }: TriviaComposerModalProps) {
   const isEdit = !!existing
   const [draft, setDraft] = useState<TriviaDraft>(() =>
-    existing ? draftFromQuestion(existing.action, existing.options) : emptyTriviaDraft(),
+    existing
+      ? draftFromQuestion(existing.action, existing.options)
+      : { ...emptyTriviaDraft(initialPoints), question: initialQuestion },
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')

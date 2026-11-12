@@ -5,12 +5,14 @@ import {
   isTimeInRange,
 } from '@/lib/israelTime'
 import { getDailyTimeWindow, hasDailyTimeWindow } from '@/lib/taskLimit'
+import { SECRET_MISSION_NOT_YOURS_MESSAGE } from '@/lib/tasks/secretMission'
 
 export type BlockReason =
   | 'ACTION_INACTIVE'
   | 'LIMIT_REACHED'
   | 'DAILY_HOURS_OUT_OF_RANGE'
   | 'GROUP_NOT_ALLOWED'
+  | 'SECRET_NOT_OWNER'
 
 export interface CanPerformResult {
   allowed: boolean
@@ -28,10 +30,16 @@ interface ActionConstraints {
   daily_end_minute: number | null
   /** IDs of groups that may perform this action. Empty array = all groups allowed. */
   allowedGroupIds: string[]
+  /** A secret mission (094) - only `secret_participant_id` may perform it. */
+  is_secret?: boolean
+  /** Null on a secret mission nobody has been picked for: then nobody may. */
+  secret_participant_id?: string | null
 }
 
 interface CanPerformParams {
   action: ActionConstraints
+  /** Who is performing it. Only consulted for a secret mission. */
+  participantId?: string
   /** Groups the participant belongs to. */
   participantGroupIds: string[]
   /** Number of times this participant has already completed this action (lifetime). */
@@ -44,6 +52,7 @@ interface CanPerformParams {
 
 export function canPerformAction({
   action,
+  participantId,
   participantGroupIds,
   previousCompletions,
   previousCompletionsToday = 0,
@@ -84,6 +93,14 @@ export function canPerformAction({
         message: 'כבר בוצעה סריקה אחת למשימה זו היום.',
       }
     }
+  } else if (action.is_secret && previousCompletions >= 1) {
+    // Once, whatever the row says - a secret mission saved before this rule, or
+    // edited behind the app's back, still cannot be revealed twice.
+    return {
+      allowed: false,
+      reason: 'LIMIT_REACHED',
+      message: 'המשימה הסודית כבר בוצעה.',
+    }
   } else if (action.max_completions !== null && previousCompletions >= action.max_completions) {
     if (action.max_completions === 1) {
       return {
@@ -97,6 +114,12 @@ export function canPerformAction({
       reason: 'LIMIT_REACHED',
       message: `הגעת למגבלה של ${action.max_completions} סריקות למשימה זו.`,
     }
+  }
+
+  // Checked after the limit on purpose: once the owner has done it, the answer
+  // at the scanner is "already done", not a hint about whose mission it is.
+  if (action.is_secret && (!action.secret_participant_id || action.secret_participant_id !== participantId)) {
+    return { allowed: false, reason: 'SECRET_NOT_OWNER', message: SECRET_MISSION_NOT_YOURS_MESSAGE }
   }
 
   if (action.allowedGroupIds.length > 0) {
@@ -148,6 +171,7 @@ export function filterActionsWithAvailableParticipants<
       const stats = completionIndex[action.id]?.[participant.id]
       return canPerformAction({
         action,
+        participantId: participant.id,
         participantGroupIds: participant.groupIds,
         previousCompletions: stats?.total ?? 0,
         previousCompletionsToday: stats
@@ -173,6 +197,7 @@ export function filterActionsForParticipant<
     const stats = completionIndex[action.id]?.[participantId]
     return canPerformAction({
       action,
+      participantId,
       participantGroupIds,
       previousCompletions: stats?.total ?? 0,
       previousCompletionsToday: stats

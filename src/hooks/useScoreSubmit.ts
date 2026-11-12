@@ -8,6 +8,7 @@ import { isTrialScanLimitError } from '@/lib/plans'
 import { notifyScanBySms } from '@/lib/scanSms'
 import { useSmsNotifications } from '@/lib/smsNotifications'
 import { isCorrectScan, isTriviaAction, scanPoints, TRIVIA_ANSWER_REQUIRED_MESSAGE, type ScannedOption } from '@/lib/tasks/triviaScan'
+import { isSecretAction } from '@/lib/tasks/secretMission'
 import type { Action, NewlyAwardedReward } from '@/types'
 
 export interface ScoreSubmitResult {
@@ -37,6 +38,11 @@ export interface ScoreSubmitResult {
   /** The answer that was scanned, for a trivia task. Null for a standard one. */
   optionId: string | null
   optionLabel: string | null
+  /**
+   * A secret mission (094) was just completed. The kiosk names the task for the
+   * first time here, so it holds the card up longer than an ordinary scan.
+   */
+  isSecret: boolean
 }
 
 export type ScoreSubmitErrorCode = 'TRIAL_SCAN_LIMIT_REACHED'
@@ -201,7 +207,10 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
           daily_end_hour: action.daily_end_hour,
           daily_end_minute: action.daily_end_minute,
           allowedGroupIds,
+          is_secret: isSecretAction(action),
+          secret_participant_id: action.secret_participant_id ?? null,
         },
+        participantId: participant.id,
         participantGroupIds,
         previousCompletions,
         previousCompletionsToday,
@@ -321,6 +330,7 @@ export function useScoreSubmit(eventId: string): UseScoreSubmitReturn {
           isCorrect,
           optionId: option?.id ?? null,
           optionLabel: option?.label ?? null,
+          isSecret: isSecretAction(action),
         },
       }
     } catch (err) {

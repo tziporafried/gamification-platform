@@ -421,6 +421,11 @@
 .kiosk-missionTypeBadge--recommended {
   background: linear-gradient(90deg, #FF9366, #F2B33C);
 }
+/* A secret mission - plum, so it reads as a different kind of thing at a glance. */
+.kiosk-missionTypeBadge--secret {
+  background: linear-gradient(90deg, #7B4FB8, #B35FA8);
+  box-shadow: 0 6px 22px rgba(123, 79, 184, 0.42), 0 0 0 4px rgba(255, 255, 255, 0.95);
+}
 .kiosk-missionTypeBadge--prize {
   background: linear-gradient(
     90deg,

@@ -1,14 +1,18 @@
 import { useState, useRef, useEffect, memo, KeyboardEvent } from 'react'
-import { AlertTriangle, Check, HelpCircle, Pencil } from 'lucide-react'
+import { AlertTriangle, CheckSquare, HelpCircle, Pencil } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { WizardDeleteButton } from '@/components/wizard/WizardDeleteButton'
 import { cn } from '@/lib/utils'
+import { Tooltip } from '@/components/ui/Tooltip'
 import { GroupSelectDropdown } from '@/components/groups/GroupSelectDropdown'
 import { TaskLimitSelect } from './TaskLimitSelect'
 import { ACTION_CARD_GRADIENT, getActionIcon, getActionIconMotion, getActionIconPlacement } from '@/lib/actionTiers'
 import { theme } from '@/lib/theme'
 import { toLimitDbValues, toLimitMode, getDailyTimeWindow, isSameLimitDbValues, type DailyTimeWindow, type LimitMode } from '@/lib/taskLimit'
 import { isTriviaAction } from '@/lib/tasks/triviaScan'
+import { isSecretAction } from '@/lib/tasks/secretMission'
+import { isMissingSecretColumnsError, MISSING_SECRET_COLUMNS_MESSAGE } from '@/lib/tasks/secretMissionsFlag'
+import { SecretOwnerPicker, type SecretOwnerOption } from './SecretOwnerPicker'
 import type { ActionOption, ActionWithGroups, Group } from '@/types'
 
 interface ActionRowProps {
@@ -23,6 +27,8 @@ interface ActionRowProps {
   options?: ActionOption[]
   /** Opens the composer on this question. Only called for a trivia task. */
   onEditQuestion?: () => void
+  /** The roster, for handing a secret mission to someone else. */
+  secretOwners?: SecretOwnerOption[]
 }
 
 export const ActionRow = memo(function ActionRow({
@@ -35,8 +41,11 @@ export const ActionRow = memo(function ActionRow({
   siblingNames = [],
   options,
   onEditQuestion,
+  secretOwners,
 }: ActionRowProps) {
   const isTrivia = isTriviaAction(action)
+  const isSecret = isSecretAction(action)
+  const kindLabel = isSecret ? 'משימה סודית' : isTrivia ? 'שאלת טריוויה' : 'משימה רגילה'
   /**
    * A question that would print cards nobody can win on.
    *
@@ -45,6 +54,7 @@ export const ActionRow = memo(function ActionRow({
    * leaves exactly this state. It is not printed (QrCardGenerator drops it), and
    * silently not printing is the one thing that must not happen quietly.
    */
+  const sortedOptions = [...(options ?? [])].sort((a, b) => a.sort_order - b.sort_order)
   const missingCorrectAnswer =
     isTrivia && !!options && options.length > 0 && !options.some((o) => o.is_correct)
   const [editingName, setEditingName] = useState(false)
@@ -182,6 +192,17 @@ export const ActionRow = memo(function ActionRow({
     setDailyWindow(getDailyTimeWindow(action))
   }
 
+  async function saveSecretOwner(participantId: string) {
+    setSaving(true)
+    const { error } = await supabase.from('actions').update({ secret_participant_id: participantId }).eq('id', action.id)
+    setSaving(false)
+    if (error) {
+      onError?.(isMissingSecretColumnsError(error.message) ? MISSING_SECRET_COLUMNS_MESSAGE : 'שגיאה בעדכון המשימה הסודית')
+      return
+    }
+    onUpdated?.({ secret_participant_id: participantId })
+  }
+
   async function handleDelete() {
     if (!onDeleted) return
     await supabase.from('actions').delete().eq('id', action.id)
@@ -259,32 +280,17 @@ export const ActionRow = memo(function ActionRow({
           {/* A real button when idle - the old role="button" tabIndex={-1}
               wrapper announced a button that keyboard users could not reach.
               Mirrors the points field just below. */}
-          {isTrivia && (
-            <div className="flex items-center gap-1.5">
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold leading-none">
-                <HelpCircle size={10} strokeWidth={2.5} aria-hidden />
-                טריוויה
+          <div className="flex min-w-0 items-start gap-1.5">
+            {/* The task's kind, the same marks and names as the add tabs. */}
+            <Tooltip content={kindLabel} portal className="mt-px shrink-0">
+              <span className="flex h-5 w-4 items-center justify-center" role="img" aria-label={kindLabel}>
+                {isSecret
+                  ? <span className="text-sm leading-none" aria-hidden>🤫</span>
+                  : isTrivia
+                    ? <HelpCircle size={15} strokeWidth={2.25} aria-hidden />
+                    : <CheckSquare size={15} strokeWidth={2.25} aria-hidden />}
               </span>
-              {missingCorrectAnswer && (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold leading-none text-danger-text">
-                  <AlertTriangle size={10} strokeWidth={2.5} aria-hidden />
-                  חסרה תשובה נכונה - לא תודפס
-                </span>
-              )}
-              {onEditQuestion && !!options?.length && (
-                <button
-                  type="button"
-                  onClick={onEditQuestion}
-                  className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white/80 transition-colors hover:bg-white/20 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-                >
-                  <Pencil size={9} strokeWidth={2.5} aria-hidden />
-                  עריכת התשובות
-                </button>
-              )}
-            </div>
-          )}
-
-          <div className="flex min-w-0 items-start">
+            </Tooltip>
             {editingName ? (
               <input
                 ref={nameRef}
@@ -310,27 +316,6 @@ export const ActionRow = memo(function ActionRow({
               </button>
             )}
           </div>
-
-          {isTrivia && options && options.length > 0 && (
-            /* The only place in the app that says which answer is right. Not on
-               the card, not at the kiosk, not in the scan log. */
-            <ul className="flex flex-col gap-0.5">
-              {[...options].sort((a, b) => a.sort_order - b.sort_order).map((option) => (
-                <li
-                  key={option.id}
-                  className={cn(
-                    'flex items-center gap-1 text-[11px] leading-tight',
-                    option.is_correct ? 'font-bold text-white' : 'text-white/70',
-                  )}
-                >
-                  {option.is_correct
-                    ? <Check size={10} strokeWidth={3} className="shrink-0" aria-label="התשובה הנכונה" />
-                    : <span className="w-2.5 shrink-0" aria-hidden />}
-                  <span className="min-w-0 break-words">{option.label}</span>
-                </li>
-              ))}
-            </ul>
-          )}
 
           <div className="flex flex-wrap items-center gap-1.5">
             <div className="flex shrink-0 items-center">
@@ -369,6 +354,14 @@ export const ActionRow = memo(function ActionRow({
               >
                 ניסיון אחד
               </span>
+            ) : isSecret ? (
+              /* Not a choice either: one person, one reveal. */
+              <span
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/40 bg-white/20 px-3 py-1.5 text-xs font-bold leading-none"
+                title="משימה סודית מתבצעת פעם אחת בלבד"
+              >
+                פעם אחת
+              </span>
             ) : (
               <TaskLimitSelect
                 limitMode={limitMode}
@@ -381,6 +374,44 @@ export const ActionRow = memo(function ActionRow({
                 onResetLimit={resetLimit}
                 tone="onColor"
                 size="compact"
+              />
+            )}
+
+            {isTrivia && (
+              /* The answers live behind this chip, in the composer - the row
+                 stays two lines like any task. The tooltip is the one place
+                 outside the composer that says which answer is right; not
+                 the card, not the kiosk, not the scan log. */
+              <button
+                type="button"
+                onClick={onEditQuestion}
+                disabled={!onEditQuestion}
+                title={sortedOptions.map((o) => `${o.is_correct ? '✓ ' : '   '}${o.label}`).join('\n') || undefined}
+                className={cn(
+                  theme.wizardCompactChip,
+                  missingCorrectAnswer
+                    ? 'border-white bg-white/90 text-danger-text hover:bg-white'
+                    : 'border-white/50 bg-white/20 text-white hover:bg-white/30',
+                )}
+              >
+                {missingCorrectAnswer && <AlertTriangle size={10} strokeWidth={2.5} className="shrink-0" aria-hidden />}
+                <span className="whitespace-nowrap">
+                  {missingCorrectAnswer
+                    ? 'חסרה תשובה נכונה - לא תודפס'
+                    : `${sortedOptions.length || 3} תשובות`}
+                </span>
+                <Pencil size={9} strokeWidth={2.5} className="shrink-0 opacity-80" aria-hidden />
+              </button>
+            )}
+
+            {isSecret && (
+              /* Its kind was chosen when it was made; here it says whose it
+                 is, and lets the mission change hands. */
+              <SecretOwnerPicker
+                ownerId={action.secret_participant_id ?? null}
+                participants={secretOwners ?? []}
+                disabled={saving}
+                onPick={saveSecretOwner}
               />
             )}
 

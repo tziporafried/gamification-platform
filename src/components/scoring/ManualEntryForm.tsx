@@ -27,6 +27,9 @@ export type ManualEntryActionAvailability = {
   daily_end_hour: number | null
   daily_end_minute: number | null
   allowedGroupIds: string[]
+  /** A secret mission (094) is offered only once its owner is the one picked. */
+  is_secret?: boolean
+  secret_participant_id?: string | null
 }
 
 export interface ManualEntryAvailability {
@@ -120,7 +123,9 @@ export function ManualEntryForm({
       const [actRes, partRes, completionRes] = await Promise.all([
         supabase
           .from('actions')
-          .select('id, is_active, max_completions, daily_limit, daily_start_hour, daily_start_minute, daily_end_hour, daily_end_minute, action_groups(group_id)')
+          // `*` so the secret-mission columns (094) come back where they exist,
+          // without breaking this list on a database that has not run it.
+          .select('*, action_groups(group_id)')
           .eq('event_id', eventId)
           .eq('is_active', true),
         supabase
@@ -149,6 +154,8 @@ export function ManualEntryForm({
           daily_end_hour: a.daily_end_hour,
           daily_end_minute: a.daily_end_minute,
           allowedGroupIds: joins.map((j) => j.group_id).filter(Boolean),
+          is_secret: a.is_secret ?? false,
+          secret_participant_id: a.secret_participant_id ?? null,
         }
       })
 

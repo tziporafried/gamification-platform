@@ -258,6 +258,10 @@ export interface Action {
   description: string | null;
   is_active: boolean;
   kind?: ActionKind;
+  /** A secret mission (094). Optional: missing on a database without 094 = false. */
+  is_secret?: boolean;
+  /** The one participant who may score a secret mission. Null = nobody yet. */
+  secret_participant_id?: string | null;
   max_completions: number | null;
   daily_limit: boolean;
   daily_start_hour: number | null;

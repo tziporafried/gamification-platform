@@ -20,6 +20,8 @@ interface ActionOver {
   daily_end_hour?: number | null
   daily_end_minute?: number | null
   allowedGroupIds?: string[]
+  is_secret?: boolean
+  secret_participant_id?: string | null
 }
 
 function action(over: ActionOver = {}) {
@@ -165,4 +167,41 @@ test('a task aimed at no group in particular is open to everyone', () => {
     previousCompletions: 0,
   })
   assert.equal(result.allowed, true)
+})
+
+test('a secret mission is only for the participant it names', () => {
+  const secret = action({ is_secret: true, secret_participant_id: 'p-chaya', max_completions: 1 })
+  const owner = canPerformAction({ action: secret, participantId: 'p-chaya', participantGroupIds: [], previousCompletions: 0 })
+  assert.equal(owner.allowed, true)
+
+  const other = canPerformAction({ action: secret, participantId: 'p-other', participantGroupIds: [], previousCompletions: 0 })
+  assert.equal(other.allowed, false)
+  assert.equal(other.reason, 'SECRET_NOT_OWNER')
+})
+
+test('a secret mission nobody was picked for is open to nobody', () => {
+  const result = canPerformAction({
+    action: action({ is_secret: true, secret_participant_id: null }),
+    participantId: 'p-any',
+    participantGroupIds: [],
+    previousCompletions: 0,
+  })
+  assert.equal(result.allowed, false)
+})
+
+test('a participant on a task that is not secret needs no owner', () => {
+  const result = canPerformAction({
+    action: action({ secret_participant_id: 'p-chaya' }),
+    participantId: 'p-other',
+    participantGroupIds: [],
+    previousCompletions: 0,
+  })
+  assert.equal(result.allowed, true)
+})
+
+test('a secret mission is done once, even on a row saved as unlimited', () => {
+  const secret = action({ is_secret: true, secret_participant_id: 'p-chaya', max_completions: null })
+  const second = canPerformAction({ action: secret, participantId: 'p-chaya', participantGroupIds: [], previousCompletions: 1 })
+  assert.equal(second.allowed, false)
+  assert.equal(second.reason, 'LIMIT_REACHED')
 })

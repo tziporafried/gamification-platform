@@ -36,8 +36,8 @@ const CHIPS = [
 
 /**
  * Where the feature lives: the game wizard's tasks step ("צבירת נקודות",
- * WIZARD_STEPS in types/index.ts), then the quiet button under the task field
- * (AddTriviaButton in ActionList.tsx).
+ * WIZARD_STEPS in types/index.ts), then the kind tab above the task field
+ * (AddTaskPanel.tsx).
  */
 const PATH_STEPS = [
   { label: 'עריכת הפעילות', background: 'var(--gradient-background)', dark: true },

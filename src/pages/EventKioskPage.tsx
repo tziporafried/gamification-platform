@@ -56,6 +56,7 @@ import { playScanSuccess, playScanWrongAnswer } from '@/lib/scanSuccessSound'
 import { playRewardFanfare, primeRewardFanfare, stopRewardFanfare } from '@/lib/rewardFanfareSound'
 import '@/styles/kiosk.css'
 import { ScannerFrame } from '@/components/kiosk/ScannerFrame'
+import { secretMissionTitle } from '@/lib/tasks/secretMission'
 import { useFlashChallenge } from '@/components/live-events/flash/useFlashChallenge'
 import {
   KioskFlashCard,
@@ -151,6 +152,10 @@ type KioskAction = {
   daily_end_hour: number | null
   daily_end_minute: number | null
   groups: KioskGroup[]
+  /** A secret mission (094): the screen names its owner, never the task. */
+  is_secret: boolean
+  secret_participant_id: string | null
+  secretOwnerName: string | null
 }
 type ScanResultDisplay = {
   name: string
@@ -169,8 +174,11 @@ type ScanResultDisplay = {
    * them. It celebrates like a scored one and says where the points came from,
    * because a card reading "נסרק בהצלחה" over a player who never presented a
    * card is the screen telling the room something that did not happen.
+   *
+   * 'secret' is a secret mission just completed - the first time the room
+   * learns what it was, so the card says it big and stays up longer.
    */
-  variant?: 'scored' | 'wrong' | 'bonus'
+  variant?: 'scored' | 'wrong' | 'bonus' | 'secret'
 }
 type RewardWinDisplay = { emoji: string; title: string; sub: string; points: number }
 
@@ -558,7 +566,9 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
           .eq('event_id', eventId),
         supabase
           .from('actions')
-          .select('id, name, points, max_completions, daily_limit, daily_start_hour, daily_start_minute, daily_end_hour, daily_end_minute, action_groups(group_id, groups(id, name, color))')
+          // `*` so the secret-mission columns (094) come back where they exist,
+          // without blanking the screen on a database that has not run it.
+          .select('*, action_groups(group_id, groups(id, name, color))')
           .eq('event_id', eventId)
           .eq('is_active', true)
           .order('name'),
@@ -598,6 +608,7 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
       setTxPointsTotal((pointsRes.data ?? []).reduce((sum, tx) => sum + (tx.points ?? 0), 0))
 
       if (actRes.data) {
+        const participantNames = new Map((partRes.data ?? []).map((p) => [p.id as string, p.name as string]))
         setActionsData(actRes.data.map((a) => {
           const joins = (a.action_groups as unknown as { groups: { id: string; name: string; color: string } | { id: string; name: string; color: string }[] }[]) ?? []
           const groups = joins
@@ -617,6 +628,9 @@ function useKioskData(eventId: string, gameStarted: boolean): KioskData {
             daily_end_hour: a.daily_end_hour,
             daily_end_minute: a.daily_end_minute,
             groups,
+            is_secret: a.is_secret === true,
+            secret_participant_id: a.secret_participant_id ?? null,
+            secretOwnerName: a.secret_participant_id ? participantNames.get(a.secret_participant_id) ?? null : null,
           }
         }))
       }
@@ -1052,6 +1066,7 @@ function ScanSuccessOverlay({
 
   const wrong = result.variant === 'wrong'
   const bonus = result.variant === 'bonus'
+  const secret = result.variant === 'secret'
 
   return (
     <div
@@ -1085,7 +1100,7 @@ function ScanSuccessOverlay({
           padding: 'clamp(24px, 3vw, 40px) clamp(28px, 4vw, 48px)',
           border: '1.5px solid #FFE1CC',
           boxShadow: '0 34px 90px rgba(171,53,0,0.28), 0 8px 24px rgba(0,0,0,0.08)',
-          width: 'clamp(300px, 30vw, 452px)',
+          width: secret ? 'clamp(320px, 36vw, 560px)' : 'clamp(300px, 30vw, 452px)',
           animation: reducedMotion ? 'none' : 'kiosk-cardBounceIn 0.5s cubic-bezier(0.2,0.9,0.25,1.2) both',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           gap: 'clamp(10px, 1.4vw, 18px)', textAlign: 'center',
@@ -1099,12 +1114,12 @@ function ScanSuccessOverlay({
             <>
               <div style={{
                 position: 'absolute', inset: -20, borderRadius: '50%',
-                border: `3px solid ${bonus ? 'rgba(242,145,60,0.5)' : 'rgba(62,158,107,0.5)'}`,
+                border: `3px solid ${secret ? 'rgba(142,91,196,0.5)' : bonus ? 'rgba(242,145,60,0.5)' : 'rgba(62,158,107,0.5)'}`,
                 animation: 'kiosk-ringBurst 1.6s ease-out 0.3s infinite',
               }} />
               <div style={{
                 position: 'absolute', inset: -10, borderRadius: '50%',
-                border: `2px solid ${bonus ? 'rgba(242,145,60,0.3)' : 'rgba(62,158,107,0.3)'}`,
+                border: `2px solid ${secret ? 'rgba(142,91,196,0.3)' : bonus ? 'rgba(242,145,60,0.3)' : 'rgba(62,158,107,0.3)'}`,
                 animation: 'kiosk-ringBurst 1.6s ease-out 0.7s infinite',
               }} />
             </>
@@ -1113,25 +1128,29 @@ function ScanSuccessOverlay({
             width: '100%', height: '100%', borderRadius: '50%',
             background: wrong
               ? 'linear-gradient(135deg,#B9AFAA,#8E8079)'
-              : bonus
+              : secret
+                ? 'linear-gradient(135deg,#B07FE0,#7B4FB8)'
+                : bonus
                 ? 'linear-gradient(135deg,#FFC65C,#F2913C)'
                 : 'linear-gradient(135deg,#62C98A,#3E9E6B)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: wrong
               ? '0 8px 24px rgba(142,128,121,0.32)'
-              : bonus
+              : secret
+                ? '0 8px 24px rgba(123,79,184,0.4)'
+                : bonus
                 ? '0 8px 24px rgba(242,145,60,0.4)'
                 : '0 8px 24px rgba(62,158,107,0.38)',
             animation: reducedMotion || wrong ? 'none' : 'kiosk-checkIn 0.55s cubic-bezier(0.2,0.9,0.25,1.1) 0.1s both',
           }}>
-            <span style={{ color: '#fff', fontSize: 46, lineHeight: 1 }}>{wrong ? '✕' : bonus ? '⚡' : '✓'}</span>
+            <span style={{ color: '#fff', fontSize: secret ? 44 : 46, lineHeight: 1 }}>{wrong ? '✕' : secret ? '🤫' : bonus ? '⚡' : '✓'}</span>
           </div>
         </div>
 
         {/* Label. The right answer is never named here - the next participant in
             the queue can see this screen from where they are standing. */}
-        <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: 3, color: wrong ? '#8E8079' : bonus ? '#C87A1E' : '#3E9E6B' }}>
-          {wrong ? 'התשובה לא נכונה' : bonus ? 'קיבל/ה בונוס!' : 'נסרק בהצלחה!'}
+        <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: 3, color: wrong ? '#8E8079' : secret ? '#7B4FB8' : bonus ? '#C87A1E' : '#3E9E6B' }}>
+          {wrong ? 'התשובה לא נכונה' : secret ? 'משימה סודית הושלמה!' : bonus ? 'קיבל/ה בונוס!' : 'נסרק בהצלחה!'}
         </div>
 
         {/* Avatar + name */}
@@ -1163,8 +1182,28 @@ function ScanSuccessOverlay({
           <div style={{ fontWeight: 900, fontSize: 'clamp(18px, 2vw, 24px)', color: '#2E221E' }}>{result.name}</div>
         </div>
 
-        {/* Action */}
-        <div style={{ fontWeight: 800, fontSize: 15, color: '#7D706A', lineHeight: 1.3 }}>{result.action}</div>
+        {/* Action. A secret mission is the reveal itself - nobody in the room
+            knew what it was, so it gets the card's biggest words. */}
+        {secret ? (
+          <div
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              borderRadius: 20, padding: '14px 18px',
+              background: 'linear-gradient(135deg,rgba(176,127,224,0.14),rgba(179,95,168,0.1))',
+              border: '1.5px dashed rgba(123,79,184,0.45)',
+              animation: reducedMotion ? 'none' : 'kiosk-cardBounceIn 0.6s cubic-bezier(0.2,0.9,0.25,1.2) 0.5s both',
+            }}
+          >
+            <div style={{ fontWeight: 800, fontSize: 14, color: '#7B4FB8', marginBottom: 6 }}>
+              {secretMissionTitle(result.name)} הייתה:
+            </div>
+            <div style={{ fontWeight: 900, fontSize: 'clamp(22px, 2.6vw, 32px)', color: '#2E221E', lineHeight: 1.2 }}>
+              {result.action}
+            </div>
+          </div>
+        ) : (
+          <div style={{ fontWeight: 800, fontSize: 15, color: '#7D706A', lineHeight: 1.3 }}>{result.action}</div>
+        )}
 
         {/* Points pill with count-up. Zero has nothing to count up to. */}
         <div className={wrong ? undefined : 'kiosk-tickTap'} style={{
@@ -1559,6 +1598,9 @@ const ACTIVITY_CELEBRATE_MS = 3_500
 const ACTIVITY_STRIP_MS = 8_000
 const ACTIVITY_STRIP_OUT_MS = 400
 const SCAN_SUCCESS_MS = 4200
+// The room is hearing what a secret mission was for the first time - long
+// enough to read it out loud and laugh, not just glance at it.
+const SECRET_REVEAL_MS = 11_000
 
 const SPOTLIGHT_SPARKS = [
   { x: -38, y: -30, color: '#FF9366', delay: 0, size: 9 },
@@ -2926,7 +2968,10 @@ function RecommendedMissionCard({
     opacity: isUrgent && colonDimmed ? 0.15 : 1,
   }
   const accentHot = showCountdown && isUrgent
-  const badgeLabel = showCountdown ? 'משימה פעילה' : 'משימה מומלצת'
+  const isSecret = Boolean(action?.is_secret)
+  const badgeLabel = isSecret ? 'משימה סודית' : showCountdown ? 'משימה פעילה' : 'משימה מומלצת'
+  // A secret mission is advertised by whose it is, never by what it is.
+  const title = action ? (isSecret ? secretMissionTitle(action.secretOwnerName) : action.name) : '---'
 
   return (
     <div
@@ -2946,10 +2991,12 @@ function RecommendedMissionCard({
       {action && swapRole !== 'out' && (
         <div className="kiosk-missionTypeBadgeAnchor" aria-hidden>
           <div
-            key={`${action.id}-${showCountdown ? 'active' : 'rec'}`}
+            key={`${action.id}-${isSecret ? 'secret' : showCountdown ? 'active' : 'rec'}`}
             className={[
               'kiosk-missionTypeBadge',
-              showCountdown ? 'kiosk-missionTypeBadge--active' : 'kiosk-missionTypeBadge--recommended',
+              isSecret
+                ? 'kiosk-missionTypeBadge--secret'
+                : showCountdown ? 'kiosk-missionTypeBadge--active' : 'kiosk-missionTypeBadge--recommended',
               entering && !reducedMotion ? 'kiosk-missionTypeBadge--enter' : '',
               accentHot ? 'kiosk-missionTypeBadge--urgent' : '',
             ].filter(Boolean).join(' ')}
@@ -2996,7 +3043,9 @@ function RecommendedMissionCard({
                 : '0 10px 26px rgba(120,50,10,0.28), 0 0 0 5px rgba(255,255,255,0.9), 0 0 20px rgba(255,147,102,0.3)',
             }}
           >
-            {showCountdown ? (
+            {isSecret ? (
+              <span aria-hidden>🤫</span>
+            ) : showCountdown ? (
               <span aria-hidden style={{ fontSize: 64, lineHeight: 1 }}>⏳</span>
             ) : (
               <span aria-hidden>🎯</span>
@@ -3041,7 +3090,7 @@ function RecommendedMissionCard({
             }
             style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.15 }}
           >
-            <ShimmerText text={action?.name ?? '---'} />
+            <ShimmerText text={title} />
           </div>
         </div>
 
@@ -3135,6 +3184,8 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
       daily_end_hour: action.daily_end_hour,
       daily_end_minute: action.daily_end_minute,
       allowedGroupIds: action.groups.map((group) => group.id),
+      is_secret: action.is_secret,
+      secret_participant_id: action.secret_participant_id,
     })),
     participants: kioskParticipants,
     completionIndex: actionCompletionIndex,
@@ -3297,7 +3348,10 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     if (celebrationRewards.length > 0) {
       trackPrizeRevealed(celebrationRewards.length)
     }
-    scanDismissTimer.current = setTimeout(finishScanCard, SCAN_SUCCESS_MS)
+    scanDismissTimer.current = setTimeout(
+      finishScanCard,
+      display.variant === 'secret' ? SECRET_REVEAL_MS : SCAN_SUCCESS_MS,
+    )
   }, [finishScanCard, refetch, holdPrizeReveal])
 
   const triggerScanSuccess = useCallback((result: ScoreSubmitResult, _txId: string, rm: boolean) => {
@@ -3306,6 +3360,25 @@ function KioskDisplay({ event, data, gameStarted }: { event: Event; data: KioskD
     // A wrong trivia answer gets its own two notes: the scan did work.
     if (result.isCorrect) playScanSuccess()
     else playScanWrongAnswer()
+    if (result.isSecret) {
+      presentResultCard(
+        {
+          name: result.participantName,
+          // The reveal: until this moment the room only knew whose it was.
+          action: result.actionName,
+          initial: result.participantName.charAt(0),
+          emoji: '🤫',
+          points: result.points,
+          totalPoints: result.participantTotalPoints,
+          tone: '#8E5BC4',
+          variant: 'secret',
+        },
+        result.celebrationRewards,
+        result.participantName,
+        rm,
+      )
+      return
+    }
     presentResultCard(
       {
         name: result.participantName,
