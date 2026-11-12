@@ -7,7 +7,7 @@ import { AuthRedirect } from '@/components/AuthRedirect'
 import { AppShell } from '@/components/layout/AppShell'
 import { ImpersonationBanner } from '@/components/ImpersonationBanner'
 import { AnalyticsListener } from '@/components/AnalyticsListener'
-import { LotteryAnnouncementModal } from '@/components/LotteryAnnouncementModal'
+import { AnnouncementSequence } from '@/components/AnnouncementSequence'
 import { ActiveHomeRoute, HomeVariantRoute } from '@/pages/home/HomeRoutes'
 import { Login } from '@/pages/Login'
 import { MyEvents } from '@/pages/MyEvents'
@@ -35,7 +35,7 @@ export default function App() {
         <AnalyticsListener />
         <ImpersonationBanner />
         <PlansModalProvider>
-          <LotteryAnnouncementModal />
+          <AnnouncementSequence />
           <Routes>
             {/* Which homepage `/` shows: admin panel choice, else CODE_DEFAULT_HOME (src/pages/home/homePages.ts) */}
             <Route path="/" element={<ActiveHomeRoute />} />

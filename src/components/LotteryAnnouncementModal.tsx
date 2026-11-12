@@ -58,7 +58,7 @@ const PATH_STEPS = [
   { label: 'הגרלה', background: 'linear-gradient(145deg,#6ADB8A,#2FB85A)', dark: true },
 ]
 
-function wasDismissed(): boolean {
+export function lotteryAnnouncementSeen(): boolean {
   try {
     return localStorage.getItem(STORAGE_KEY) === '1'
   } catch {
@@ -78,7 +78,7 @@ function wasDismissed(): boolean {
 const PLAY_MS = 5800
 const REST_MS = 4500 // static pause before it replays
 
-export function LotteryAnnouncementModal() {
+export function LotteryAnnouncementModal({ onCollapse }: { onCollapse?: () => void } = {}) {
   const { pathname } = useLocation()
   // 'pending' renders nothing for the first paint, so localStorage decides the
   // starting view instead of the dialog flashing open and snapping shut.
@@ -88,7 +88,7 @@ export function LotteryAnnouncementModal() {
   const [cycle, setCycle] = useState(0)
 
   useEffect(() => {
-    setView(wasDismissed() ? 'collapsed' : 'open')
+    setView(lotteryAnnouncementSeen() ? 'collapsed' : 'open')
   }, [])
 
   useEffect(() => {
@@ -132,8 +132,9 @@ export function LotteryAnnouncementModal() {
     try {
       localStorage.setItem(STORAGE_KEY, '1')
     } catch {
-      // Nothing to do - see wasDismissed().
+      // Nothing to do - see lotteryAnnouncementSeen().
     }
+    onCollapse?.()
   }
 
   // /home/<id> are the seasonal homepages - same audience as `/`.
