@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { CheckSquare, HelpCircle, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InlineAddField } from '@/components/ui/InlineAddField'
+import { Tooltip } from '@/components/ui/Tooltip'
 import { InlineAddPointsTrailing } from '@/components/ui/InlineAddPointsTrailing'
 import { InlineAddAction } from './InlineAddAction'
 import type { SecretOwnerOption } from './SecretOwnerPicker'
@@ -12,7 +13,7 @@ export type AddTaskKind = 'standard' | 'trivia' | 'secret'
 interface KindOption {
   value: AddTaskKind
   label: string
-  /** One line: enough for someone who never heard of it to know if they want it. */
+  /** The tab's tooltip: enough for someone who never heard of it to know if they want it. */
   hint: string
   icon: LucideIcon | string
 }
@@ -23,7 +24,7 @@ const KIND_OPTIONS: Record<AddTaskKind, KindOption> = {
   secret: {
     value: 'secret',
     label: 'משימה סודית',
-    hint: 'של משתתף/ת אחד/ת, פעם אחת. מסך הסריקה מראה רק של מי היא, וחושף אותה אחרי הסריקה',
+    hint: 'של משתתף אחד, פעם אחת. מסך הסריקה מראה רק של מי היא, וחושף אותה אחרי הסריקה',
     icon: '🤫',
   },
 }
@@ -128,14 +129,15 @@ export function AddTaskPanel({
               const selected = value === active
               const Icon = option.icon
               return (
+                <Tooltip key={value} content={option.hint} portal className="flex min-w-0 flex-1">
                 <button
-                  key={value}
                   type="button"
                   role="radio"
                   aria-checked={selected}
                   onClick={() => choose(value)}
+                  aria-description={option.hint}
                   className={cn(
-                    'flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
+                    'flex w-full min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
                     selected
                       ? 'bg-surface text-foreground shadow-card'
                       : 'text-muted hover:bg-surface/60 hover:text-foreground',
@@ -146,10 +148,10 @@ export function AddTaskPanel({
                     : <Icon size={14} strokeWidth={2} className="shrink-0" aria-hidden />}
                   <span className="truncate">{option.label}</span>
                 </button>
+                </Tooltip>
               )
             })}
           </div>
-          <p className="px-1 text-[11px] leading-snug text-muted">{KIND_OPTIONS[active].hint}</p>
         </>
       )}
 

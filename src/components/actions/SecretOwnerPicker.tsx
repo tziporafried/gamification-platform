@@ -141,7 +141,7 @@ export function SecretOwnerPicker({
         <div
           ref={panelRef}
           role="dialog"
-          aria-label="בחירת המשתתף/ת שהמשימה הסודית שלו/ה"
+          aria-label="בחירת המשתתף שהמשימה הסודית שלו"
           style={{
             position: 'fixed',
             top: panelStyle?.top ?? -9999,
@@ -172,14 +172,14 @@ export function SecretOwnerPicker({
                         pick(matches[0].id)
                       }
                     }}
-                    placeholder="חיפוש משתתף/ת"
+                    placeholder="חיפוש משתתף"
                     className="w-full min-w-0 bg-transparent py-1.5 text-xs text-foreground outline-none placeholder:text-muted"
                   />
                 </div>
               </div>
               <div className="max-h-52 overflow-y-auto">
                 {matches.length === 0 && (
-                  <p className="px-3 py-2 text-xs text-muted">אין משתתף/ת בשם הזה</p>
+                  <p className="px-3 py-2 text-xs text-muted">אין משתתף בשם הזה</p>
                 )}
                 {matches.map((p) => {
                   const selected = p.id === owner?.id
