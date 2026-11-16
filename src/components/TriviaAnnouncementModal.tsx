@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Check, MapPin } from 'lucide-react'
 import { BrandLogo } from '@/components/icons/BrandLogo'
@@ -16,8 +15,6 @@ import { cn } from '@/lib/utils'
  */
 const STORAGE_KEY = 'announcement-seen:trivia-2026-11'
 
-/** Landing, the seasonal homepages and the events list - never a live screen. */
-const ALLOWED_ROUTES = new Set(['/', '/events'])
 
 /** Drifting motes around the illustration. Positions are percentages. */
 const PARTICLES = [
@@ -84,6 +81,14 @@ const T_REVEAL = 3.0 // the right card celebrates, the others dim
 
 const EASE_OUT: [number, number, number, number] = [0.22, 1, 0.36, 1]
 
+export function markTriviaAnnouncementSeen(): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, '1')
+  } catch {
+    // Storage blocked - nothing to save it in. See triviaAnnouncementSeen().
+  }
+}
+
 export function triviaAnnouncementSeen(): boolean {
   try {
     return localStorage.getItem(STORAGE_KEY) === '1'
@@ -94,20 +99,19 @@ export function triviaAnnouncementSeen(): boolean {
   }
 }
 
-export function TriviaAnnouncementModal({ onCollapse }: { onCollapse?: () => void } = {}) {
-  const { pathname } = useLocation()
-  const [view, setView] = useState<'pending' | 'open' | 'collapsed'>('pending')
+/**
+ * The dialog alone. Whether it is open, what closing it does, the "seen" flag
+ * and the bubble all belong to AnnouncementSequence, which runs every
+ * announcement through one queue and one rotating bubble.
+ */
+export function TriviaAnnouncementModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   // Bumped each play so the scene remounts and replays from its first beat.
   const [cycle, setCycle] = useState(0)
   // Reduced motion (or a hidden tab): render the scene's final frame, no play.
   const [still, setStill] = useState(false)
 
   useEffect(() => {
-    setView(triviaAnnouncementSeen() ? 'collapsed' : 'open')
-  }, [])
-
-  useEffect(() => {
-    if (view !== 'open') return
+    if (!open) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setStill(true)
       return
@@ -130,49 +134,13 @@ export function TriviaAnnouncementModal({ onCollapse }: { onCollapse?: () => voi
       window.clearTimeout(timer)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [view])
-
-  function collapse() {
-    setView('collapsed')
-    try {
-      localStorage.setItem(STORAGE_KEY, '1')
-    } catch {
-      // Nothing to do - see triviaAnnouncementSeen().
-    }
-    onCollapse?.()
-  }
-
-  // /home/<id> are the seasonal homepages - same audience as `/`.
-  if (!ALLOWED_ROUTES.has(pathname) && !pathname.startsWith('/home/')) return null
+  }, [open])
 
   return (
     <>
-      {view === 'collapsed' && (
-        <motion.div
-          // Below the dialog's z-[200]; the contact button sits bottom-left.
-          className="fixed bottom-5 right-4 z-[190] sm:bottom-6 sm:right-6"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: EASE_OUT }}
-        >
-          <button
-            type="button"
-            onClick={() => setView('open')}
-            aria-label="חדש ב-Gamify - פתיחת ההודעה על שאלות טריוויה"
-            className="flex items-center gap-2 rounded-full px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-[0_6px_20px_-4px_rgba(216,48,0,0.55)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-4px_rgba(216,48,0,0.65)] motion-reduce:hover:translate-y-0 sm:gap-2.5 sm:px-4 sm:py-3"
-            style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-hover))' }}
-          >
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_1px_3px_rgba(46,34,30,0.22)]">
-              <BrandLogo alt="" className="h-[1.05rem] w-[1.05rem] object-contain" />
-            </span>
-            <span>חדש ב-Gamify</span>
-          </button>
-        </motion.div>
-      )}
-
       <Modal
-        isOpen={view === 'open'}
-        onClose={collapse}
+        isOpen={open}
+        onClose={onClose}
         chromeless
         placement="corner"
         title="חדש ב-Gamify: שאלות טריוויה במשחק"

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { MapPin } from 'lucide-react'
 import { BrandLogo } from '@/components/icons/BrandLogo'
@@ -22,7 +21,6 @@ const STORAGE_KEY = 'announcement-seen:lottery-2026-07'
  * the event workspace and the fullscreen presentation screens (lottery /
  * display / kiosk) that are projected in front of an audience.
  */
-const ALLOWED_ROUTES = new Set(['/', '/events'])
 
 /** Drifting motes around the illustration. Positions are percentages. */
 const PARTICLES = [
@@ -58,6 +56,14 @@ const PATH_STEPS = [
   { label: 'הגרלה', background: 'linear-gradient(145deg,#6ADB8A,#2FB85A)', dark: true },
 ]
 
+export function markLotteryAnnouncementSeen(): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, '1')
+  } catch {
+    // Storage blocked - nothing to save it in. See lotteryAnnouncementSeen().
+  }
+}
+
 export function lotteryAnnouncementSeen(): boolean {
   try {
     return localStorage.getItem(STORAGE_KEY) === '1'
@@ -78,21 +84,18 @@ export function lotteryAnnouncementSeen(): boolean {
 const PLAY_MS = 5800
 const REST_MS = 4500 // static pause before it replays
 
-export function LotteryAnnouncementModal({ onCollapse }: { onCollapse?: () => void } = {}) {
-  const { pathname } = useLocation()
-  // 'pending' renders nothing for the first paint, so localStorage decides the
-  // starting view instead of the dialog flashing open and snapping shut.
-  const [view, setView] = useState<'pending' | 'open' | 'collapsed'>('pending')
+/**
+ * The dialog alone. Whether it is open, what closing it does, the "seen" flag
+ * and the bubble all belong to AnnouncementSequence, which runs every
+ * announcement through one queue and one rotating bubble.
+ */
+export function LotteryAnnouncementModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [playing, setPlaying] = useState(false)
   // Bumped each play so the animated image remounts and restarts from frame 0.
   const [cycle, setCycle] = useState(0)
 
   useEffect(() => {
-    setView(lotteryAnnouncementSeen() ? 'collapsed' : 'open')
-  }, [])
-
-  useEffect(() => {
-    if (view !== 'open') {
+    if (!open) {
       setPlaying(false)
       return
     }
@@ -125,53 +128,13 @@ export function LotteryAnnouncementModal({ onCollapse }: { onCollapse?: () => vo
       window.clearTimeout(timer)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [view])
-
-  function collapse() {
-    setView('collapsed')
-    try {
-      localStorage.setItem(STORAGE_KEY, '1')
-    } catch {
-      // Nothing to do - see lotteryAnnouncementSeen().
-    }
-    onCollapse?.()
-  }
-
-  // /home/<id> are the seasonal homepages - same audience as `/`.
-  if (!ALLOWED_ROUTES.has(pathname) && !pathname.startsWith('/home/')) return null
+  }, [open])
 
   return (
     <>
-      {view === 'collapsed' && (
-        <motion.div
-          // Below the dialog's z-[200]; the contact button sits bottom-left at
-          // z-50, so the two never collide.
-          className="fixed bottom-5 right-4 z-[190] sm:bottom-6 sm:right-6"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <button
-            type="button"
-            onClick={() => setView('open')}
-            aria-label="חדש ב-Gamify - פתיחת ההודעה על ההגרלה"
-            className="flex items-center gap-2 rounded-full px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-[0_6px_20px_-4px_rgba(216,48,0,0.55)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-4px_rgba(216,48,0,0.65)] motion-reduce:hover:translate-y-0 sm:gap-2.5 sm:px-4 sm:py-3"
-            style={{
-              background:
-                'linear-gradient(135deg, var(--color-primary), var(--color-primary-hover))',
-            }}
-          >
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_1px_3px_rgba(46,34,30,0.22)]">
-              <BrandLogo alt="" className="h-[1.05rem] w-[1.05rem] object-contain" />
-            </span>
-            <span>חדש ב-Gamify</span>
-          </button>
-        </motion.div>
-      )}
-
       <Modal
-      isOpen={view === 'open'}
-      onClose={collapse}
+      isOpen={open}
+      onClose={onClose}
       chromeless
       placement="corner"
       title="חדש ב-Gamify: הגרילו זוכים בלחיצת כפתור"
